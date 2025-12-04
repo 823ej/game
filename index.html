@@ -40,31 +40,90 @@
         .item-rank-2 { box-shadow: 0 0 5px #3498db; }
         .item-rank-3 { box-shadow: 0 0 8px #f1c40f; border-color: #f1c40f; }
 
+        /* [추가] 아이템 클릭 시 나오는 버튼 컨테이너 */
+        .item-actions {
+            position: absolute;
+            bottom: -35px; /* 아이콘 바로 아래 */
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            background: #222;
+            padding: 3px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            z-index: 200;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+        .item-btn {
+            font-size: 0.8em;
+            padding: 2px 6px;
+            cursor: pointer;
+            border: none;
+            border-radius: 3px;
+            color: white;
+        }
+        .btn-confirm { background: #27ae60; }
+        .btn-cancel { background: #c0392b; }
+
+        /* 아이템이 선택되었을 때 강조 */
+        .item-icon.selected {
+            border-color: #f1c40f;
+            box-shadow: 0 0 10px #f1c40f;
+            z-index: 150;
+        }
         /* 툴팁 */
+        /* [수정] 툴팁 위치 변경 (아이템 오른쪽) */
         .tooltip { 
             visibility: hidden; 
-            width: 160px; /* 폭을 살짝 넓힘 */
+            width: 160px; 
             background-color: #111; 
             color: #fff; 
             text-align: center; 
             border-radius: 6px; 
-            padding: 10px; /* 여백을 좀 더 줌 */
+            padding: 10px; 
             
+            /* 위치: 아이콘의 오른쪽 */
+            top: 50%;
+            left: 120%; /* 오른쪽으로 밀어냄 */
+            transform: translateY(-50%); /* 수직 중앙 정렬 */
+            
+            /* 기존 위치 속성 초기화 */
+            bottom: auto;
+            margin-left: 0;
+
             position: absolute; 
-            top: 120%; 
-            left: 50%; 
-            margin-left: -80px; /* width의 절반 */
-            z-index: 1000; 
+            z-index: 9999; /* 최상단 */
             
-            /* [핵심 수정] em 대신 px를 사용하여 크기를 고정함 */
             font-size: 13px; 
-            font-weight: normal; /* 부모가 굵게 처리되어 있어도 툴팁은 얇게 */
-            line-height: 1.4;    /* 줄 간격 확보 */
+            font-weight: normal; 
+            line-height: 1.4;    
             
             border: 1px solid #777; 
             opacity: 0; 
             transition: opacity 0.3s; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.5); 
+            
+            pointer-events: none; /* 클릭 통과 */
+        }
+
+        /* [추가] 툴팁 화살표 (왼쪽을 가리킴) */
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            right: 100%; /* 툴팁의 왼쪽 */
+            margin-top: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent #111 transparent transparent;
+        }
+
+        /* [추가] 사용 불가 아이템 스타일 */
+        .item-icon.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            filter: grayscale(80%);
         }
         .item-icon:hover .tooltip { visibility: visible; opacity: 1; }
 
@@ -102,6 +161,40 @@
             margin-bottom: 5px;
         }
         
+                /* [1단계 추가] 적들이 서 있을 공간 */
+        .enemies-wrapper {
+            flex: 1;                /* 남은 공간 차지 */
+            display: flex;          /* 가로 배치 */
+            justify-content: center; 
+            gap: 15px;              /* 적 사이 간격 */
+            align-items: flex-end;  /* 바닥 라인 맞춤 */
+            padding-left: 20px;
+        }
+
+        /* 개별 적 캐릭터 박스 (기존 .character보다 조금 작게) */
+        .enemy-unit {
+            width: 140px;           /* 고정 너비 */
+            background: transparent;
+            border-radius: 10px;
+            text-align: center;
+            position: relative;
+            transition: 0.2s;
+            border: 2px solid transparent; /* 평소엔 투명 테두리 */
+        }
+
+        /* 적이 죽었을 때 스타일 */
+        .enemy-unit.dead {
+            opacity: 0.4;
+            filter: grayscale(100%);
+            pointer-events: none;   /* 클릭/드래그 불가 */
+        }
+
+        /* 타겟팅 됐을 때 강조 */
+        .enemy-unit.selected-target {
+            border-color: #e74c3c;
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.6);
+            background: rgba(255, 255, 255, 0.05);
+        }
 
         /* [추가] 애니메이션 키프레임 정의 */
 
@@ -235,6 +328,7 @@
             justify-content: center;
             flex-shrink: 0;
         }
+        
         /* 카드 스타일 */
         .card { 
             background: #ecf0f1; color: #2c3e50; width: 100px; height: 140px; 
@@ -289,6 +383,9 @@
             font-size: 1.2em; 
             text-shadow: 0 1px 2px rgba(0,0,0,0.8); /* 잘 보이게 그림자 추가 */
         }
+                /* [추가] 수치 변경 시 강조 스타일 */
+        .mod-val-buff { color: #2ecc71; font-weight: bold; } /* 수치 증가 (초록) */
+        .mod-val-debuff { color: #e74c3c; font-weight: bold; } /* 수치 감소 (빨강) */
         /* [추가] 모바일 가로 모드 강제 오버레이 */
         #rotate-overlay {
             position: fixed;
@@ -360,25 +457,20 @@
     <div id="battle-scene" class="scene">
         <div class="battle-area">
             <div class="character" id="player-char">
-                <h3 style="margin:2px 0; font-size:1em;">👤 플레이어</h3>
-                <img id="p-img" src="https://placehold.co/150x150/3498db/ffffff?text=Hero" alt="Player" class="char-img" style="width:100px; height:100px;"> <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar"></div></div>
-                <div style="font-size:0.9em;">HP: <span id="p-hp">25</span>/<span id="p-max-hp">25</span> <span class="block-icon">🛡️<span id="p-block">0</span></span></div>
-                <div class="stats" id="p-stats" style="font-size:0.8em;">공1 방1 속1</div>
-                <div class="buffs" id="p-buffs" style="min-height:20px;"></div>
-                <div style="margin-top: 5px; display: flex; justify-content: center; gap: 3px;">
-                    <button id="btn-draw-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('draw')">덱(0)</button>
-                    <button id="btn-discard-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('discard')">버림(0)</button>
-                    <button id="btn-exhaust-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('exhaust')">소멸(0)</button>
+                    <h3 style="margin:2px 0; font-size:1em;">👤 플레이어</h3>
+                    <img id="p-img" src="https://placehold.co/150x150/3498db/ffffff?text=Hero" alt="Player" class="char-img" style="width:100px; height:100px;"> 
+                    <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar"></div></div>
+                    <div style="font-size:0.9em;">HP: <span id="p-hp">25</span>/<span id="p-max-hp">25</span> <span class="block-icon">🛡️<span id="p-block">0</span></span></div>
+                    <div class="stats" id="p-stats" style="font-size:0.8em;">공1 방1 속1</div>
+                    <div class="buffs" id="p-buffs" style="min-height:20px;"></div>
+                    <div style="margin-top: 5px; display: flex; justify-content: center; gap: 3px;">
+                        <button id="btn-draw-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('draw')">덱(0)</button>
+                        <button id="btn-discard-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('discard')">버림(0)</button>
+                        <button id="btn-exhaust-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('exhaust')">소멸(0)</button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="character" id="enemy-char">
-                <h3 id="e-name" style="margin:2px 0; font-size:1em;">👿 허수아비</h3>
-                <img id="e-img" src="https://placehold.co/150x150/e74c3c/ffffff?text=Enemy" alt="Enemy" class="char-img" style="width:100px; height:100px;"> <div class="hp-bar-bg"><div class="hp-bar-fill" id="e-hp-bar"></div></div>
-                <div style="font-size:0.9em;">HP: <span id="e-hp">25</span>/<span id="e-max-hp">25</span> <span class="block-icon">🛡️<span id="e-block">0</span></span></div>
-                <div class="stats" id="e-stats" style="font-size:0.8em;">공1 방1 속1</div>
-                <div class="buffs" id="e-buffs" style="min-height:20px;"></div>
-            </div>
+            <div id="enemies-area" class="enemies-wrapper"></div>
         </div>
 
         <div class="control-group">
@@ -423,9 +515,8 @@ const CARD_DATA = {
 
     // 2성 (디버프 & 복합)
     // 기존: val이 방어도였음 -> block: 3으로 명시
-    "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3 },
-    "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: {name:"독", val:2}, block: 3 },
-    "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:2}, target:"self", block: 3 },
+ "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3, target: "enemy" },
+    "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: {name:"독", val:2}, block: 3, target: "enemy" },    "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:2}, target:"self", block: 3 },
     "껴입기": { rank: 2, cost: 2, type: "skill", desc: "나 건강(2턴), 방어도+4", buff: {name:"건강", val:2}, target:"self", block: 4 },
 
     // 2성 (공격 + 디버프/버프)
@@ -443,7 +534,49 @@ const CARD_DATA = {
     "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: {name:"강화", val:2}, target:"self", dmg: 8 },
     "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, isExhaust: true }
 };
+/* [NEW] 적 데이터 정의 */
+const ENEMY_DATA = {
+    "불량배": {
+        name: "불량배",
+        baseHp: 20,
+        stats: { atk: 1, def: 0, spd: 2 }, // 기본 스탯
+        growth: { hp: 4, atk: 0.5, def: 0, spd: 0 }, // 레벨당 성장 수치
+        deckType: "basic", // 사용하는 덱 타입
+        img: "https://placehold.co/100x100/c0392b/ffffff?text=Bully"
+    },
+    "허수아비": {
+        name: "허수아비",
+        baseHp: 30, // 조금 더 튼튼하게
+        stats: { atk: 1, def: 1, spd: 1 }, // 요청하신 공방속 1
+        growth: { hp: 5, atk: 0.5, def: 0.5, spd: 0.2 }, // 골고루 성장
+        deckType: "player_like", // 타격5+수비4+2성1
+        img: "https://placehold.co/100x100/f39c12/ffffff?text=Scarecrow"
+    }
+};
 
+/* [NEW] 적 덱 생성 헬퍼 함수 */
+function getEnemyDeck(type) {
+    let deck = [];
+    if (type === "basic") {
+        // 불량배: 단순 공격 위주
+        deck = ["타격", "타격", "수비"];
+    } 
+    else if (type === "player_like") {
+        // 허수아비: 플레이어 초기 덱 구성 (타격5, 수비4, 2성 1장)
+        for(let i=0; i<5; i++) deck.push("타격");
+        for(let i=0; i<4; i++) deck.push("수비");
+        // 랜덤 2성 카드 1장 추가 (함수 재사용)
+        let randomRank2 = getRandomCardByRank(2);
+        deck.push(randomRank2);
+    }
+    return deck;
+}
+
+/* [NEW] 랭크별 랜덤 카드 뽑기 유틸리티 (기존 getRandomCard 보완) */
+function getRandomCardByRank(rank) {
+    let pool = Object.keys(CARD_DATA).filter(k => CARD_DATA[k].rank === rank);
+    return pool[Math.floor(Math.random() * pool.length)];
+}
 const TOOLTIPS = {
     "약화": "공격 스탯이 절반으로 감소합니다.",
     "취약": "방어 스탯이 절반으로 감소합니다.",
@@ -469,26 +602,25 @@ function applyTooltip(text) {
 /* --- 데이터 (아이템) --- */
 /* [수정] ITEM_DATA 전체를 이걸로 업데이트하세요 */
 const ITEM_DATA = {
-    // --- 유물 (패시브 효과는 별도 로직이라 effect 태그가 당장 필요하진 않지만, 확장을 위해 분류) ---
+    // --- 유물 ---
     "쿠보탄": {type: "relic", rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (패시브)"},
     "강인함의 부적": {type: "relic", rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (패시브)"},
     "좋은 운동화": {type: "relic", rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (패시브)"},
     "울끈불끈 패딩": {type: "relic", rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 증가"},
     "황금 대타": {type: "relic", rank: 3, price: 4000, icon: "🏺", desc: "사망 시 1000원을 소모하여 부활"},
 
-    // --- 소모품 (여기서부터 데이터 구조화 적용!) ---
+    // --- 소모품 (target 추가) ---
+    // target: "self" (자신 사용)
+    "회복약": {type: "consumable", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복", effect: "heal", val: 25, target: "self"},
     
-    // effect: "heal" -> 체력 회복
-    "회복약": {type: "consumable", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복", effect: "heal", val: 25},
+    // target: "enemy" (적에게 드래그)
+    "호신용 스프레이": {type: "consumable", rank: 1, price: 1000, icon: "🧴", desc: "적에게 10 피해", effect: "damage", val: 10, target: "enemy"},
     
-    // effect: "damage" -> 적에게 피해
-    "호신용 스프레이": {type: "consumable", rank: 1, price: 1000, icon: "🧴", desc: "적에게 10 피해", effect: "damage", val: 10},
+    // target: "self" (즉시 발동)
+    "피난의 피리": {type: "consumable", rank: 2, price: 2000, icon: "🎼", desc: "다음 이벤트를 [휴식]으로 고정", effect: "event_rest", target: "self"},
     
-    // effect: "event_rest" -> 다음 이벤트 고정
-    "피난의 피리": {type: "consumable", rank: 2, price: 2000, icon: "🎼", desc: "다음 이벤트를 [휴식]으로 고정", effect: "event_rest"},
-    
-    // effect: "revive" -> 부활 (수동 사용 불가)
-    "대타 인형": {type: "consumable", rank: 3, price: 3000, icon: "🧸", desc: "사망 시 자동 부활", effect: "revive"}
+    // effect: "revive" -> 사용 불가(패시브형 소모품)
+    "대타 인형": {type: "consumable", rank: 3, price: 3000, icon: "🧸", desc: "사망 시 자동 부활", effect: "revive", target: "passive"}
 };
 /* --- 상태 변수 --- */
 let player = { 
@@ -501,20 +633,19 @@ let player = {
     xp: 0, 
     maxXp: 100 // 1레벨업 필요 경험치
 };
-let enemy = { name: "허수아비", maxHp: 25, hp: 25, baseAtk: 1, baseDef: 1, baseSpd: 1, deck: [], block: 0, buffs: {}, ap: 3 };
-/* [수정] game 변수 정의 부분 */
+let enemies = [];
+
+/* [수정] game 상태 변수 */
 let game = { 
     level: 1, 
-    turnCount: 0, 
+    // turnCount는 이제 '라운드'가 아니라 '누적 행동 횟수' 정도로 씁니다.
+    totalTurns: 0, 
     state: "battle", 
     turnOwner: "none", 
-    lastWho: null, 
-    forceRest: false, 
-    extraTurnTriggered: false,
-    
-    // [NEW] 승리 화면 유지를 위한 변수들
-    pendingLoot: null,  // 바닥에 떨어진 아이템
-    winMsg: ""          // 승리 메시지 저장
+    pendingLoot: null,
+    winMsg: "",
+    // [NEW] 행동 게이지 MAX 상수 (이 수치에 도달하면 턴 획득)
+    AG_MAX: 1000 
 };
 
 /* --- 유틸리티 --- */
@@ -556,168 +687,390 @@ function addItem(name) {
     } else { player.consumables.push(name); }
     updateInventoryUI(); return true;
 }
-/* [수정] useConsumable 함수 전체 교체 */
-function useConsumable(index) {
+/* [수정] 아이템 사용 함수 */
+function useConsumable(index, target) {
     const name = player.consumables[index];
     const data = ITEM_DATA[name];
 
-    // 1. 사용 조건 체크
-    // 전투 중에만 쓸 수 있는 공격 아이템인지 확인
-    if (data.effect === "damage") {
-        if (game.state !== "battle") { log("🚫 공격 아이템은 전투 중에만 사용할 수 있습니다."); return; }
-        if (game.turnOwner !== "player") { log("🚫 내 턴에만 사용할 수 있습니다."); return; }
+    // 1. 검증
+    if (data.effect === "damage" && (game.state !== "battle" || game.turnOwner !== "player")) {
+        log("🚫 전투 중 내 턴에만 가능합니다."); 
+        return;
     }
-    
-    // 2. 효과 처리 (Switch문 사용)
-    let used = false; // 실제로 사용했는지 여부
 
+    let used = false;
+    let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
+
+    // 2. 효과
     switch (data.effect) {
         case "heal":
-            // 회복 로직 (val 속성 사용)
-            let oldHp = player.hp;
-            player.hp = Math.min(player.maxHp, player.hp + data.val);
-            let healed = player.hp - oldHp;
-            log(`🥤 [${name}] 사용! 체력을 ${healed} 회복했습니다.`);
+            let healAmt = Math.min(target.maxHp - target.hp, data.val);
+            target.hp += healAmt;
+            log(`🍷 [${name}] 사용! HP +${healAmt}`);
+            playAnim(targetId, 'anim-bounce');
             used = true;
             break;
 
         case "damage":
-            // 데미지 로직 (val 속성 사용)
-            enemy.hp -= data.val;
-            log(`💥 [${name}] 발사! 적에게 ${data.val} 피해.`);
-            checkGameOver(); // 적이 죽었는지 확인
+            log(`🧴 [${name}] 투척! 적에게 ${data.val} 피해`);
+            takeDamage(target, data.val);
             used = true;
             break;
 
         case "event_rest":
-            // 이벤트 고정 로직
             game.forceRest = true;
-            log(`🎼 [${name}]을 불었습니다. 다음 장소는 안전할 것입니다.`);
+            log(`🎼 [${name}] 사용. 다음은 휴식입니다.`);
+            playAnim("player-char", 'anim-bounce');
             used = true;
             break;
 
         case "revive":
-            // 부활 아이템 (수동 사용 불가)
-            log(`🧸 [${name}]은 소지하고 있으면 죽을 때 자동으로 사용됩니다.`);
-            used = false; // 사용되지 않음 (인벤토리에 남음)
-            break;
-
-        default:
-            log("🚫 사용할 수 없는 아이템입니다.");
-            used = false;
+            log("🚫 [대타 인형]은 죽을 때 자동 사용됩니다.");
             break;
     }
 
-    // 3. 아이템 소모 처리
+    // 3. 소모
     if (used) {
         player.consumables.splice(index, 1);
+        updateInventoryUI(); // UI 갱신
         updateUI();
     }
 }
 function updateInventoryUI() {
-    const rList = document.getElementById('relic-list'); const cList = document.getElementById('consumable-list'); rList.innerHTML = ""; cList.innerHTML = "";
-    player.relics.forEach(name => { let data = ITEM_DATA[name]; let el = document.createElement('div'); el.className = `item-icon item-relic item-rank-${data.rank}`; el.innerHTML = `${data.icon}<span class="tooltip"><b>${name}</b><br>${data.desc}</span>`; rList.appendChild(el); });
-    player.consumables.forEach((name, idx) => { let data = ITEM_DATA[name]; let el = document.createElement('div'); el.className = `item-icon item-consumable item-rank-${data.rank}`; el.innerHTML = `${data.icon}<span class="tooltip"><b>${name}</b><br>${data.desc}</span>`; el.onclick = () => useConsumable(idx); cList.appendChild(el); });
+    const rList = document.getElementById('relic-list'); 
+    const cList = document.getElementById('consumable-list'); 
+    rList.innerHTML = ""; 
+    cList.innerHTML = "";
+
+    // 유물 표시
+    player.relics.forEach(name => { 
+        let data = ITEM_DATA[name]; 
+        let el = document.createElement('div'); 
+        el.className = `item-icon item-relic item-rank-${data.rank}`; 
+        el.innerHTML = `${data.icon}<span class="tooltip"><b>${name}</b><br>${data.desc}</span>`; 
+        rList.appendChild(el); 
+    });
+
+    // 소모품 표시
+    player.consumables.forEach((name, idx) => { 
+        let data = ITEM_DATA[name]; 
+        let el = document.createElement('div'); 
+        el.className = `item-icon item-consumable item-rank-${data.rank}`; 
+        el.id = `item-el-${idx}`;
+        
+        // HTML 구조
+        el.innerHTML = `
+            ${data.icon}
+            <span class="tooltip"><b>${name}</b><br>${data.desc}</span>
+            <div class="item-actions" id="item-actions-${idx}" style="display:none;">
+                <button class="item-btn btn-confirm" onclick="confirmItemUse(event, ${idx})">V</button>
+                <button class="item-btn btn-cancel" onclick="toggleItemSelect(event, ${idx})">X</button>
+            </div>
+        `;
+        
+        // --- [핵심 로직 변경] 사용 가능 여부 체크 ---
+        
+        // 1. 공격 아이템인데 전투 중이 아닐 경우
+        if (data.effect === "damage" && game.state !== "battle") {
+            el.classList.add('disabled'); // 흐리게 표시
+            // 클릭 시 경고 메시지만 출력 (버튼 안 뜸)
+            el.onclick = () => log("🚫 공격 아이템은 전투 중에만 사용할 수 있습니다.");
+        } 
+        // 2. 그 외의 경우 (사용 가능)
+        else {
+            // 전투 중이면 드래그 허용 (패시브 제외)
+            if (game.state === "battle" && data.target !== "passive") {
+                el.onmousedown = (e) => startDrag(e, idx, name, 'item');
+            }
+            
+            // 클릭 시 확인/취소 버튼 토글
+            el.onclick = (e) => toggleItemSelect(e, idx);
+        }
+        cList.appendChild(el); 
+    });
 }
+// [추가] 아이템 선택 토글 함수
+function toggleItemSelect(e, idx) {
+    e.stopPropagation(); // 이벤트 버블링 방지
+    // 다른 열린 아이템 닫기
+    document.querySelectorAll('.item-actions').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.item-icon').forEach(el => el.classList.remove('selected'));
 
-/* --- 전투 시스템 --- */
-function startBattle() {
-    switchScene('battle'); game.state = "battle"; 
-    let growth = game.level - 1;
-    enemy.name = `허수아비 Lv.${game.level}`; enemy.maxHp = 25 + (growth * 5); enemy.hp = enemy.maxHp;
-    enemy.baseAtk = 1; enemy.baseDef = 1; enemy.baseSpd = 1;
-    for(let i=0; i<growth; i++) { let r = Math.random(); if (r < 0.33) enemy.baseAtk++; else if (r < 0.66) enemy.baseDef++; else enemy.baseSpd++; }
-    enemy.deck = ["타격","타격","타격","타격","타격","수비","수비","수비","수비"];
-    let rank2Cards = Object.keys(CARD_DATA).filter(k => CARD_DATA[k].rank === 2);
-    enemy.deck.push(rank2Cards[Math.floor(Math.random() * rank2Cards.length)]);
-
-    player.drawPile = [...player.deck]; shuffle(player.drawPile);
-    player.discardPile = [];
-    player.exhaustPile = []; // [NEW] 전투 시작 시 소멸 더미 초기화
-    player.hand = [];
-    enemy.buffs = {}; player.buffs = {}; player.block = 0; enemy.block = 0; player.lucky = false; player.jumadeung = false;
-    game.turnCount = 0; game.lastWho = null;
-    game.extraTurnTriggered = false; // [NEW] 추가 행동권 사용 여부 초기화
-    log(`⚔️ Lv.${game.level} 전투 시작!`); updateUI(); nextTurnCycle();
-}
-
-async function nextTurnCycle() {
-    if (checkGameOver()) return;
+    let actions = document.getElementById(`item-actions-${idx}`);
+    let icon = document.getElementById(`item-el-${idx}`);
     
-    game.turnCount++;
-    log(`---- Turn ${game.turnCount} ----`);
-
-    // 1. 버프/디버프 턴 경과 처리
-    tickBuffs(player); tickBuffs(enemy);
-    decrementBuffs(player); decrementBuffs(enemy);
-    if (checkGameOver()) return;
-
-    // 2. 현재 스탯 확인
-    let pSpd = getStat(player, 'spd');
-    let eSpd = getStat(enemy, 'spd');
-
-    // 3. [핵심 수정] 이번 턴의 '추가 행동권' 사용 여부 초기화
-    // 만약 시작부터 이미 2배 빨라서 2회 행동을 받는다면? -> 이미 받은 걸로 처리(true)
-    // 시작은 비슷했는데 도중에 빨라진 경우에만? -> 아직 안 받은 걸로 처리(false)
-    if (pSpd >= eSpd * 2) {
-        game.extraTurnTriggered = true; // 이미 빨라서 혜택 받음 (중복 지급 방지)
+    if (actions.style.display === 'none') {
+        actions.style.display = 'flex';
+        icon.classList.add('selected');
     } else {
-        game.extraTurnTriggered = false; // 아직 혜택 안 받음 (도중에 빨라지면 받을 수 있음)
+        actions.style.display = 'none';
+        icon.classList.remove('selected');
+    }
+}
+// [추가] 버튼으로 아이템 사용 확정
+function confirmItemUse(e, idx) {
+    e.stopPropagation();
+    let name = player.consumables[idx];
+    let data = ITEM_DATA[name];
+
+    // 타겟이 'enemy'인데 적이 여러 명이면 드래그 유도
+    if (data.target === "enemy" && enemies.filter(en => en.hp > 0).length > 1) {
+        log("🖐️ 대상이 여러 명입니다. 적에게 드래그해서 사용하세요!");
+        toggleItemSelect(e, idx); // 닫기
+        return;
     }
 
-    // 4. 턴 순서 배정 (기존 로직)
-    let pTurns = (pSpd >= eSpd * 2) ? 2 : 1;
-    let eTurns = (eSpd >= pSpd * 2) ? 2 : 1;
-    
-    // (로그 출력: 이미 빨라서 2턴이면 여기서 알려줌)
-    if (pTurns > 1) log("⚡ 압도적인 속도! 2회 행동합니다.");
-    if (eTurns > 1) log("⚡ 적이 빨라서 2회 행동합니다!");
-
-    // 턴 큐 생성
-    let order = [];
-    if (eSpd > pSpd) { 
-        for(let i=0; i<eTurns; i++) order.push("enemy"); 
-        for(let i=0; i<pTurns; i++) order.push("player"); 
-    } else { 
-        for(let i=0; i<pTurns; i++) order.push("player"); 
-        for(let i=0; i<eTurns; i++) order.push("enemy"); 
+    // 타겟이 'self'이거나 적이 1명이면 즉시 사용
+    // (적이 1명이면 자동 타겟팅)
+    let target = player;
+    if (data.target === "enemy") {
+        target = enemies.find(en => en.hp > 0);
     }
-    
-    await executeTurnQueue(order);
+
+    useConsumable(idx, target);
+    toggleItemSelect(e, idx); // UI 갱신되므로 사실 필요 없지만 안전하게
 }
 
-async function executeTurnQueue(queue) {
-    if (queue.length === 0) { nextTurnCycle(); return; }
+/* [수정] 전투 시작 (데이터 기반 적 생성) */
+function startBattle() {
+    switchScene('battle'); 
+    game.state = "battle"; 
+    game.totalTurns = 0;
+    
+    // 적 생성 초기화
+    enemies = [];
+    
+    // 1. 등장할 적의 수 결정 (50% 확률로 1명 또는 2명)
+    let enemyCount = (Math.random() < 0.5) ? 2 : 1; 
+    
+    // 2. 적 데이터 목록 키 배열
+    const enemyKeys = Object.keys(ENEMY_DATA);
+
+    for (let i = 0; i < enemyCount; i++) {
+        // 랜덤으로 적 종류 선택
+        let key = enemyKeys[Math.floor(Math.random() * enemyKeys.length)];
+        let data = ENEMY_DATA[key];
+        
+        // 레벨에 따른 스탯 성장 계산
+        // (레벨 1일 때는 growth가 0번 적용되도록 game.level - 1)
+        let growthMult = game.level - 1;
+        
+        let maxHp = Math.floor(data.baseHp + (data.growth.hp * growthMult));
+        let atk = Math.floor(data.stats.atk + (data.growth.atk * growthMult));
+        let def = Math.floor(data.stats.def + (data.growth.def * growthMult));
+        let spd = Math.floor(data.stats.spd + (data.growth.spd * growthMult));
+        
+        // 스피드 랜덤성 (약간의 변수)
+        spd += Math.floor(Math.random() * 2);
+
+        enemies.push({ 
+            id: i, 
+            name: `${data.name} ${String.fromCharCode(65+i)}`, // 예: 불량배 A
+            maxHp: maxHp, 
+            hp: maxHp, 
+            baseAtk: atk, 
+            baseDef: def, 
+            baseSpd: spd,
+            block: 0, 
+            buffs: {}, 
+            deck: getEnemyDeck(data.deckType), // 덱 타입에 맞춰 생성
+            img: data.img, // 데이터에 있는 이미지 사용
+            
+            // 행동 게이지 (선공 랜덤성을 위해 0~20% 미리 채움)
+            ag: Math.floor(Math.random() * 200) 
+        });
+    }
+
+    // 플레이어 초기화
+    player.drawPile = [...player.deck]; shuffle(player.drawPile);
+    player.discardPile = []; player.exhaustPile = []; player.hand = [];
+    player.buffs = {}; player.block = 0; player.lucky = false; player.jumadeung = false;
+    
+    player.ag = 0; 
+
+    log(`⚔️ 전투 시작! (Enemy: ${enemies.map(e=>e.name.split(' ')[0]).join(', ')})`); 
+    
+    renderEnemies();
+    updateUI(); 
+
+    // 타임라인 가동
+    processTimeline();
+}
+
+async function processTimeline() {
     if (checkGameOver()) return;
-    let who = queue.shift(); let isConsecutive = (who === game.lastWho); game.lastWho = who; game.turnOwner = who; updateUI();
-    if (who === "player") { game.currentQueue = queue; startPlayerTurn(isConsecutive); }
-    else { await startEnemyTurn(isConsecutive); await executeTurnQueue(queue); }
+
+    // 1. 현재 턴을 잡을 수 있는 후보 찾기 (AG >= 1000)
+    // 후보가 여러 명이면 AG가 가장 높은 순서대로 (오버플로우 고려)
+    let candidates = [];
+    
+    // 플레이어 체크
+    if (player.ag >= game.AG_MAX) candidates.push({ unit: player, type: 'player', ag: player.ag });
+    // 적 체크
+    enemies.forEach(e => {
+        if (e.hp > 0 && e.ag >= game.AG_MAX) candidates.push({ unit: e, type: 'enemy', ag: e.ag });
+    });
+
+    // 2. 턴 대상자가 있다면 행동 개시
+    if (candidates.length > 0) {
+        // AG가 가장 높은 유닛이 우선권을 가짐
+        candidates.sort((a, b) => b.ag - a.ag);
+        let winner = candidates[0];
+
+        // 턴 시작 처리
+        await startTurn(winner.unit, winner.type);
+        return;
+    }
+
+    // 3. 턴 대상자가 없다면 시간을 흘려보냄 (Tick)
+    // 모든 유닛의 AG에 자신의 속도(Spd)를 더함
+    // 시각적 연출을 위해 조금씩 더하는 게 좋지만, 로직 단순화를 위해 한 번에 계산
+    // "가장 빠른 녀석이 목표에 도달할 때까지" 시간을 점프시킵니다.
+    
+    // (1) 현재 가장 AG가 높은 비율을 계산해서 한 번에 점프할 수도 있지만,
+    // 간단하게 Tick 단위(예: 속도의 10%)로 반복해서 더함
+    while (true) {
+        let anyoneReady = false;
+        
+        // 플레이어 AG 증가
+        let pSpd = getStat(player, 'spd');
+        player.ag += pSpd;
+        if (player.ag >= game.AG_MAX) anyoneReady = true;
+
+        // 적 AG 증가
+        enemies.forEach(e => {
+            if (e.hp > 0) {
+                let eSpd = getStat(e, 'spd');
+                e.ag += eSpd;
+                if (e.ag >= game.AG_MAX) anyoneReady = true;
+            }
+        });
+
+        // 누군가 준비되었으면 루프 종료하고 재귀 호출 -> 1번 단계에서 걸림
+        if (anyoneReady) {
+            updateUI(); // 게이지 차는 거 갱신
+            processTimeline(); // 다시 체크
+            return;
+        }
+    }
+}
+/* [NEW] 유닛 턴 시작 통합 처리 */
+async function startTurn(unit, type) {
+    game.turnOwner = type;
+    game.totalTurns++;
+    
+    // 로그 및 강조
+    let name = (type === 'player') ? "나" : unit.name;
+    // log(`⏰ [${name}]의 턴! (AG: ${Math.floor(unit.ag)})`);
+    
+    // 1. 버프/디버프 처리 (이제 자기 턴이 올 때마다 틱이 돌아감)
+    tickBuffs(unit); 
+    decrementBuffs(unit);
+    
+    if (checkGameOver()) return;
+    if (unit.hp <= 0) { // 버프 뎀으로 죽었을 경우
+        processTimeline(); 
+        return; 
+    }
+
+    // 2. 행동 게이지 소모 (1000을 뺌 = 오버플로우 된 만큼 다음 턴 빨리 옴)
+    unit.ag -= game.AG_MAX;
+    
+    // UI 갱신 (AG 줄어든 것 반영)
+    updateUI();
+
+    // 3. 실제 제어권 부여
+    if (type === 'player') {
+        // 플레이어: 입력 대기 상태로 전환
+        startPlayerTurnLogic();
+    } else {
+        // 적: AI 자동 행동
+        game.currentActorId = unit.id;
+        await startEnemyTurnLogic(unit);
+    }
+}
+// 적들의 HTML 뼈대를 만드는 함수
+function renderEnemies() {
+    const wrapper = document.getElementById('enemies-area');
+    wrapper.innerHTML = ""; // 초기화
+
+    enemies.forEach(e => {
+        let el = document.createElement('div');
+        el.className = 'enemy-unit';
+        el.id = `enemy-unit-${e.id}`; // 예: enemy-unit-0
+        
+        // 내부는 updateUI에서 수치와 함께 채워집니다.
+        // 여기서는 이미지 태그 등 기본 구조만 잡아도 되지만, 
+        // 편의상 updateUI가 내용을 다 덮어쓰도록 비워둡니다.
+        
+        wrapper.appendChild(el);
+    });
 }
 
-function startPlayerTurn(isConsecutive) {
-    if (!isConsecutive) player.block = 0; player.ap = 3; drawCards(5);
+/* [수정] 플레이어 행동 개시 */
+function startPlayerTurnLogic() {
+    // 턴 시작 시 방어도 초기화 (원래 자기 턴 시작 때 초기화되는 게 맞음)
+    player.block = 0; 
+    player.ap = 3; 
+    drawCards(5); 
+
     document.getElementById('end-turn-btn').disabled = false;
-    document.getElementById('turn-info').innerText = `나의 턴 (행동력: ${player.ap})`;
-    document.getElementById('player-char').classList.add('turn-active'); document.getElementById('enemy-char').classList.remove('turn-active'); updateUI();
+    document.getElementById('turn-info').innerText = `나의 턴 (AP: ${player.ap})`;
+    
+    document.getElementById('player-char').classList.add('turn-active'); 
+    document.querySelectorAll('.enemy-unit').forEach(e => e.classList.remove('turn-active'));
+    
+    // 속도 예측 UI 갱신 (선택사항)
+    updateTurnOrderList(); 
 }
 
+/* [수정] 플레이어 턴 종료 버튼 클릭 시 */
 function endPlayerTurn() {
     document.getElementById('end-turn-btn').disabled = true;
-    if (player.hand.length > 0) { player.discardPile.push(...player.hand); player.hand = []; }
-    renderHand(); game.turnOwner = "none"; updateUI(); executeTurnQueue(game.currentQueue);
+    
+    // 패 버리기
+    if (player.hand.length > 0) { 
+        player.discardPile.push(...player.hand); 
+        player.hand = []; 
+    }
+    renderHand(); 
+    
+    game.turnOwner = "none"; 
+    document.getElementById('player-char').classList.remove('turn-active');
+    
+    // ★ 중요: 내 행동이 끝났으니 다시 타임라인을 돌립니다.
+    // 만약 내 속도가 압도적이라 AG가 1000 이상 남았다면? processTimeline이 즉시 나를 다시 호출함 (연속 턴)
+    processTimeline();
 }
 
-async function startEnemyTurn(isConsecutive) {
-    if (!isConsecutive) enemy.block = 0; enemy.ap = 3; 
-    document.getElementById('turn-info').innerText = "적의 턴 (행동 중...)";
-    document.getElementById('enemy-char').classList.add('turn-active'); document.getElementById('player-char').classList.remove('turn-active'); updateUI(); log(`👿 적의 턴 시작 (AP: ${enemy.ap})`);
-    while (enemy.ap > 0 && player.hp > 0) {
-        await sleep(1000); let playable = enemy.deck.filter(n => CARD_DATA[n].cost <= enemy.ap);
-        if (playable.length === 0) { log("💬 적 턴 종료."); break; }
-        let cName = playable[Math.floor(Math.random() * playable.length)]; enemy.ap -= CARD_DATA[cName].cost;
-        useCard(enemy, player, cName); updateUI(); if (checkGameOver()) return;
+/* [수정] 적 행동 개시 (AI) */
+async function startEnemyTurnLogic(actor) {
+    actor.block = 0; 
+    actor.ap = 2; 
+    
+    let el = document.getElementById(`enemy-unit-${actor.id}`);
+    if(el) el.classList.add('turn-active');
+    
+    // log(`👿 ${actor.name} 행동 시작`);
+
+    // 간단한 AI 동작
+    while (actor.ap > 0 && player.hp > 0) {
+        await sleep(800);
+        if (actor.hp <= 0) break;
+
+        let cName = actor.deck[Math.floor(Math.random() * actor.deck.length)];
+        actor.ap--; 
+        useCard(actor, player, cName); 
+        
+        updateUI(); 
+        if (checkGameOver()) return;
     }
-    await sleep(800);
+    
+    if(el) el.classList.remove('turn-active');
+    await sleep(500);
+
+    // ★ 적 행동 종료 후 타임라인 재가동
+    processTimeline();
 }
 
 function useCard(user, target, cardName) {
@@ -726,9 +1079,10 @@ function useCard(user, target, cardName) {
     let def = getStat(user, 'def');
     
     log(`🃏 ${user===player?"나":"적"}의 [${cardName}]!`);
-    let userId = (user === player) ? "player-char" : "enemy-char";
+ // [변경] User ID 찾기 (적이 여러 명일 수 있으므로)
+    let userId = (user === player) ? "player-char" : `enemy-unit-${user.id}`;
 
-    // 1. [공격]
+    // 1. 공격
     if (data.type.includes("attack")) {
         if (user === player) playAnim(userId, 'anim-atk-p');
         else playAnim(userId, 'anim-atk-e');
@@ -739,12 +1093,12 @@ function useCard(user, target, cardName) {
         let finalDmg = (data.dmg || 0) + atk;
         takeDamage(target, finalDmg);
     } 
-    // 2. [스킬]
+    // 2. 스킬
     else {
         playAnim(userId, 'anim-bounce');
     }
 
-    // 3. [공통: 방어 및 버프]
+    // 3. 방어 및 버프
     if (data.block) {
         let finalBlock = data.block + def;
         user.block += finalBlock;
@@ -762,61 +1116,42 @@ function useCard(user, target, cardName) {
         }
         applyBuff(buffTarget, buffName, buffVal);
     }
-    // 4. [드로우 효과]
-        if (data.draw && user === player) {
-            drawCards(data.draw);
-            log(`🃏 카드를 ${data.draw}장 뽑았습니다.`);
-        }
-    // [수정] 5. 실시간 턴 재계산 (한 라운드에 1번만 발동)
-    // -----------------------------------------------------------
-    if (user === player) {
-        let pSpd = getStat(player, 'spd');
-        let eSpd = getStat(enemy, 'spd');
-
-        // 조건 1: 속도가 2배 이상 차이남
-        // 조건 2: [NEW] 이번 라운드에 아직 추가 턴을 받지 않음 (!game.extraTurnTriggered)
-        if (pSpd >= eSpd * 2 && !game.extraTurnTriggered) {
-            
-            // 조건 3: 큐의 맨 앞이 이미 내 턴이 아닐 때 (중복 방지)
-            if (game.currentQueue.length === 0 || game.currentQueue[0] !== "player") {
-                
-                game.currentQueue.unshift("player"); // 턴 새치기
-                game.extraTurnTriggered = true;      // [NEW] "나 받았다" 도장 쾅!
-                
-                log("⚡ 압도적인 속도! 행동 기회를 즉시 획득합니다!");
-                if(typeof showDamageText === "function") showDamageText(player, "SPEED UP!");
-                
-                updateUI();
-            }
-        }
+    
+    // 4. 드로우
+    if (data.draw && user === player) {
+        drawCards(data.draw);
+        log(`🃏 카드를 ${data.draw}장 뽑았습니다.`);
     }
+
+    // 5. (속도/추가턴 로직은 다수 전투에서 복잡하므로 일단 생략하거나 나중에 추가)
 }
+
+// [수정] 데미지 처리 함수
 function takeDamage(target, dmg) {
-    // 1. [애니메이션] 피격 모션 재생 (맞는 대상에 따라 ID 결정)
-    let targetId = (target === player) ? "player-char" : "enemy-char";
+    // [변경] 타겟 ID 찾기
+    let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
+    
     playAnim(targetId, 'anim-hit');
 
-    // 2. [방어도 연산] 방패가 있으면 데미지를 먼저 흡수
     if (target.block > 0) {
         if (target.block >= dmg) {
             target.block -= dmg;
-            dmg = 0; // 방어도가 데미지보다 많으면 HP 피해 없음
+            dmg = 0; 
         } else {
             dmg -= target.block;
-            target.block = 0; // 방어도 다 깨지고 남은 데미지만 들어감
+            target.block = 0; 
         }
     }
-// [NEW] 대미지 텍스트 띄우기!
+
     if (dmg > 0) {
-        showDamageText(target, dmg); // 예: "15"
+        showDamageText(target, dmg);
     } else {
-        showDamageText(target, "BLOCK"); // 대미지 0일 때
+        showDamageText(target, "BLOCK");
     }
 
-    // 3. [체력 감소] 실제 HP 차감
     target.hp -= dmg;
     log(`💥 ${dmg} 피해! (HP: ${target.hp})`); // (로그가 너무 많으면 주석 처리)
-
+    updateUI();
     // 4. [플레이어 사망 위기 처리] HP가 0 이하일 때 생존 로직 가동
     if (target === player && target.hp <= 0) {
 
@@ -868,8 +1203,18 @@ function takeDamage(target, dmg) {
         /* [추가] 대미지 폰트 출력 함수 */
         function showDamageText(target, text) {
             // 1. 띄울 위치(캐릭터 박스) 찾기
-            let targetId = (target === player) ? "player-char" : "enemy-char";
-            let parentEl = document.getElementById(targetId);
+            let targetId;
+                if (target === player) {
+                    targetId = "player-char";
+                } else {
+                    // 적 객체(target)에 있는 id를 사용해 HTML 요소 ID를 구성
+                    targetId = `enemy-unit-${target.id}`; 
+                }
+
+                let parentEl = document.getElementById(targetId);
+                
+                // 만약 요소를 못 찾으면(이미 죽어서 사라졌거나 에러) 그냥 중단 (게임 멈춤 방지)
+                if (!parentEl) return;
 
             // 2. 텍스트 요소 생성 (div)
             let el = document.createElement("div");
@@ -884,13 +1229,15 @@ function takeDamage(target, dmg) {
                 el.remove();
             }, 800);
         }
+/* [수정] 승패 판정 로직 (다수 적 대응) */
 function checkGameOver() {
     if (player.hp <= 0) { 
         showPopup("💀 게임 오버", "패배했습니다...", [{txt:"다시 하기", func: ()=>location.reload()}]); 
         return true; 
     }
     
-    if (enemy.hp <= 0) {
+    // [변경] 살아있는 적이 하나도 없어야 승리 (enemies 배열 확인)
+    if (enemies.every(e => e.hp <= 0)) {
         if(game.state === "win") return true; 
         game.state = "win";
         
@@ -901,22 +1248,19 @@ function checkGameOver() {
         let gainXp = 40 + (game.level * 10);
         player.xp += gainXp;
 
-        // 2. 메시지 저장
+        // 2. 메시지 설정
         game.winMsg = `승리! ${rewardGold}원, ${gainXp} XP 획득.`; 
         if (player.lucky) game.winMsg += " (럭키피스 효과!)";
 
-        // 3. 아이템 드랍 결정 (저장만 함)
+        // 3. 아이템 드랍 (테스트용 확률)
         game.pendingLoot = null;
-        if (Math.random() < 1.0) { // (테스트용 100%, 나중에 0.05로 바꾸세요)
+        if (Math.random() < 1.0) { 
             game.pendingLoot = getRandomItem();
             game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`;
         }
         
-        updateUI(); // 경험치바/골드 갱신
-
-        // 4. 승리 팝업 그리기 (여기서 버튼 등을 결정함)
-        renderWinPopup(); 
-        
+        updateUI(); 
+        renderWinPopup(); // 승리 팝업 표시
         return true;
     }
     return false;
@@ -1096,9 +1440,10 @@ function drawCards(n) {
     updateUI();
 }
 
+/* [수정] UI 업데이트 함수 */
+/* [수정] UI 업데이트 함수 */
 function updateUI() {
-   // 1. 상단 정보 (레벨 | 경험치 | 골드)
-    // 경험치 퍼센트 계산
+    // 1. 상단 정보 (플레이어)
     let xpPercent = Math.floor((player.xp / player.maxXp) * 100);
     
     document.getElementById('game-info').innerHTML = 
@@ -1106,42 +1451,88 @@ function updateUI() {
          <div style="width:100%; height:4px; background:#444; margin-top:5px; border-radius:2px;">
             <div style="width:${xpPercent}%; height:100%; background:#3498db; transition: width 0.3s;"></div>
          </div>`;
-    document.getElementById('p-hp').innerText = player.hp; document.getElementById('p-max-hp').innerText = player.maxHp; document.getElementById('p-block').innerText = player.block; document.getElementById('p-hp-bar').style.width = Math.max(0, (player.hp/player.maxHp)*100) + "%"; document.getElementById('p-stats').innerText = `공${getStat(player,'atk')} 방${getStat(player,'def')} 속${getStat(player,'spd')}`;
+
+    document.getElementById('p-hp').innerText = player.hp; 
+    document.getElementById('p-max-hp').innerText = player.maxHp; 
+    document.getElementById('p-block').innerText = player.block; 
+    document.getElementById('p-hp-bar').style.width = Math.max(0, (player.hp/player.maxHp)*100) + "%"; 
+    document.getElementById('p-stats').innerText = `공${getStat(player,'atk')} 방${getStat(player,'def')} 속${getStat(player,'spd')}`;
     document.getElementById('p-buffs').innerHTML = applyTooltip(Object.entries(player.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
-    document.getElementById('e-hp').innerText = enemy.hp; document.getElementById('e-max-hp').innerText = enemy.maxHp; document.getElementById('e-block').innerText = enemy.block; document.getElementById('e-hp-bar').style.width = Math.max(0, (enemy.hp/enemy.maxHp)*100) + "%"; document.getElementById('e-stats').innerText = `공${getStat(enemy,'atk')} 방${getStat(enemy,'def')} 속${getStat(enemy,'spd')}`;
-    document.getElementById('e-buffs').innerHTML = applyTooltip(Object.entries(enemy.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
     
     document.getElementById('btn-draw-pile').innerText = `덱 (${player.drawPile.length})`;
     document.getElementById('btn-discard-pile').innerText = `버림 (${player.discardPile.length})`;
-    // [NEW] 소멸 UI 업데이트
-    /* [수정] updateUI 함수 안에서 이 줄을 찾아 교체하세요 (이모지 제거) */
-document.getElementById('btn-exhaust-pile').innerText = `소멸 (${player.exhaustPile.length})`;
+    document.getElementById('btn-exhaust-pile').innerText = `소멸 (${player.exhaustPile.length})`;
     
     updateInventoryUI();
+
+    // 2. 적 UI 업데이트
+    if (!enemies || enemies.length === 0) return;
+
+    // ★ [수정] 실수했던 부분: forEach 밖에서 e를 쓰면 안 됩니다. 안으로 이동!
+    enemies.forEach(e => {
+        let el = document.getElementById(`enemy-unit-${e.id}`);
+        // HTML 요소가 없으면 패스
+        if (!el) return; 
+
+        // 죽은 경우 처리
+        if (e.hp <= 0) {
+            if (!el.classList.contains('dead')) {
+                el.className = 'enemy-unit dead';
+                el.innerHTML = `<div style="margin-top:50px; color:#777;">💀<br>${e.name}</div>`;
+            }
+            return;
+        }
+
+        // 산 경우
+        let hpPct = Math.max(0, (e.hp / e.maxHp) * 100);
+        // [NEW] 행동 게이지(AG) 퍼센트 계산
+        let agPct = Math.min(100, (e.ag / game.AG_MAX) * 100);
+        
+        let buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
+        
+        // 의도(Intent) 표시
+        let intent = "💤";
+        if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = "⚔️";
+
+        el.innerHTML = `
+    <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} ${intent}</div>
+    
+    <img src="${e.img}" alt="${e.name}" class="char-img" style="width:80px; height:80px;">
+    
+    <div class="hp-bar-bg" style="height:8px; margin:5px 10px;"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>
+    
+    <div style="background:#444; height:6px; margin:2px 10px; border-radius:3px; overflow:hidden;">
+        <div style="background:#f1c40f; height:100%; width:${agPct}%"></div>
+    </div>
+
+    <div style="font-size:0.8em;">HP: ${e.hp} <span class="block-icon">🛡️${e.block}</span></div>
+    `;
+    });
+
+    // 3. 턴 순서 예측 리스트 업데이트 (함수가 있어야 함!)
+    if (typeof updateTurnOrderList === "function") {
+        updateTurnOrderList();
+    }
 }
 
-/* [수정] renderHand: 겹치기 모드 + 드래그 조준 통합 */
+/* [수정] renderHand: 호버 시 숫자 변환 기능 제거 */
 function renderHand() {
     const container = document.getElementById('hand-container'); 
     container.innerHTML = "";
     
-    // 1. [겹치기 모드] 카드가 6장 이상이면 compact 클래스 추가
-    if (player.hand.length >= 6) {
-        container.classList.add('compact');
-    } else {
-        container.classList.remove('compact');
-    }
+    // 겹치기 모드 확인
+    if (player.hand.length >= 6) container.classList.add('compact');
+    else container.classList.remove('compact');
 
     player.hand.forEach((cName, idx) => {
         let data = CARD_DATA[cName];
         let el = document.createElement('div'); 
         el.className = 'card';
-        // 드래그 위치 계산을 위해 ID 부여
         el.id = `card-el-${idx}`;
-        
+        el.style.pointerEvents = "auto";
+     
         if (player.ap < data.cost || game.turnOwner !== "player") el.className += " disabled";
         
-        // 카드 내용 (별 등급 포함)
         el.innerHTML = `
             <div class="card-cost">${data.cost}</div>
             <div class="card-rank">${"★".repeat(data.rank)}</div>
@@ -1149,19 +1540,18 @@ function renderHand() {
             <div class="card-desc">${applyTooltip(data.desc)}</div>
         `;
         
-        // 2. [드래그 이벤트 연결]
-        // 행동력이 충분하고 내 턴일 때만 드래그 가능
+        // [변경] 호버 이벤트(onmouseenter/leave) 삭제됨
+        // 이제 오직 드래그 시작만 연결합니다.
+        
         if (game.turnOwner === "player" && player.ap >= data.cost) {
             el.onmousedown = (e) => startDrag(e, idx, cName);
         } else {
-            // 사용할 수 없는 카드는 클릭 시 피드백
-            el.onclick = () => log("🚫 사용할 수 없는 상태입니다.");
+            el.onclick = () => log("🚫 행동력이 부족하거나 사용할 수 없습니다.");
         }
         
         container.appendChild(el);
     });
 }
-
 // [수정됨] openPileView: 목록 창에서도 일반 카드처럼 보이게 수정
 function openPileView(type) {
     const title = document.getElementById('popup-title'); const content = document.getElementById('popup-content'); const btns = document.getElementById('popup-buttons');
@@ -1385,21 +1775,40 @@ function getLoot() {
 
 let drag = { active: false, cardIdx: -1, cardName: "", startX: 0, startY: 0, originalDesc: "" };
 
-function startDrag(e, idx, cName) {
-    if (e.button !== 0) return; // 좌클릭만 허용
+/* [수정] 드래그 시작 함수 (텍스트 즉시 변환 제거) */
+function startDrag(e, idx, name, type = 'card') {
+    if (e.button !== 0) return; 
+    if (e.target.tagName === 'BUTTON') return;
+
     e.preventDefault();
 
     drag.active = true;
-    drag.cardIdx = idx;
-    drag.cardName = cName;
+    drag.type = type; 
+    drag.idx = idx;   
+    drag.name = name; 
     
-    let cardEl = document.getElementById(`card-el-${idx}`);
-    let rect = cardEl.getBoundingClientRect();
+    let elId = (type === 'card') ? `card-el-${idx}` : `item-el-${idx}`;
+    let dragEl = document.getElementById(elId);
+    
+    dragEl.style.pointerEvents = "none"; 
+    
+    let rect = dragEl.getBoundingClientRect();
     drag.startX = rect.left + rect.width / 2;
     drag.startY = rect.top + rect.height / 2;
     
-    let descEl = cardEl.querySelector('.card-desc');
-    drag.originalDesc = descEl.innerHTML;
+    // --- [핵심] 클릭 순간에는 무조건 원본 텍스트로 초기화 ---
+    if (type === 'card') {
+        // 데이터에서 원본 설명을 가져옴
+        drag.originalDesc = applyTooltip(CARD_DATA[name].desc);
+        
+        // ★ 화면의 텍스트를 강제로 원본으로 되돌림 ★
+        // 이렇게 하면 클릭하는 순간은 무조건 '하얀색' 글씨가 됩니다.
+        dragEl.querySelector('.card-desc').innerHTML = drag.originalDesc;
+        
+    } else {
+        drag.originalDesc = ""; 
+    }
+    // ---------------------------------------
 
     document.getElementById('drag-layer').style.display = 'block';
     
@@ -1407,40 +1816,88 @@ function startDrag(e, idx, cName) {
     document.addEventListener('mouseup', onDragEnd);
 }
 
+/* [수정] 드래그 이동 함수 (핸드 영역 벗어나면 수치 변환) */
 function onDragMove(e) {
     if (!drag.active) return;
 
+    // 화살표 그리기
     const path = document.getElementById('drag-path');
     const head = document.getElementById('drag-head');
-    
-    let endX = e.clientX;
-    let endY = e.clientY;
-    
-    // 베지어 곡선 (S자)
-    let cpX = (drag.startX + endX) / 2;
-    let cpY = Math.min(drag.startY, endY) - 100;
-    
+    let endX = e.clientX; let endY = e.clientY;
+    let cpX = (drag.startX + endX) / 2; let cpY = Math.min(drag.startY, endY) - 100;
     path.setAttribute("d", `M${drag.startX},${drag.startY} Q${cpX},${cpY} ${endX},${endY}`);
-    head.setAttribute("cx", endX);
-    head.setAttribute("cy", endY);
+    head.setAttribute("cx", endX); head.setAttribute("cy", endY);
 
-    // 타겟 감지 및 미리보기
-    let target = getTargetUnderMouse(e);
-    let cardEl = document.getElementById(`card-el-${drag.cardIdx}`);
-    let descEl = cardEl.querySelector('.card-desc');
+    // 타겟 판정 (핸드 영역 밖인지 확인)
+    let targetInfo = getTargetUnderMouse(e);
+    
+    let data;
+    if (drag.type === 'card') data = CARD_DATA[drag.name];
+    else data = ITEM_DATA[drag.name];
 
-    if (target) {
-        let newDesc = calcPreview(drag.cardName, player, target);
-        descEl.innerHTML = `<span style="color:#2ecc71; font-weight:bold;">${newDesc}</span>`;
-        cardEl.style.transform = "scale(1.1)";
-        cardEl.style.zIndex = "100";
+    let dragEl = document.getElementById((drag.type==='card')?`card-el-${drag.idx}`:`item-el-${drag.idx}`);
+    
+    // 하이라이트 초기화
+    document.querySelectorAll('.enemy-unit').forEach(el => el.classList.remove('selected-target'));
+    document.getElementById('player-char').classList.remove('selected-target');
+
+    let validTarget = false;
+    let aliveEnemies = enemies.filter(en => en.hp > 0);
+
+    if (targetInfo) {
+        // A. 광역기
+        if (data.targetType === 'all' || data.target === 'all') {
+            enemies.forEach(en => { if (en.hp > 0) document.getElementById(`enemy-unit-${en.id}`).classList.add('selected-target'); });
+            validTarget = true;
+        }
+        // B. 적 타겟
+        else if ((data.type && data.type.includes("attack")) || data.target === "enemy") {
+            // 특정 적 지정
+            if (targetInfo.type === 'specific' && targetInfo.unit !== player) {
+                document.getElementById(`enemy-unit-${targetInfo.unit.id}`).classList.add('selected-target');
+                validTarget = true;
+            }
+            // [핵심] 적이 하나뿐이고 + 마우스가 '전투 구역(General)'에 들어왔을 때
+            // (핸드 영역에서는 targetInfo가 null이므로 이 조건이 발동 안 함 -> 텍스트 안 바뀜)
+            else if (targetInfo.type === 'general' && aliveEnemies.length === 1) {
+                document.getElementById(`enemy-unit-${aliveEnemies[0].id}`).classList.add('selected-target');
+                validTarget = true;
+            }
+        }
+        // C. 아군 타겟
+        else if (data.target === "self" || (!data.type?.includes("attack") && data.target !== "enemy")) {
+            if ((targetInfo.type === 'specific' && targetInfo.unit === player) || targetInfo.type === 'general') {
+                document.getElementById('player-char').classList.add('selected-target');
+                validTarget = true;
+            }
+        }
+    }
+
+    // --- 텍스트 업데이트 로직 ---
+    if (drag.type === 'card') {
+        let descEl = dragEl.querySelector('.card-desc');
+        
+        // 1. 유효한 타겟팅 상태(핸드 밖으로 나가서 조준됨)일 때만 수치 변환
+        if (validTarget) {
+            let newText = calcPreview(drag.name, player);
+            if (descEl.innerHTML !== newText) descEl.innerHTML = newText;
+        } 
+        // 2. 핸드 영역 안이거나, 타겟이 없는 곳이면 원본 텍스트 복구
+        else {
+            if (descEl.innerHTML !== drag.originalDesc) descEl.innerHTML = drag.originalDesc;
+        }
+    }
+
+    // 카드 확대 효과
+    if (validTarget) {
+        dragEl.style.transform = "scale(1.1)"; 
+        dragEl.style.zIndex = "1000";
     } else {
-        descEl.innerHTML = drag.originalDesc;
-        cardEl.style.transform = "scale(1.0)";
-        cardEl.style.zIndex = "auto";
+        dragEl.style.transform = "scale(1.0)"; 
+        dragEl.style.zIndex = "auto";
     }
 }
-
+/* [수정] 드래그 종료 (텍스트 복구 포함) */
 function onDragEnd(e) {
     if (!drag.active) return;
     
@@ -1448,74 +1905,203 @@ function onDragEnd(e) {
     document.removeEventListener('mouseup', onDragEnd);
     document.getElementById('drag-layer').style.display = 'none';
     
-    let target = getTargetUnderMouse(e);
-    let cardEl = document.getElementById(`card-el-${drag.cardIdx}`);
+    // UI 복구
+    let elId = (drag.type === 'card') ? `card-el-${drag.idx}` : `item-el-${drag.idx}`;
+    let dragEl = document.getElementById(elId);
     
-    if (cardEl) {
-        let descEl = cardEl.querySelector('.card-desc');
-        descEl.innerHTML = drag.originalDesc;
-        cardEl.style.transform = "scale(1.0)";
-        cardEl.style.zIndex = "auto";
+    if (dragEl) {
+        dragEl.style.pointerEvents = "auto"; 
+        dragEl.style.transform = "scale(1.0)";
+        dragEl.style.zIndex = "auto";
+        
+        // --- [핵심 변경] 카드를 안 쓰고 놓았을 때 원본 텍스트로 복구 ---
+        if (drag.type === 'card') {
+             dragEl.querySelector('.card-desc').innerHTML = drag.originalDesc;
+        }
+    }
+    
+    document.querySelectorAll('.enemy-unit').forEach(el => el.classList.remove('selected-target'));
+    document.getElementById('player-char').classList.remove('selected-target');
+
+    // (이하 타겟팅 및 발동 로직은 이전과 동일합니다. 그대로 두시면 됩니다.)
+    // ... 기존 로직 ...
+    let targetInfo = getTargetUnderMouse(e);
+    let data;
+    if (drag.type === 'card') data = CARD_DATA[drag.name];
+    else data = ITEM_DATA[drag.name];
+
+    let finalTargets = [];
+    let aliveEnemies = enemies.filter(en => en.hp > 0);
+
+    if (targetInfo) {
+        if (data.targetType === 'all' || data.target === 'all') {
+            finalTargets = aliveEnemies;
+        }
+        else if ((data.type && data.type.includes("attack")) || data.target === "enemy") {
+            if (targetInfo.type === 'specific' && targetInfo.unit !== player) {
+                finalTargets = [targetInfo.unit];
+            }
+            else if (aliveEnemies.length === 1 && targetInfo.type === 'general') {
+                finalTargets = [aliveEnemies[0]];
+            }
+        }
+        else if (data.target === "self" || (!data.type?.includes("attack") && data.target !== "enemy")) {
+            if (targetInfo.type === 'specific' && targetInfo.unit === player) {
+                finalTargets = [player];
+            }
+            else if (targetInfo.type === 'general') {
+                 finalTargets = [player];
+            }
+        }
     }
 
-    if (target) {
-        let data = CARD_DATA[drag.cardName];
-        player.ap -= data.cost;
-        
-        let usedCard = player.hand.splice(drag.cardIdx, 1)[0];
-        if (data.isExhaust) {
-            player.exhaustPile.push(usedCard);
-            log(`🚫 [${drag.cardName}] 소멸됨!`);
+    if (finalTargets.length > 0) {
+        if (drag.type === 'card') {
+            player.ap -= data.cost;
+            let usedCard = player.hand.splice(drag.idx, 1)[0];
+            if (data.isExhaust) player.exhaustPile.push(usedCard);
+            else player.discardPile.push(usedCard);
+            finalTargets.forEach(target => useCard(player, target, drag.name));
+            renderHand();
         } else {
-            player.discardPile.push(usedCard);
+            useConsumable(drag.idx, finalTargets[0]); 
         }
-
-        useCard(player, target, drag.cardName);
-        
-        renderHand();
-        document.getElementById('turn-info').innerText = `나의 턴 (AP: ${player.ap})`;
         updateUI();
         checkGameOver();
     }
 
     drag.active = false;
-    drag.cardIdx = -1;
+    drag.idx = -1;
 }
 
+/* [수정] 마우스 아래 타겟 판정 (좌표 기반 핸드 영역 감지) */
 function getTargetUnderMouse(e) {
+    // 1. [핵심 수정] 핸드 영역 감지 (좌표 계산 방식)
+    // CSS의 pointer-events: none 때문에 elementFromPoint로는 핸드 영역이 감지되지 않음.
+    // 따라서 직접 좌표(BoundingRect)를 확인해야 함.
+    const handArea = document.getElementById('hand-container');
+    const handRect = handArea.getBoundingClientRect();
+
+    // 마우스가 핸드 영역 사각형 안에 있다면 -> 타겟팅 중단 (null 반환)
+    if (e.clientX >= handRect.left && e.clientX <= handRect.right &&
+        e.clientY >= handRect.top && e.clientY <= handRect.bottom) {
+        return null; 
+    }
+
+    // 2. 여기서부터는 핸드 영역 밖임이 확실함
     let el = document.elementFromPoint(e.clientX, e.clientY);
     if (!el) return null;
 
-    let targetDiv = el.closest('.character');
-    if (!targetDiv) return null;
-
-    let data = CARD_DATA[drag.cardName];
+    // 3. 특정 유닛(적/플레이어) 위에 있는 경우
     
-    if (data.type.includes("attack")) {
-        if (targetDiv.id === "enemy-char") return enemy;
-    } else {
-        if (targetDiv.id === "player-char") return player;
+    // 3-1. 적 확인
+    let enemyUnit = el.closest('.enemy-unit');
+    if (enemyUnit) {
+        let id = parseInt(enemyUnit.id.split('-')[2]); 
+        let target = enemies.find(e => e.id === id);
+        if (target && target.hp > 0) return { type: 'specific', unit: target };
     }
+
+    // 3-2. 플레이어 확인
+    if (el.closest('#player-char')) return { type: 'specific', unit: player };
+
+    // 4. 특정 유닛은 아니지만, 전투 화면(Container) 내부인 경우 -> '허공(General)' 판정
+    // (이미 1번에서 핸드 영역은 걸러졌으므로, 여기는 무조건 핸드 밖의 전투 구역임)
+    if (el.closest('.container') && !el.closest('.top-bar')) {
+        return { type: 'general' };
+    }
+
     return null;
 }
 
-function calcPreview(cardName, user, target) {
+/* [수정] 카드 설명 내 수치 계산 함수 (색상 강조 포함) */
+function calcPreview(cardName, user) {
     let data = CARD_DATA[cardName];
+    // 툴팁 등 기본 설명 가져오기
+    let desc = applyTooltip(data.desc); 
+    
+    // 공격력/방어력 스탯 가져오기 (버프/디버프가 이미 적용된 수치)
     let atk = getStat(user, 'atk');
     let def = getStat(user, 'def');
-    let text = data.desc;
-    
+
+    // 1. 공격 카드 계산
     if (data.dmg) {
-        let baseDmg = data.dmg + atk;
-        text = text.replace(new RegExp(`${data.dmg} 피해`), `<b>${baseDmg} 피해</b>`);
+        // 기본 공식: (카드 데미지 + 플레이어 공격력)
+        // ※ 실제 게임에서는 (기본뎀 + 힘) * 배율 등이지만, 여기선 단순 합산으로 구현
+        let finalDmg = data.dmg + atk; 
+        
+        // 색상 결정 (기본값보다 높으면 초록, 낮으면 빨강)
+        let colorClass = (finalDmg > data.dmg) ? "mod-val-buff" : 
+                         (finalDmg < data.dmg) ? "mod-val-debuff" : "";
+        
+        // 텍스트 교체 (예: "HP -5" -> "HP -<span class='...'>7</span>")
+        // 정규식: 설명 텍스트 내의 '기본 데미지 숫자'를 찾아서 '계산된 숫자'로 교체
+        let regex = new RegExp(data.dmg, "g");
+        desc = desc.replace(regex, `<span class="${colorClass}">${finalDmg}</span>`);
     }
+
+    // 2. 방어 카드 계산
     if (data.block) {
-        let baseBlock = data.block + def;
-        // 정규식 특수문자(+) 처리
-        text = text.replace(new RegExp(`방어도 \\+${data.block}`), `<b>방어도 +${baseBlock}</b>`);
+        // 기본 공식: (카드 방어도 + 플레이어 방어력)
+        let finalBlock = data.block + def;
+        
+        let colorClass = (finalBlock > data.block) ? "mod-val-buff" : 
+                         (finalBlock < data.block) ? "mod-val-debuff" : "";
+                         
+        let regex = new RegExp(data.block, "g");
+        desc = desc.replace(regex, `<span class="${colorClass}">${finalBlock}</span>`);
     }
-    return text;
+
+    return desc;
 }
+
+/* [NEW] 미래의 턴 순서를 예측해서 보여주는 함수 */
+function updateTurnOrderList() {
+    // 1. 시뮬레이션용 데이터 복사 (원본 훼손 방지)
+    let simPlayer = { id: 'player', ag: player.ag, spd: getStat(player, 'spd'), name: "나" };
+    // 살아있는 적만 포함
+    let simEnemies = enemies.filter(e=>e.hp>0).map(e => ({
+        id: `enemy-${e.id}`, ag: e.ag, spd: getStat(e, 'spd'), name: e.name
+    }));
+    
+    let allUnits = [simPlayer, ...simEnemies];
+    let predictedOrder = [];
+    const MAX_PREDICT = 6; // 앞으로 6턴만 예측
+
+    // 2. 시뮬레이션 루프 (실제 게임 상태는 변경 안 함)
+    let safety = 0;
+    while (predictedOrder.length < MAX_PREDICT && safety < 1000) {
+        safety++;
+        
+        // 턴 잡을 사람 확인 (AG 1000 이상)
+        let readyUnits = allUnits.filter(u => u.ag >= game.AG_MAX);
+        
+        if (readyUnits.length > 0) {
+            // AG 높은 순 정렬
+            readyUnits.sort((a, b) => b.ag - a.ag);
+            
+            // 예측 리스트에 추가하고 AG 차감 (시뮬레이션 상에서만)
+            for (let unit of readyUnits) {
+                predictedOrder.push(unit.name);
+                unit.ag -= game.AG_MAX;
+                if (predictedOrder.length >= MAX_PREDICT) break;
+            }
+        } else {
+            // 아무도 없으면 시간 흐르게 함
+            allUnits.forEach(u => u.ag += u.spd);
+        }
+    }
+
+    // 3. UI에 표시 (상단 정보창 활용)
+    let orderStr = predictedOrder.join(" → ");
+    let turnMsg = (game.turnOwner === 'player') ? `나의 턴 (AP: ${player.ap})` : 
+                  (game.turnOwner === 'enemy') ? `적의 턴` : "대기 중...";
+
+    document.getElementById('turn-info').innerHTML = 
+        `<div style="font-size:0.8em; color:#f1c40f; margin-bottom:3px;">🔜 ${orderStr}</div>
+         <div>${turnMsg}</div>`;
+}
+
 </script>
 <svg id="drag-layer" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; display:none;">
     <path id="drag-path" d="" stroke="#f1c40f" stroke-width="4" fill="none" stroke-dasharray="10,5" stroke-linecap="round" />
