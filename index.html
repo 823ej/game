@@ -241,25 +241,37 @@
             display: flex; flex-direction: column; justify-content: space-between;
             border: 2px solid #bdc3c7; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             position: relative;
-            /* [핵심] 겹치기 스타일 */
-            flex-shrink: 0;         /* 공간 좁아도 카드 크기 줄어들지 않음 */
-            margin-left: -40px;     /* [핵심] 왼쪽으로 -40px만큼 겹침! */
-            transition: all 0.2s ease-out; /* 부드러운 움직임 */
-            pointer-events: auto;   /* 카드는 클릭 가능 */
+        /* [변경] 기본 상태는 겹치지 않고 간격을 둠 */
+            flex-shrink: 0;         
+            margin: 0 5px;          /* 양옆에 5px씩 여유 */
+            transition: all 0.2s ease-out; 
+            pointer-events: auto;   
             transform-origin: bottom center;
+        }
+        /* [추가] 겹치기 모드 (.compact)일 때의 카드 스타일 */
+        .hand-area.compact .card {
+            margin: 0;              /* 기본 마진 제거 */
+            margin-left: -30px;     /* 왼쪽으로 겹치기 */
+        }
+
+        /* 겹치기 모드여도 첫 번째 카드는 밀리지 않음 */
+        .hand-area.compact .card:first-child {
+            margin-left: 0;
         }
         /* 첫 번째 카드는 왼쪽으로 밀리지 않게 */
         .card:first-child {
             margin-left: 0;
         }
-        /* [핵심] 마우스 올렸을 때(Hover) 효과 */
+        /* [수정] 마우스 올렸을 때 (Hover) */
         .card:hover { 
-            transform: translateY(-50px) scale(1.1) rotate(0deg) !important; /* 위로 쑥 올라옴 */
-            z-index: 100;           /* 제일 앞으로 가져오기 */
-            margin-left: 10px;      /* 양옆 공간 살짝 확보 */
-            margin-right: 10px;
-            border-color: #f1c40f;  /* 테두리 강조 */
+            transform: translateY(-30px) scale(1.1) !important; 
+            z-index: 100;           
+            border-color: #f1c40f; 
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+
+            /* 호버 시에는 모드 상관없이 양옆 공간 확보 */
+            margin-left: 10px !important;
+            margin-right: 10px !important;
         }
         .card.disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); transform: none; }
         .card-cost { background: #3498db; color: white; width: 25px; height: 25px; border-radius: 50%; text-align: center; line-height: 25px; font-weight: bold; position: absolute; top: -10px; left: -10px; }
@@ -1070,14 +1082,24 @@ document.getElementById('btn-exhaust-pile').innerText = `소멸 (${player.exhaus
     updateInventoryUI();
 }
 
-// [수정됨] renderHand: 소멸 카드도 일반 카드와 똑같이 그림
+/* [수정] renderHand: 장수에 따라 모드 자동 전환 */
 function renderHand() {
-    const container = document.getElementById('hand-container'); container.innerHTML = "";
+    const container = document.getElementById('hand-container'); 
+    container.innerHTML = "";
+    
+    // [핵심 로직] 카드가 6장 이상이면 겹치기 모드(compact) 활성화
+    if (player.hand.length >= 6) {
+        container.classList.add('compact');
+    } else {
+        container.classList.remove('compact');
+    }
+
     player.hand.forEach((cName, idx) => {
         let data = CARD_DATA[cName];
         let el = document.createElement('div'); el.className = 'card';
         if (player.ap < data.cost || game.turnOwner !== "player") el.className += " disabled";
-el.innerHTML = `
+        
+        el.innerHTML = `
             <div class="card-cost">${data.cost}</div>
             <div class="card-rank">${"★".repeat(data.rank)}</div>
             <div class="card-name">${cName}</div>
@@ -1088,7 +1110,6 @@ el.innerHTML = `
                 player.ap -= data.cost; 
                 let usedCard = player.hand.splice(idx, 1)[0];
                 
-                // [로직 유지] 겉모습은 같지만, 사용하면 여전히 소멸 더미로 감
                 if (data.isExhaust) {
                     player.exhaustPile.push(usedCard);
                     log(`🚫 [${cName}] 카드가 소멸되었습니다!`);
@@ -1096,9 +1117,14 @@ el.innerHTML = `
                     player.discardPile.push(usedCard);
                 }
                 
-                useCard(player, enemy, cName); renderHand(); document.getElementById('turn-info').innerText = `나의 턴 (행동력: ${player.ap})`; updateUI(); checkGameOver();
+                useCard(player, enemy, cName); 
+                renderHand(); // 사용 후 다시 그려서 모드 재확인
+                document.getElementById('turn-info').innerText = `나의 턴 (행동력: ${player.ap})`; 
+                updateUI(); 
+                checkGameOver();
             } else if (player.ap < data.cost) log("🚫 행동력이 부족합니다.");
-        }; container.appendChild(el);
+        }; 
+        container.appendChild(el);
     });
 }
 
