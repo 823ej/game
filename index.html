@@ -148,7 +148,31 @@
         .hp-bar-bg { background: #222; height: 20px; border-radius: 10px; margin: 10px 0; overflow: hidden; border: 1px solid #555; }
         .hp-bar-fill { background: #e74c3c; height: 100%; width: 100%; transition: 0.5s; }
         
-        .hand-area { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; min-height: 150px; align-content: center; }
+       /* [수정] 카드 영역 스타일 */
+     /* [수정] 카드 영역 (중앙 정렬 복귀 & 잘림 방지) */
+        .hand-area { 
+            display: flex; 
+            
+            /* 1. 다시 중앙 정렬 */
+            justify-content: center; 
+            
+            /* 2. 줄바꿈 허용 (가로 스크롤 제거 -> 잘림 현상 해결됨) */
+            flex-wrap: wrap;       
+            
+            /* 3. 카드 간격 및 여백 조절 */
+            gap: 10px;             
+            margin-bottom: 5px;    /* 버튼과의 거리를 좁힘 */
+            padding: 10px;         /* 카드가 커질 때 여유 공간 확보 */
+            
+            min-height: 150px; 
+            align-content: center;
+            
+            /* [중요] 카드가 확대될 때 잘리지 않도록 설정 */
+            overflow: visible; 
+        }
+        .hand-area::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
         .log-area { height: 120px; overflow-y: auto; background: #111; border: 1px solid #444; padding: 10px; text-align: left; font-size: 0.9em; margin-bottom: 10px; color: #bbb; border-radius: 5px; }
 
         /* 카드 스타일 */
@@ -254,7 +278,7 @@
         <div class="log-area" id="log-box"></div>
         <div class="hand-area" id="hand-container"></div>
         <div style="margin-top:auto;">
-            <div style="margin-top: 0vh; margin-bottom: 3vh;">
+            <div style="margin-top: 0; margin-bottom: 3vh;">
                 <button id="end-turn-btn" class="action-btn" onclick="endPlayerTurn()">턴 종료</button>
             </div>
         </div>
