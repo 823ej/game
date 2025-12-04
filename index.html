@@ -101,6 +101,7 @@
             background: #000;
             margin-bottom: 5px;
         }
+        
 
         /* [추가] 애니메이션 키프레임 정의 */
 
@@ -424,7 +425,7 @@ const CARD_DATA = {
     // 기존: val이 방어도였음 -> block: 3으로 명시
     "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3 },
     "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: {name:"독", val:2}, block: 3 },
-    "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:3}, target:"self", block: 3 },
+    "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:2}, target:"self", block: 3 },
     "껴입기": { rank: 2, cost: 2, type: "skill", desc: "나 건강(2턴), 방어도+4", buff: {name:"건강", val:2}, target:"self", block: 4 },
 
     // 2성 (공격 + 디버프/버프)
@@ -501,7 +502,20 @@ let player = {
     maxXp: 100 // 1레벨업 필요 경험치
 };
 let enemy = { name: "허수아비", maxHp: 25, hp: 25, baseAtk: 1, baseDef: 1, baseSpd: 1, deck: [], block: 0, buffs: {}, ap: 3 };
-let game = { level: 1, turnCount: 0, state: "battle", turnOwner: "none", lastWho: null, forceRest: false };
+/* [수정] game 변수 정의 부분 */
+let game = { 
+    level: 1, 
+    turnCount: 0, 
+    state: "battle", 
+    turnOwner: "none", 
+    lastWho: null, 
+    forceRest: false, 
+    extraTurnTriggered: false,
+    
+    // [NEW] 승리 화면 유지를 위한 변수들
+    pendingLoot: null,  // 바닥에 떨어진 아이템
+    winMsg: ""          // 승리 메시지 저장
+};
 
 /* --- 유틸리티 --- */
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -870,95 +884,119 @@ function takeDamage(target, dmg) {
                 el.remove();
             }, 800);
         }
-/* [수정] checkGameOver 함수 전체 교체 */
 function checkGameOver() {
     if (player.hp <= 0) { 
         showPopup("💀 게임 오버", "패배했습니다...", [{txt:"다시 하기", func: ()=>location.reload()}]); 
         return true; 
     }
+    
     if (enemy.hp <= 0) {
         if(game.state === "win") return true; 
         game.state = "win";
         
-        // 1. 보상 계산 (골드)
+        // 1. 보상 계산
         let rewardGold = 1000 * (player.lucky ? 2 : 1); 
         player.gold += rewardGold; 
         
-        // [NEW] 2. 경험치 획득 공식 (기본 40 + 적 레벨 비례)
-        // 레벨이 오를수록 적도 세지므로 경험치도 조금씩 더 줍니다.
         let gainXp = 40 + (game.level * 10);
         player.xp += gainXp;
 
-        let msg = `승리! ${rewardGold}원, ${gainXp} XP 획득.`; 
-        if (player.lucky) msg += " (럭키피스 효과!)";
-        
-        // 3. 아이템 드랍 (5%)
-        let lootBtn = null; 
-        let contentHTML = "";
-        if (Math.random() < 0.05) { 
-            let loot = getRandomItem(); 
-            let lData = ITEM_DATA[loot];
-            msg += `<br>✨ 전리품 발견!`;
-            contentHTML = `
-                <div style="display:flex; justify-content:center; margin-top:15px;">
-                    <div class="item-icon item-${lData.type} item-rank-${lData.rank}">
-                        ${lData.icon}
-                        <span class="tooltip"><b>${loot}</b><br>${lData.desc}</span>
-                    </div>
-                </div>
-                <div style="margin-top:5px; font-size:0.9em; color:#aaa;">${loot}</div>
-            `;
-            lootBtn = {txt: "아이템 줍기", func: ()=>{ addItem(loot); nextStepAfterWin(); }}; 
-        }
-        
-        // 4. 버튼 설정
-        let btns = [];
-        if (lootBtn) btns.push(lootBtn);
-        
-        // 레벨업 조건인지 확인하여 버튼 동작 분기
-        if (player.xp >= player.maxXp) {
-            msg += `<br><b style="color:#f1c40f">🆙 레벨 업 가능!</b>`;
-            // 레벨업이면 -> 스탯 찍으러 가기
-            btns.push({txt: "레벨업!", func: processLevelUp});
-        } else {
-            // 레벨업 아니면 -> 다음 이벤트로
-            btns.push({txt: "다음으로", func: nextStepAfterWin});
-        }
+        // 2. 메시지 저장
+        game.winMsg = `승리! ${rewardGold}원, ${gainXp} XP 획득.`; 
+        if (player.lucky) game.winMsg += " (럭키피스 효과!)";
 
-        showPopup("전투 승리!", msg, btns, contentHTML); 
-        updateUI(); // 경험치 바 갱신
+        // 3. 아이템 드랍 결정 (저장만 함)
+        game.pendingLoot = null;
+        if (Math.random() < 1.0) { // (테스트용 100%, 나중에 0.05로 바꾸세요)
+            game.pendingLoot = getRandomItem();
+            game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`;
+        }
+        
+        updateUI(); // 경험치바/골드 갱신
+
+        // 4. 승리 팝업 그리기 (여기서 버튼 등을 결정함)
+        renderWinPopup(); 
+        
         return true;
     }
     return false;
 }
 /* --- 이벤트 및 상점 --- */
+/* [수정] runRandomEvent 함수 */
 function runRandomEvent() {
-    if (game.forceRest) { game.forceRest = false; renderRestScreen(); return; }
-    let rand = Math.random(); if (rand < 0.6) startBattle(); else if (rand < 0.8) renderRestScreen(); else renderShopScreen();
+    if (game.forceRest) {
+        game.forceRest = false;
+        
+        game.hasRested = false; // [NEW] 휴식 여부 초기화
+        renderRestScreen();
+        return;
+    }
+
+    let rand = Math.random();
+    if (rand < 0.6) {
+        startBattle();
+    } else if (rand < 0.8) {
+        game.hasRested = false; // [NEW] 휴식 여부 초기화
+        renderRestScreen();
+    } else {
+        renderShopScreen();
+    }
 }
+/* [수정] renderRestScreen 함수 전체 교체 */
 function renderRestScreen() {
     switchScene('event');
-    document.getElementById('event-content-box').innerHTML = `
-        <div class="event-title">🔥 휴식처</div><div class="event-desc">체력을 회복하시겠습니까?<br><span style="color:#e74c3c">HP: ${player.hp} / ${player.maxHp}</span></div>
+    const container = document.getElementById('event-content-box');
+    
+    // 휴식 버튼 HTML 생성 (상태에 따라 다름)
+    let restBtnHTML = "";
+    if (!game.hasRested) {
+        // 아직 휴식 안 함: 버튼 활성화
+        restBtnHTML = `<button class="action-btn" onclick="restAction()">😴 쉬기 (50% 회복)</button>`;
+    } else {
+        // 이미 휴식 함: 버튼 대신 텍스트 표시
+        restBtnHTML = `<button class="action-btn" disabled style="background:#555; cursor:default;">✅ 휴식 완료</button>`;
+    }
+
+    container.innerHTML = `
+        <div class="event-title">🔥 휴식처</div>
+        <div class="event-desc">
+            따뜻한 모닥불이 있습니다.<br>
+            잠시 쉬어가거나 정비를 할 수 있습니다.<br><br>
+            <span style="color:#e74c3c">현재 HP: ${player.hp} / ${player.maxHp}</span>
+        </div>
+        
         <div style="display:flex; justify-content:center; gap:20px;">
-            <button class="action-btn" onclick="restAction()">😴 쉬기 (50% 회복)</button><button class="action-btn" style="background:#7f8c8d" onclick="startBattle()">👣 떠나기</button>
-        </div>`;
+            ${restBtnHTML}
+            <button class="action-btn" style="background:#7f8c8d" onclick="startBattle()">👣 떠나기</button>
+        </div>
+        
+        <div style="margin-top:20px; font-size:0.9em; color:#aaa;">
+            (떠나기 전에 인벤토리의 아이템을 사용할 수 있습니다)
+        </div>
+    `;
 }
-// [수정] 실제 회복된 수치를 계산하여 표시
+/* [수정] restAction 함수 전체 교체 */
 function restAction() {
-    // 1. 회복 가능한 최대량 (전체 체력의 50%)
+    // 1. 회복 로직
     let maxHeal = Math.floor(player.maxHp / 2);
-    
-    // 2. 현재 잃어버린 체력 (이것보다 많이 회복할 수는 없음)
     let missingHp = player.maxHp - player.hp;
-    
-    // 3. 둘 중 더 작은 값이 실제로 회복되는 양
     let actualHeal = Math.min(maxHeal, missingHp);
     
     player.hp += actualHeal;
+    game.hasRested = true; // [NEW] 휴식 완료 플래그 세팅
+    
     updateUI();
     
-    showPopup("휴식 완료", `체력이 ${actualHeal}만큼 회복되었습니다.`, [{txt:"출발", func: startBattle}]);
+    // 2. 팝업을 띄우되, 확인 누르면 '떠나기'가 아니라 팝업만 닫힘
+    showPopup("휴식 완료", `체력이 ${actualHeal}만큼 회복되었습니다.<br>이제 출발 준비가 되셨나요?`, [
+        {
+            txt: "확인", 
+            func: () => {
+                closePopup();
+                renderRestScreen(); // [NEW] 버튼 상태 갱신을 위해 화면 다시 그리기
+            }
+        }
+    ]);
 }
 function renderShopScreen() {
     switchScene('event');
@@ -1082,12 +1120,12 @@ document.getElementById('btn-exhaust-pile').innerText = `소멸 (${player.exhaus
     updateInventoryUI();
 }
 
-/* [수정] renderHand: 장수에 따라 모드 자동 전환 */
+/* [수정] renderHand: 겹치기 모드 + 드래그 조준 통합 */
 function renderHand() {
     const container = document.getElementById('hand-container'); 
     container.innerHTML = "";
     
-    // [핵심 로직] 카드가 6장 이상이면 겹치기 모드(compact) 활성화
+    // 1. [겹치기 모드] 카드가 6장 이상이면 compact 클래스 추가
     if (player.hand.length >= 6) {
         container.classList.add('compact');
     } else {
@@ -1096,34 +1134,30 @@ function renderHand() {
 
     player.hand.forEach((cName, idx) => {
         let data = CARD_DATA[cName];
-        let el = document.createElement('div'); el.className = 'card';
+        let el = document.createElement('div'); 
+        el.className = 'card';
+        // 드래그 위치 계산을 위해 ID 부여
+        el.id = `card-el-${idx}`;
+        
         if (player.ap < data.cost || game.turnOwner !== "player") el.className += " disabled";
         
+        // 카드 내용 (별 등급 포함)
         el.innerHTML = `
             <div class="card-cost">${data.cost}</div>
             <div class="card-rank">${"★".repeat(data.rank)}</div>
             <div class="card-name">${cName}</div>
             <div class="card-desc">${applyTooltip(data.desc)}</div>
         `;
-        el.onclick = () => {
-            if (game.turnOwner === "player" && player.ap >= data.cost) {
-                player.ap -= data.cost; 
-                let usedCard = player.hand.splice(idx, 1)[0];
-                
-                if (data.isExhaust) {
-                    player.exhaustPile.push(usedCard);
-                    log(`🚫 [${cName}] 카드가 소멸되었습니다!`);
-                } else {
-                    player.discardPile.push(usedCard);
-                }
-                
-                useCard(player, enemy, cName); 
-                renderHand(); // 사용 후 다시 그려서 모드 재확인
-                document.getElementById('turn-info').innerText = `나의 턴 (행동력: ${player.ap})`; 
-                updateUI(); 
-                checkGameOver();
-            } else if (player.ap < data.cost) log("🚫 행동력이 부족합니다.");
-        }; 
+        
+        // 2. [드래그 이벤트 연결]
+        // 행동력이 충분하고 내 턴일 때만 드래그 가능
+        if (game.turnOwner === "player" && player.ap >= data.cost) {
+            el.onmousedown = (e) => startDrag(e, idx, cName);
+        } else {
+            // 사용할 수 없는 카드는 클릭 시 피드백
+            el.onclick = () => log("🚫 사용할 수 없는 상태입니다.");
+        }
+        
         container.appendChild(el);
     });
 }
@@ -1281,6 +1315,211 @@ function loadGame() {
         alert("세이브 파일이 손상되어 불러올 수 없습니다.");
     }
 }
+/* [NEW] 승리 팝업을 상황에 맞춰 그려주는 함수 */
+function renderWinPopup() {
+    let btns = [];
+    let contentHTML = "";
+
+    // 1. [아이템 줍기 버튼] - 아직 줍지 않은 아이템이 있다면
+    if (game.pendingLoot) {
+        let loot = game.pendingLoot;
+        let lData = ITEM_DATA[loot];
+        
+        // 아이템 정보 표시
+        contentHTML = `
+            <div style="display:flex; justify-content:center; margin-top:15px;">
+                <div class="item-icon item-${lData.type} item-rank-${lData.rank}">
+                    ${lData.icon}
+                    <span class="tooltip"><b>${loot}</b><br>${lData.desc}</span>
+                </div>
+            </div>
+            <div style="margin-top:5px; font-size:0.9em; color:#aaa;">${loot}</div>
+        `;
+        
+        // [중요] 아이템 줍기 버튼: 줍고 나서 'renderWinPopup'을 다시 호출함 (팝업 유지)
+        btns.push({ 
+            txt: "아이템 줍기", 
+            func: () => getLoot() 
+        });
+    }
+
+    // 2. [레벨업 버튼] - 경험치가 꽉 찼다면
+    if (player.xp >= player.maxXp) {
+        btns.push({ 
+            txt: "🆙 레벨업!", 
+            func: processLevelUp 
+        });
+    }
+
+    // 3. [떠나기 버튼] - 언제나 존재 (선택지 제공)
+    // 레벨업이 가능해도, 지금 안 하고 나중에 하거나 그냥 떠날 수도 있게 함
+    btns.push({ 
+        txt: "떠나기", 
+        func: nextStepAfterWin 
+    });
+
+    // 팝업 표시
+    // (레벨업 가능하면 메시지에 강조 표시)
+    let finalMsg = game.winMsg;
+    if (player.xp >= player.maxXp) finalMsg += `<br><b style="color:#f1c40f">🆙 레벨 업 가능!</b>`;
+
+    showPopup("전투 승리!", finalMsg, btns, contentHTML);
+}
+
+/* [NEW] 아이템 획득 처리 함수 */
+function getLoot() {
+    if (game.pendingLoot) {
+        addItem(game.pendingLoot); // 인벤토리에 추가
+        
+        // 메시지 갱신
+        game.winMsg = game.winMsg.replace("전리품이 바닥에 떨어져 있습니다.", "");
+        game.winMsg += `<br><span style="color:#2ecc71">✔ [${game.pendingLoot}] 획득함.</span>`;
+        
+        game.pendingLoot = null; // 바닥에서 치움
+        
+        updateUI(); // 인벤토리 갱신
+        renderWinPopup(); // [핵심] 팝업 다시 그리기 (이제 줍기 버튼은 사라짐)
+    }
+}
+/* --- [NEW] 드래그 타겟팅 & 미리보기 시스템 --- */
+
+let drag = { active: false, cardIdx: -1, cardName: "", startX: 0, startY: 0, originalDesc: "" };
+
+function startDrag(e, idx, cName) {
+    if (e.button !== 0) return; // 좌클릭만 허용
+    e.preventDefault();
+
+    drag.active = true;
+    drag.cardIdx = idx;
+    drag.cardName = cName;
+    
+    let cardEl = document.getElementById(`card-el-${idx}`);
+    let rect = cardEl.getBoundingClientRect();
+    drag.startX = rect.left + rect.width / 2;
+    drag.startY = rect.top + rect.height / 2;
+    
+    let descEl = cardEl.querySelector('.card-desc');
+    drag.originalDesc = descEl.innerHTML;
+
+    document.getElementById('drag-layer').style.display = 'block';
+    
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+}
+
+function onDragMove(e) {
+    if (!drag.active) return;
+
+    const path = document.getElementById('drag-path');
+    const head = document.getElementById('drag-head');
+    
+    let endX = e.clientX;
+    let endY = e.clientY;
+    
+    // 베지어 곡선 (S자)
+    let cpX = (drag.startX + endX) / 2;
+    let cpY = Math.min(drag.startY, endY) - 100;
+    
+    path.setAttribute("d", `M${drag.startX},${drag.startY} Q${cpX},${cpY} ${endX},${endY}`);
+    head.setAttribute("cx", endX);
+    head.setAttribute("cy", endY);
+
+    // 타겟 감지 및 미리보기
+    let target = getTargetUnderMouse(e);
+    let cardEl = document.getElementById(`card-el-${drag.cardIdx}`);
+    let descEl = cardEl.querySelector('.card-desc');
+
+    if (target) {
+        let newDesc = calcPreview(drag.cardName, player, target);
+        descEl.innerHTML = `<span style="color:#2ecc71; font-weight:bold;">${newDesc}</span>`;
+        cardEl.style.transform = "scale(1.1)";
+        cardEl.style.zIndex = "100";
+    } else {
+        descEl.innerHTML = drag.originalDesc;
+        cardEl.style.transform = "scale(1.0)";
+        cardEl.style.zIndex = "auto";
+    }
+}
+
+function onDragEnd(e) {
+    if (!drag.active) return;
+    
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragEnd);
+    document.getElementById('drag-layer').style.display = 'none';
+    
+    let target = getTargetUnderMouse(e);
+    let cardEl = document.getElementById(`card-el-${drag.cardIdx}`);
+    
+    if (cardEl) {
+        let descEl = cardEl.querySelector('.card-desc');
+        descEl.innerHTML = drag.originalDesc;
+        cardEl.style.transform = "scale(1.0)";
+        cardEl.style.zIndex = "auto";
+    }
+
+    if (target) {
+        let data = CARD_DATA[drag.cardName];
+        player.ap -= data.cost;
+        
+        let usedCard = player.hand.splice(drag.cardIdx, 1)[0];
+        if (data.isExhaust) {
+            player.exhaustPile.push(usedCard);
+            log(`🚫 [${drag.cardName}] 소멸됨!`);
+        } else {
+            player.discardPile.push(usedCard);
+        }
+
+        useCard(player, target, drag.cardName);
+        
+        renderHand();
+        document.getElementById('turn-info').innerText = `나의 턴 (AP: ${player.ap})`;
+        updateUI();
+        checkGameOver();
+    }
+
+    drag.active = false;
+    drag.cardIdx = -1;
+}
+
+function getTargetUnderMouse(e) {
+    let el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el) return null;
+
+    let targetDiv = el.closest('.character');
+    if (!targetDiv) return null;
+
+    let data = CARD_DATA[drag.cardName];
+    
+    if (data.type.includes("attack")) {
+        if (targetDiv.id === "enemy-char") return enemy;
+    } else {
+        if (targetDiv.id === "player-char") return player;
+    }
+    return null;
+}
+
+function calcPreview(cardName, user, target) {
+    let data = CARD_DATA[cardName];
+    let atk = getStat(user, 'atk');
+    let def = getStat(user, 'def');
+    let text = data.desc;
+    
+    if (data.dmg) {
+        let baseDmg = data.dmg + atk;
+        text = text.replace(new RegExp(`${data.dmg} 피해`), `<b>${baseDmg} 피해</b>`);
+    }
+    if (data.block) {
+        let baseBlock = data.block + def;
+        // 정규식 특수문자(+) 처리
+        text = text.replace(new RegExp(`방어도 \\+${data.block}`), `<b>방어도 +${baseBlock}</b>`);
+    }
+    return text;
+}
 </script>
+<svg id="drag-layer" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; display:none;">
+    <path id="drag-path" d="" stroke="#f1c40f" stroke-width="4" fill="none" stroke-dasharray="10,5" stroke-linecap="round" />
+    <circle id="drag-head" cx="0" cy="0" r="8" fill="#e74c3c" stroke="#fff" stroke-width="2" />
+</svg>
 </body>
 </html>
