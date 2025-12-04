@@ -515,7 +515,7 @@ const CARD_DATA = {
 
     // 2성 (디버프 & 복합)
     // 기존: val이 방어도였음 -> block: 3으로 명시
- "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3, target: "enemy" },
+    "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3, target: "enemy" },
     "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: {name:"독", val:2}, block: 3, target: "enemy" },    "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:2}, target:"self", block: 3 },
     "껴입기": { rank: 2, cost: 2, type: "skill", desc: "나 건강(2턴), 방어도+4", buff: {name:"건강", val:2}, target:"self", block: 4 },
 
@@ -529,26 +529,28 @@ const CARD_DATA = {
 
     // 특수 기능 (special 태그 사용)
     "방패 부수기": { rank: 2, cost: 2, type: "attack", desc: "적 방어도 제거, 적 HP -2", special: "break_block", dmg: 2 },
-    "주머니 뒤지기": { rank: 2, cost: 1, type: "skill", desc: "방어도 +2, 카드 2장 뽑기", block: 2, draw: 1 },
+    "주머니 뒤지기": { rank: 2, cost: 1, type: "skill", desc: "방어도 +2, 카드 2장 뽑기", block: 2, draw: 2 },
     // 3성
     "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: {name:"강화", val:2}, target:"self", dmg: 8 },
-    "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, isExhaust: true }
+    "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, isExhaust: true },
+    "마구 뽑기": { rank: 3, cost: 0, type: "skill", desc: "카드 5장 뽑기 (소멸)", draw: 5, isExhaust: true }
+    
 };
 /* [NEW] 적 데이터 정의 */
 const ENEMY_DATA = {
     "불량배": {
         name: "불량배",
         baseHp: 20,
-        stats: { atk: 1, def: 0, spd: 2 }, // 기본 스탯
-        growth: { hp: 4, atk: 0.5, def: 0, spd: 0 }, // 레벨당 성장 수치
+        stats: { atk: 1, def: 0, spd: 3 }, // 기본 스탯
+        growth: { hp: 4, atk: 0.5, def: 0, spd: 0.1 }, // 레벨당 성장 수치
         deckType: "basic", // 사용하는 덱 타입
         img: "https://placehold.co/100x100/c0392b/ffffff?text=Bully"
     },
     "허수아비": {
         name: "허수아비",
         baseHp: 30, // 조금 더 튼튼하게
-        stats: { atk: 1, def: 1, spd: 1 }, // 요청하신 공방속 1
-        growth: { hp: 5, atk: 0.5, def: 0.5, spd: 0.2 }, // 골고루 성장
+        stats: { atk: 1, def: 1, spd: 2 }, // 
+        growth: { hp: 5, atk: 0.5, def: 0.5, spd: 0.1 }, // 골고루 성장
         deckType: "player_like", // 타격5+수비4+2성1
         img: "https://placehold.co/100x100/f39c12/ffffff?text=Scarecrow"
     }
@@ -624,7 +626,7 @@ const ITEM_DATA = {
 };
 /* --- 상태 변수 --- */
 let player = { 
-    maxHp: 25, hp: 25, baseAtk: 1, baseDef: 1, baseSpd: 1, 
+    maxHp: 25, hp: 25, baseAtk: 1, baseDef: 1, baseSpd: 3, 
     gold: 0, deck: [], hand: [], block: 0, buffs: {}, ap: 3, 
     jumadeung: false, lucky: false,
     drawPile: [], discardPile: [], 
@@ -652,6 +654,20 @@ let game = {
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 function shuffle(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } }
 function log(msg) { const box = document.getElementById('log-box'); box.innerHTML += `<div>${msg}</div>`; box.scrollTop = box.scrollHeight; }
+
+/* [NEW] 마우스/터치 좌표 통합 추출 함수 */
+function getClientPos(e) {
+    // 터치 이벤트인 경우
+    if (e.touches && e.touches.length > 0) {
+        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    // 터치가 끝나는 순간(touchend)에는 touches가 비어있음 -> changedTouches 확인
+    if (e.changedTouches && e.changedTouches.length > 0) {
+        return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    }
+    // 마우스 이벤트인 경우
+    return { x: e.clientX, y: e.clientY };
+}
 
 /* --- 장면 전환 --- */
 function switchScene(sceneName) {
@@ -778,9 +794,10 @@ function updateInventoryUI() {
         } 
         // 2. 그 외의 경우 (사용 가능)
         else {
-            // 전투 중이면 드래그 허용 (패시브 제외)
+           
             if (game.state === "battle" && data.target !== "passive") {
                 el.onmousedown = (e) => startDrag(e, idx, name, 'item');
+                el.ontouchstart = (e) => startDrag(e, idx, name, 'item');
             }
             
             // 클릭 시 확인/취소 버튼 토글
@@ -877,7 +894,7 @@ function startBattle() {
             img: data.img, // 데이터에 있는 이미지 사용
             
             // 행동 게이지 (선공 랜덤성을 위해 0~20% 미리 채움)
-            ag: Math.floor(Math.random() * 200) 
+            ag: Math.floor(Math.random() * 150) 
         });
     }
 
@@ -1410,38 +1427,47 @@ function getRandomCard() { let r = Math.random()*100; let rank = (r<70)?1:(r<95)
 function getRandomItem(typeFilter) { let pool = Object.keys(ITEM_DATA); if (typeFilter) pool = pool.filter(k => ITEM_DATA[k].type === typeFilter); let r=Math.random()*100; let rank=(r<70)?1:(r<90)?2:3; let rankPool=pool.filter(k=>ITEM_DATA[k].rank===rank); if(rankPool.length===0) rankPool=pool; return rankPool[Math.floor(Math.random()*rankPool.length)]; }
 
 /* --- UI Render Helpers --- */
-/* [수정] drawCards 함수: 최대 10장 제한 추가 */
+/* [수정] drawCards 함수: 손패 초과 시 자동 버림 처리 */
 function drawCards(n) {
-    const MAX_HAND_SIZE = 10; // 최대 핸드 매수 설정
+    const MAX_HAND_SIZE = 10; // 최대 핸드 매수
 
     for(let i=0; i<n; i++) {
-        // 1. 핸드가 가득 찼는지 확인
-        if (player.hand.length >= MAX_HAND_SIZE) {
-            log("🚫 손패가 가득 찼습니다! (최대 10장)");
-            break; // 반복문 즉시 종료
-        }
-
-        // 2. 덱/버린 카드 확인 및 뽑기
+        // 1. 덱 리필 확인
         if (player.drawPile.length === 0) {
             if (player.discardPile.length > 0) { 
-                log("🔄 덱 리필!"); 
+                log("🔄 덱을 섞습니다!"); 
                 player.drawPile = [...player.discardPile]; 
                 player.discardPile = []; 
                 shuffle(player.drawPile); 
             }
-            else break; 
+            else {
+                // 덱도 없고 버린 카드도 없으면 아예 뽑을 수 없음
+                break; 
+            }
         }
         
-        if (player.drawPile.length > 0) {
-            player.hand.push(player.drawPile.pop());
+        // 2. 일단 카드를 뽑음
+        let card = player.drawPile.pop();
+
+        // 3. 손패 공간 확인
+        if (player.hand.length < MAX_HAND_SIZE) {
+            // 공간이 있으면 손패로
+            player.hand.push(card);
+        } else {
+            // 공간이 없으면 바로 버림 패로 이동 (카드가 타버림)
+            player.discardPile.push(card);
+            log(`🔥 손패가 꽉 차서 [${card}] 카드가 버려졌습니다!`);
+            
+            // 시각적 효과 (버림 카드 더미가 흔들림)
+            playAnim('btn-discard-pile', 'anim-bounce');
         }
     }
+    
     renderHand(); 
     updateUI();
 }
 
-/* [수정] UI 업데이트 함수 */
-/* [수정] UI 업데이트 함수 */
+/* [수정] UI 업데이트 함수 (적 상태이상 및 스탯 표시 복구) */
 function updateUI() {
     // 1. 상단 정보 (플레이어)
     let xpPercent = Math.floor((player.xp / player.maxXp) * 100);
@@ -1468,7 +1494,6 @@ function updateUI() {
     // 2. 적 UI 업데이트
     if (!enemies || enemies.length === 0) return;
 
-    // ★ [수정] 실수했던 부분: forEach 밖에서 e를 쓰면 안 됩니다. 안으로 이동!
     enemies.forEach(e => {
         let el = document.getElementById(`enemy-unit-${e.id}`);
         // HTML 요소가 없으면 패스
@@ -1485,9 +1510,10 @@ function updateUI() {
 
         // 산 경우
         let hpPct = Math.max(0, (e.hp / e.maxHp) * 100);
-        // [NEW] 행동 게이지(AG) 퍼센트 계산
+        // 행동 게이지(AG) 퍼센트 계산
         let agPct = Math.min(100, (e.ag / game.AG_MAX) * 100);
         
+        // 버프 텍스트 생성
         let buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
         
         // 의도(Intent) 표시
@@ -1495,33 +1521,36 @@ function updateUI() {
         if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = "⚔️";
 
         el.innerHTML = `
-    <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} ${intent}</div>
-    
-    <img src="${e.img}" alt="${e.name}" class="char-img" style="width:80px; height:80px;">
-    
-    <div class="hp-bar-bg" style="height:8px; margin:5px 10px;"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>
-    
-    <div style="background:#444; height:6px; margin:2px 10px; border-radius:3px; overflow:hidden;">
-        <div style="background:#f1c40f; height:100%; width:${agPct}%"></div>
-    </div>
+            <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} ${intent}</div>
+            
+            <img src="${e.img}" alt="${e.name}" class="char-img" style="width:80px; height:80px;">
+            
+            <div class="hp-bar-bg" style="height:8px; margin:5px 10px;"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>
+            
+            <div style="background:#444; height:6px; margin:2px 10px; border-radius:3px; overflow:hidden;">
+                <div style="background:#f1c40f; height:100%; width:${agPct}%"></div>
+            </div>
 
-    <div style="font-size:0.8em;">HP: ${e.hp} <span class="block-icon">🛡️${e.block}</span></div>
-    `;
+            <div style="font-size:0.8em;">HP: ${e.hp} <span class="block-icon">🛡️${e.block}</span></div>
+
+            <div class="stats" style="font-size:0.7em;">공${getStat(e,'atk')} 방${getStat(e,'def')} <span style="color:#f1c40f; font-weight:bold;">⚡${getStat(e,'spd')}</span></div>
+
+            <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
+        `;
     });
 
-    // 3. 턴 순서 예측 리스트 업데이트 (함수가 있어야 함!)
+    // 3. 턴 순서 예측 리스트 업데이트
     if (typeof updateTurnOrderList === "function") {
         updateTurnOrderList();
     }
 }
 
-/* [수정] renderHand: 호버 시 숫자 변환 기능 제거 */
+/* [수정] renderHand: 터치 이벤트 지원 추가 */
 function renderHand() {
     const container = document.getElementById('hand-container'); 
     container.innerHTML = "";
     
-    // 겹치기 모드 확인
-    if (player.hand.length >= 6) container.classList.add('compact');
+    if (player.hand.length >= 8) container.classList.add('compact');
     else container.classList.remove('compact');
 
     player.hand.forEach((cName, idx) => {
@@ -1540,11 +1569,10 @@ function renderHand() {
             <div class="card-desc">${applyTooltip(data.desc)}</div>
         `;
         
-        // [변경] 호버 이벤트(onmouseenter/leave) 삭제됨
-        // 이제 오직 드래그 시작만 연결합니다.
-        
         if (game.turnOwner === "player" && player.ap >= data.cost) {
+            // [핵심 변경] 마우스와 터치 둘 다 연결
             el.onmousedown = (e) => startDrag(e, idx, cName);
+            el.ontouchstart = (e) => startDrag(e, idx, cName);
         } else {
             el.onclick = () => log("🚫 행동력이 부족하거나 사용할 수 없습니다.");
         }
@@ -1552,6 +1580,7 @@ function renderHand() {
         container.appendChild(el);
     });
 }
+
 // [수정됨] openPileView: 목록 창에서도 일반 카드처럼 보이게 수정
 function openPileView(type) {
     const title = document.getElementById('popup-title'); const content = document.getElementById('popup-content'); const btns = document.getElementById('popup-buttons');
@@ -1777,10 +1806,9 @@ let drag = { active: false, cardIdx: -1, cardName: "", startX: 0, startY: 0, ori
 
 /* [수정] 드래그 시작 함수 (텍스트 즉시 변환 제거) */
 function startDrag(e, idx, name, type = 'card') {
-    if (e.button !== 0) return; 
+  // 마우스 우클릭 방지 (터치는 button 속성이 없음)
+    if (e.type === 'mousedown' && e.button !== 0) return; 
     if (e.target.tagName === 'BUTTON') return;
-
-    e.preventDefault();
 
     drag.active = true;
     drag.type = type; 
@@ -1811,39 +1839,50 @@ function startDrag(e, idx, name, type = 'card') {
     // ---------------------------------------
 
     document.getElementById('drag-layer').style.display = 'block';
-    
+ // [핵심 변경] 마우스와 터치 이동/종료 이벤트 모두 연결
+    // { passive: false } 옵션은 모바일 스크롤 방지를 위해 중요함
     document.addEventListener('mousemove', onDragMove);
     document.addEventListener('mouseup', onDragEnd);
+    
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('touchend', onDragEnd);
 }
 
 /* [수정] 드래그 이동 함수 (핸드 영역 벗어나면 수치 변환) */
 function onDragMove(e) {
     if (!drag.active) return;
+    if(e.cancelable) e.preventDefault(); // 모바일 스크롤 방지
+
+    // 좌표 추출
+    const pos = getClientPos(e);
+    let endX = pos.x; 
+    let endY = pos.y;
 
     // 화살표 그리기
     const path = document.getElementById('drag-path');
     const head = document.getElementById('drag-head');
-    let endX = e.clientX; let endY = e.clientY;
     let cpX = (drag.startX + endX) / 2; let cpY = Math.min(drag.startY, endY) - 100;
     path.setAttribute("d", `M${drag.startX},${drag.startY} Q${cpX},${cpY} ${endX},${endY}`);
     head.setAttribute("cx", endX); head.setAttribute("cy", endY);
 
-    // 타겟 판정 (핸드 영역 밖인지 확인)
+    // ★ [복구된 코드] 타겟 판정 변수 선언
     let targetInfo = getTargetUnderMouse(e);
     
+    // 데이터 가져오기
     let data;
     if (drag.type === 'card') data = CARD_DATA[drag.name];
     else data = ITEM_DATA[drag.name];
 
     let dragEl = document.getElementById((drag.type==='card')?`card-el-${drag.idx}`:`item-el-${drag.idx}`);
     
-    // 하이라이트 초기화
+    // 기존 하이라이트 초기화
     document.querySelectorAll('.enemy-unit').forEach(el => el.classList.remove('selected-target'));
     document.getElementById('player-char').classList.remove('selected-target');
 
     let validTarget = false;
     let aliveEnemies = enemies.filter(en => en.hp > 0);
 
+    // 타겟 하이라이트 로직
     if (targetInfo) {
         // A. 광역기
         if (data.targetType === 'all' || data.target === 'all') {
@@ -1857,8 +1896,7 @@ function onDragMove(e) {
                 document.getElementById(`enemy-unit-${targetInfo.unit.id}`).classList.add('selected-target');
                 validTarget = true;
             }
-            // [핵심] 적이 하나뿐이고 + 마우스가 '전투 구역(General)'에 들어왔을 때
-            // (핸드 영역에서는 targetInfo가 null이므로 이 조건이 발동 안 함 -> 텍스트 안 바뀜)
+            // [자동 타겟] 적이 하나뿐이고 + 마우스가 '전투 구역(General)'에 들어왔을 때
             else if (targetInfo.type === 'general' && aliveEnemies.length === 1) {
                 document.getElementById(`enemy-unit-${aliveEnemies[0].id}`).classList.add('selected-target');
                 validTarget = true;
@@ -1877,12 +1915,12 @@ function onDragMove(e) {
     if (drag.type === 'card') {
         let descEl = dragEl.querySelector('.card-desc');
         
-        // 1. 유효한 타겟팅 상태(핸드 밖으로 나가서 조준됨)일 때만 수치 변환
+        // 1. 유효한 타겟팅 상태일 때만 수치 변환
         if (validTarget) {
             let newText = calcPreview(drag.name, player);
             if (descEl.innerHTML !== newText) descEl.innerHTML = newText;
         } 
-        // 2. 핸드 영역 안이거나, 타겟이 없는 곳이면 원본 텍스트 복구
+        // 2. 아니면 원본 복구
         else {
             if (descEl.innerHTML !== drag.originalDesc) descEl.innerHTML = drag.originalDesc;
         }
@@ -1897,12 +1935,17 @@ function onDragMove(e) {
         dragEl.style.zIndex = "auto";
     }
 }
+
 /* [수정] 드래그 종료 (텍스트 복구 포함) */
 function onDragEnd(e) {
     if (!drag.active) return;
     
+   // [핵심] 리스너 모두 제거
     document.removeEventListener('mousemove', onDragMove);
     document.removeEventListener('mouseup', onDragEnd);
+    document.removeEventListener('touchmove', onDragMove);
+    document.removeEventListener('touchend', onDragEnd);
+
     document.getElementById('drag-layer').style.display = 'none';
     
     // UI 복구
@@ -1975,26 +2018,28 @@ function onDragEnd(e) {
 }
 
 /* [수정] 마우스 아래 타겟 판정 (좌표 기반 핸드 영역 감지) */
+/* [수정] getTargetUnderMouse: 모바일 좌표 지원 */
 function getTargetUnderMouse(e) {
-    // 1. [핵심 수정] 핸드 영역 감지 (좌표 계산 방식)
-    // CSS의 pointer-events: none 때문에 elementFromPoint로는 핸드 영역이 감지되지 않음.
-    // 따라서 직접 좌표(BoundingRect)를 확인해야 함.
+    // 1. 핸드 영역 감지 (좌표 계산)
     const handArea = document.getElementById('hand-container');
     const handRect = handArea.getBoundingClientRect();
+    
+    // [핵심] 좌표 추출
+    const pos = getClientPos(e); // {x: ..., y: ...}
+    const x = pos.x;
+    const y = pos.y;
 
-    // 마우스가 핸드 영역 사각형 안에 있다면 -> 타겟팅 중단 (null 반환)
-    if (e.clientX >= handRect.left && e.clientX <= handRect.right &&
-        e.clientY >= handRect.top && e.clientY <= handRect.bottom) {
+    // 마우스/터치가 핸드 영역 사각형 안에 있다면 -> 타겟팅 중단
+    if (x >= handRect.left && x <= handRect.right &&
+        y >= handRect.top && y <= handRect.bottom) {
         return null; 
     }
 
-    // 2. 여기서부터는 핸드 영역 밖임이 확실함
-    let el = document.elementFromPoint(e.clientX, e.clientY);
+    // 2. 해당 좌표의 요소 확인
+    let el = document.elementFromPoint(x, y);
     if (!el) return null;
 
-    // 3. 특정 유닛(적/플레이어) 위에 있는 경우
-    
-    // 3-1. 적 확인
+    // 3. 유닛 확인
     let enemyUnit = el.closest('.enemy-unit');
     if (enemyUnit) {
         let id = parseInt(enemyUnit.id.split('-')[2]); 
@@ -2002,11 +2047,9 @@ function getTargetUnderMouse(e) {
         if (target && target.hp > 0) return { type: 'specific', unit: target };
     }
 
-    // 3-2. 플레이어 확인
     if (el.closest('#player-char')) return { type: 'specific', unit: player };
 
-    // 4. 특정 유닛은 아니지만, 전투 화면(Container) 내부인 경우 -> '허공(General)' 판정
-    // (이미 1번에서 핸드 영역은 걸러졌으므로, 여기는 무조건 핸드 밖의 전투 구역임)
+    // 4. 전투 구역(허공) 확인
     if (el.closest('.container') && !el.closest('.top-bar')) {
         return { type: 'general' };
     }
