@@ -160,15 +160,50 @@
         
         padding: 10px 10px 0 10px; /* 아래쪽 패딩 0 */
         margin-bottom: 0px !important; /* [핵심] 아래쪽 여백 강제 제거 */
-        
+        /* [수정] 아래로 밀어내는 기능 제거하고, 위쪽 간격만 살짝 줌 */
+        margin-top: 20px;
         /* 확대 시 잘림 방지용 */
         overflow: visible; 
         }
         .hand-area::-webkit-scrollbar {
             display: none; /* Chrome, Safari, Opera */
         }
-        .log-area { height: 120px; overflow-y: auto; background: #111; border: 1px solid #444; padding: 10px; text-align: left; font-size: 0.9em; margin-bottom: 10px; color: #bbb; border-radius: 5px; }
+       /* [수정] 로그 영역: 높이와 여백을 부모 컨테이너에 맞김 */
+        .log-area { 
+            /* height: 120px;  <-- 기존 높이 제거 (부모 높이 따라감) */
+            height: 100%;      /* 부모 높이 꽉 채움 */
+            flex: 1;           /* 남은 가로 공간 모두 차지 */
+            overflow-y: auto; 
+            background: #111; 
+            border: 1px solid #444; 
+            padding: 10px; 
+            text-align: left; 
+            font-size: 0.9em; 
+            /* margin-bottom: 10px; <-- 제거 */
+            color: #bbb; 
+            border-radius: 5px; 
+        }
 
+        /* [추가] 로그와 버튼을 감싸는 컨테이너 */
+        .control-group {
+            display: flex;          /* 가로 배치 */
+            gap: 10px;              /* 사이 간격 */
+            height: 120px;          /* 전체 높이 고정 */
+            margin-bottom: 10px;    /* 아래쪽 카드 영역과 간격 */
+            align-items: stretch;   /* 높이 꽉 채우기 */
+        }
+
+        /* [추가] 턴 종료 버튼 커스텀 스타일 */
+        .btn-end-turn-side {
+            width: 100px;           /* 버튼 너비 */
+            font-size: 1.2em;
+            font-weight: bold;
+            word-break: keep-all;   /* 텍스트 줄바꿈 방지 */
+            line-height: 1.2;
+            display: flex;          /* 텍스트 정중앙 정렬 */
+            align-items: center;
+            justify-content: center;
+        }
         /* 카드 스타일 */
         .card { 
             background: #ecf0f1; color: #2c3e50; width: 100px; height: 140px; 
@@ -233,7 +268,10 @@
         <span id="game-info" style="font-weight:bold; font-size:1.1em;">Lv.1 | 💰 0원</span>
         <span id="turn-info">게임 시작 대기</span>
     </div>
-
+    <div style="margin-left: auto; display: flex; gap: 5px;">
+        <button class="small-btn" onclick="saveGame()">💾 저장</button>
+        <button class="small-btn" onclick="loadGame()">📂 로드</button>
+    </div>
     <div class="inventory-area">
         <div class="inv-label">👑 유물:</div>
         <div class="item-list" id="relic-list"></div>
@@ -242,41 +280,42 @@
     </div>
 
     <div id="battle-scene" class="scene">
-        <div class="battle-area">
-    <div class="character" id="player-char">
-        <h3 style="margin:5px 0;">👤 플레이어</h3>
-        <img id="p-img" src="https://placehold.co/150x150/3498db/ffffff?text=Hero" alt="Player" class="char-img">
-        
-        <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar"></div></div>
-        <div>HP: <span id="p-hp">25</span>/<span id="p-max-hp">25</span> <span class="block-icon">🛡️<span id="p-block">0</span></span></div>
-        <div class="stats" id="p-stats">공1 방1 속1</div>
-        <div class="buffs" id="p-buffs"></div>
-        <div style="margin-top: 10px; display: flex; justify-content: center; gap: 5px;">
-            <button id="btn-draw-pile" class="small-btn" onclick="openPileView('draw')">덱 (0)</button>
-            <button id="btn-discard-pile" class="small-btn" onclick="openPileView('discard')">버림 (0)</button>
-            <button id="btn-exhaust-pile" class="small-btn" onclick="openPileView('exhaust')">소멸 (0)</button>
-        </div>
-    </div>
-
-    <div class="character" id="enemy-char">
-        <h3 id="e-name" style="margin:5px 0;">👿 허수아비</h3>
-        <img id="e-img" src="https://placehold.co/150x150/e74c3c/ffffff?text=Enemy" alt="Enemy" class="char-img">
-        
-        <div class="hp-bar-bg"><div class="hp-bar-fill" id="e-hp-bar"></div></div>
-        <div>HP: <span id="e-hp">25</span>/<span id="e-max-hp">25</span> <span class="block-icon">🛡️<span id="e-block">0</span></span></div>
-        <div class="stats" id="e-stats">공1 방1 속1</div>
-        <div class="buffs" id="e-buffs"></div>
-    </div>
-</div>
-
-        <div class="log-area" id="log-box"></div>
-        <div class="hand-area" id="hand-container"></div>
-        <div style="margin-top:auto;">
-            <div style="margin-top: 1vh; margin-bottom: 3vh;">
-                <button id="end-turn-btn" class="action-btn" onclick="endPlayerTurn()">턴 종료</button>
+    <div class="battle-area">
+        <div class="character" id="player-char">
+            <h3 style="margin:5px 0;">👤 플레이어</h3>
+            <img id="p-img" src="https://placehold.co/150x150/3498db/ffffff?text=Hero" alt="Player" class="char-img">
+            
+            <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar"></div></div>
+            <div>HP: <span id="p-hp">25</span>/<span id="p-max-hp">25</span> <span class="block-icon">🛡️<span id="p-block">0</span></span></div>
+            <div class="stats" id="p-stats">공1 방1 속1</div>
+            <div class="buffs" id="p-buffs"></div>
+            <div style="margin-top: 10px; display: flex; justify-content: center; gap: 5px;">
+                <button id="btn-draw-pile" class="small-btn" onclick="openPileView('draw')">덱 (0)</button>
+                <button id="btn-discard-pile" class="small-btn" onclick="openPileView('discard')">버림 (0)</button>
+                <button id="btn-exhaust-pile" class="small-btn" onclick="openPileView('exhaust')">소멸 (0)</button>
             </div>
         </div>
+
+        <div class="character" id="enemy-char">
+            <h3 id="e-name" style="margin:5px 0;">👿 허수아비</h3>
+            <img id="e-img" src="https://placehold.co/150x150/e74c3c/ffffff?text=Enemy" alt="Enemy" class="char-img">
+            
+            <div class="hp-bar-bg"><div class="hp-bar-fill" id="e-hp-bar"></div></div>
+            <div>HP: <span id="e-hp">25</span>/<span id="e-max-hp">25</span> <span class="block-icon">🛡️<span id="e-block">0</span></span></div>
+            <div class="stats" id="e-stats">공1 방1 속1</div>
+            <div class="buffs" id="e-buffs"></div>
+        </div>
     </div>
+
+    <div class="control-group">
+        <div class="log-area" id="log-box"></div>
+        <button id="end-turn-btn" class="action-btn btn-end-turn-side" onclick="endPlayerTurn()">
+            턴<br>종료
+        </button>
+    </div>
+
+    <div class="hand-area" id="hand-container"></div>
+</div>
 
     <div id="event-scene" class="scene hidden">
         <div class="event-content" id="event-content-box"></div>
@@ -1079,6 +1118,54 @@ function playAnim(elementId, animClass) {
     setTimeout(() => {
         el.classList.remove(animClass);
     }, 600); // 가장 긴 애니메이션 시간(0.6s)에 맞춤
+}
+/* --- [추가] 저장 및 불러오기 시스템 --- */
+
+function saveGame() {
+    // 1. 저장할 데이터 묶기
+    const saveData = {
+        playerData: player,       // 플레이어의 모든 정보 (덱, 체력, 아이템 등)
+        gameLevel: game.level     // 현재 레벨
+    };
+
+    // 2. 브라우저 저장소(Local Storage)에 'myRPG_save'라는 이름으로 저장
+    // 객체(Object)는 저장 못 하므로 JSON.stringify로 문자열로 변환합니다.
+    localStorage.setItem('myRPG_save', JSON.stringify(saveData));
+
+    // 3. 알림
+    alert("게임이 저장되었습니다! (브라우저를 닫아도 유지됩니다)");
+}
+
+function loadGame() {
+    // 1. 저장소에서 데이터 가져오기
+    const saveString = localStorage.getItem('myRPG_save');
+
+    // 2. 데이터가 없으면 중단
+    if (!saveString) {
+        alert("저장된 파일이 없습니다.");
+        return;
+    }
+
+    // 3. 데이터 복구
+    try {
+        const loadedData = JSON.parse(saveString); // 문자열을 다시 객체로 변환
+
+        // 데이터 덮어쓰기
+        player = loadedData.playerData;
+        game.level = loadedData.gameLevel;
+
+        // [중요] 불러온 뒤, 현재 레벨의 전투를 '처음부터' 다시 시작
+        // (전투 중간 상태까지 완벽하게 저장하는 건 매우 복잡하므로, 체크포인트 방식 사용)
+        alert(`Lv.${game.level} 데이터를 불러왔습니다.`);
+        
+        // UI 갱신 및 전투 재시작
+        updateUI();
+        startBattle(); 
+
+    } catch (e) {
+        console.error(e);
+        alert("세이브 파일이 손상되어 불러올 수 없습니다.");
+    }
 }
 </script>
 </body>
