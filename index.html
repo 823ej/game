@@ -148,23 +148,21 @@
         .hp-bar-bg { background: #222; height: 20px; border-radius: 10px; margin: 10px 0; overflow: hidden; border: 1px solid #555; }
         .hp-bar-fill { background: #e74c3c; height: 100%; width: 100%; transition: 0.5s; }
         
-       /* [수정] 카드 영역 스타일 */
+        /* [수정] 핸드 영역: 줄바꿈 금지(nowrap) 및 오버플로우 허용 */
         .hand-area { 
-        display: flex; 
-        justify-content: center; 
-        flex-wrap: wrap;        /* 줄바꿈 허용 */
-        gap: 10px;              /* 카드 사이 간격 */
-        
-        min-height: 150px;      /* 카드가 없어도 최소 높이 유지 */
-        align-content: flex-start; /* [중요] 카드를 위쪽부터 채움 (중앙 정렬하면 위아래가 벌어질 수 있음) */
-        
-        padding: 10px 10px 0 10px; /* 아래쪽 패딩 0 */
-        margin-bottom: 0px !important; /* [핵심] 아래쪽 여백 강제 제거 */
-        /* [수정] 아래로 밀어내는 기능 제거하고, 위쪽 간격만 살짝 줌 */
-        margin-top: 20px;
-        /* 확대 시 잘림 방지용 */
-        overflow: visible; 
+            display: flex; 
+            justify-content: center; 
+            flex-wrap: nowrap;      /* [핵심] 줄바꿈 안 함 */
+            align-items: flex-end;  /* 아래쪽 정렬 */
+            
+            height: 160px;          /* 높이 고정 (카드 팝업 공간 확보) */
+            padding: 10px;
+            margin-top: 20px;
+            
+            overflow: visible;      /* 카드가 위로 튀어 올라도 잘리지 않게 */
+            pointer-events: none;   /* 빈 공간 클릭 방지 (카드만 클릭되게) */
         }
+
         .hand-area::-webkit-scrollbar {
             display: none; /* Chrome, Safari, Opera */
         }
@@ -211,8 +209,26 @@
             display: flex; flex-direction: column; justify-content: space-between;
             border: 2px solid #bdc3c7; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             position: relative;
+            /* [핵심] 겹치기 스타일 */
+            flex-shrink: 0;         /* 공간 좁아도 카드 크기 줄어들지 않음 */
+            margin-left: -40px;     /* [핵심] 왼쪽으로 -40px만큼 겹침! */
+            transition: all 0.2s ease-out; /* 부드러운 움직임 */
+            pointer-events: auto;   /* 카드는 클릭 가능 */
+            transform-origin: bottom center;
         }
-        .card:hover { transform: translateY(-15px) scale(1.05); border-color: #3498db; z-index: 5; }
+        /* 첫 번째 카드는 왼쪽으로 밀리지 않게 */
+        .card:first-child {
+            margin-left: 0;
+        }
+        /* [핵심] 마우스 올렸을 때(Hover) 효과 */
+        .card:hover { 
+            transform: translateY(-50px) scale(1.1) rotate(0deg) !important; /* 위로 쑥 올라옴 */
+            z-index: 100;           /* 제일 앞으로 가져오기 */
+            margin-left: 10px;      /* 양옆 공간 살짝 확보 */
+            margin-right: 10px;
+            border-color: #f1c40f;  /* 테두리 강조 */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
         .card.disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); transform: none; }
         .card-cost { background: #3498db; color: white; width: 25px; height: 25px; border-radius: 50%; text-align: center; line-height: 25px; font-weight: bold; position: absolute; top: -10px; left: -10px; }
         .card-name { font-weight: bold; margin-top: 10px; font-size: 1.1em; }
@@ -228,7 +244,24 @@
             font-size: 1.2em; 
             text-shadow: 0 1px 2px rgba(0,0,0,0.8); /* 잘 보이게 그림자 추가 */
         }
-
+        /* [추가] 모바일 가로 모드 강제 오버레이 */
+        #rotate-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            color: #fff;
+            z-index: 9999;
+            display: none; /* 평소엔 숨김 */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        /* 화면 너비가 768px 이하(모바일)이고, 세로 모드(portrait)일 때만 보임 */
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            #rotate-overlay { display: flex; }
+            .container { display: none; } /* 게임 화면 숨김 */
+        }
         /* 이벤트(상점/휴식) 전체 화면 스타일 */
         #event-scene { justify-content: center; align-items: center; text-align: center; }
         .event-content { background: #2c3e50; padding: 40px; border-radius: 15px; width: 100%; max-width: 600px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); border: 1px solid #34495e; }
@@ -262,7 +295,11 @@
     </style>
 </head>
 <body>
-
+    <div id="rotate-overlay">
+        <div style="font-size: 3em;">📱↔️</div>
+        <h2 style="margin: 20px;">가로 모드로 돌려주세요</h2>
+        <p>더 넓은 화면에서 쾌적한 카드 게임을 즐기세요!</p>
+    </div>
 <div class="container">
     <div class="top-bar">
         <span id="game-info" style="font-weight:bold; font-size:1.1em;">Lv.1 | 💰 0원</span>
@@ -359,7 +396,7 @@ const CARD_DATA = {
 
     // 특수 기능 (special 태그 사용)
     "방패 부수기": { rank: 2, cost: 2, type: "attack", desc: "적 방어도 제거, 적 HP -2", special: "break_block", dmg: 2 },
-
+    "주머니 뒤지기": { rank: 2, cost: 1, type: "skill", desc: "방어도 +2, 카드 2장 뽑기", block: 2, draw: 1 },
     // 3성
     "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: {name:"강화", val:2}, target:"self", dmg: 8 },
     "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, isExhaust: true }
@@ -670,8 +707,12 @@ function useCard(user, target, cardName) {
         }
         applyBuff(buffTarget, buffName, buffVal);
     }
-
-    // [수정] 4. 실시간 턴 재계산 (한 라운드에 1번만 발동)
+    // 4. [드로우 효과]
+        if (data.draw && user === player) {
+            drawCards(data.draw);
+            log(`🃏 카드를 ${data.draw}장 뽑았습니다.`);
+        }
+    // [수정] 5. 실시간 턴 재계산 (한 라운드에 1번만 발동)
     // -----------------------------------------------------------
     if (user === player) {
         let pSpd = getStat(player, 'spd');
@@ -946,16 +987,34 @@ function getRandomCard() { let r = Math.random()*100; let rank = (r<70)?1:(r<95)
 function getRandomItem(typeFilter) { let pool = Object.keys(ITEM_DATA); if (typeFilter) pool = pool.filter(k => ITEM_DATA[k].type === typeFilter); let r=Math.random()*100; let rank=(r<70)?1:(r<90)?2:3; let rankPool=pool.filter(k=>ITEM_DATA[k].rank===rank); if(rankPool.length===0) rankPool=pool; return rankPool[Math.floor(Math.random()*rankPool.length)]; }
 
 /* --- UI Render Helpers --- */
+/* [수정] drawCards 함수: 최대 10장 제한 추가 */
 function drawCards(n) {
-    player.hand = [];
+    const MAX_HAND_SIZE = 10; // 최대 핸드 매수 설정
+
     for(let i=0; i<n; i++) {
-        if (player.drawPile.length === 0) {
-            if (player.discardPile.length > 0) { log("🔄 덱 리필!"); player.drawPile = [...player.discardPile]; player.discardPile = []; shuffle(player.drawPile); }
-            else break;
+        // 1. 핸드가 가득 찼는지 확인
+        if (player.hand.length >= MAX_HAND_SIZE) {
+            log("🚫 손패가 가득 찼습니다! (최대 10장)");
+            break; // 반복문 즉시 종료
         }
-        if (player.drawPile.length > 0) player.hand.push(player.drawPile.pop());
+
+        // 2. 덱/버린 카드 확인 및 뽑기
+        if (player.drawPile.length === 0) {
+            if (player.discardPile.length > 0) { 
+                log("🔄 덱 리필!"); 
+                player.drawPile = [...player.discardPile]; 
+                player.discardPile = []; 
+                shuffle(player.drawPile); 
+            }
+            else break; 
+        }
+        
+        if (player.drawPile.length > 0) {
+            player.hand.push(player.drawPile.pop());
+        }
     }
-    renderHand(); updateUI();
+    renderHand(); 
+    updateUI();
 }
 
 function updateUI() {
