@@ -487,12 +487,15 @@ function startBattle() {
     player.hand = [];
     enemy.buffs = {}; player.buffs = {}; player.block = 0; enemy.block = 0; player.lucky = false; player.jumadeung = false;
     game.turnCount = 0; game.lastWho = null;
+    game.extraTurnTriggered = false; // [NEW] 추가 행동권 사용 여부 초기화
     log(`⚔️ Lv.${game.level} 전투 시작!`); updateUI(); nextTurnCycle();
 }
 
 async function nextTurnCycle() {
     if (checkGameOver()) return;
-    game.turnCount++; log(`---- Turn ${game.turnCount} ----`);
+    game.turnCount++; 
+    game.extraTurnTriggered = false; // [NEW] 새 라운드가 시작되면 다시 기회를 줌
+    log(`---- Turn ${game.turnCount} ----`);
     tickBuffs(player); tickBuffs(enemy);
     decrementBuffs(player); decrementBuffs(enemy);
     if (checkGameOver()) return;
@@ -580,26 +583,25 @@ function useCard(user, target, cardName) {
         applyBuff(buffTarget, buffName, buffVal);
     }
 
+    // [수정] 4. 실시간 턴 재계산 (한 라운드에 1번만 발동)
     // -----------------------------------------------------------
-    // [NEW] 4. 실시간 턴 재계산 (속도 변화 감지)
-    // -----------------------------------------------------------
-    // 카드를 쓰고 나서 속도가 변했는지 확인합니다.
     if (user === player) {
         let pSpd = getStat(player, 'spd');
         let eSpd = getStat(enemy, 'spd');
 
-        // 플레이어가 적보다 2배 이상 빨라졌는데,
-        if (pSpd >= eSpd * 2) {
-            // 아직 추가 행동권(내 턴)이 큐에 없다면?
+        // 조건 1: 속도가 2배 이상 차이남
+        // 조건 2: [NEW] 이번 라운드에 아직 추가 턴을 받지 않음 (!game.extraTurnTriggered)
+        if (pSpd >= eSpd * 2 && !game.extraTurnTriggered) {
+            
+            // 조건 3: 큐의 맨 앞이 이미 내 턴이 아닐 때 (중복 방지)
             if (game.currentQueue.length === 0 || game.currentQueue[0] !== "player") {
                 
-                // 큐의 맨 앞에 내 턴을 '새치기'로 넣습니다.
-                game.currentQueue.unshift("player");
+                game.currentQueue.unshift("player"); // 턴 새치기
+                game.extraTurnTriggered = true;      // [NEW] "나 받았다" 도장 쾅!
                 
-                log("⚡ 압도적인 속도! 턴 종료 후 한 턴 더 받습니다!");
-                showDamageText(player, "SPEED UP!"); // 시각적 알림
+                log("⚡ 압도적인 속도! 행동 기회를 즉시 획득합니다!");
+                if(typeof showDamageText === "function") showDamageText(player, "SPEED UP!");
                 
-                // UI 갱신 (예정된 턴 순서가 바뀌었으므로)
                 updateUI();
             }
         }
