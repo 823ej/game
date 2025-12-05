@@ -1894,8 +1894,7 @@ function drawCards(n) {
     updateUI();
 }
 
-/* [수정] UI 업데이트 함수 (적 상태이상 및 스탯 표시 복구) */
-/* [수정] UI 업데이트 함수 */
+/* [수정] UI 업데이트 함수 (HP 표시 개선 & 죽음 처리 수정) */
 function updateUI() {
     // 1. 상단 정보 (플레이어)
     let xpPercent = Math.floor((player.xp / player.maxXp) * 100);
@@ -1906,9 +1905,13 @@ function updateUI() {
             <div style="width:${xpPercent}%; height:100%; background:#3498db; transition: width 0.3s;"></div>
          </div>`;
 
-    // [NEW] 플레이어 바 HTML 결정
+    // 플레이어 바 HTML 결정
     let playerBarHTML = "";
-    if (game.state === "social") {
+    // ★ 수정: 게임이 끝났어도(win) 마지막 상태가 소셜이었다면 SP바를 보여줘야 함
+    // (간단히 판별하기 위해 현재 적이 NPC인지 확인하거나 state 체크)
+    let isSocialMode = (game.state === "social" || (game.state === "win" && enemies[0] && enemies[0].maxSp));
+
+    if (isSocialMode) {
         // 소셜 모드: SP 바 표시
         let spPct = Math.max(0, (player.sp / player.maxSp) * 100);
         playerBarHTML = `
@@ -1945,15 +1948,29 @@ function updateUI() {
 
     updateInventoryUI();
 
-    // 2. 적 UI 업데이트 (기존 코드와 동일)
+    // 2. 적 UI 업데이트
     if (!enemies || enemies.length === 0) return;
+    
     enemies.forEach(e => {
         let el = document.getElementById(`enemy-unit-${e.id}`);
         if (!el) return; 
 
+        // [핵심 수정] 죽은 경우 처리 (강제 갱신)
+        // 기존에는 classList 체크 때문에 갱신이 안 되는 경우가 있었습니다.
+        if (e.hp <= 0) {
+            el.className = 'enemy-unit dead';
+            el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
+            return;
+        } else {
+             el.className = 'enemy-unit'; // 산 상태면 dead 클래스 제거
+        }
+
         // [소셜 모드 적 UI 로직]
+        // 적에게 maxSp 속성이 있으면 소셜 NPC로 간주
+        let isSocialEnemy = (e.maxSp !== undefined); 
         let barHTML = "";
-        if (game.state === "social" || game.state === "win") {
+
+        if (isSocialEnemy) {
             let spPct = Math.min(100, Math.max(0, (e.hp / 200) * 100));
             let barColor = `linear-gradient(90deg, #e74c3c 0%, #f1c40f 50%, #3498db 100%)`;
             barHTML = `
@@ -1964,12 +1981,13 @@ function updateUI() {
                 </div>
             `;
         } else {
+            // 일반 적
             let hpPct = Math.max(0, (e.hp / e.maxHp) * 100);
             barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
         }
 
         let intent = "💤";
-        if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = (game.state === "social") ? "💬" : "⚔️";
+        if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = isSocialEnemy ? "💬" : "⚔️";
 
         let buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
 
@@ -1977,10 +1995,16 @@ function updateUI() {
             <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} ${intent}</div>
             <img src="${e.img}" alt="${e.name}" class="char-img" style="width:80px; height:80px;">
             ${barHTML} 
+            
             <div style="background:#444; height:6px; margin:2px 10px; border-radius:3px; overflow:hidden;">
                 <div style="background:#f1c40f; height:100%; width:${Math.min(100, (e.ag / game.AG_MAX) * 100)}%"></div>
             </div>
-            <div style="font-size:0.8em;">방어도: <span class="block-icon">🛡️${e.block}</span></div>
+
+            <div style="font-size:0.8em;">
+                ${isSocialEnemy ? "" : `HP: ${e.hp}/${e.maxHp}`} 
+                <span class="block-icon">🛡️${e.block}</span>
+            </div>
+
             <div class="stats" style="font-size:0.7em;">공${getStat(e,'atk')} 방${getStat(e,'def')} <span style="color:#f1c40f; font-weight:bold;">⚡${getStat(e,'spd')}</span></div>
             <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
         `;
