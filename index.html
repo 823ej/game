@@ -473,10 +473,8 @@
     </div>
 
     <div class="inventory-area">
-        <div class="inv-label">👑 유물:</div>
-        <div class="item-list" id="relic-list"></div>
-        <div style="width:20px;"></div> <div class="inv-label">🧪 소모품:</div>
-        <div class="item-list" id="consumable-list"></div>
+     <div class="inv-label">🎒 가방 (<span id="inv-count">0</span>/6):</div>
+    <div class="item-list" id="inventory-list"></div>
     </div>
 <div id="exploration-scene" class="scene hidden">
     <div class="scenario-header">
@@ -654,25 +652,29 @@ Object.assign(CARD_DATA, SOCIAL_CARD_DATA);
 
 /* [삭제] NPC_ACTIONS 변수 및 Object.assign(CARD_DATA, NPC_ACTIONS) 코드는 이제 지워졌습니다. */
 
-/* [수정] 대화 상대(NPC) 데이터 (공용 카드 사용) */
+/* [수정] 대화 상대(NPC) 데이터 (100/50 스케일 적용) */
 const NPC_DATA = {
     "겁먹은 목격자": {
         name: "겁먹은 목격자",
-        maxSp: 200, sp: 100, 
+        maxSp: 100, sp: 50, // [변경] 200/100 -> 100/50
         baseAtk: 2, baseDef: 0, baseSpd: 2,
-        // [수정] 공용 카드 덱 (침묵, 비명, 미소짓기 등)
         deck: ["침묵", "비명", "미소짓기", "안부 묻기"], 
         img: "https://placehold.co/100x100/7f8c8d/ffffff?text=Witness",
-        desc: "무언가 끔찍한 것을 본 것 같다. 대화가 통할까?"
+        desc: "무언가 끔찍한 것을 본 것 같다. 대화가 통할까?",
+        likes: ["drink", "food", "warm", "money"], 
+        dislikes: ["weapon", "horror", "noise"],
+        battle: { maxHp: 40, stats: { atk: 2, def: 0, spd: 4 }, deck: ["타격", "비명", "수비"] }
     },
     "부패 경찰": {
         name: "부패 경찰",
-        maxSp: 200, sp: 100,
+        maxSp: 100, sp: 50, // [변경] 200/100 -> 100/50
         baseAtk: 3, baseDef: 2, baseSpd: 3,
-        // [수정] 공용 카드 덱 (증거 제시, 인상 쓰기, 책상 내려치기, 무시)
         deck: ["증거 제시", "인상 쓰기", "책상 내려치기", "무시"],
         img: "https://placehold.co/100x100/2c3e50/ffffff?text=Police",
-        desc: "돈 냄새를 맡고 왔다. 입이 무겁지만 돈에는 약하다."
+        desc: "돈 냄새를 맡고 왔다. 뇌물이면 통하겠지만, 장난감 같은 건 싫어한다.",
+        likes: ["money", "valuable", "alcohol"], 
+        dislikes: ["toy", "trash", "paper"],
+        battle: { maxHp: 80, stats: { atk: 4, def: 2, spd: 2 }, deck: ["타격", "방패 부수기", "수비", "사격"] }
     }
 };
 
@@ -703,41 +705,40 @@ function applyTooltip(text) {
     return res;
 }
 
-/* --- 데이터 (아이템) --- */
-/* [수정] ITEM_DATA 전체를 이걸로 업데이트하세요 */
+/* [수정] 아이템 데이터 (통합 시스템) */
 const ITEM_DATA = {
-    // --- 유물 ---
-    "쿠보탄": {type: "relic", rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (패시브)"},
-    "강인함의 부적": {type: "relic", rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (패시브)"},
-    "좋은 운동화": {type: "relic", rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (패시브)"},
-    "울끈불끈 패딩": {type: "relic", rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 증가"},
-    "황금 대타": {type: "relic", rank: 3, price: 4000, icon: "🏺", desc: "사망 시 1000원을 소모하여 부활"},
+    // --- 패시브 아이템 (구 유물) ---
+    "쿠보탄": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (보유 효과)", tags: ["weapon", "tool"]},
+    "강인함의 부적": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (보유 효과)", tags: ["charm", "accessory"]},
+    "좋은 운동화": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (보유 효과)", tags: ["clothes", "brand"]},
+    "울끈불끈 패딩": {type: "item", usage: "passive", rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 (보유 효과)", tags: ["clothes", "warm"]},
+    "황금 대타": {type: "item", usage: "passive", rank: 3, price: 4000, icon: "🏺", desc: "부활 1회 (보유 효과)", tags: ["magic", "valuable"]},
 
-    // --- 소모품 (target 추가) ---
-    // target: "self" (자신 사용)
-    "회복약": {type: "consumable", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복", effect: "heal", val: 25, target: "self"},
+    // --- 소모성 아이템 ---
+    "회복약": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복 (사용 시 소모)", effect: "heal", val: 25, target: "self", tags: ["drink", "alcohol"]},
+    "호신용 스프레이": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🧴", desc: "적 10 피해 (사용 시 소모)", effect: "damage", val: 10, target: "enemy", tags: ["weapon", "chemical"]},
+    "피난의 피리": {type: "item", usage: "consume", rank: 2, price: 2000, icon: "🎼", desc: "다음 이벤트 휴식 고정", effect: "event_rest", target: "self", tags: ["instrument", "noise"]},
+    "뇌물 봉투": {type: "item", usage: "consume", rank: 2, price: 1500, icon: "✉️", desc: "NPC 호감도 대폭 상승", effect: "none", target: "enemy", tags: ["money", "paper"]},
+    "공포 영화 포스터": {type: "item", usage: "consume", rank: 1, price: 500, icon: "👻", desc: "NPC 멘탈 감소", effect: "none", target: "enemy", tags: ["horror", "paper"]},
     
-    // target: "enemy" (적에게 드래그)
-    "호신용 스프레이": {type: "consumable", rank: 1, price: 1000, icon: "🧴", desc: "적에게 10 피해", effect: "damage", val: 10, target: "enemy"},
-    
-    // target: "self" (즉시 발동)
-    "피난의 피리": {type: "consumable", rank: 2, price: 2000, icon: "🎼", desc: "다음 이벤트를 [휴식]으로 고정", effect: "event_rest", target: "self"},
-    
-    // effect: "revive" -> 사용 불가(패시브형 소모품)
-    "대타 인형": {type: "consumable", rank: 3, price: 3000, icon: "🧸", desc: "사망 시 자동 부활", effect: "revive", target: "passive"},
-    "뇌물 봉투": {type: "consumable", rank: 2, price: 1500, icon: "✉️", desc: "NPC 호감도 +30", effect: "mood", val: 30, target: "enemy"},
-"공포 영화 포스터": {type: "consumable", rank: 1, price: 500, icon: "👻", desc: "NPC 멘탈 -20", effect: "mood", val: -20, target: "enemy"}
+    // --- 특수 (패시브지만 소모품처럼 취급되었던 것들) ---
+    // 대타 인형은 가지고 있으면 효과가 발동하고 사라지므로 'passive'에 가깝지만 로직상 특수 처리
+    "대타 인형": {type: "item", usage: "passive", rank: 3, price: 3000, icon: "🧸", desc: "사망 시 자동 소모하여 부활", effect: "revive", target: "passive", tags: ["doll", "toy"]}
 };
 /* --- 상태 변수 --- */
+/* [수정] 플레이어 상태 (인벤토리 통합) */
 let player = { 
     maxHp: 30, hp: 30, 
-    maxSp: 200, sp: 100, // [NEW] 멘탈(SP) 추가 (0~200)
+    maxSp: 100, sp: 100, 
     baseAtk: 1, baseDef: 1, baseSpd: 3, 
     gold: 0, deck: [], hand: [], block: 0, buffs: {}, ap: 3, 
     jumadeung: false, lucky: false,
-    drawPile: [], discardPile: [], 
-    exhaustPile: [], 
-    relics: [], consumables: [],
+    drawPile: [], discardPile: [], exhaustPile: [], 
+    
+    // [NEW] 통합 인벤토리
+    inventory: [],      // 아이템 이름들이 들어감 (예: ["쿠보탄", "회복약"])
+    maxInventory: 6,    // 최대 소지 개수 제한
+    
     xp: 0, maxXp: 100 
 };
 let enemies = [];
@@ -839,54 +840,47 @@ function initGame() {
     renderExploration();
 }
 
-/* [수정] 대화(탐문) 모드 시작 (초기화 순서 변경) */
+/* [수정] 대화 모드 시작 (100/50 스케일 적용) */
 function startSocialBattle(npcKey) {
-    // 1. 데이터 초기화
     game.state = "social";
     game.totalTurns = 0;
     game.isBossBattle = false;
 
-    // 플레이어 상태 리셋 (소셜 덱 장전)
-    player.sp = 100;
-    player.maxSp = 200;
-    player.drawPile = [...player.socialDeck];
+    // 덱 교체
+    player.drawPile = [...player.socialDeck]; 
     shuffle(player.drawPile);
-    player.discardPile = [];
-    player.exhaustPile = [];
-    player.hand = [];
-    player.buffs = {};
-    player.block = 0;
-    player.ag = 0;
+    player.discardPile = []; player.exhaustPile = []; player.hand = [];
+    player.buffs = {}; player.block = 0; player.ag = 0;
 
-    // 2. 이전 카드 지우기
     renderHand();
 
-    // 3. NPC 생성
     enemies = [];
     let data = NPC_DATA[npcKey];
-    enemies.push({
-        id: 0,
-        name: data.name,
-        maxHp: 200, hp: 100, maxSp: 200,
+    enemies.push({ 
+        id: 0, 
+        name: data.name, 
+        // [변경] HP(SP) 50, MaxHP(MaxSP) 100 설정
+        maxHp: 100, hp: 50, maxSp: 100, 
         baseAtk: data.baseAtk, baseDef: data.baseDef, baseSpd: data.baseSpd,
-        block: 0, buffs: {}, deck: data.deck, img: data.img, ag: 0
+        block: 0, buffs: {}, deck: data.deck, img: data.img, ag: 0,
+        patience: 6 + Math.floor(Math.random() * 4),
+        maxPatience: 9
     });
 
-    log(`💬 [${data.name}]와(과) 대화를 시작합니다!`);
+    log(`💬 [${data.name}]와(과) 대화를 시작합니다! (목표: SP 0 또는 100)`);
 
-    // 4. 화면 전환
-    switchScene('battle');
+    switchScene('battle'); 
     renderEnemies();
-    updateUI();
+    updateUI(); 
     processTimeline();
 }
 
-/* [수정] 소셜 임팩트 적용 */
+/* [수정] 소셜 임팩트 적용 (플레이어는 무조건 SP 피해) */
 function applySocialImpact(target, val) {
     let absVal = Math.abs(val);
     let effectiveVal = absVal;
 
-    // 방어도(마음의 벽) 체크
+    // 1. 방어도(마음의 벽) 체크
     if (target.block > 0) {
         if (target.block >= absVal) {
             target.block -= absVal;
@@ -899,45 +893,84 @@ function applySocialImpact(target, val) {
     }
 
     if (effectiveVal > 0) {
+        // [CASE A] 대상이 플레이어일 때 (방어하는 입장)
         if (target === player) {
-            // [NEW] 플레이어는 SP 변동
-            if (val < 0) {
-                target.sp -= effectiveVal;
-                showDamageText(target, `💔-${effectiveVal}`);
-            } else {
-                target.sp += effectiveVal;
-                showDamageText(target, `❤️+${effectiveVal}`);
-            }
-        } else {
-            // 적(NPC)은 HP를 SP로 사용
+            // NPC가 긍정적(양수)인 행동을 했든, 부정적(음수)인 행동을 했든
+            // 플레이어는 '정신력(SP)'을 잃습니다.
+            
+            target.sp -= effectiveVal; // 무조건 감소
+
+            // 연출 분기
             if (val > 0) {
-                target.hp += effectiveVal; // 호감
+                // 긍정적 공격 (유혹, 회유, 기만) -> 💖 매료됨
+                log(`😵 상대의 언변에 마음이 흔들립니다! (SP -${effectiveVal})`);
+                showDamageText(target, `💖-${effectiveVal}`);
+            } else {
+                // 부정적 공격 (공포, 협박, 충격) -> 💔 상처입음
+                log(`😱 정신적 충격을 받았습니다! (SP -${effectiveVal})`);
+                showDamageText(target, `💔-${effectiveVal}`);
+            }
+        } 
+        // [CASE B] 대상이 NPC일 때 (공략하는 입장)
+        else {
+            // 기존 로직 유지 (0이나 200으로 보냄)
+            if (val > 0) {
+                target.hp += effectiveVal; // 호감(설득) 쪽으로 이동
                 showDamageText(target, `❤️+${effectiveVal}`);
             } else {
-                target.hp -= effectiveVal; // 공포
+                target.hp -= effectiveVal; // 공포(굴복) 쪽으로 이동
                 showDamageText(target, `💔-${effectiveVal}`);
             }
         }
     }
     updateUI();
 }
-/* --- 인벤토리 시스템 --- */
+
+/* [수정] 아이템 획득 함수 (인벤토리 제한 적용) */
 function addItem(name) {
-    const data = ITEM_DATA[name];
-    if (data.type === 'relic') {
-        if (player.relics.includes(name)) return false; 
-        player.relics.push(name);
-        if (name === "울끈불끈 패딩") { player.maxHp += 50; player.hp += 50; log("🧥 패딩 장착! 최대 체력이 50 증가했습니다."); }
-    } else { player.consumables.push(name); }
-    updateInventoryUI(); return true;
+    // 1. 인벤토리 공간 확인
+    if (player.inventory.length >= player.maxInventory) {
+        log("🚫 가방이 꽉 찼습니다! (최대 6개)");
+        // (나중에 '버리기' 기능을 추가하거나 획득 취소 처리를 할 수 있음)
+        showPopup("가방 가득 참", `[${name}]을(를) 넣을 공간이 없습니다.<br>기존 아이템을 버리시겠습니까?`, [
+            {txt: "포기하기", func: closePopup}
+            // 여기에 '인벤토리 관리' 버튼을 넣어 교체하게 할 수도 있음
+        ]);
+        return false; 
+    }
+
+    // 2. 아이템 추가
+    player.inventory.push(name);
+    
+    // 3. 즉시 효과 적용 (최대 체력 증가 등 획득 시 발동하는 패시브)
+    if (name === "울끈불끈 패딩") { 
+        player.maxHp += 50; 
+        player.hp += 50; 
+        log("🧥 패딩 장착! 최대 체력이 50 증가했습니다."); 
+        updateUI();
+    }
+    
+    updateInventoryUI(); 
+    return true;
 }
-/* [수정] 아이템 사용 함수 */
-function useConsumable(index, target) {
-    const name = player.consumables[index];
+/* [수정] 아이템 사용 함수 (useItem으로 이름 변경) */
+function useItem(index, target) {
+    const name = player.inventory[index];
     const data = ITEM_DATA[name];
 
-    // 1. 검증
-    if (data.effect === "damage" && (game.state !== "battle" || game.turnOwner !== "player")) {
+    // 패시브 아이템은 직접 사용 불가 (단, 선물은 가능하게 할 수도 있음 - 아래 로직에서 처리)
+    // 여기서는 기본적으로 '사용(consume)' 속성이 아니면 사용 불가로 처리하되, 소셜 모드 선물은 예외 허용
+    
+    let isSocialGift = (game.state === "social" && target !== player);
+    
+    // 사용 불가 조건: (소모품 아님) AND (선물하기도 아님)
+    if (data.usage !== "consume" && !isSocialGift) {
+        log(`🚫 [${name}]은(는) 가지고 있으면 효과를 발휘합니다.`);
+        return;
+    }
+
+    // 전투 중 공격 아이템 체크
+    if (data.effect === "damage" && (game.state !== "battle" || game.turnOwner !== "player") && !isSocialGift) {
         log("🚫 전투 중 내 턴에만 가능합니다."); 
         return;
     }
@@ -945,104 +978,155 @@ function useConsumable(index, target) {
     let used = false;
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
 
-    // 2. 효과
-    switch (data.effect) {
-        case "mood":
-        if (game.state !== "social") {
-            log("🚫 대화 중에만 사용할 수 있습니다.");
-            return;
-        }
-        log(`🎁 [${name}] 선물!`);
-        applySocialImpact(target, data.val);
-        used = true;
-        break;
+    // --- 1. 소셜 모드 선물하기 ---
+    if (isSocialGift) {
+        log(`🎁 [${name}] 아이템을 선물합니다.`);
+        
+        // 1. 태그 매칭 계산
+        let npcData = NPC_DATA[enemies[0].name]; // 현재 NPC 데이터 원본 가져오기 (취향 확인용)
+        // NPC 이름 뒤에 ' A' 같은 게 붙어있을 수 있으므로 원본 이름을 찾아야 함. 
+        // 편의상 현재 enemies[0]의 이름에서 ' A' 등을 떼거나, 
+        // startSocialBattle에서 npcKey를 어딘가 저장해두는 게 좋지만, 
+        // 여기서는 간단히 NPC_DATA를 순회해서 찾거나 태그를 확인합니다.
+        
+        // (간단 구현: 현재 적 객체에 likes/dislikes가 없으므로 NPC_DATA에서 다시 찾음)
+        let originalNPC = Object.values(NPC_DATA).find(n => target.name.startsWith(n.name));
+        let likes = originalNPC ? (originalNPC.likes || []) : [];
+        let dislikes = originalNPC ? (originalNPC.dislikes || []) : [];
+        let tags = data.tags || [];
 
-        case "heal":
-            let healAmt = Math.min(target.maxHp - target.hp, data.val);
-            target.hp += healAmt;
-            log(`🍷 [${name}] 사용! HP +${healAmt}`);
+        // 2. 점수 계산
+        let score = 0;
+        let isLike = tags.some(t => likes.includes(t));
+        let isDislike = tags.some(t => dislikes.includes(t));
+
+        if (isLike) {
+            score = 40; // 좋아하는 물건: 호감도 대폭 상승
+            log(`🥰 효과가 굉장합니다! (취향 저격)`);
             playAnim(targetId, 'anim-bounce');
-            used = true;
-            break;
+        } 
+        else if (isDislike) {
+            score = -30; // 싫어하는 물건: 멘탈 타격 (공포/혐오)
+            log(`😱 기겁합니다! (약점 공략)`);
+            playAnim(targetId, 'anim-hit');
+        } 
+        else {
+            score = 10; // 그저 그런 물건: 소소한 호감
+            log(`🙂 나쁘지 않은 반응입니다.`);
+        }
 
-        case "damage":
-            log(`🧴 [${name}] 투척! 적에게 ${data.val} 피해`);
-            takeDamage(target, data.val);
-            used = true;
-            break;
-
-        case "event_rest":
-            game.forceRest = true;
-            log(`🎼 [${name}] 사용. 다음은 휴식입니다.`);
-            playAnim("player-char", 'anim-bounce');
-            used = true;
-            break;
-
-        case "revive":
-            log("🚫 [대타 인형]은 죽을 때 자동 사용됩니다.");
-            break;
+        // 3. SP 변동 적용
+        applySocialImpact(target, score);
+        used = true;
     }
-
-    // 3. 소모
+    
+    // --- 2. 일반 사용 ---
+    else if (data.usage === "consume") {
+        switch (data.effect) {
+            case "heal":
+                let healAmt = Math.min(target.maxHp - target.hp, data.val);
+                target.hp += healAmt;
+                log(`🍷 [${name}] 사용! HP +${healAmt}`);
+                playAnim(targetId, 'anim-bounce');
+                used = true;
+                break;
+            case "damage":
+                log(`🧴 [${name}] 투척! 적에게 ${data.val} 피해`);
+                takeDamage(target, data.val);
+                used = true;
+                break;
+            case "event_rest":
+                game.forceRest = true;
+                log(`🎼 [${name}] 사용. 다음은 휴식입니다.`);
+                playAnim("player-char", 'anim-bounce');
+                used = true;
+                break;
+        }
+    }
+   // 3. 소모 및 갱신
     if (used) {
-        player.consumables.splice(index, 1);
-        updateInventoryUI(); // UI 갱신
+        player.inventory.splice(index, 1); // 인벤토리에서 제거
+        updateInventoryUI(); 
         updateUI();
     }
 }
+/* [수정] 인벤토리 UI 업데이트 (통합 리스트) */
 function updateInventoryUI() {
-    const rList = document.getElementById('relic-list'); 
-    const cList = document.getElementById('consumable-list'); 
-    rList.innerHTML = ""; 
-    cList.innerHTML = "";
+    const list = document.getElementById('inventory-list'); 
+    document.getElementById('inv-count').innerText = player.inventory.length;
+    list.innerHTML = ""; 
 
-    // 유물 표시
-    player.relics.forEach(name => { 
+    player.inventory.forEach((name, idx) => { 
         let data = ITEM_DATA[name]; 
         let el = document.createElement('div'); 
-        el.className = `item-icon item-relic item-rank-${data.rank}`; 
-        el.innerHTML = `${data.icon}<span class="tooltip"><b>${name}</b><br>${data.desc}</span>`; 
-        rList.appendChild(el); 
-    });
-
-    // 소모품 표시
-    player.consumables.forEach((name, idx) => { 
-        let data = ITEM_DATA[name]; 
-        let el = document.createElement('div'); 
-        el.className = `item-icon item-consumable item-rank-${data.rank}`; 
+        
+        // 클래스: 기본 item-icon + 랭크 + 사용타입(passive/consumable)에 따른 스타일 구분
+        el.className = `item-icon item-rank-${data.rank}`;
         el.id = `item-el-${idx}`;
         
-        // HTML 구조
+        // 패시브 아이템은 테두리나 배경을 다르게 해서 시각적 구분
+        if (data.usage === "passive") {
+            el.style.borderColor = "#f39c12"; // 금색 테두리
+            el.style.borderStyle = "double";
+        } else {
+            el.style.borderColor = "#555"; // 일반 테두리
+        }
+        
         el.innerHTML = `
             ${data.icon}
-            <span class="tooltip"><b>${name}</b><br>${data.desc}</span>
+            <span class="tooltip">
+                <b>${name}</b> <span style="font-size:0.8em; color:#aaa;">(${data.usage==="passive"?"패시브":"소모품"})</span><br>
+                ${data.desc}<br>
+                <span style='color:#f1c40f'>태그: ${data.tags ? data.tags.join(', ') : '-'}</span>
+            </span>
             <div class="item-actions" id="item-actions-${idx}" style="display:none;">
                 <button class="item-btn btn-confirm" onclick="confirmItemUse(event, ${idx})">V</button>
                 <button class="item-btn btn-cancel" onclick="toggleItemSelect(event, ${idx})">X</button>
             </div>
         `;
         
-        // --- [핵심 로직 변경] 사용 가능 여부 체크 ---
-        
-        // 1. 공격 아이템인데 전투 중이 아닐 경우
-        if (data.effect === "damage" && game.state !== "battle") {
-            el.classList.add('disabled'); // 흐리게 표시
-            // 클릭 시 경고 메시지만 출력 (버튼 안 뜸)
-            el.onclick = () => log("🚫 공격 아이템은 전투 중에만 사용할 수 있습니다.");
-        } 
-        // 2. 그 외의 경우 (사용 가능)
-        else {
-           
-            if (game.state === "battle" && data.target !== "passive") {
-                el.onmousedown = (e) => startDrag(e, idx, name, 'item');
-                el.ontouchstart = (e) => startDrag(e, idx, name, 'item');
-            }
-            
-            // 클릭 시 확인/취소 버튼 토글
-            el.onclick = (e) => toggleItemSelect(e, idx);
+        // 드래그 및 클릭 이벤트 (이전과 동일 로직이지만 대상 변수명만 변경)
+        let isSocial = (game.state === "social");
+        let isBattle = (game.state === "battle");
+        let canUse = (data.usage === "consume"); // 소모품만 기본 사용 가능
+
+        // 소셜 모드면 모든 아이템(패시브 포함) 선물 가능
+        // 배틀 모드면 소모품 중 target!=passive 인 것만 가능
+        let canDrag = (isSocial) || (isBattle && canUse && data.target !== 'passive');
+
+        if (canDrag) {
+            el.onmousedown = (e) => startDrag(e, idx, name, 'item');
+            el.ontouchstart = (e) => startDrag(e, idx, name, 'item');
+        } else if (!canUse && !isSocial) {
+            // 패시브 아이템 클릭 시 (사용 불가 메시지 대신 정보 확인용으로 놔두거나)
+            // 여기선 그냥 둠
         }
-        cList.appendChild(el); 
+        
+        // 클릭 시 메뉴 토글 (사용 가능한 경우만)
+        // 패시브 아이템도 버리기 기능 등을 위해 메뉴는 뜨게 할 수 있음 (일단은 사용 가능할 때만 뜨게 설정)
+        if (canDrag || canUse) {
+            el.onclick = (e) => toggleItemSelect(e, idx);
+        } else {
+            // 패시브 아이템 클릭 시 "착용 중입니다" 로그
+            el.onclick = () => log(`[${name}] 효과 적용 중.`);
+        }
+
+        list.appendChild(el); 
     });
+}
+
+// [수정] confirmItemUse도 useConsumable 대신 useItem을 호출하도록 변경
+function confirmItemUse(e, idx) {
+    e.stopPropagation();
+    let name = player.inventory[idx]; // inventory 참조
+    let data = ITEM_DATA[name];
+
+    // ... (타겟팅 로직 동일) ...
+    let target = player; 
+    if (data.target === "enemy") target = enemies.find(en => en.hp > 0);
+
+    useItem(idx, target); // useItem 호출
+    toggleItemSelect(e, idx);
 }
 // [추가] 아이템 선택 토글 함수
 function toggleItemSelect(e, idx) {
@@ -1061,29 +1145,6 @@ function toggleItemSelect(e, idx) {
         actions.style.display = 'none';
         icon.classList.remove('selected');
     }
-}
-// [추가] 버튼으로 아이템 사용 확정
-function confirmItemUse(e, idx) {
-    e.stopPropagation();
-    let name = player.consumables[idx];
-    let data = ITEM_DATA[name];
-
-    // 타겟이 'enemy'인데 적이 여러 명이면 드래그 유도
-    if (data.target === "enemy" && enemies.filter(en => en.hp > 0).length > 1) {
-        log("🖐️ 대상이 여러 명입니다. 적에게 드래그해서 사용하세요!");
-        toggleItemSelect(e, idx); // 닫기
-        return;
-    }
-
-    // 타겟이 'self'이거나 적이 1명이면 즉시 사용
-    // (적이 1명이면 자동 타겟팅)
-    let target = player;
-    if (data.target === "enemy") {
-        target = enemies.find(en => en.hp > 0);
-    }
-
-    useConsumable(idx, target);
-    toggleItemSelect(e, idx); // UI 갱신되므로 사실 필요 없지만 안전하게
 }
 /* [NEW] 탐사 화면 렌더링 */
 function renderExploration() {
@@ -1332,37 +1393,43 @@ async function processTimeline() {
         }
     }
 }
-/* [NEW] 유닛 턴 시작 통합 처리 */
+/* [수정] 유닛 턴 시작 (인내심 감소 로직 추가) */
 async function startTurn(unit, type) {
     game.turnOwner = type;
     game.totalTurns++;
     
-    // 로그 및 강조
-    let name = (type === 'player') ? "나" : unit.name;
-    // log(`⏰ [${name}]의 턴! (AG: ${Math.floor(unit.ag)})`);
-    
-    // 1. 버프/디버프 처리 (이제 자기 턴이 올 때마다 틱이 돌아감)
+    // [NEW] 인내심 처리 (소셜 모드 & 적 턴일 때)
+    if (game.state === "social" && type === "enemy") {
+        if (unit.patience !== undefined) {
+            unit.patience--;
+            log(`💢 [${unit.name}]의 인내심이 줄어듭니다. (남은 턴: ${unit.patience})`);
+            
+            if (unit.patience <= 0) {
+                updateUI();
+                showPopup("🖐️ 대화 결렬", `"${unit.name}"이(가) 더 이상 당신의 말을 듣지 않습니다.<br>협상이 불가능해졌습니다.`, [
+                    { txt: "무력 행사 (전투 돌입)", func: () => { closePopup(); forcePhysicalBattle(); }},
+                    { txt: "도망치기 (패널티)", func: () => { closePopup(); escapeSocialBattle(); }}
+                ]);
+                return; // 턴 진행 중단
+            }
+        }
+    }
+
     tickBuffs(unit); 
     decrementBuffs(unit);
     
     if (checkGameOver()) return;
-    if (unit.hp <= 0) { // 버프 뎀으로 죽었을 경우
+    if (unit.hp <= 0 && game.state !== 'social') { // 소셜모드 아닐때 죽음 체크
         processTimeline(); 
         return; 
     }
 
-    // 2. 행동 게이지 소모 (1000을 뺌 = 오버플로우 된 만큼 다음 턴 빨리 옴)
     unit.ag -= game.AG_MAX;
-    
-    // UI 갱신 (AG 줄어든 것 반영)
     updateUI();
 
-    // 3. 실제 제어권 부여
     if (type === 'player') {
-        // 플레이어: 입력 대기 상태로 전환
         startPlayerTurnLogic();
     } else {
-        // 적: AI 자동 행동
         game.currentActorId = unit.id;
         await startEnemyTurnLogic(unit);
     }
@@ -1421,7 +1488,7 @@ function endPlayerTurn() {
     processTimeline();
 }
 
-/* [수정] 적 행동 개시 (AI) */
+/* [수정] 적 AI 로직 (종료 조건 100으로 변경) */
 async function startEnemyTurnLogic(actor) {
     actor.block = 0; 
     actor.ap = 2; 
@@ -1429,26 +1496,36 @@ async function startEnemyTurnLogic(actor) {
     let el = document.getElementById(`enemy-unit-${actor.id}`);
     if(el) el.classList.add('turn-active');
     
-    // log(`👿 ${actor.name} 행동 시작`);
+    try {
+        while (actor.ap > 0) {
+            if (game.state === "social") {
+                // [변경] 200 -> 100
+                if (player.sp <= 0 || actor.hp <= 0 || actor.hp >= 100) break;
+            } else {
+                if (player.hp <= 0 || actor.hp <= 0) break;
+            }
 
-    // 간단한 AI 동작
-    while (actor.ap > 0 && player.hp > 0) {
-        await sleep(800);
-        if (actor.hp <= 0) break;
+            await sleep(800);
 
-        let cName = actor.deck[Math.floor(Math.random() * actor.deck.length)];
-        actor.ap--; 
-        useCard(actor, player, cName); 
-        
-        updateUI(); 
-        if (checkGameOver()) return;
+            // (카드 선택 및 사용 로직 기존과 동일)
+            let cName = actor.deck[Math.floor(Math.random() * actor.deck.length)];
+            let cData = CARD_DATA[cName];
+            if (game.state === "battle" && cData.type === "social") cName = "타격"; 
+            else if (game.state === "social" && cData.type !== "social") cName = "횡설수설"; 
+
+            actor.ap--; 
+            useCard(actor, player, cName); 
+            
+            updateUI(); 
+            if (checkGameOver()) return; 
+        }
+    } catch (err) {
+        console.error("적 턴 에러:", err);
+    } finally {
+        if(el) el.classList.remove('turn-active');
+        await sleep(500);
+        processTimeline();
     }
-    
-    if(el) el.classList.remove('turn-active');
-    await sleep(500);
-
-    // ★ 적 행동 종료 후 타임라인 재가동
-    processTimeline();
 }
 
 /* [수정] useCard: 방어 로그 텍스트 분기 처리 */
@@ -1597,43 +1674,34 @@ function takeDamage(target, dmg) {
 }
 /* [수정] 승패 판정 로직 (전체 코드) */
 function checkGameOver() {
-    // 1. [일반/전투] 플레이어 사망 체크 (HP 0)
-    // 소셜 모드가 아닐 때 체력이 0 이하가 되면 게임 오버
-    if (game.state !== "social" && player.hp <= 0) { 
-        showPopup("💀 사망", "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.", [
-            {txt:"다시 하기", func: ()=>location.reload()}
-        ]); 
+if (game.state !== "social" && player.hp <= 0) { 
+        showPopup("💀 사망", "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.", [{txt:"다시 하기", func: ()=>location.reload()}]); 
         return true; 
     }
     
-    // 2. [소셜 모드] 승패 판정
     if (game.state === "social") {
-        // 2-1. 플레이어 패배 (멘탈 붕괴: SP 0)
         if (player.sp <= 0) {
-            showPopup("😵 멘탈 붕괴", "정신적 충격으로 대화를 이어갈 수 없습니다...<br>(SP 0 도달)", [
-                {txt:"다시 하기", func: ()=>location.reload()}
-            ]);
+            showPopup("😵 멘탈 붕괴", "정신적 충격으로 대화를 이어갈 수 없습니다...<br>(SP 0 도달)", [{txt:"다시 하기", func: ()=>location.reload()}]);
             return true;
         }
 
-        // 2-2. 플레이어 승리 (설득 or 협박/굴복)
         let npc = enemies[0]; 
-        if (!npc) return false; // 안전장치
+        if (!npc) return false;
 
-        // 설득 성공 (SP 200 도달 - 오른쪽 끝)
-        if (npc.hp >= 200) { 
+        // [변경] 설득 성공 기준: 100 이상
+        if (npc.hp >= 100) { 
             game.winMsg = `<span style='color:#3498db'>🤝 설득 성공!</span><br>${npc.name}의 마음을 완전히 열었습니다.`;
             endSocialBattle(true);
             return true;
         } 
-        // 굴복/협박 성공 (SP 0 도달 - 왼쪽 끝)
+        // 굴복 기준: 0 이하 (동일)
         else if (npc.hp <= 0) { 
             game.winMsg = `<span style='color:#e74c3c'>😱 굴복 성공!</span><br>${npc.name}은(는) 공포에 질려 입을 열었습니다.`;
             endSocialBattle(true);
             return true;
         }
     }
-    
+
     // 3. [일반 전투] 승리 판정 (적 전멸)
     else if (game.state === "battle") {
         // 모든 적의 HP가 0 이하인지 확인
@@ -1686,6 +1754,67 @@ function endSocialBattle(success) {
         { txt: "떠나기", func: nextStepAfterWin } // 기존 복귀 함수 재사용
     ]);
 }
+
+/* [NEW] 무력 행사 확인 팝업 */
+function confirmForceBattle() {
+    showPopup("👊 무력 행사", "대화를 중단하고 공격하시겠습니까?<br><span style='color:#e74c3c; font-size:0.8em;'>※ 적이 전투 태세를 갖춥니다.</span>", [
+        { txt: "공격 개시!", func: () => { closePopup(); forcePhysicalBattle(); }},
+        { txt: "취소", func: closePopup }
+    ]);
+}
+
+/* [수정] 소셜 -> 물리 전투 전환 함수 (NPC 데이터 로드) */
+function forcePhysicalBattle() {
+    let currentEnemy = enemies[0];
+    if (!currentEnemy) return;
+
+    // NPC 원본 데이터 찾기
+    // (이름으로 매칭. 만약 '부패 경찰 A' 처럼 변형되었다면 split 필요하지만 소셜은 보통 1:1이라 이름 그대로 씀)
+    let npcData = NPC_DATA[currentEnemy.name];
+    
+    if (!npcData || !npcData.battle) {
+        log("🚫 전투 데이터가 없는 NPC입니다.");
+        return;
+    }
+
+    log("⚔️ <b>협상 결렬! 적이 무기를 꺼내 듭니다!</b>");
+    
+    // 1. 모드 변경
+    game.state = "battle";
+    
+    // 2. 플레이어 덱 복구 (전투 덱으로)
+    player.drawPile = [...player.deck];
+    shuffle(player.drawPile);
+    player.discardPile = [];
+    player.exhaustPile = [];
+    player.hand = [];
+    player.block = 0; // 방어도 초기화
+    renderHand(); 
+
+    // 3. [핵심] 적 상태를 '전투 모드'로 변신
+    let bData = npcData.battle;
+    
+    currentEnemy.maxHp = bData.maxHp;
+    currentEnemy.hp = bData.maxHp;
+    
+    currentEnemy.baseAtk = bData.stats.atk;
+    currentEnemy.baseDef = bData.stats.def;
+    currentEnemy.baseSpd = bData.stats.spd;
+    
+    currentEnemy.deck = bData.deck; // 전투용 덱 장착
+    
+    // 소셜 속성 제거 (깔끔하게)
+    delete currentEnemy.maxSp;
+    delete currentEnemy.patience; 
+    
+    // 4. UI 갱신 및 전투 재개
+    updateUI();
+    
+    // 플레이어 선공 보너스 (기습)
+    player.ag = game.AG_MAX; 
+    processTimeline();
+}
+
 /* --- 이벤트 및 상점 --- */
 /* [수정] runRandomEvent 함수 */
 function runRandomEvent() {
@@ -1740,25 +1869,27 @@ function renderRestScreen() {
         </div>
     `;
 }
-/* [수정] restAction 함수 전체 교체 */
+/* [수정] 휴식 로직 (SP 회복 추가) */
 function restAction() {
-    // 1. 회복 로직
     let maxHeal = Math.floor(player.maxHp / 2);
     let missingHp = player.maxHp - player.hp;
     let actualHeal = Math.min(maxHeal, missingHp);
     
+    // [NEW] 이성(SP)도 회복
+    let spHeal = 30;
+    player.sp = Math.min(player.maxSp, player.sp + spHeal);
+    
     player.hp += actualHeal;
-    game.hasRested = true; // [NEW] 휴식 완료 플래그 세팅
+    game.hasRested = true; 
     
     updateUI();
     
-    // 2. 팝업을 띄우되, 확인 누르면 '떠나기'가 아니라 팝업만 닫힘
-    showPopup("휴식 완료", `체력이 ${actualHeal}만큼 회복되었습니다.<br>이제 출발 준비가 되셨나요?`, [
+    showPopup("휴식 완료", `체력이 ${actualHeal}, 이성이 ${spHeal}만큼 회복되었습니다.<br>이제 출발 준비가 되셨나요?`, [
         {
             txt: "확인", 
             func: () => {
                 closePopup();
-                renderRestScreen(); // [NEW] 버튼 상태 갱신을 위해 화면 다시 그리기
+                renderRestScreen(); 
             }
         }
     ]);
@@ -1814,12 +1945,26 @@ function buyShopItem(el, type, name, cost) {
 }
 
 /* --- 유틸리티 및 계산 --- */
+/* [수정] 스탯 계산 함수 (inventory 순회 방식 변경) */
 function getStat(entity, type) {
     let val = (type==='atk')? entity.baseAtk : (type==='def')? entity.baseDef : entity.baseSpd;
-    if (entity === player) { if (type === 'atk' && player.relics.includes("쿠보탄")) val += 1; if (type === 'def' && player.relics.includes("강인함의 부적")) val += 1; if (type === 'spd' && player.relics.includes("좋은 운동화")) val += 1; }
-    if (type==='atk') { if (entity.buffs["약화"]) val /= 2; if (entity.buffs["강화"]) val *= 2; } else if (type==='def') { if (entity.buffs["취약"]) val /= 2; if (entity.buffs["건강"]) val *= 2; } else if (type==='spd') { if (entity.buffs["마비"]) val /= 2; if (entity.buffs["쾌속"]) val *= 2; }
+    
+    // 플레이어 패시브 아이템 체크
+    if (entity === player) {
+        // inventory 배열을 순회하며 패시브 효과 적용
+        if (type === 'atk' && player.inventory.includes("쿠보탄")) val += 1; 
+        if (type === 'def' && player.inventory.includes("강인함의 부적")) val += 1; 
+        if (type === 'spd' && player.inventory.includes("좋은 운동화")) val += 1; 
+    }
+
+    // 버프/디버프 계산 (기존 동일)
+    if (type==='atk') { if (entity.buffs["약화"]) val /= 2; if (entity.buffs["강화"]) val *= 2; } 
+    else if (type==='def') { if (entity.buffs["취약"]) val /= 2; if (entity.buffs["건강"]) val *= 2; } 
+    else if (type==='spd') { if (entity.buffs["마비"]) val /= 2; if (entity.buffs["쾌속"]) val *= 2; }
+    
     return Math.floor(val);
 }
+
 function applyBuff(entity, name, dur) { if (name === "독" || name === "활력") entity.buffs[name] = (entity.buffs[name] || 0) + dur; else entity.buffs[name] = dur; log(`✨ ${entity===player?"나":"적"}에게 [${name}] 적용`); }
 function tickBuffs(entity) {
     if (entity.buffs["독"]) { let dmg = entity.buffs["독"]; log(`☠️ 독 피해 ${dmg}!`); takeDamage(entity, dmg); }
@@ -1905,112 +2050,158 @@ function updateUI() {
             <div style="width:${xpPercent}%; height:100%; background:#3498db; transition: width 0.3s;"></div>
          </div>`;
 
-    // 플레이어 바 HTML 결정
     let playerBarHTML = "";
-    // ★ 수정: 게임이 끝났어도(win) 마지막 상태가 소셜이었다면 SP바를 보여줘야 함
-    // (간단히 판별하기 위해 현재 적이 NPC인지 확인하거나 state 체크)
-    let isSocialMode = (game.state === "social" || (game.state === "win" && enemies[0] && enemies[0].maxSp));
-
-    if (isSocialMode) {
-        // 소셜 모드: SP 바 표시
+    if (game.state === "social") {
         let spPct = Math.max(0, (player.sp / player.maxSp) * 100);
         playerBarHTML = `
             <div class="hp-bar-bg" style="background:#222; border-color:#8e44ad;">
                 <div class="hp-bar-fill" style="width:${spPct}%; background: linear-gradient(90deg, #8e44ad, #9b59b6);"></div>
             </div>
-            <div style="font-size:0.9em;">멘탈(SP): <span id="p-hp">${player.sp}</span>/${player.maxSp} <span class="block-icon">🛡️<span id="p-block">${player.block}</span></span></div>
+            <div style="font-size:0.9em;">이성(SAN): <span id="p-hp">${player.sp}</span>/${player.maxSp} <span class="block-icon">🛡️<span id="p-block">${player.block}</span></span></div>
         `;
     } else {
-        // 일반 전투: HP 바 표시
         let hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
         playerBarHTML = `
             <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar" style="width:${hpPct}%"></div></div>
             <div style="font-size:0.9em;">HP: <span id="p-hp">${player.hp}</span>/<span id="p-max-hp">${player.maxHp}</span> <span class="block-icon">🛡️<span id="p-block">${player.block}</span></span></div>
         `;
     }
-
-    // HTML 주입
+    
     document.getElementById('player-char').innerHTML = `
         <h3 style="margin:2px 0; font-size:1em;">👤 플레이어</h3>
         <img id="p-img" src="https://placehold.co/150x150/3498db/ffffff?text=Hero" alt="Player" class="char-img" style="width:100px; height:100px;"> 
-        
         ${playerBarHTML}
-
         <div class="stats" id="p-stats" style="font-size:0.8em;">공${getStat(player,'atk')} 방${getStat(player,'def')} 속${getStat(player,'spd')}</div>
         <div class="buffs" id="p-buffs" style="min-height:20px;">${applyTooltip(Object.entries(player.buffs).map(([k,v])=>`${k}(${v})`).join(', '))}</div>
-        
         <div style="margin-top: 5px; display: flex; justify-content: center; gap: 3px;">
             <button id="btn-draw-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('draw')">덱(${player.drawPile.length})</button>
             <button id="btn-discard-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('discard')">버림(${player.discardPile.length})</button>
             <button id="btn-exhaust-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('exhaust')">소멸(${player.exhaustPile.length})</button>
         </div>
     `;
-
     updateInventoryUI();
 
     // 2. 적 UI 업데이트
     if (!enemies || enemies.length === 0) return;
-    
     enemies.forEach(e => {
         let el = document.getElementById(`enemy-unit-${e.id}`);
         if (!el) return; 
-
-        // [핵심 수정] 죽은 경우 처리 (강제 갱신)
-        // 기존에는 classList 체크 때문에 갱신이 안 되는 경우가 있었습니다.
-        if (e.hp <= 0) {
+        
+        if (e.hp <= 0 && game.state !== "social") { // 소셜모드 아닐때만 죽음 처리
             el.className = 'enemy-unit dead';
             el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
             return;
         } else {
-             el.className = 'enemy-unit'; // 산 상태면 dead 클래스 제거
+             el.className = 'enemy-unit';
         }
 
-        // [소셜 모드 적 UI 로직]
-        // 적에게 maxSp 속성이 있으면 소셜 NPC로 간주
-        let isSocialEnemy = (e.maxSp !== undefined); 
+        let isSocialEnemy = (game.state === "social"); 
         let barHTML = "";
+        let patienceHTML = ""; // [NEW] 인내심 HTML
 
         if (isSocialEnemy) {
-            let spPct = Math.min(100, Math.max(0, (e.hp / 200) * 100));
+            // [변경] 분모를 100으로 변경 (e.hp / 100 * 100 이므로 그냥 e.hp)
+            let spPct = Math.min(100, Math.max(0, e.hp)); 
             let barColor = `linear-gradient(90deg, #e74c3c 0%, #f1c40f 50%, #3498db 100%)`;
             barHTML = `
-                <div style="font-size:0.7em; color:#aaa; margin-bottom:2px;">멘탈(SP): ${e.hp}/200</div>
+                <div style="font-size:0.7em; color:#aaa; margin-bottom:2px;">멘탈: ${e.hp}/100</div>
                 <div class="hp-bar-bg" style="background: #333; position:relative;">
                     <div style="width:100%; height:100%; background:${barColor}; opacity:0.3;"></div>
                     <div style="position:absolute; top:0; left:${spPct}%; width:4px; height:100%; background:#fff; box-shadow:0 0 5px #fff; transform:translateX(-50%); transition:left 0.5s;"></div>
                 </div>
             `;
+            // [NEW] 인내심 표시
+            patienceHTML = `<div style="color:#e67e22; font-weight:bold; font-size:0.9em; margin-bottom:5px;">💢 인내심: ${e.patience}턴</div>`;
         } else {
-            // 일반 적
             let hpPct = Math.max(0, (e.hp / e.maxHp) * 100);
             barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
         }
 
         let intent = "💤";
         if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = isSocialEnemy ? "💬" : "⚔️";
-
         let buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
 
         el.innerHTML = `
-            <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} ${intent}</div>
+            ${patienceHTML} <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} ${intent}</div>
             <img src="${e.img}" alt="${e.name}" class="char-img" style="width:80px; height:80px;">
             ${barHTML} 
-            
             <div style="background:#444; height:6px; margin:2px 10px; border-radius:3px; overflow:hidden;">
                 <div style="background:#f1c40f; height:100%; width:${Math.min(100, (e.ag / game.AG_MAX) * 100)}%"></div>
             </div>
-
             <div style="font-size:0.8em;">
                 ${isSocialEnemy ? "" : `HP: ${e.hp}/${e.maxHp}`} 
                 <span class="block-icon">🛡️${e.block}</span>
             </div>
-
             <div class="stats" style="font-size:0.7em;">공${getStat(e,'atk')} 방${getStat(e,'def')} <span style="color:#f1c40f; font-weight:bold;">⚡${getStat(e,'spd')}</span></div>
             <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
         `;
     });
 
-    if (typeof updateTurnOrderList === "function") updateTurnOrderList();
+if (typeof updateTurnOrderList === "function") updateTurnOrderList();
+
+    // [NEW] 특수 행동 버튼 처리 (무력행사 or 도망치기)
+    let controlGroup = document.querySelector('.control-group');
+    let extraBtn = document.getElementById('extra-action-btn');
+    
+    // 일단 기존 버튼이 있다면 제거 (상태가 바뀌었을 수 있으므로)
+    if (extraBtn) extraBtn.remove();
+
+    // 플레이어 턴일 때만 버튼 생성
+    if (game.turnOwner === "player") {
+        let btnHTML = "";
+        let btnFunc = null;
+        let btnColor = "";
+
+        // 1. 소셜 모드 -> [무력 행사]
+        if (game.state === "social") {
+            btnHTML = "👊<br>무력행사";
+            btnColor = "#c0392b"; // 빨강
+            btnFunc = () => confirmForceBattle();
+        }
+        // 2. 배틀 모드 (보스전 제외) -> [도망치기]
+        else if (game.state === "battle" && !game.isBossBattle) {
+            btnHTML = "🏃<br>도망치기";
+            btnColor = "#7f8c8d"; // 회색
+            btnFunc = () => confirmRunAway();
+        }
+
+        // 버튼이 필요하면 생성해서 삽입
+        if (btnHTML) {
+            extraBtn = document.createElement('button');
+            extraBtn.id = 'extra-action-btn';
+            extraBtn.className = 'action-btn';
+            extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
+            extraBtn.innerHTML = btnHTML;
+            extraBtn.onclick = btnFunc;
+            
+            // 턴 종료 버튼 앞에 삽입
+            controlGroup.insertBefore(extraBtn, document.getElementById('end-turn-btn'));
+        }
+    }
+}
+/* [NEW] 도망치기 확인 팝업 */
+function confirmRunAway() {
+    showPopup("🏃 도망치기", "전투를 포기하고 도망치시겠습니까?<br><span style='color:#e74c3c; font-size:0.8em;'>(패널티: HP -5, 위협도 증가)</span>", [
+        { txt: "도망친다!", func: () => { closePopup(); escapePhysicalBattle(); }},
+        { txt: "취소", func: closePopup }
+    ]);
+}
+
+/* [NEW] 전투 도주 처리 함수 */
+function escapePhysicalBattle() {
+    log("🏃 허겁지겁 도망칩니다!");
+    
+    // 패널티 적용
+    takeDamage(player, 5); // 등을 보여서 맞음
+    game.scenario.doom += 5; // 적이 더 활개침
+    
+    // 만약 도망치다가 죽었다면?
+    if (player.hp <= 0) return; // checkGameOver에서 처리됨
+
+    // 탐사 화면으로 복귀
+    document.getElementById('loc-desc').innerHTML = 
+        "<span style='color:#e74c3c'>상처를 입고 간신히 도망쳐 나왔습니다.</span><br>(HP -5, 위협도 증가)";
+    renderExploration();
 }
 
 /* [수정] renderHand: 터치 이벤트 지원 추가 */
@@ -2444,7 +2635,7 @@ function onDragEnd(e) {
             finalTargets.forEach(target => useCard(player, target, drag.name));
             renderHand();
         } else {
-            useConsumable(drag.idx, finalTargets[0]); 
+            useItem(drag.idx, finalTargets[0]); 
         }
         updateUI();
         checkGameOver();
