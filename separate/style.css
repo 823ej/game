@@ -20,10 +20,37 @@
             display: flex;
             gap: 5px;
         }        
-        /* 인벤토리 영역 */
-        .inventory-area { background: #2c3e50; padding: 10px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; min-height: 50px; border: 1px solid #444; }
-        .inv-label { font-size: 0.8em; color: #aaa; margin-right: 5px; }
-        .item-list { display: flex; gap: 5px; flex-wrap: wrap; }
+        /* 인벤토리 오버레이 */
+        .inventory-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 250;
+            padding: 16px;
+        }
+        .inventory-panel {
+            width: min(900px, 100%);
+            background: #1f2a36;
+            border: 1px solid #3a4b5d;
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 16px;
+        }
+        .inventory-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .inventory-title { font-weight: bold; color: #f1c40f; font-size: 1.1em; }
+        .inventory-body { background: #243445; border: 1px solid #3a4b5d; border-radius: 10px; padding: 12px; min-height: 120px; }
+        .item-list { display: flex; gap: 8px; flex-wrap: wrap; }
         .item-icon { 
             width: 40px; height: 40px; border-radius: 4px; display: flex; justify-content: center; align-items: center; 
             font-size: 1.2em; cursor: pointer; position: relative; border: 2px solid #555; transition: 0.2s;

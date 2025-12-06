@@ -13,14 +13,22 @@
         <span id="game-info" style="font-weight:bold; font-size:1em;">Lv.1 | 💰 0원</span>
         
         <div class="top-right-group">
+            <button class="small-btn" onclick="openInventory()">🎒 인벤토리</button>
             <button class="small-btn" onclick="saveGame()">💾 저장</button>
             <button class="small-btn" onclick="loadGame()">📂 로드</button>
         </div>
     </div>
 
-    <div class="inventory-area">
-     <div class="inv-label">🎒 가방 (<span id="inv-count">0</span>/6):</div>
-    <div class="item-list" id="inventory-list"></div>
+    <div id="inventory-overlay" class="inventory-overlay hidden" onclick="closeInventory()">
+        <div class="inventory-panel" onclick="event.stopPropagation()">
+            <div class="inventory-header">
+                <div class="inventory-title">🎒 가방 (<span id="inv-count">0</span>/6)</div>
+                <button class="small-btn" onclick="closeInventory()">닫기</button>
+            </div>
+            <div class="inventory-body">
+                <div class="item-list" id="inventory-list"></div>
+            </div>
+        </div>
     </div>
 
     <div id="hub-scene" class="scene hidden" style="background:#1a1a1a; align-items:center; justify-content:center;">
