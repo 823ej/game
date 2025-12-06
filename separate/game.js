@@ -717,10 +717,11 @@ function useItem(index, target) {
     }
 }
 /* [수정] 인벤토리 UI 업데이트 (통합 리스트) */
-function updateInventoryUI() {
-    const list = document.getElementById('inventory-list');
-    document.getElementById('inv-count').innerText = player.inventory.length;
-    list.innerHTML = "";
+
+    function updateInventoryUI() {
+        const list = document.getElementById('inventory-list');
+        document.getElementById('inv-count').innerText = player.inventory.length;
+        list.innerHTML = "";
 
     player.inventory.forEach((name, idx) => { 
         let data = ITEM_DATA[name]; 
