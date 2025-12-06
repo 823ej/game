@@ -665,36 +665,68 @@ body {
             .action-grid { gap: 8px; }
         }
 
-        @media (max-height: 520px) and (orientation: landscape) {
-            body { font-size: 14px; }
-            .container { padding: 6px 8px; gap: 6px; }
-            .scene { border-radius: 10px; }
-            .utility-dock { padding: 4px 6px; }
-            .utility-dock-inner { gap: 4px; }
-            .utility-pill { padding: 3px 7px; font-size: 0.8em; }
-            .small-btn { padding: 3px 7px; font-size: 0.76rem; min-width: 38px; }
-            .hub-scene { padding: 10px; }
-            .hub-content { gap: 8px; grid-template-columns: 1fr; padding-bottom: 12px; }
-            .hub-hero { min-height: 0; }
-            .hub-copy { padding: 10px 12px; }
-            .hub-copy h1 { font-size: 1.4rem; margin: 6px 0; }
-            .hub-sub { font-size: 0.9rem; }
-            .hub-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
-            .hub-card { padding: 8px 9px; }
-            .hub-card-title { font-size: 0.86rem; }
-            .hub-card-desc { font-size: 0.75rem; }
-            .scenario-header { padding: 10px; margin-bottom: 10px; }
-            #loc-img { height: clamp(140px, 34vh, 190px); }
-            .loc-text { padding: 12px; font-size: 1em; }
-            .action-grid { gap: 6px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-            .battle-area { gap: 8px; margin-bottom: 10px; }
-            .character { width: 36%; padding: 8px; }
-            .control-group { height: 90px; gap: 4px; }
-            .status-panel { width: 96px; padding: 4px; font-size: 0.86em; }
-            .btn-end-turn-side { width: 70px; }
-            .hand-area { height: 130px; margin-top: 8px; }
-            .event-content { padding: 28px; }
-        }
+@media (max-height: 520px) and (orientation: landscape) {
+    body { font-size: 14px; }
+    .container { padding: 6px 8px; gap: 6px; }
+    .scene { border-radius: 10px; }
+    .utility-dock { padding: 4px 6px; }
+    .utility-dock-inner { gap: 4px; }
+    .utility-pill { padding: 3px 7px; font-size: 0.8em; }
+    .small-btn { padding: 3px 7px; font-size: 0.76rem; min-width: 38px; }
+    .hub-scene { padding: 10px; }
+    .hub-content { gap: 8px; grid-template-columns: 1fr; padding-bottom: 12px; }
+    .hub-hero { min-height: 0; }
+    .hub-copy { padding: 10px 12px; }
+    .hub-copy h1 { font-size: 1.4rem; margin: 6px 0; }
+    .hub-sub { font-size: 0.9rem; }
+    .hub-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
+    .hub-card { padding: 8px 9px; }
+    .hub-card-title { font-size: 0.86rem; }
+    .hub-card-desc { font-size: 0.75rem; }
+    .scenario-header { padding: 10px; margin-bottom: 10px; }
+    #loc-img { height: clamp(140px, 34vh, 190px); }
+    .loc-text { padding: 12px; font-size: 1em; }
+    .action-grid { gap: 6px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+    .battle-area { gap: 8px; margin-bottom: 10px; }
+    .character { width: 36%; padding: 8px; }
+    .control-group { height: 90px; gap: 4px; }
+    .status-panel { width: 96px; padding: 4px; font-size: 0.86em; }
+    .btn-end-turn-side { width: 70px; }
+    .hand-area { height: 130px; margin-top: 8px; }
+    .event-content { padding: 28px; }
+}
+
+@media (max-height: 460px) and (orientation: landscape) {
+    body { font-size: 13px; }
+    .utility-dock { padding: 2px 4px; }
+    .utility-dock-inner { gap: 3px; }
+    .utility-pill { padding: 3px 6px; font-size: 0.74em; }
+    .utility-buttons { gap: 4px; }
+    .container { padding: 4px 6px; gap: 4px; width: min(1040px, 100%); }
+    .scene { border-radius: 8px; }
+    .small-btn { padding: 2px 6px; font-size: 0.7rem; min-width: 34px; }
+    .action-btn { padding: 6px 10px; font-size: 0.86rem; box-shadow: 0 3px 0 #d35400; }
+    .hub-hero { display: none; }
+    .hub-actions { padding: 0 4px; }
+    .hub-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 5px; }
+    .hub-card { padding: 7px 8px; border-radius: 10px; }
+    .hub-card-title { font-size: 0.8rem; }
+    .hub-card-desc { font-size: 0.72rem; }
+    .scenario-header { padding: 8px; margin-bottom: 8px; }
+    .progress-container { margin-top: 6px; }
+    #loc-img { height: clamp(120px, 32vh, 160px); }
+    .loc-text { padding: 10px; font-size: 0.96em; }
+    .action-grid { gap: 5px; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+    .battle-area { gap: 6px; margin-bottom: 8px; }
+    .character { width: 34%; padding: 6px; }
+    .control-group { height: 82px; gap: 4px; }
+    .status-panel { width: 90px; padding: 4px; font-size: 0.8em; }
+    .btn-end-turn-side { width: 64px; font-size: 0.85em; }
+    .hand-area { height: 110px; margin-top: 6px; padding: 6px; }
+    .event-content { padding: 22px; }
+    .dialog-container { width: 92vw; padding: 12px; bottom: 12px; }
+    .story-char { max-width: 240px; }
+}
 
         /* 팝업 */
         #popup-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 200; }
