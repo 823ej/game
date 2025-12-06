@@ -1460,7 +1460,8 @@ function summonMinion(enemyKey) {
     setTimeout(() => {
         let createdEl = document.getElementById(`enemy-unit-${newId}`);
         if(createdEl) {
-            createdEl.style.animation = "float-up 0.5s reverse forwards";
+           createdEl.style.transform = "scale(1.1)";
+            setTimeout(() => createdEl.style.transform = "scale(1)", 200);
             showDamageText(newEnemy, "APPEAR!");
         }
     }, 50);
