@@ -233,6 +233,19 @@ const SCENARIOS = {
         locations: ["뒷골목", "폐기물 처리장", "네온 마켓"],
         events: [{ type: "battle", chance: 0.4 }, { type: "text", chance: 0.3 }, { type: "nothing", chance: 0.3 }],
         boss: "boss_gang_leader",
+        introStory: [
+            { type: "bg", src: "https://placehold.co/800x600/111/333?text=Rainy+Street" },
+            { type: "char", id: "client", name: "???", src: "https://placehold.co/400x600/555/fff?text=Client", pos: "center" },
+            { type: "talk", id: "client", name: "의뢰인", text: "탐정님... 제발 도와주세요." },
+            { type: "talk", id: "client", name: "의뢰인", text: "제 동생이 배달을 나갔다가 3일째 돌아오지 않고 있어요." },
+            { type: "talk", id: "none", name: "나", text: "(흠... 단순 가출일까, 아니면 사고일까.)" },
+            { type: "choice", options: [
+                { txt: "자세한 이야기를 듣는다", next: 6 },
+                { txt: "귀찮으니 돌려보낸다 (하지만 의뢰는 받아야 한다)", next: 6 }
+            ]},
+            { type: "talk", id: "client", name: "의뢰인", text: "마지막으로 연락된 곳이 '뒷골목' 근처였어요. 사례는 넉넉히 하겠습니다." },
+            { type: "end" } // 스토리가 끝나면 자동으로 callback(의뢰 수락) 실행
+        ],
         unlocks: [], 
         clueEvents: [{ text: "찢어진 전표 발견.", gain: 15 }, { text: "파편 발견.", gain: 20 }],
         reward: { gold: 500, xp: 100, itemRank: 1 },

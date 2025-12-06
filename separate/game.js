@@ -303,61 +303,6 @@ function renderHub() {
     updateUI(); // 상단 바 갱신
 }
 
-/* [NEW] 사건 파일 열기 (시나리오 선택) */
-function openCaseFiles() {
-    // 팝업으로 시나리오 목록 보여주기
-    let content = `<div style="display:flex; flex-direction:column; gap:10px;">`;
-    
-    // SCENARIOS 데이터를 순회하며 버튼 생성
-    for (let id in SCENARIOS) {
-        let sc = SCENARIOS[id];
-        content += `
-            <button class="action-btn" onclick="startScenario('${id}')">
-                <b>${sc.title}</b><br>
-                <span style="font-size:0.7em;">${sc.desc}</span>
-            </button>
-        `;
-    }
-    content += `</div>`;
-
-    showPopup("📁 의뢰 목록", "해결할 사건을 선택하세요.", [
-        {txt: "닫기", func: closePopup}
-    ], content);
-}
-
-/* [수정] 시나리오 수락 (바로 시작하지 않고 등록만 함) */
-function startScenario(id) {
-    closePopup();
-    
-    let scData = SCENARIOS[id];
-    
-    // 1. 현재 수행 중인 의뢰로 등록
-    game.activeScenarioId = id; 
-    
-    // 2. 게임 상태에 초기 데이터 세팅 (아직 시작은 안 함, isActive: false)
-    game.scenario = {
-        id: id,
-        title: scData.title,
-        clues: 0,
-        doom: 0,
-        location: scData.locations[0], 
-        bossReady: false,
-        isActive: false // [변경] 아직 현장에 도착하지 않음
-    };
-    
-    // 3. 알림 메시지
-    let targetDistrictName = "알 수 없는 곳";
-    for (let dKey in DISTRICTS) {
-        if (DISTRICTS[dKey].scenarios.includes(id)) {
-            targetDistrictName = DISTRICTS[dKey].name;
-            break;
-        }
-    }
-    
-    alert(`✅ 의뢰를 수락했습니다: [${scData.title}]\n\n"${targetDistrictName}" 구역으로 이동하여 조사를 시작하세요.`);
-    updateUI();
-}
-
 /* [NEW] 거점 휴식 */
 function hubRest() {
     if (player.gold < 500) {
@@ -566,6 +511,84 @@ function applySocialImpact(target, val) {
             }
         }
     }
+    updateUI();
+}
+
+/* [NEW] 사건 파일 열기 (시나리오 선택) */
+function openCaseFiles() {
+    // 팝업으로 시나리오 목록 보여주기
+    let content = `<div style="display:flex; flex-direction:column; gap:10px;">`;
+    
+    // SCENARIOS 데이터를 순회하며 버튼 생성
+    for (let id in SCENARIOS) {
+        let sc = SCENARIOS[id];
+        content += `
+            <button class="action-btn" onclick="startScenario('${id}')">
+                <b>${sc.title}</b><br>
+                <span style="font-size:0.7em;">${sc.desc}</span>
+            </button>
+        `;
+    }
+    content += `</div>`;
+
+    showPopup("📁 의뢰 목록", "해결할 사건을 선택하세요.", [
+        {txt: "닫기", func: closePopup}
+    ], content);
+}
+
+function startScenario(id) {
+    console.log("시나리오 시작 시도:", id); // [확인용 로그]
+    closePopup();
+    
+    let scData = SCENARIOS[id];
+    console.log("데이터 확인:", scData.introStory); // [확인용 로그]
+
+    if (scData.introStory && scData.introStory.length > 0) {
+        console.log("스토리 모드 진입!"); // [확인용 로그]
+        StoryEngine.start(scData.introStory, function() {
+            acceptMission(id);
+        });
+    } else {
+        console.log("스토리 없음. 바로 수락."); // [확인용 로그]
+        acceptMission(id);
+    }
+}
+
+/* [NEW] 실제 의뢰 수락 로직 (기존 startScenario의 내용을 여기로 옮김) */
+function acceptMission(id) {
+    let scData = SCENARIOS[id];
+    
+    // 1. 현재 수행 중인 의뢰로 등록
+    game.activeScenarioId = id; 
+    
+    // 2. 게임 상태에 초기 데이터 세팅
+    game.scenario = {
+        id: id,
+        title: scData.title,
+        clues: 0,
+        doom: 0,
+        location: scData.locations[0], 
+        bossReady: false,
+        isActive: false
+    };
+    
+    // 3. 알림 메시지 및 화면 복귀
+    let targetDistrictName = "알 수 없는 곳";
+    for (let dKey in DISTRICTS) {
+        if (DISTRICTS[dKey].scenarios.includes(id)) {
+            targetDistrictName = DISTRICTS[dKey].name;
+            break;
+        }
+    }
+    
+    // 스토리가 끝난 후에는 'story-scene'에 있으므로, 다시 'hub'나 'city'로 보내줘야 함
+    renderHub(); // 사무소 화면으로 복귀
+
+    // 약간의 딜레이를 주어 화면 전환 후 알림이 뜨게 함
+    setTimeout(() => {
+        alert(`✅ 의뢰 수락 완료: [${scData.title}]\n\n"${targetDistrictName}" 구역으로 이동하여 조사를 시작하세요.`);
+    }, 100);
+    
     updateUI();
 }
 
@@ -2058,14 +2081,17 @@ function updateUI() {
         let el = document.getElementById(`enemy-unit-${e.id}`);
         if (!el) return; 
         
-        if (e.hp <= 0 && game.state !== "social") { // 소셜모드 아닐때만 죽음 처리
-            el.className = 'enemy-unit dead';
+        // [수정] className을 덮어쓰지 않고 dead 클래스만 제어합니다.
+        // 이렇게 해야 playAnim으로 추가된 애니메이션 클래스가 유지됩니다.
+        if (e.hp <= 0 && game.state !== "social") { 
+            el.classList.add('dead');
             el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
             return;
         } else {
-             el.className = 'enemy-unit';
+             el.classList.remove('dead');
+             // el.className = 'enemy-unit';  <-- 이 줄을 삭제하거나 주석 처리해야 합니다!
         }
-
+        el.classList.add('enemy-unit');
         let isSocialEnemy = (game.state === "social"); 
         let barHTML = "";
         let patienceHTML = ""; // [NEW] 인내심 HTML

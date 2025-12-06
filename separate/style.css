@@ -567,3 +567,33 @@
 .story-choice-btn:hover {
     background: #e67e22; border-color: #fff; transform: scale(1.05);
 }
+
+html, body { height: 100%; margin: 0; }
+.container { height: 100vh; display: flex; flex-direction: column; } 
+
+/* style.css 수정 */
+
+#story-scene {
+    /* [핵심] 문서의 흐름을 무시하고 화면 전체를 덮어버립니다 */
+    position: fixed; 
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* 다른 요소들보다 위에 뜨도록 순서 지정 */
+    z-index: 300; 
+    
+    /* 배경이 투명하면 뒤에 게임 화면이 비치니까 검은색으로 꽉 채움 */
+    background: #000; 
+    
+    /* 내용물 배치 */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 스토리 화면 안에서는 스크롤 안 생기게 */
+}
+
+/* [중요] switchScene 함수가 작동하려면 이 코드가 꼭 있어야 합니다 */
+.scene.hidden {
+    display: none !important;
+}
