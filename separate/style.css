@@ -34,7 +34,7 @@ body {
     overflow: visible;
 }
 
-/* 상단 바 제거 후, 떠 있는 기능 도크 */
+/* ?怨룸뼊 獄???볤탢 ?? ????덈뮉 疫꿸퀡???袁り쾿 */
 .utility-dock {
     position: fixed;
     top: 0;
@@ -78,7 +78,7 @@ body {
     flex-wrap: wrap;
     justify-content: flex-end;
 }
-        /* 인벤토리 오버레이 */
+        /* ?紐껉뭣?醫듼봺 ??살쒔??됱뵠 */
         .inventory-overlay {
             position: fixed;
             inset: 0;
@@ -119,10 +119,10 @@ body {
         .item-rank-2 { box-shadow: 0 0 5px #3498db; }
         .item-rank-3 { box-shadow: 0 0 8px #f1c40f; border-color: #f1c40f; }
 
-        /* [추가] 아이템 클릭 시 나오는 버튼 컨테이너 */
+        /* [?곕떽?] ?袁⑹뵠??????????륁궎??甕곌쑵???뚢뫂???瑗?*/
         .item-actions {
             position: absolute;
-            bottom: -35px; /* 아이콘 바로 아래 */
+            bottom: -35px; /* ?袁⑹뵠??獄쏅뗀以??袁⑥삋 */
             left: 50%;
             transform: translateX(-50%);
             display: flex;
@@ -145,14 +145,14 @@ body {
         .btn-confirm { background: #27ae60; }
         .btn-cancel { background: #c0392b; }
 
-        /* 아이템이 선택되었을 때 강조 */
+        /* ?袁⑹뵠??뽰뵠 ?醫뤾문??뤿?????揶쏅벡??*/
         .item-icon.selected {
             border-color: #f1c40f;
             box-shadow: 0 0 10px #f1c40f;
             z-index: 150;
         }
-        /* 툴팁 */
-        /* [수정] 툴팁 위치 변경 (아이템 오른쪽) */
+        /* ??꾨샍 */
+        /* [??륁젟] ??꾨샍 ?袁⑺뒄 癰궰野?(?袁⑹뵠????삘뀲筌? */
         .tooltip { 
             visibility: hidden; 
             width: 160px; 
@@ -162,17 +162,17 @@ body {
             border-radius: 6px; 
             padding: 10px; 
             
-            /* 위치: 아이콘의 오른쪽 */
+            /* ?袁⑺뒄: ?袁⑹뵠?꾩꼷????삘뀲筌?*/
             top: 50%;
-            left: 120%; /* 오른쪽으로 밀어냄 */
-            transform: translateY(-50%); /* 수직 중앙 정렬 */
+            left: 120%; /* ??삘뀲筌잛럩?앮에?獄쎛??源?*/
+            transform: translateY(-50%); /* ??륁춦 餓λ쵐釉??類ｌ졊 */
             
-            /* 기존 위치 속성 초기화 */
+            /* 疫꿸퀣???袁⑺뒄 ??욧쉐 ?λ뜃由??*/
             bottom: auto;
             margin-left: 0;
 
             position: absolute; 
-            z-index: 9999; /* 최상단 */
+            z-index: 9999; /* 筌ㅼ뮇湲??*/
             
             font-size: 13px; 
             font-weight: normal; 
@@ -183,22 +183,22 @@ body {
             transition: opacity 0.3s; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.5); 
             
-            pointer-events: none; /* 클릭 통과 */
+            pointer-events: none; /* ???????궢 */
         }
 
-        /* [추가] 툴팁 화살표 (왼쪽을 가리킴) */
+        /* [?곕떽?] ??꾨샍 ?遺욧땀??(??긱걹??揶쎛?귐뗪땀) */
         .tooltip::after {
             content: "";
             position: absolute;
             top: 50%;
-            right: 100%; /* 툴팁의 왼쪽 */
+            right: 100%; /* ??꾨샍????긱걹 */
             margin-top: -5px;
             border-width: 5px;
             border-style: solid;
             border-color: transparent #111 transparent transparent;
         }
 
-        /* [추가] 사용 불가 아이템 스타일 */
+        /* [?곕떽?] ?????븍뜃? ?袁⑹뵠???????*/
         .item-icon.disabled {
             opacity: 0.6;
             cursor: not-allowed;
@@ -206,7 +206,7 @@ body {
         }
         .item-icon:hover .tooltip { visibility: visible; opacity: 1; }
 
-        /* 장면(Scene) 관리 */
+        /* ?貫??Scene) ?온??*/
         .scene {
             width: 100%;
             flex: 1;
@@ -219,7 +219,7 @@ body {
         }
         .hidden { display: none !important; }
         
-                /* [NEW] 덱 빌더 스타일 */
+                /* [NEW] ????슢???????*/
         .deck-builder-container {
             display: flex; flex: 1; height: 100%; overflow: hidden; gap: 10px; padding: 10px;
         }
@@ -237,7 +237,7 @@ body {
             display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; justify-content: center;
         }
 
-        /* 덱 빌더용 미니 카드 스타일 */
+        /* ????슢???沃섎챶??燁삳?諭??????*/
         .builder-card {
             width: 90px; height: 120px; 
             background: #ecf0f1; color: #333; 
@@ -254,7 +254,7 @@ body {
             position: absolute; top: -8px; left: -8px; 
         }
 
-        /* [NEW] 거점(사무소) 레이아웃 */
+        /* [NEW] 椰꾧퀣????龜?? ??됱뵠?袁⑹뜍 */
         .hub-scene {
             background: #0f1116;
             align-items: center;
@@ -343,7 +343,7 @@ body {
             .hub-card-desc { font-size: 0.78rem; }
         }
         
-        /* [NEW] 탐사 화면 스타일 */
+        /* [NEW] ?癒?텢 ?遺얇늺 ?????*/
         .scenario-header {
             background: #2c3e50; padding: 15px; border-radius: 10px; margin-bottom: 15px;
             border: 1px solid #34495e; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
@@ -368,9 +368,9 @@ body {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;
         }
 
-        /* 전투 화면 스타일 */
+        /* ?袁る떮 ?遺얇늺 ?????*/
         .battle-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-height: 200px; }
-/* [수정] 기존 .character 스타일을 이걸로 덮어씌우세요 (배경색 제거, 테두리 정리) */
+/* [??륁젟] 疫꿸퀣??.character ?????깆뱽 ??욧뎄嚥???堉???뒭?紐꾩뒄 (獄쏄퀗瑗????볤탢, ???あ???類ｂ봺) */
         .character { 
             width: 40%; 
             padding: 10px; 
@@ -378,116 +378,116 @@ body {
             position: relative; 
             transition: 0.2s; 
             text-align: center;
-            /* 배경색 제거 (이미지 강조) */
+            /* 獄쏄퀗瑗????볤탢 (???筌왖 揶쏅벡?? */
         }
-        /* 턴 활성화 시 테두리만 강조 */
+        /* ????뽮쉐???????あ?귐됱춸 揶쏅벡??*/
         .character.turn-active { 
             border: 2px solid #f1c40f; 
             box-shadow: 0 0 15px rgba(241, 196, 15, 0.3); 
-            background: rgba(255, 255, 255, 0.05); /* 아주 옅은 배경 */
+            background: rgba(255, 255, 255, 0.05); /* ?袁⑼폒 ??? 獄쏄퀗瑗?*/
         }
 
-        /* [추가] 캐릭터 이미지 스타일 */
+        /* [?곕떽?] 筌?Ŧ??????筌왖 ?????*/
         .char-img {
             width: 120px;
             height: 120px;
-            object-fit: cover; /* 비율 유지하며 꽉 채움 */
+            object-fit: cover; /* ??쑴???醫???렽???筌?쑴? */
             border-radius: 10px;
             border: 2px solid #555;
             background: #000;
             margin-bottom: 5px;
         }
         
-                /* [1단계 추가] 적들이 서 있을 공간 */
+                /* [1??ｍ??곕떽?] ?怨룸굶??????됱뱽 ?⑤벀而?*/
         .enemies-wrapper {
-            flex: 1;                /* 남은 공간 차지 */
-            display: flex;          /* 가로 배치 */
+            flex: 1;                /* ??? ?⑤벀而?筌△뫁? */
+            display: flex;          /* 揶쎛嚥?獄쏄퀣??*/
             justify-content: center; 
-            gap: 15px;              /* 적 사이 간격 */
-            align-items: flex-end;  /* 바닥 라인 맞춤 */
+            gap: 15px;              /* ??????揶쏄쑨爰?*/
+            align-items: flex-end;  /* 獄쏅뗀????깆뵥 筌띿쉸??*/
             padding-left: 20px;
         }
 
-        /* 개별 적 캐릭터 박스 (기존 .character보다 조금 작게) */
+        /* 揶쏆뮆????筌?Ŧ???獄쏅벡??(疫꿸퀣??.character癰귣???鈺곌퀗???臾롮쓺) */
         .enemy-unit {
-            width: 140px;           /* 고정 너비 */
+            width: 140px;           /* ?⑥쥙????덊돩 */
             background: transparent;
             border-radius: 10px;
             text-align: center;
             position: relative;
             transition: 0.2s;
-            border: 2px solid transparent; /* 평소엔 투명 테두리 */
+            border: 2px solid transparent; /* ??깅꺖????梨????あ??*/
         }
 
-        /* 적이 죽었을 때 스타일 */
+        /* ?怨몄뵠 雅뚯럩肉?????????*/
         .enemy-unit.dead {
             opacity: 0.4;
             filter: grayscale(100%);
-            pointer-events: none;   /* 클릭/드래그 불가 */
+            pointer-events: none;   /* ??????뺤삋域??븍뜃? */
         }
 
-        /* 타겟팅 됐을 때 강조 */
+        /* ??野껋옖???癒?뱽 ??揶쏅벡??*/
         .enemy-unit.selected-target {
             border-color: #e74c3c;
             box-shadow: 0 0 15px rgba(231, 76, 60, 0.6);
             background: rgba(255, 255, 255, 0.05);
         }
 
-        /* [추가] 애니메이션 키프레임 정의 */
+        /* [?곕떽?] ?醫딅빍筌롫뗄?????쎈늄??됱뿫 ?類ㅼ벥 */
 
-        /* 1. 공격 (오른쪽으로 쳤다가 복귀 - 플레이어용) */
+        /* 1. ?⑤벀爰?(??삘뀲筌잛럩?앮에??얇끇?롥첎? 癰귣벀? - ???쟿??곷선?? */
         @keyframes atk-p {
             0% { transform: translateX(0); }
-            30% { transform: translateX(50px) scale(1.1); } /* 앞으로 팍! */
+            30% { transform: translateX(50px) scale(1.1); } /* ??롮몵嚥??? */
             100% { transform: translateX(0); }
         }
-        /* 1-2. 공격 (왼쪽으로 쳤다가 복귀 - 적용) */
+        /* 1-2. ?⑤벀爰?(??긱걹??곗쨮 ?얇끇?롥첎? 癰귣벀? - ?怨몄뒠) */
         @keyframes atk-e {
             0% { transform: translateX(0); }
             30% { transform: translateX(-50px) scale(1.1); }
             100% { transform: translateX(0); }
         }
 
-        /* 2. 피격 (뒤로 밀렸다가 복귀 + 빨간 번쩍임) */
+        /* 2. ??④봄 (??살쨮 獄쎛?紐껊뼄揶쎛 癰귣벀? + ??몿而?甕곕뜆李?? */
         @keyframes hit-anim {
             0% { transform: translateX(0); filter: brightness(1); }
-            20% { transform: translateX(-10px); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); } /* 빨갛게 */
-            40% { transform: translateX(10px); } /* 덜덜 떨림 */
+            20% { transform: translateX(-10px); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); } /* ??몿而뷴칰?*/
+            40% { transform: translateX(10px); } /* ??뺣쐷 ??ㅲ뵝 */
             60% { transform: translateX(-5px); }
             100% { transform: translateX(0); filter: brightness(1); }
         }
 
-        /* 3. 스킬/버프 (위로 두 번 콩콩) */
+        /* 3. ??쎄텢/甕곌쑵遊?(?袁⑥쨮 ??甕??꾟뫗?? */
         @keyframes bounce-double {
             0% { transform: translateY(0); }
-            25% { transform: translateY(-20px); } /* 점프 1 */
+            25% { transform: translateY(-20px); } /* ?癒곕늄 1 */
             50% { transform: translateY(0); }
-            75% { transform: translateY(-10px); } /* 점프 2 (작게) */
+            75% { transform: translateY(-10px); } /* ?癒곕늄 2 (?臾롮쓺) */
             100% { transform: translateY(0); }
         }
-                /* [추가] 대미지 텍스트 스타일 */
+                /* [?곕떽?] ??沃섎챷? ??용뮞???????*/
         .damage-number {
             position: absolute;
-            top: 10%;           /* 캐릭터 머리 근처 */
+            top: 10%;           /* 筌?Ŧ????믩챶??域뱀눘荑?*/
             left: 50%;
             transform: translateX(-50%);
-            color: #ff3333;     /* 강렬한 빨간색 */
-            font-size: 2.5em;   /* 크게! */
-            font-weight: 900;   /* 아주 굵게! */
-            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; /* 검은 테두리로 가독성 확보 */
+            color: #ff3333;     /* 揶쏅베?????몿而??*/
+            font-size: 2.5em;   /* ??苡? */
+            font-weight: 900;   /* ?袁⑼폒 ?대벀苡? */
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; /* 野꺜?? ???あ?귐됱쨮 揶쎛??녾쉐 ?類ｋ궖 */
             z-index: 999;
-            pointer-events: none; /* 마우스 클릭 방해 안 하게 */
+            pointer-events: none; /* 筌띾뜆???????獄쎻뫚鍮?????띿쓺 */
             animation: float-up 0.8s ease-out forwards;
         }
 
-        /* [추가] 숫자가 위로 올라가며 사라지는 애니메이션 */
+        /* [?곕떽?] ??ъ쁽揶쎛 ?袁⑥쨮 ???ゅ첎?筌????わ쭪????醫딅빍筌롫뗄???*/
         @keyframes float-up {
             0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
-            20% { transform: translate(-50%, -20px) scale(1.2); opacity: 1; } /* 팍 튀어나옴 */
-            100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }  /* 위로 사라짐 */
+            20% { transform: translate(-50%, -20px) scale(1.2); opacity: 1; } /* ??????援??*/
+            100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }  /* ?袁⑥쨮 ???わ쭪?*/
         }
 
-        /* 애니메이션 적용 클래스 (JS에서 붙였다 뗄 것임) */
+        /* ?醫딅빍筌롫뗄????怨몄뒠 ?????(JS?癒?퐣 ?븐늿?????野껉퍔?? */
         .anim-atk-p { animation: atk-p 0.4s ease-out; }
         .anim-atk-e { animation: atk-e 0.4s ease-out; }
         .anim-hit { animation: hit-anim 0.4s ease-in-out; }
@@ -495,49 +495,49 @@ body {
         .hp-bar-bg { background: #222; height: 20px; border-radius: 10px; margin: 10px 0; overflow: hidden; border: 1px solid #555; }
         .hp-bar-fill { background: #e74c3c; height: 100%; width: 100%; transition: 0.5s; }
         
-        /* [수정] 핸드 영역: 줄바꿈 금지(nowrap) 및 오버플로우 허용 */
+        /* [??륁젟] ?紐껊굡 ?怨몃열: 餓κ쑬而?퐛?疫뀀뜆?(nowrap) 獄???살쒔???쨮????됱뒠 */
         .hand-area { 
             display: flex; 
             justify-content: center; 
-            flex-wrap: nowrap;      /* [핵심] 줄바꿈 안 함 */
-            align-items: flex-end;  /* 아래쪽 정렬 */
+            flex-wrap: nowrap;      /* [???뼎] 餓κ쑬而?퐛?????*/
+            align-items: flex-end;  /* ?袁⑥삋筌??類ｌ졊 */
             
-            height: 160px;          /* 높이 고정 (카드 팝업 공간 확보) */
+            height: 160px;          /* ?誘れ뵠 ?⑥쥙??(燁삳?諭???밸씜 ?⑤벀而??類ｋ궖) */
             padding: 10px;
             margin-top: 20px;
             
-            overflow: visible;      /* 카드가 위로 튀어 올라도 잘리지 않게 */
-            pointer-events: none;   /* 빈 공간 클릭 방지 (카드만 클릭되게) */
+            overflow: visible;      /* 燁삳?諭뜹첎? ?袁⑥쨮 ???????????롡봺筌왖 ??꾩쓺 */
+            pointer-events: none;   /* ???⑤벀而?????獄쎻뫗? (燁삳?諭띰쭕??????띿쓺) */
         }
 
         .hand-area::-webkit-scrollbar {
             display: none; /* Chrome, Safari, Opera */
         }
-        /* [수정] 로그 영역: 가운데 배치 */
+        /* [??륁젟] 嚥≪뮄???怨몃열: 揶쎛????獄쏄퀣??*/
         .log-area { 
             height: 100%;       
-            flex: 1;            /* 남은 공간 차지 */
+            flex: 1;            /* ??? ?⑤벀而?筌△뫁? */
             overflow-y: auto; 
             background: #111; 
             border: 1px solid #444; 
-            padding: 5px;       /* 패딩 줄임 */
+            padding: 5px;       /* ??ㅻ뎃 餓κ쑴??*/
             text-align: left; 
-            font-size: 0.85em;  /* 글자 크기 살짝 줄임 */
+            font-size: 0.85em;  /* 疫꼲????由???곸? 餓κ쑴??*/
             color: #bbb; 
             border-radius: 5px; 
-            margin: 0;          /* 마진 제거 */
+            margin: 0;          /* 筌띾뜆彛???볤탢 */
         }
-        /* [수정] 컨트롤 그룹: 3단 분할 (상태 | 로그 | 버튼) */
+        /* [??륁젟] ?뚢뫂?껅에?域밸챶竊? 3???브쑵釉?(?怨밴묶 | 嚥≪뮄??| 甕곌쑵?? */
         .control-group {
             display: flex;          
-            gap: 5px;              /* 간격 좁게 */
-            height: 100px;         /* 전체 높이 120px -> 100px로 축소 */
+            gap: 5px;              /* 揶쏄쑨爰??リ낫苡?*/
+            height: 100px;         /* ?袁⑷퍥 ?誘れ뵠 120px -> 100px嚥??곕벡??*/
             margin-bottom: 5px;    
             align-items: stretch;   
         }
-        /* [추가] 상태 패널 (왼쪽: 턴/AP 정보) */
+        /* [?곕떽?] ?怨밴묶 ??ㅺ섯 (??긱걹: ??AP ?類ｋ궖) */
         .status-panel {
-            width: 110px;          /* 고정 너비 */
+            width: 110px;          /* ?⑥쥙????덊돩 */
             background: #2c3e50;
             border: 1px solid #34495e;
             border-radius: 5px;
@@ -550,58 +550,58 @@ body {
             font-weight: bold;
             text-align: center;
             font-size: 0.9em;
-            flex-shrink: 0;        /* 크기 줄어들지 않음 */
+            flex-shrink: 0;        /* ??由?餓κ쑴堉??? ??놁벉 */
         }
-        /* [수정] 턴 종료 버튼: 오른쪽 배치 */
+        /* [??륁젟] ???ル굝利?甕곌쑵?? ??삘뀲筌?獄쏄퀣??*/
         .btn-end-turn-side {
-            width: 80px;        /* 너비 약간 줄임 */
+            width: 80px;        /* ??덊돩 ??꾩퍢 餓κ쑴??*/
             font-size: 1.1em;
             font-weight: bold;
             word-break: keep-all;
             line-height: 1.2;
-            padding: 0;         /* 패딩 제거 */
+            padding: 0;         /* ??ㅻ뎃 ??볤탢 */
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
         
-        /* 카드 스타일 */
+        /* 燁삳?諭??????*/
         .card { 
             background: #ecf0f1; color: #2c3e50; width: 100px; height: 140px; 
             border-radius: 8px; padding: 8px; cursor: pointer; font-size: 0.8em;
             display: flex; flex-direction: column; justify-content: space-between;
             border: 2px solid #bdc3c7; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             position: relative;
-        /* [변경] 기본 상태는 겹치지 않고 간격을 둠 */
+        /* [癰궰野? 疫꿸퀡???怨밴묶??野껊??귨쭪? ??꾪?揶쏄쑨爰????*/
             flex-shrink: 0;         
-            margin: 0 5px;          /* 양옆에 5px씩 여유 */
+            margin: 0 5px;          /* ?臾믪겳??5px????? */
             transition: all 0.2s ease-out; 
             pointer-events: auto;   
             transform-origin: bottom center;
         }
-        /* [추가] 겹치기 모드 (.compact)일 때의 카드 스타일 */
+        /* [?곕떽?] 野껊??귝묾?筌뤴뫀諭?(.compact)?????벥 燁삳?諭??????*/
         .hand-area.compact .card {
-            margin: 0;              /* 기본 마진 제거 */
-            margin-left: -30px;     /* 왼쪽으로 겹치기 */
+            margin: 0;              /* 疫꿸퀡??筌띾뜆彛???볤탢 */
+            margin-left: -30px;     /* ??긱걹??곗쨮 野껊??귝묾?*/
         }
 
-        /* 겹치기 모드여도 첫 번째 카드는 밀리지 않음 */
+        /* 野껊??귝묾?筌뤴뫀諭??猷?筌?甕곕뜆??燁삳?諭??獄쎛?귐? ??놁벉 */
         .hand-area.compact .card:first-child {
             margin-left: 0;
         }
-        /* 첫 번째 카드는 왼쪽으로 밀리지 않게 */
+        /* 筌?甕곕뜆??燁삳?諭????긱걹??곗쨮 獄쎛?귐? ??꾩쓺 */
         .card:first-child {
             margin-left: 0;
         }
-        /* [수정] 마우스 올렸을 때 (Hover) */
+        /* [??륁젟] 筌띾뜆?????議????(Hover) */
         .card:hover { 
             transform: translateY(-5px) scale(1.1) !important; 
             z-index: 100;           
             border-color: #f1c40f; 
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
 
-            /* 호버 시에는 모드 상관없이 양옆 공간 확보 */
+            /* ?紐껋쒔 ??뽯퓠??筌뤴뫀諭??怨???곸뵠 ?臾믪겳 ?⑤벀而??類ｋ궖 */
             margin-left: 10px !important;
             margin-right: 10px !important;
         }
@@ -610,34 +610,34 @@ body {
         .card-name { font-weight: bold; margin-top: 10px; font-size: 1.1em; }
         .card-desc { font-size: 0.8em; color: #555; line-height: 1.3; }
       
-        /* [추가] 카드 등급(별) 스타일 */
+        /* [?곕떽?] 燁삳?諭??源껎닋(癰? ?????*/
         .card-rank { 
             position: absolute; 
             top: 2px; 
             right: 5px; 
-            color: #f1c40f; /* 금색 */
+            color: #f1c40f; /* 疫뀀뜆源?*/
             font-weight: bold; 
             font-size: 1.2em; 
-            text-shadow: 0 1px 2px rgba(0,0,0,0.8); /* 잘 보이게 그림자 추가 */
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8); /* ??癰귣똻?졾칰?域밸챶????곕떽? */
         }
-                /* [추가] 수치 변경 시 강조 스타일 */
-        .mod-val-buff { color: #2ecc71; font-weight: bold; } /* 수치 증가 (초록) */
-        .mod-val-debuff { color: #e74c3c; font-weight: bold; } /* 수치 감소 (빨강) */
-        /* [추가] 모바일 가로 모드 강제 오버레이 */
+                /* [?곕떽?] ??륂뒄 癰궰野???揶쏅벡???????*/
+        .mod-val-buff { color: #2ecc71; font-weight: bold; } /* ??륂뒄 筌앹빓? (?λ뜄以? */
+        .mod-val-debuff { color: #e74c3c; font-weight: bold; } /* ??륂뒄 揶쏅Ŋ??(??몿而? */
+        /* [?곕떽?] 筌뤴뫀而??揶쎛嚥?筌뤴뫀諭?揶쏅벡????살쒔??됱뵠 */
         #rotate-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: #000;
             color: #fff;
             z-index: 9999;
-            display: none; /* 평소엔 숨김 */
+            display: none; /* ??깅꺖????? */
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
         }
      
-        /* 이벤트(상점/휴식) 전체 화면 스타일 */
+        /* ??源???怨몄젎/??곷뻼) ?袁⑷퍥 ?遺얇늺 ?????*/
         #event-scene { justify-content: center; align-items: center; text-align: center; }
         .event-content { background: #2c3e50; padding: 40px; border-radius: 15px; width: 100%; max-width: 600px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); border: 1px solid #34495e; }
         .event-title { font-size: 2em; margin-bottom: 10px; color: #f1c40f; }
@@ -650,7 +650,7 @@ body {
         .shop-item.sold-out::after { content: "SOLD OUT"; position: absolute; top: 40%; left: 10%; color: red; font-weight: bold; font-size: 1.5em; transform: rotate(-15deg); border: 2px solid red; padding: 5px; }
         .shop-price { background: #111; color: #f1c40f; padding: 5px; border-radius: 4px; margin-top: 5px; font-weight: bold; }
 
-        /* 버튼류 */
+        /* 甕곌쑵?됬몴?*/
         .action-btn { background: #e67e22; color: white; border: none; padding: clamp(8px, 1.8vh, 11px) clamp(16px, 3vw, 22px); font-size: clamp(0.92rem, 2vw, 1rem); cursor: pointer; border-radius: 5px; box-shadow: 0 4px 0 #d35400; transition: 0.1s; }
         .action-btn:active { transform: translateY(4px); box-shadow: none; }
         .action-btn:disabled { background: #7f8c8d; box-shadow: none; cursor: not-allowed; transform: none; }
@@ -732,7 +732,7 @@ body {
     .story-char { max-width: 240px; }
 }
 
-        /* 팝업 */
+        /* ??밸씜 */
         #popup-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 200; }
         .popup-box { background: #333; padding: 30px; border-radius: 10px; width: 500px; max-height: 80%; display: flex; flex-direction: column; text-align: center; border: 1px solid #555; }
         .popup-btns { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
@@ -745,23 +745,31 @@ body {
         .keyword:hover .tip-text { visibility: visible; opacity: 1; }
 
 
-/* --- 스토리 컷신 (Visual Novel) --- */
+/* --- ??쎈꽅???뚮９??(Visual Novel) --- */
 #story-scene {
+    --story-padding: clamp(12px, 3vw, 48px);
+    --dialog-height: clamp(140px, 22vh, 200px);
+    --stage-max-height: max(240px, calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--dialog-height) - var(--story-padding)));
+    --stage-max-width: calc(var(--stage-max-height) * 16 / 9);
     width: 100vw;
     height: 100dvh;
     min-height: 100dvh;
-    position: fixed !important; /* 인라인 position 덮어씌워서 페이지 최상단 고정 */
+    position: fixed !important; /* ?ëªƒì”ª??position ??ë¼???™????ì” ï§žÂ€ ï§¤ì’–ê¸???¨ì¢Ž??*/
     inset: 0;
-    z-index: 300; /* 다른 UI와 팝업 위로 올려서 최상단에서 연출 */
+    z-index: 300; /* ??»â…¨ UI?? ??¹ë¾½ ?ê¾¨ì¤ˆ ?????ï§¤ì’–ê¸??¥ë¿‰???ê³—í…§ */
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     align-items: center;
-    padding: calc(var(--safe-top) + clamp(12px, 3vw, 48px)) clamp(12px, 3vw, 48px) calc(var(--safe-bottom) + clamp(12px, 3vw, 48px)) clamp(12px, 3vw, 48px);
+    padding: calc(var(--safe-top) + var(--story-padding))
+             max(var(--story-padding), calc((100vw - var(--stage-max-width)) / 2))
+             calc(var(--safe-bottom) + var(--story-padding))
+             max(var(--story-padding), calc((100vw - var(--stage-max-width)) / 2));
     box-sizing: border-box;
+    overflow: hidden;
 }
 
-/* 가로가 넓은 환경에서도 중앙 정렬된 무대 유지 */
+/* 揶쎛嚥≪뮄? ?蹂? ??띻펾?癒?퐣??餓λ쵐釉??類ｌ졊???얜?? ?醫? */
 #story-bg,
 #story-standing {
     left: 50%;
@@ -770,22 +778,27 @@ body {
 }
 
 #story-bg {
-    width: min(1600px, 100vw);
+    width: min(1600px, 100vw, var(--stage-max-width));
+    max-height: var(--stage-max-height);
 }
 
 #story-standing {
-    width: min(1400px, calc(100vw - clamp(24px, 6vw, 120px)));
+    width: min(1400px, calc(100vw - clamp(24px, 6vw, 120px)), var(--stage-max-width));
+    max-height: var(--stage-max-height);
 }
 
-/* 캐릭터 이미지 */
+/* 筌?Ŧ??????筌왖 */
 .story-char {
-    height: 90%; /* 화면 높이의 90% */
+    height: 90%; /* ?遺얇늺 ?誘れ뵠??90% */
     max-width: 400px;
     object-fit: contain;
     transition: 0.3s;
-    filter: brightness(0.5); /* 말 안 할 땐 어둡게 */
+    filter: brightness(0.5); /* 筌?????????紐쇔칰?*/
     transform: scale(0.95);
     position: absolute; bottom: 0;
+}
+.story-char {
+    max-height: var(--stage-max-height);
 }
 .story-char.speaking {
     filter: brightness(1);
@@ -797,10 +810,10 @@ body {
 .pos-center { left: 50%; transform: translateX(-50%) scale(0.95); }
 .pos-center.speaking { transform: translateX(-50%) scale(1); }
 
-/* 대화창 */
+/* ???遺욧갯 */
 .dialog-container {
     position: absolute; bottom: clamp(12px, 4vh, 36px); left: 50%; right: auto;
-    width: min(1200px, 90vw);
+    width: min(1200px, 90vw, var(--stage-max-width));
     height: clamp(140px, 22vh, 200px);
     transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.85);
@@ -849,7 +862,7 @@ body {
     }
 
     .dialog-container {
-        width: 95vw;
+        width: min(95vw, var(--stage-max-width));
         padding: 14px;
         height: auto;
     }
@@ -861,7 +874,7 @@ body {
 }
 @keyframes blink { 50% { opacity: 0; } }
 
-/* 선택지 화면 */
+/* ?醫뤾문筌왖 ?遺얇늺 */
 #story-choice-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.7); z-index: 200;
