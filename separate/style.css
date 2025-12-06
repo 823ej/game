@@ -27,13 +27,22 @@ body {
 /* 상단 바 제거 후, 떠 있는 기능 도크 */
 .utility-dock {
     position: fixed;
-    top: clamp(6px, 2vw, 14px);
-    right: clamp(6px, 2vw, 14px);
+    top: 0;
+    left: 0;
+    right: 0;
     display: flex;
-    align-items: center;
-    gap: 6px;
+    justify-content: center;
+    padding: clamp(4px, 1.5vw, 10px) clamp(8px, 2vw, 16px);
     z-index: 260;
     pointer-events: none;
+}
+
+.utility-dock-inner {
+    width: min(1120px, 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 .utility-dock .small-btn,
@@ -639,7 +648,8 @@ body {
 
         @media (max-width: 920px), (max-height: 540px) {
             .container { padding: clamp(6px, 1.4vw, 12px); gap: 6px; }
-            .utility-dock { top: 8px; right: 8px; gap: 4px; }
+            .utility-dock { padding: 6px 10px; }
+            .utility-dock-inner { gap: 6px; flex-wrap: wrap; justify-content: center; }
             .utility-pill { padding: 4px 8px; font-size: 0.85em; }
             .hub-content { gap: clamp(8px, 1.8vw, 12px); padding-bottom: clamp(8px, 3vh, 18px); }
             .hub-grid { grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: clamp(6px, 1.8vw, 12px); }
