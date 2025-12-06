@@ -31,38 +31,46 @@
         </div>
     </div>
 
-    <div id="hub-scene" class="scene hidden" style="background:#1a1a1a; align-items:center; justify-content:center;">
-        <div style="text-align:center; margin-bottom:30px;">
-            <h1 style="color:#f1c40f; margin:0; font-size:2.5em;">🕵️ 미드나잇 탐정 사무소</h1>
-            <p style="color:#777;">도시의 어둠을 밝히는 유일한 불빛</p>
-        </div>
+    <div id="hub-scene" class="scene hidden hub-scene">
+        <div class="hub-illustration"></div>
+        <div class="hub-overlay-gradient"></div>
 
-        <img src="https://placehold.co/600x300/222/555?text=Office" style="border-radius:10px; border:2px solid #444; margin-bottom:20px;">
+        <div class="hub-content">
+            <div class="hub-hero">
+                <div class="hub-copy">
+                    <p class="hub-tag">MIDNIGHT OFFICE</p>
+                    <h1>🕵️ 미드나잇 탐정 사무소</h1>
+                    <p class="hub-sub">도시의 어둠을 밝히는 유일한 불빛</p>
+                </div>
+            </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; width:100%; max-width:600px;">
-            <div class="hub-card" onclick="openCaseFiles()">
-                <h3>📁 사건 파일 (출동)</h3>
-                <p style="font-size:0.8em; color:#aaa;">의뢰를 선택하고 현장으로 나갑니다.</p>
-            </div>
-            <div class="hub-card" onclick="renderCityMap()">
-                <h3>🗺️ 도시로 외출</h3>
-                <p style="font-size:0.8em; color:#aaa;">사건 현장이나 상점으로 이동합니다.</p>
-             </div>
-            <div class="hub-card" onclick="hubRest()">
-                <h3>☕ 커피 한 잔 (회복)</h3>
-                <p style="font-size:0.8em; color:#aaa;">체력과 이성을 회복합니다. (500원)</p>
-            </div>
-            <div class="hub-card" onclick="renderShopScreen('shop_internet')">
-                <h3>📦 인터넷 주문 (상점)</h3>
-                <p style="font-size:0.8em; color:#aaa;">장비를 구매합니다.</p>
-            </div>
-            <div class="hub-card" onclick="openDeckManager()">
-                <h3>🃏 덱 정비 (카드)</h3>
-                <p style="font-size:0.8em; color:#aaa;">전투용/대화용 덱을 편집합니다.</p>
-            </div>
-            <div class="hub-card" onclick="saveGame()">
-                <h3>💾 업무 일지 (저장)</h3>
-                <p style="font-size:0.8em; color:#aaa;">현재 상태를 기록합니다.</p>
+            <div class="hub-actions">
+                <div class="hub-grid">
+                    <button class="hub-card" onclick="openCaseFiles()">
+                        <div class="hub-card-title">📁 사건 파일 (출동)</div>
+                        <div class="hub-card-desc">의뢰를 선택하고 현장으로 나갑니다.</div>
+                    </button>
+                    <button class="hub-card" onclick="renderCityMap()">
+                        <div class="hub-card-title">🗺️ 도시로 외출</div>
+                        <div class="hub-card-desc">사건 현장이나 상점으로 이동합니다.</div>
+                    </button>
+                    <button class="hub-card" onclick="hubRest()">
+                        <div class="hub-card-title">☕ 커피 한 잔 (회복)</div>
+                        <div class="hub-card-desc">체력과 이성을 회복합니다. (500원)</div>
+                    </button>
+                    <button class="hub-card" onclick="renderShopScreen('shop_internet')">
+                        <div class="hub-card-title">📦 인터넷 주문 (상점)</div>
+                        <div class="hub-card-desc">장비를 구매합니다.</div>
+                    </button>
+                    <button class="hub-card" onclick="openDeckManager()">
+                        <div class="hub-card-title">🃏 덱 정비 (카드)</div>
+                        <div class="hub-card-desc">전투용/대화용 덱을 편집합니다.</div>
+                    </button>
+                    <button class="hub-card" onclick="saveGame()">
+                        <div class="hub-card-title">💾 업무 일지 (저장)</div>
+                        <div class="hub-card-desc">현재 상태를 기록합니다.</div>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
