@@ -24,7 +24,7 @@ body {
 }
 
 .container {
-    width: min(1120px, 100%);
+    width: min(1400px, 95vw, calc(100vh * 16 / 9)); /* 16:9에 가깝게 넓혀서 PC 시인성 개선 */
     min-height: 100dvh;
     margin: 0 auto;
     padding: calc(var(--safe-top) + clamp(8px, 1.8vw, 16px)) clamp(8px, 1.8vw, 16px) calc(var(--safe-bottom) + clamp(8px, 1.8vw, 16px)) clamp(8px, 1.8vw, 16px);
@@ -51,7 +51,7 @@ body {
 }
 
 .utility-dock-inner {
-    width: min(1120px, 100%);
+    width: min(1400px, 95vw, calc(100vh * 16 / 9)); /* 본 화면과 동일한 폭 유지 */
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -372,16 +372,24 @@ body {
         }
 
         /* ?袁る떮 ?遺얇늺 ?????*/
-        .battle-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-height: 200px; }
-/* [??륁젟] 疫꿸퀣??.character ?????깆뱽 ??욧뎄嚥???堉???뒭?紐꾩뒄 (獄쏄퀗瑗????볤탢, ???あ???類ｂ봺) */
+        .battle-area { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: clamp(20px, 4vw, 60px); 
+            width: min(1100px, 90vw);
+            margin: 0 auto 20px; 
+            min-height: 200px; 
+        }
+/* [수정] 플레이어/적 박스 크기 균형 */
         .character { 
-            width: 40%; 
-            padding: 10px; 
+            width: clamp(120px, 15vw, 170px); 
+            padding: clamp(8px, 1.5vw, 14px); 
             border-radius: 10px; 
             position: relative; 
             transition: 0.2s; 
             text-align: center;
-            /* 獄쏄퀗瑗????볤탢 (???筌왖 揶쏅벡?? */
+            flex: 0 0 auto;
         }
         /* ????뽮쉐???????あ?귐됱춸 揶쏅벡??*/
         .character.turn-active { 
@@ -392,8 +400,8 @@ body {
 
         /* [?곕떽?] 筌?Ŧ??????筌왖 ?????*/
         .char-img {
-            width: 120px;
-            height: 120px;
+            width: clamp(80px, 10vw, 110px);
+            height: clamp(80px, 10vw, 110px);
             object-fit: cover; /* ??쑴???醫???렽???筌?쑴? */
             border-radius: 10px;
             border: 2px solid #555;
@@ -402,18 +410,23 @@ body {
         }
         
                 /* [1??ｍ??곕떽?] ?怨룸굶??????됱뱽 ?⑤벀而?*/
-        .enemies-wrapper {
-            flex: 1;                /* ??? ?⑤벀而?筌△뫁? */
-            display: flex;          /* 揶쎛嚥?獄쏄퀣??*/
-            justify-content: center; 
-            gap: 15px;              /* ??????揶쏄쑨爰?*/
-            align-items: flex-end;  /* 獄쏅뗀????깆뵥 筌띿쉸??*/
-            padding-left: 20px;
-        }
+.enemies-wrapper {
+    flex: 1 1 auto;
+    max-width: 70%;
+    width: 100%;
+    margin-left: auto;           /* 전체 그룹을 중앙에 놓고 적 묶음을 오른쪽으로 정렬 */
+    display: flex;         
+    justify-content: flex-end; 
+    gap: clamp(12px, 3vw, 36px);
+    align-items: flex-end; 
+    padding-left: 0;
+}
 
         /* 揶쏆뮆????筌?Ŧ???獄쏅벡??(疫꿸퀣??.character癰귣???鈺곌퀗???臾롮쓺) */
         .enemy-unit {
-            width: 140px;           /* ?⑥쥙????덊돩 */
+            width: clamp(120px, 15vw, 170px); 
+            padding: clamp(8px, 1.5vw, 14px);
+            box-sizing: border-box;
             background: transparent;
             border-radius: 10px;
             text-align: center;
@@ -495,7 +508,7 @@ body {
         .anim-atk-e { animation: atk-e 0.4s ease-out; }
         .anim-hit { animation: hit-anim 0.4s ease-in-out; }
         .anim-bounce { animation: bounce-double 0.6s ease-in-out; }
-        .hp-bar-bg { background: #222; height: 20px; border-radius: 10px; margin: 10px 0; overflow: hidden; border: 1px solid #555; }
+        .hp-bar-bg { background: #222; height: 12px; border-radius: 8px; margin: 6px 0; overflow: hidden; border: 1px solid #555; }
         .hp-bar-fill { background: #e74c3c; height: 100%; width: 100%; transition: 0.5s; }
         
         /* [??륁젟] ?紐껊굡 ?怨몃열: 餓κ쑬而?퐛?疫뀀뜆?(nowrap) 獄???살쒔???쨮????됱뒠 */
@@ -694,7 +707,7 @@ body {
     #loc-img { height: clamp(140px, 34vh, 190px); }
     .loc-text { padding: 12px; font-size: 1em; }
     .action-grid { gap: 6px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-    .battle-area { gap: 8px; margin-bottom: 10px; }
+    .battle-area { gap: clamp(18px, 4vw, 52px); margin-bottom: 10px; width: 100%; justify-content: center; }
     .character { width: 36%; padding: 8px; }
     .control-group { height: 90px; gap: 4px; }
     .status-panel { width: 96px; padding: 4px; font-size: 0.86em; }
@@ -724,8 +737,8 @@ body {
     #loc-img { height: clamp(120px, 32vh, 160px); }
     .loc-text { padding: 10px; font-size: 0.96em; }
     .action-grid { gap: 5px; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
-    .battle-area { gap: 6px; margin-bottom: 8px; }
-    .character { width: 34%; padding: 6px; }
+    .battle-area { gap: clamp(14px, 4vw, 40px); margin-bottom: 8px; width: 100%; justify-content: center; }
+    .character { width: auto; min-width: 120px; max-width: 180px; padding: 6px; flex: 0 0 auto; }
     .control-group { height: 82px; gap: 4px; }
     .status-panel { width: 90px; padding: 4px; font-size: 0.8em; }
     .btn-end-turn-side { width: 64px; font-size: 0.85em; }
@@ -748,12 +761,12 @@ body {
     .hub-copy { padding: 8px 10px; }
     .hub-copy h1 { font-size: 1.1rem; margin: 4px 0; }
     .hub-sub { font-size: 0.85rem; }
-    .battle-area { gap: 2px; margin-bottom: 4px; min-height: 110px; align-items: center; }
-    .character { width: 24%; padding: 4px; }
-    .char-img { width: 64px; height: 64px; }
+    .battle-area { gap: clamp(12px, 4vw, 28px); margin-bottom: 4px; min-height: 110px; align-items: center; width: 100%; justify-content: center; }
+    .character { width: clamp(80px, 22vw, 110px); padding: 4px; flex: 0 0 auto; }
+    .char-img { width: clamp(56px, 14vw, 80px); height: clamp(56px, 14vw, 80px); }
     .character.turn-active { border: 1px solid #f1c40f; box-shadow: 0 0 8px rgba(241,196,15,0.3); }
-    .enemies-wrapper { gap: 5px; padding-left: 4px; }
-    .enemy-unit { width: 84px; }
+    .enemies-wrapper { flex: 1 1 auto; justify-content: flex-start; gap: clamp(8px, 4vw, 22px); padding-left: 0; max-width: 70%; }
+    .enemy-unit { width: clamp(80px, 22vw, 110px); padding: 8px; box-sizing: border-box; }
     .enemy-unit.selected-target { border-color: #e74c3c; box-shadow: 0 0 8px rgba(231,76,60,0.5); }
     .control-group { height: 58px; gap: 2px; }
     .status-panel { width: 70px; padding: 2px; font-size: 0.7em; }
@@ -1015,15 +1028,6 @@ body {
     }
 }
 
-/* 모바일 전투: 플레이어/적 사이 간격 확보 */
-@media (max-width: 768px) {
-    .battle-area {
-        gap: clamp(24px, 8vw, 64px);
-        margin-bottom: 14px;
-        justify-content: space-between;
-    }
-}
-
     
 @media (max-height: 420px) and (orientation: landscape) {
     /* 1. 전체 레이아웃 압축 */
@@ -1096,37 +1100,10 @@ body {
     .action-btn { padding: 4px 8px; font-size: 0.85em; }
 
 /* 4. 전투(Battle) 화면 - 가장 중요 */
-.battle-area {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 150px;             /* [수정] 적과 나 사이 거리 대폭 증가 (PC 기준) */
-    width: 100%;
-    margin-bottom: 20px;
-    position: relative;
-} 
-    /* 캐릭터/적 크기 대폭 축소 */
-    /* 플레이어 캐릭터 영역 수정 */
-.character {
-    width: auto;             /* % 대신 내용물 크기에 맞춤 */
-    min-width: 160px;        /* 최소 너비 확보 */
-    flex: 0 0 auto;          /* 늘어나지 않게 고정 */
-    margin: 0;               /* 불필요한 마진 제거 */
-}
-    .char-img { width: 50px; height: 50px; margin-bottom: 2px; border-width: 1px; }
-   /* 적 캐릭터 영역 수정 */
-.enemies-wrapper {
-    flex: 0 0 auto;          /* 남은 공간 차지하지 않게 변경 */
-    width: auto;             /* 내용물 크기에 맞춤 */
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    padding-left: 0;         /* 기존 패딩 제거 */
-}
     /* 적 유닛 스타일 (테두리 영역 확장) */
 .enemy-unit {
-    width: 140px;           /* 너비 유지 */
-    padding: 15px;          /* [수정] 내부 여백 추가 -> 테두리가 널널해짐 */
+    width: clamp(120px, 15vw, 170px);           
+    padding: clamp(8px, 1.5vw, 14px);          
     box-sizing: border-box; /* 패딩이 너비에 포함되도록 설정 */
     border-radius: 12px;
     border: 2px solid transparent; /* 평소엔 투명 테두리 (위치 고정) */

@@ -1,0 +1,1108 @@
+﻿:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+    height: 100%;
+    min-height: 100dvh;
+    width: 100%;
+}
+body {
+    font-family: 'Apple SD Gothic Neo', sans-serif;
+    background: #121418;
+    color: #eee;
+    text-align: center;
+    user-select: none;
+    margin: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100dvh;
+}
+
+.container {
+    width: min(1120px, 100%);
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: calc(var(--safe-top) + clamp(8px, 1.8vw, 16px)) clamp(8px, 1.8vw, 16px) calc(var(--safe-bottom) + clamp(8px, 1.8vw, 16px)) clamp(8px, 1.8vw, 16px);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+/* ??⑤８堉?????蹂ㅽ깴 ?? ?????덈츎 ?リ옇????熬곥굤苡?*/
+.utility-dock {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    padding: calc(var(--safe-top) + clamp(4px, 1.5vw, 10px)) clamp(8px, 2vw, 16px);
+    z-index: 260;
+    pointer-events: none;
+}
+
+.utility-dock-inner {
+    width: min(1120px, 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.utility-dock .small-btn,
+.utility-pill {
+    pointer-events: auto;
+}
+
+.utility-pill {
+    background: rgba(34, 40, 48, 0.82);
+    border: 1px solid #3c4b5c;
+    color: #f1f2f6;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.92em;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    white-space: nowrap;
+}
+
+.utility-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+        /* ?筌뤾퍒萸??ル벣遊????댁뮅???깅턄 */
+        .inventory-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 250;
+            padding: 16px;
+        }
+        .inventory-panel {
+            width: min(880px, 100%);
+            background: #1f2a36;
+            border: 1px solid #3a4b5d;
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 14px;
+        }
+        .inventory-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .inventory-title { font-weight: bold; color: #f1c40f; font-size: 1.1em; }
+        .inventory-body { background: #243445; border: 1px solid #3a4b5d; border-radius: 10px; padding: 12px; min-height: 120px; }
+        .item-list { display: flex; gap: 8px; flex-wrap: wrap; }
+        .item-icon { 
+            width: 40px; height: 40px; border-radius: 4px; display: flex; justify-content: center; align-items: center; 
+            font-size: 1.2em; cursor: pointer; position: relative; border: 2px solid #555; transition: 0.2s;
+        }
+        .item-icon:hover { transform: scale(1.1); z-index: 5; }
+        .item-relic { background: #e67e22; border-color: #d35400; color: #fff; }
+        .item-consumable { background: #27ae60; border-color: #2ecc71; color: #fff; }
+        .item-rank-2 { box-shadow: 0 0 5px #3498db; }
+        .item-rank-3 { box-shadow: 0 0 8px #f1c40f; border-color: #f1c40f; }
+
+        /* [?怨뺣뼺?] ?熬곣뫗逾???????????瑜곴텕???뺢퀗??????쳜??????*/
+        .item-actions {
+            position: absolute;
+            bottom: -35px; /* ?熬곣뫗逾???꾩룆?餓??熬곣뫁??*/
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            background: #222;
+            padding: 3px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            z-index: 200;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+        .item-btn {
+            font-size: 0.8em;
+            padding: 2px 6px;
+            cursor: pointer;
+            border: none;
+            border-radius: 3px;
+            color: white;
+        }
+        .btn-confirm { background: #27ae60; }
+        .btn-cancel { background: #c0392b; }
+
+        /* ?熬곣뫗逾??戮곕턄 ??ルㅎ臾??琉??????띠룆踰??*/
+        .item-icon.selected {
+            border-color: #f1c40f;
+            box-shadow: 0 0 10px #f1c40f;
+            z-index: 150;
+        }
+        /* ??袁⑥깓 */
+        /* [??瑜곸젧] ??袁⑥깓 ?熬곣뫚???곌떠???(?熬곣뫗逾?????섎꿰춯? */
+        .tooltip { 
+            visibility: hidden; 
+            width: 160px; 
+            background-color: #111; 
+            color: #fff; 
+            text-align: center; 
+            border-radius: 6px; 
+            padding: 10px; 
+            
+            /* ?熬곣뫚?? ?熬곣뫗逾?袁⑷섭?????섎꿰춯?*/
+            top: 50%;
+            left: 120%; /* ???섎꿰춯?쏅윪???뿉??꾩럾????繹?*/
+            transform: translateY(-50%); /* ??瑜곸땋 繞벿살탳???筌먲퐣議?*/
+            
+            /* ?リ옇????熬곣뫚?????㏃뎽 ?貫?껆뵳??*/
+            bottom: auto;
+            margin-left: 0;
+
+            position: absolute; 
+            z-index: 9999; /* 嶺뚣끉裕뉑묾??*/
+            
+            font-size: 13px; 
+            font-weight: normal; 
+            line-height: 1.4;    
+            
+            border: 1px solid #777; 
+            opacity: 0; 
+            transition: opacity 0.3s; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5); 
+            
+            pointer-events: none; /* ????????沅?*/
+        }
+
+        /* [?怨뺣뼺?] ??袁⑥깓 ??븐슙???(??湲깃국???띠럾??洹먮뿪?) */
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            right: 100%; /* ??袁⑥깓????湲깃국 */
+            margin-top: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent #111 transparent transparent;
+        }
+
+        /* [?怨뺣뼺?] ?????釉띾쐝? ?熬곣뫗逾???????*/
+        .item-icon.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            filter: grayscale(80%);
+        }
+        .item-icon:hover .tooltip { visibility: visible; opacity: 1; }
+
+        /* ?縕??Scene) ??㉱??*/
+        .scene {
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .hidden { display: none !important; }
+        
+                /* [NEW] ????????????*/
+        .deck-builder-container {
+            display: flex; flex: 1; height: 100%; overflow: hidden; gap: 10px; padding: 10px;
+        }
+        .deck-column {
+            flex: 1; display: flex; flex-direction: column; 
+            background: #1a1a1a; border-radius: 8px; border: 1px solid #444; overflow: hidden;
+        }
+        .deck-header {
+            padding: 10px; background: rgba(0,0,0,0.3); border-bottom: 1px solid #444;
+        }
+        .deck-header h3 { margin: 0; color: #f1c40f; }
+
+        .card-grid {
+            flex: 1; overflow-y: auto; padding: 10px;
+            display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; justify-content: center;
+        }
+
+        /* ????????亦껋꼶梨???곸궠?獄??????*/
+        .builder-card {
+            width: 90px; height: 120px; 
+            background: #ecf0f1; color: #333; 
+            border-radius: 6px; padding: 5px; 
+            font-size: 0.75em; cursor: pointer; 
+            display: flex; flex-direction: column; justify-content: space-between;
+            border: 2px solid #bdc3c7; transition: 0.1s; position: relative;
+        }
+        .builder-card:hover { transform: scale(1.05); border-color: #f1c40f; z-index: 10; }
+        .builder-card b { font-size: 1.1em; display: block; margin-top: 5px; }
+        .builder-card .cost { 
+            background: #3498db; color: white; width: 20px; height: 20px; 
+            border-radius: 50%; text-align: center; line-height: 20px; font-weight: bold; 
+            position: absolute; top: -8px; left: -8px; 
+        }
+
+        /* [NEW] 濾곌쑨?????甸?? ???깅턄?熬곣뫗??*/
+        .hub-scene {
+            background: #0f1116;
+            align-items: center;
+            justify-content: flex-end;
+            padding: clamp(12px, 3vw, 20px);
+        }
+        .hub-illustration {
+            position: absolute;
+            inset: 0;
+            background: url('https://placehold.co/1400x800/1c1f28/3f4757?text=Detective+Office+Panorama') center/cover no-repeat;
+            filter: saturate(1.1);
+        }
+        .hub-overlay-gradient {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 20% 20%, rgba(18, 40, 77, 0.55), transparent 55%),
+                        linear-gradient(180deg, rgba(10, 12, 16, 0.7), rgba(10, 12, 16, 0.9));
+        }
+        .hub-content {
+            position: relative;
+            width: min(1040px, 100%);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: clamp(10px, 2vw, 18px);
+            align-items: end;
+            z-index: 1;
+            padding-bottom: clamp(10px, 4vh, 32px);
+        }
+        .hub-hero { display: flex; align-items: flex-end; }
+        .hub-copy {
+            background: rgba(10, 14, 22, 0.72);
+            border: 1px solid rgba(241, 196, 15, 0.35);
+            border-radius: 14px;
+            padding: clamp(12px, 2vw, 18px);
+            text-align: left;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+            backdrop-filter: blur(6px);
+        }
+        .hub-copy h1 {
+            margin: 4px 0 6px;
+            font-size: clamp(1.3rem, 3vw, 1.9rem);
+            color: #f1c40f;
+        }
+        .hub-sub { margin: 0; color: #d4d7dd; font-size: clamp(0.9rem, 2vw, 1rem); }
+        .hub-tag {
+            margin: 0;
+            letter-spacing: 0.15em;
+            font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+            color: #7fb4ff;
+        }
+        .hub-actions { display: flex; justify-content: center; }
+        .hub-grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: clamp(8px, 2vw, 16px);
+        }
+        .hub-card {
+            background: rgba(24, 33, 46, 0.92);
+            border: 1px solid rgba(111, 140, 176, 0.5);
+            border-radius: 12px;
+            padding: 10px 12px;
+            text-align: left;
+            color: #ecf0f1;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+            backdrop-filter: blur(4px);
+            width: 100%;
+            outline: none;
+        }
+        .hub-card:hover {
+            transform: translateY(-2px);
+            border-color: #f1c40f;
+            box-shadow: 0 10px 22px rgba(0,0,0,0.4);
+        }
+        .hub-card-title { font-weight: 700; margin-bottom: 4px; font-size: 0.92rem; }
+        .hub-card-desc { margin: 0; font-size: 0.8rem; color: #c6d2e3; line-height: 1.4; }
+
+        @media (max-height: 520px) {
+            .hub-content { grid-template-columns: 1fr; padding-bottom: 12px; gap: 10px; }
+            .hub-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+            .hub-copy { padding: 10px 12px; }
+            .hub-card { padding: 9px 11px; }
+            .hub-card-title { font-size: 0.88rem; }
+            .hub-card-desc { font-size: 0.78rem; }
+        }
+        
+        /* [NEW] ???????븐뻼???????*/
+        .scenario-header {
+            background: #2c3e50; padding: 15px; border-radius: 10px; margin-bottom: 15px;
+            border: 1px solid #34495e; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .progress-container { margin-top: 10px; text-align: left; }
+        .prog-label { font-size: 0.8em; color: #aaa; margin-bottom: 2px; display: flex; justify-content: space-between; }
+        .prog-bar-bg { background: #111; height: 10px; border-radius: 5px; margin-bottom: 8px; overflow: hidden; border: 1px solid #444; }
+        .prog-bar-fill { height: 100%; transition: width 0.5s; }
+
+        .location-view {
+            position: relative; margin-bottom: 20px; border: 2px solid #555; border-radius: 10px; overflow: hidden;
+        }
+        #loc-img { width: 100%; height: 250px; object-fit: cover; opacity: 0.6; }
+        .loc-text {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: rgba(0, 0, 0, 0.8); color: #ecf0f1;
+            padding: 15px; text-align: left; font-size: 1.1em; line-height: 1.5;
+            border-top: 1px solid #777;
+        }
+
+        .action-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;
+        }
+
+        /* ?熬곥굥????븐뻼???????*/
+        .battle-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-height: 200px; }
+/* [??瑜곸젧] ?リ옇???.character ?????源녿굵 ???㏓럡??????????筌뤾쑴??(?꾩룄?쀧몭????蹂ㅽ깴, ???????筌먲퐘遊? */
+        .character { 
+            width: 40%; 
+            padding: 10px; 
+            border-radius: 10px; 
+            position: relative; 
+            transition: 0.2s; 
+            text-align: center;
+            /* ?꾩룄?쀧몭????蹂ㅽ깴 (????嶺뚯솘? ?띠룆踰?? */
+        }
+        /* ????戮?뎽?????????洹먮맩異??띠룆踰??*/
+        .character.turn-active { 
+            border: 2px solid #f1c40f; 
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.3); 
+            background: rgba(255, 255, 255, 0.05); /* ?熬곣뫜????? ?꾩룄?쀧몭?*/
+        }
+
+        /* [?怨뺣뼺?] 嶺?큔???????嶺뚯솘? ?????*/
+        .char-img {
+            width: 120px;
+            height: 120px;
+            object-fit: cover; /* ??????????????嶺??? */
+            border-radius: 10px;
+            border: 2px solid #555;
+            background: #000;
+            margin-bottom: 5px;
+        }
+        
+                /* [1??節띉??怨뺣뼺?] ??⑤８援???????깅굵 ??ㅻ???*/
+        .enemies-wrapper {
+            flex: 1;                /* ??? ??ㅻ???嶺뚢뼰維? */
+            display: flex;          /* ?띠럾????꾩룄???*/
+            justify-content: center; 
+            gap: 15px;              /* ???????띠룄?①댆?*/
+            align-items: flex-end;  /* ?꾩룆?????源녿데 嶺뚮씮???*/
+            padding-left: 20px;
+        }
+
+        /* ?띠룇裕????嶺?큔????꾩룆踰??(?リ옇???.character?곌랜????브퀗?????얜‘?? */
+        .enemy-unit {
+            width: 140px;           /* ??μ쪠?????딅룴 */
+            background: transparent;
+            border-radius: 10px;
+            text-align: center;
+            position: relative;
+            transition: 0.2s;
+            border: 2px solid transparent; /* ??源낃틬????筌???????*/
+        }
+
+        /* ??⑤챷逾??낅슣?⑵굢??????????*/
+        .enemy-unit.dead {
+            opacity: 0.4;
+            filter: grayscale(100%);
+            pointer-events: none;   /* ???????類ㅼ굥???釉띾쐝? */
+        }
+
+        /* ???롪퍔??????諭????띠룆踰??*/
+        .enemy-unit.selected-target {
+            border-color: #e74c3c;
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.6);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* [?怨뺣뼺?] ??ル봾鍮띸춯濡ル뾼??????덈뒆???깅엮 ?筌먦끉踰?*/
+
+        /* 1. ??ㅻ???(???섎꿰춯?쏅윪???뿉???뉖걞?濡μ쾸? ?곌랜踰? - ??????怨룹꽑?? */
+        @keyframes atk-p {
+            0% { transform: translateX(0); }
+            30% { transform: translateX(50px) scale(1.1); } /* ??濡?さ???? */
+            100% { transform: translateX(0); }
+        }
+        /* 1-2. ??ㅻ???(??湲깃국??怨쀬Ŧ ??뉖걞?濡μ쾸? ?곌랜踰? - ??⑤챷?? */
+        @keyframes atk-e {
+            0% { transform: translateX(0); }
+            30% { transform: translateX(-50px) scale(1.1); }
+            100% { transform: translateX(0); }
+        }
+
+        /* 2. ???ｋ큵 (???댁Ŧ ?꾩럾??筌뤾퍓堉꾣뤆?쎛 ?곌랜踰? + ??紐욤??뺢퀡?놅㎕?? */
+        @keyframes hit-anim {
+            0% { transform: translateX(0); filter: brightness(1); }
+            20% { transform: translateX(-10px); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); } /* ??紐욤뚮럽移?*/
+            40% { transform: translateX(10px); } /* ??類ｌ맰 ???뀀턁 */
+            60% { transform: translateX(-5px); }
+            100% { transform: translateX(0); filter: brightness(1); }
+        }
+
+        /* 3. ???꾪뀬/?뺢퀗?들걡?(?熬곣뫁夷??????袁잙쳴?? */
+        @keyframes bounce-double {
+            0% { transform: translateY(0); }
+            25% { transform: translateY(-20px); } /* ??믨퀡??1 */
+            50% { transform: translateY(0); }
+            75% { transform: translateY(-10px); } /* ??믨퀡??2 (??얜‘?? */
+            100% { transform: translateY(0); }
+        }
+                /* [?怨뺣뼺?] ??亦껋꼶梨? ???⑸츩???????*/
+        .damage-number {
+            position: absolute;
+            top: 10%;           /* 嶺?큔????誘⑹굡???잙??섋뜎?*/
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ff3333;     /* ?띠룆踰?????紐욤??*/
+            font-size: 2.5em;   /* ???? */
+            font-weight: 900;   /* ?熬곣뫜????踰?? */
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; /* ?롪틵??? ?????洹먮맩夷??띠럾????얠뎽 ?筌먲퐢沅?*/
+            z-index: 999;
+            pointer-events: none; /* 嶺뚮씭??????????꾩렮維싮뜮??????우벟 */
+            animation: float-up 0.8s ease-out forwards;
+        }
+
+        /* [?怨뺣뼺?] ????썸뤆?쎛 ?熬곣뫁夷?????낆쾸?嶺?????륁??????ル봾鍮띸춯濡ル뾼???*/
+        @keyframes float-up {
+            0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -20px) scale(1.2); opacity: 1; } /* ??????????*/
+            100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }  /* ?熬곣뫁夷?????륁??*/
+        }
+
+        /* ??ル봾鍮띸춯濡ル뾼?????⑤챷????????(JS??????釉먮듌??????롪퍒??? */
+        .anim-atk-p { animation: atk-p 0.4s ease-out; }
+        .anim-atk-e { animation: atk-e 0.4s ease-out; }
+        .anim-hit { animation: hit-anim 0.4s ease-in-out; }
+        .anim-bounce { animation: bounce-double 0.6s ease-in-out; }
+        .hp-bar-bg { background: #222; height: 20px; border-radius: 10px; margin: 10px 0; overflow: hidden; border: 1px solid #555; }
+        .hp-bar-fill { background: #e74c3c; height: 100%; width: 100%; transition: 0.5s; }
+        
+        /* [??瑜곸젧] ?筌뤾퍓援???⑤챶?? 繞벿븐뫊?????ル??(nowrap) ?????댁뮅???夷?????깅뮔 */
+        .hand-area { 
+            display: flex; 
+            justify-content: center; 
+            flex-wrap: nowrap;      /* [???堉? 繞벿븐뫊????????*/
+            align-items: flex-end;  /* ?熬곣뫁?뗧춯??筌먲퐣議?*/
+            
+            height: 160px;          /* ?沃섅굦逾???μ쪠??(?곸궠?獄???諛몄뵜 ??ㅻ????筌먲퐢沅? */
+            padding: 10px;
+            margin-top: 20px;
+            
+            overflow: visible;      /* ?곸궠?獄?쑚泥? ?熬곣뫁夷????????????濡〓뉴嶺뚯솘? ??袁⑹벟 */
+            pointer-events: none;   /* ????ㅻ?????????꾩렮維? (?곸궠?獄?씛彛????????우벟) */
+        }
+
+        .hand-area::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        /* [??瑜곸젧] ?β돦裕????⑤챶?? ?띠럾???????꾩룄???*/
+        .log-area { 
+            height: 100%;       
+            flex: 1;            /* ??? ??ㅻ???嶺뚢뼰維? */
+            overflow-y: auto; 
+            background: #111; 
+            border: 1px solid #444; 
+            padding: 5px;       /* ???삳럠 繞벿븐뫒??*/
+            text-align: left; 
+            font-size: 0.85em;  /* ?リ섣?????????怨? 繞벿븐뫒??*/
+            color: #bbb; 
+            border-radius: 5px; 
+            margin: 0;          /* 嶺뚮씭?녶퐲???蹂ㅽ깴 */
+        }
+        /* [??瑜곸젧] ???쳜?猿낆뿉??잙갭梨띄쳥? 3???釉뚯뫓??(??⑤객臾?| ?β돦裕??| ?뺢퀗??? */
+        .control-group {
+            display: flex;          
+            gap: 5px;              /* ?띠룄?①댆???る궖??*/
+            height: 100px;         /* ?熬곣뫕???沃섅굦逾?120px -> 100px???怨뺣깹??*/
+            margin-bottom: 5px;    
+            align-items: stretch;   
+        }
+        /* [?怨뺣뼺?] ??⑤객臾????븐꽢 (??湲깃국: ??AP ?筌먲퐢沅? */
+        .status-panel {
+            width: 110px;          /* ??μ쪠?????딅룴 */
+            background: #2c3e50;
+            border: 1px solid #34495e;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 5px;
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+            font-size: 0.9em;
+            flex-shrink: 0;        /* ????繞벿븐뫒???? ???곷쾳 */
+        }
+        /* [??瑜곸젧] ????リ턁筌??뺢퀗??? ???섎꿰춯??꾩룄???*/
+        .btn-end-turn-side {
+            width: 80px;        /* ???딅룴 ??袁⑺뜟 繞벿븐뫒??*/
+            font-size: 1.1em;
+            font-weight: bold;
+            word-break: keep-all;
+            line-height: 1.2;
+            padding: 0;         /* ???삳럠 ??蹂ㅽ깴 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        /* ?곸궠?獄??????*/
+        .card { 
+            background: #ecf0f1; color: #2c3e50; width: 100px; height: 140px; 
+            border-radius: 8px; padding: 8px; cursor: pointer; font-size: 0.8em;
+            display: flex; flex-direction: column; justify-content: space-between;
+            border: 2px solid #bdc3c7; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            position: relative;
+        /* [?곌떠??? ?リ옇?????⑤객臾???롪퍓??洹⑥?? ??袁ぢ??띠룄?①댆????*/
+            flex-shrink: 0;         
+            margin: 0 5px;          /* ??얜?寃??5px?????? */
+            transition: all 0.2s ease-out; 
+            pointer-events: auto;   
+            transform-origin: bottom center;
+        }
+        /* [?怨뺣뼺?] ?롪퍓??洹앸Ь?嶺뚮ㅄ維獄?(.compact)?????踰??곸궠?獄??????*/
+        .hand-area.compact .card {
+            margin: 0;              /* ?リ옇???嶺뚮씭?녶퐲???蹂ㅽ깴 */
+            margin-left: -30px;     /* ??湲깃국??怨쀬Ŧ ?롪퍓??洹앸Ь?*/
+        }
+
+        /* ?롪퍓??洹앸Ь?嶺뚮ㅄ維獄????嶺??뺢퀡????곸궠?獄???꾩럾??洹? ???곷쾳 */
+        .hand-area.compact .card:first-child {
+            margin-left: 0;
+        }
+        /* 嶺??뺢퀡????곸궠?獄????湲깃국??怨쀬Ŧ ?꾩럾??洹? ??袁⑹벟 */
+        .card:first-child {
+            margin-left: 0;
+        }
+        /* [??瑜곸젧] 嶺뚮씭??????鈺????(Hover) */
+        .card:hover { 
+            transform: translateY(-5px) scale(1.1) !important; 
+            z-index: 100;           
+            border-color: #f1c40f; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+
+            /* ?筌뤾퍔????戮?뱺??嶺뚮ㅄ維獄??????怨몃턄 ??얜?寃???ㅻ????筌먲퐢沅?*/
+            margin-left: 10px !important;
+            margin-right: 10px !important;
+        }
+        .card.disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); transform: none; }
+        .card-cost { background: #3498db; color: white; width: 25px; height: 25px; border-radius: 50%; text-align: center; line-height: 25px; font-weight: bold; position: absolute; top: -10px; left: -10px; }
+        .card-name { font-weight: bold; margin-top: 10px; font-size: 1.1em; }
+        .card-desc { font-size: 0.8em; color: #555; line-height: 1.3; }
+      
+        /* [?怨뺣뼺?] ?곸궠?獄??繹먭퍗???? ?????*/
+        .card-rank { 
+            position: absolute; 
+            top: 2px; 
+            right: 5px; 
+            color: #f1c40f; /* ?ル?녷틦?*/
+            font-weight: bold; 
+            font-size: 1.2em; 
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8); /* ???곌랜??議얠물??잙갭梨????怨뺣뼺? */
+        }
+                /* [?怨뺣뼺?] ??瑜귣뭵 ?곌떠??????띠룆踰???????*/
+        .mod-val-buff { color: #2ecc71; font-weight: bold; } /* ??瑜귣뭵 嶺뚯빘鍮? (?貫?꾡빳? */
+        .mod-val-debuff { color: #e74c3c; font-weight: bold; } /* ??瑜귣뭵 ?띠룆흮??(??紐욤? */
+        /* [?怨뺣뼺?] 嶺뚮ㅄ維????띠럾???嶺뚮ㅄ維獄??띠룆踰?????댁뮅???깅턄 */
+        #rotate-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            color: #fff;
+            z-index: 9999;
+            display: none; /* ??源낃틬????? */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+     
+        /* ???繹????⑤챷????怨룸뻤) ?熬곣뫕????븐뻼???????*/
+        #event-scene { justify-content: center; align-items: center; text-align: center; }
+        .event-content { background: #2c3e50; padding: 40px; border-radius: 15px; width: 100%; max-width: 600px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); border: 1px solid #34495e; }
+        .event-title { font-size: 2em; margin-bottom: 10px; color: #f1c40f; }
+        .event-desc { font-size: 1.2em; margin-bottom: 30px; color: #ecf0f1; }
+        
+        .shop-items { display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; }
+        .shop-item { cursor: pointer; transition: 0.2s; position: relative; }
+        .shop-item:hover { transform: scale(1.05); }
+        .shop-item.sold-out { opacity: 0.4; pointer-events: none; filter: grayscale(100%); }
+        .shop-item.sold-out::after { content: "SOLD OUT"; position: absolute; top: 40%; left: 10%; color: red; font-weight: bold; font-size: 1.5em; transform: rotate(-15deg); border: 2px solid red; padding: 5px; }
+        .shop-price { background: #111; color: #f1c40f; padding: 5px; border-radius: 4px; margin-top: 5px; font-weight: bold; }
+
+        /* ?뺢퀗???щご?*/
+        .action-btn { background: #e67e22; color: white; border: none; padding: clamp(8px, 1.8vh, 11px) clamp(16px, 3vw, 22px); font-size: clamp(0.92rem, 2vw, 1rem); cursor: pointer; border-radius: 5px; box-shadow: 0 4px 0 #d35400; transition: 0.1s; }
+        .action-btn:active { transform: translateY(4px); box-shadow: none; }
+        .action-btn:disabled { background: #7f8c8d; box-shadow: none; cursor: not-allowed; transform: none; }
+        .small-btn { background: #555; color: #fff; border: 1px solid #777; padding: clamp(3px, 1.2vh, 6px) clamp(6px, 1.6vw, 10px); font-size: clamp(0.74rem, 1.8vw, 0.82rem); cursor: pointer; border-radius: 4px; margin: 0 2px; min-width: 42px; }
+
+        @media (max-width: 920px), (max-height: 540px) {
+            .container { padding: clamp(6px, 1.4vw, 12px); gap: 6px; }
+            .utility-dock { padding: 6px 10px; }
+            .utility-dock-inner { gap: 6px; flex-wrap: wrap; justify-content: center; }
+            .utility-pill { padding: 4px 8px; font-size: 0.85em; }
+            .hub-content { gap: clamp(8px, 1.8vw, 12px); padding-bottom: clamp(8px, 3vh, 18px); }
+            .hub-grid { grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: clamp(6px, 1.8vw, 12px); }
+            .hub-card { padding: 9px 11px; }
+            .hub-card-title { font-size: 0.88rem; }
+            .hub-card-desc { font-size: 0.78rem; }
+            .action-grid { gap: 8px; }
+        }
+
+@media (max-height: 520px) and (orientation: landscape) {
+    body { font-size: 14px; }
+    .container { padding: 6px 8px; gap: 6px; }
+    .scene { border-radius: 10px; }
+    .utility-dock { padding: 4px 6px; }
+    .utility-dock-inner { gap: 4px; }
+    .utility-pill { padding: 3px 7px; font-size: 0.8em; }
+    .small-btn { padding: 3px 7px; font-size: 0.76rem; min-width: 38px; }
+    .hub-scene { padding: 10px; }
+    .hub-content { gap: 8px; grid-template-columns: 1fr; padding-bottom: 12px; }
+    .hub-hero { min-height: 0; }
+    .hub-copy { padding: 10px 12px; }
+    .hub-copy h1 { font-size: 1.4rem; margin: 6px 0; }
+    .hub-sub { font-size: 0.9rem; }
+    .hub-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
+    .hub-card { padding: 8px 9px; }
+    .hub-card-title { font-size: 0.86rem; }
+    .hub-card-desc { font-size: 0.75rem; }
+    .scenario-header { padding: 10px; margin-bottom: 10px; }
+    #loc-img { height: clamp(140px, 34vh, 190px); }
+    .loc-text { padding: 12px; font-size: 1em; }
+    .action-grid { gap: 6px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+    .battle-area { gap: 8px; margin-bottom: 10px; }
+    .character { width: 36%; padding: 8px; }
+    .control-group { height: 90px; gap: 4px; }
+    .status-panel { width: 96px; padding: 4px; font-size: 0.86em; }
+    .btn-end-turn-side { width: 70px; }
+    .hand-area { height: 130px; margin-top: 8px; }
+    .event-content { padding: 28px; }
+}
+
+@media (max-height: 460px) and (orientation: landscape) {
+    body { font-size: 13px; }
+    .utility-dock { padding: 2px 4px; }
+    .utility-dock-inner { gap: 3px; }
+    .utility-pill { padding: 3px 6px; font-size: 0.74em; }
+    .utility-buttons { gap: 4px; }
+    .container { padding: 4px 6px; gap: 4px; width: min(1040px, 100%); }
+    .scene { border-radius: 8px; }
+    .small-btn { padding: 2px 6px; font-size: 0.7rem; min-width: 34px; }
+    .action-btn { padding: 6px 10px; font-size: 0.86rem; box-shadow: 0 3px 0 #d35400; }
+    .hub-hero { display: none; }
+    .hub-actions { padding: 0 4px; }
+    .hub-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 5px; }
+    .hub-card { padding: 7px 8px; border-radius: 10px; }
+    .hub-card-title { font-size: 0.8rem; }
+    .hub-card-desc { font-size: 0.72rem; }
+    .scenario-header { padding: 8px; margin-bottom: 8px; }
+    .progress-container { margin-top: 6px; }
+    #loc-img { height: clamp(120px, 32vh, 160px); }
+    .loc-text { padding: 10px; font-size: 0.96em; }
+    .action-grid { gap: 5px; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+    .battle-area { gap: 6px; margin-bottom: 8px; }
+    .character { width: 34%; padding: 6px; }
+    .control-group { height: 82px; gap: 4px; }
+    .status-panel { width: 90px; padding: 4px; font-size: 0.8em; }
+    .btn-end-turn-side { width: 64px; font-size: 0.85em; }
+    .hand-area { height: 110px; margin-top: 6px; padding: 6px; }
+    .event-content { padding: 22px; }
+    .dialog-container { width: 92vw; padding: 12px; bottom: 12px; }
+    .story-char { max-width: 240px; }
+}
+
+@media (max-height: 360px) and (orientation: landscape) {
+    body { font-size: 12px; }
+    .container { padding: 3px 5px; gap: 3px; width: min(1000px, 100%); justify-content: flex-start; }
+    .scene { border-radius: 6px; }
+    .utility-dock { padding: calc(var(--safe-top) + 2px) 4px 2px 4px; }
+    .utility-dock-inner { gap: 2px; }
+    .utility-pill { padding: 2px 6px; font-size: 0.7em; }
+    .hub-scene { padding: 6px; }
+    .hub-hero { display: none; }
+    .hub-content { gap: 6px; grid-template-columns: 1fr; padding-bottom: 6px; }
+    .hub-copy { padding: 8px 10px; }
+    .hub-copy h1 { font-size: 1.1rem; margin: 4px 0; }
+    .hub-sub { font-size: 0.85rem; }
+    .battle-area { gap: 2px; margin-bottom: 4px; min-height: 110px; align-items: center; }
+    .character { width: 24%; padding: 4px; }
+    .char-img { width: 64px; height: 64px; }
+    .character.turn-active { border: 1px solid #f1c40f; box-shadow: 0 0 8px rgba(241,196,15,0.3); }
+    .enemies-wrapper { gap: 5px; padding-left: 4px; }
+    .enemy-unit { width: 84px; }
+    .enemy-unit.selected-target { border-color: #e74c3c; box-shadow: 0 0 8px rgba(231,76,60,0.5); }
+    .control-group { height: 58px; gap: 2px; }
+    .status-panel { width: 70px; padding: 2px; font-size: 0.7em; }
+    .btn-end-turn-side { width: 48px; font-size: 0.72em; }
+    .log-area { font-size: 0.72em; padding: 2px; }
+    .hand-area { height: 74px; margin-top: 2px; padding: 3px; }
+    .card { width: 68px; height: 96px; font-size: 0.66em; line-height: 1.18; padding: 5px; }
+    .action-btn { padding: 5px 8px; font-size: 0.82rem; box-shadow: 0 2px 0 #d35400; }
+    .small-btn { padding: 2px 5px; font-size: 0.68rem; min-width: 30px; }
+}
+
+        /* ??諛몄뵜 */
+        #popup-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 200; }
+        .popup-box { background: #333; padding: 30px; border-radius: 10px; width: 500px; max-height: 80%; display: flex; flex-direction: column; text-align: center; border: 1px solid #555; }
+        .popup-btns { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+        .pile-list { flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; padding: 10px; background: #222; border-radius: 5px; margin-top: 10px; }
+        .mini-card { width: 70px; height: 100px; background: #ecf0f1; color: #333; border-radius: 4px; padding: 5px; font-size: 0.6em; display: flex; flex-direction: column; justify-content: center; text-align: center; border: 1px solid #bdc3c7; }
+        .mini-card b { display: block; font-size: 1.2em; margin-bottom: 3px; }
+        
+        .keyword { position: relative; color: #f1c40f; font-weight: bold; cursor: help; text-decoration: underline dotted; }
+        .keyword .tip-text { visibility: hidden; width: 180px; background-color: #111; color: #fff; text-align: center; border-radius: 6px; padding: 8px; position: absolute; z-index: 1000; bottom: 125%; left: 50%; margin-left: -90px; font-size: 0.8em; font-weight: normal; border: 1px solid #777; opacity: 0; transition: opacity 0.2s; pointer-events: none; box-shadow: 0 4px 6px rgba(0,0,0,0.5); white-space: normal; line-height: 1.4; }
+        .keyword:hover .tip-text { visibility: visible; opacity: 1; }
+
+
+/* --- ???덇퐛?????폎??(Visual Novel) --- */
+#story-scene {
+    --story-padding: clamp(12px, 3vw, 48px);
+    --dialog-height: clamp(140px, 22vh, 200px);
+    --stage-max-height: max(240px, calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--dialog-height) - var(--story-padding)));
+    --stage-max-width: calc(var(--stage-max-height) * 16 / 9);
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    position: fixed !important; /* ?챘짧?챙?씲??position ??챘쩌???혥?????혧챙?씲졗?㎶씹귘궗 챦짠짚챙?쇺벭ぢ???짢챙짖탐??*/
+    inset: 0;
+    z-index: 300; /* ??쨩창?┑?UI?? ??쨔챘쩐쩍 ?챗쩐짢챙짚? ?????챦짠짚챙?쇺벭ぢ??짜챘쩔????챗쨀?붌?┑?*/
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding: calc(var(--safe-top) + var(--story-padding))
+             max(var(--story-padding), calc((100vw - var(--stage-max-width)) / 2))
+             calc(var(--safe-bottom) + var(--story-padding))
+             max(var(--story-padding), calc((100vw - var(--stage-max-width)) / 2));
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* ?띠럾??β돦裕? ?癰? ???삵렱??????繞벿살탳???筌먲퐣議?????? ??? */
+#story-bg,
+#story-standing {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 1600px;
+}
+
+#story-bg {
+    width: min(1600px, 100vw, var(--stage-max-width));
+    max-height: var(--stage-max-height);
+}
+
+#story-standing {
+    width: min(1400px, calc(100vw - clamp(24px, 6vw, 120px)), var(--stage-max-width));
+    max-height: var(--stage-max-height);
+}
+
+/* 嶺?큔???????嶺뚯솘? */
+.story-char {
+    height: 90%; /* ??븐뻼???沃섅굦逾??90% */
+    max-width: 400px;
+    object-fit: contain;
+    transition: 0.3s;
+    filter: brightness(0.5); /* 嶺??????????筌륁뇯移?*/
+    transform: scale(0.95);
+    position: absolute; bottom: 0;
+}
+.story-char {
+    max-height: var(--stage-max-height);
+}
+.story-char.speaking {
+    filter: brightness(1);
+    transform: scale(1);
+    z-index: 10;
+}
+.pos-left { left: -50px; }
+.pos-right { right: -50px; }
+.pos-center { left: 50%; transform: translateX(-50%) scale(0.95); }
+.pos-center.speaking { transform: translateX(-50%) scale(1); }
+
+/* ????븐슙媛?*/
+.dialog-container {
+    position: absolute; bottom: clamp(12px, 4vh, 36px); left: 50%; right: auto;
+    width: min(1200px, 90vw, var(--stage-max-width));
+    height: clamp(140px, 22vh, 200px);
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    border: 2px solid #fff; border-radius: 10px;
+    padding: clamp(16px, 2.5vw, 24px); box-sizing: border-box;
+    display: flex; flex-direction: column;
+    cursor: pointer; z-index: 100;
+    text-align: left;
+}
+
+.name-tag {
+    background: #e67e22; color: #fff;
+    padding: 5px 15px; border-radius: 5px;
+    font-weight: bold; font-size: 1.1em;
+    position: absolute; top: -15px; left: clamp(14px, 2vw, 24px);
+    border: 2px solid #fff;
+}
+
+.dialog-text {
+    color: #eee; font-size: 1.1em; line-height: 1.6;
+    margin-top: 10px; white-space: pre-wrap;
+}
+
+@media (min-aspect-ratio: 16/9) {
+    .dialog-container {
+        width: min(1300px, 86vw);
+    }
+
+    .story-char {
+        max-width: 450px;
+    }
+}
+
+@media (max-width: 768px) {
+    #story-scene {
+        padding: calc(var(--safe-top) + 8px) 8px calc(var(--safe-bottom) + 8px) 8px;
+    }
+
+    #story-standing {
+        width: 100%;
+    }
+
+    .story-char {
+        max-width: 280px;
+        height: auto;
+    }
+
+    .dialog-container {
+        width: min(95vw, var(--stage-max-width));
+        padding: 14px;
+        height: auto;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    #story-scene {
+        --story-padding: clamp(8px, 2vw, 16px);
+        --dialog-height: clamp(120px, 18vh, 170px);
+        justify-content: flex-start;
+        overflow-y: auto;
+        padding: calc(var(--safe-top) + var(--story-padding)) var(--story-padding) calc(var(--safe-bottom) + var(--story-padding)) var(--story-padding);
+    }
+
+    #story-bg,
+    #story-standing {
+        width: min(100vw, var(--stage-max-width));
+    }
+
+    .dialog-container {
+        position: fixed;
+        left: 50%;
+        bottom: clamp(8px, 3vh, 16px);
+        transform: translateX(-50%);
+        width: min(92vw, var(--stage-max-width));
+        height: auto;
+        margin: 0;
+        z-index: 120;
+    }
+
+    .name-tag {
+        top: -12px;
+        left: clamp(10px, 3vw, 18px);
+    }
+}
+
+/* [理쒖쟻?? ?믪씠媛 ??? 媛濡?紐⑤뱶 (紐⑤컮???띻꼍 紐⑤뱶 ?? ???*/
+@media (max-height: 420px) and (orientation: landscape) {
+    /* 1. ?꾩껜 ?덉씠?꾩썐 ?뺤텞 */
+    body { font-size: 12px; }
+    .container { 
+        padding: 2px 10px; 
+        gap: 4px; 
+        height: 100dvh; 
+        justify-content: flex-start; /* ?곷떒遺??梨꾩? */
+    }
+    .scene { border-radius: 8px; overflow: hidden; }
+    
+    /* ?곷떒 ?좏떥由ы떚 諛?異뺤냼 */
+    .utility-dock { padding: 2px 10px; position: absolute; width: auto; right: 0; left: auto; top: 0; z-index: 500; }
+    .utility-pill { padding: 2px 8px; font-size: 0.75em; background: rgba(0,0,0,0.6); }
+    .utility-buttons { transform: scale(0.9); transform-origin: top right; }
+
+    /* 2. ?덈툕(硫붿씤) ?붾㈃ 理쒖쟻??*/
+    .hub-scene { padding: 10px; justify-content: center; align-items: center; }
+    .hub-hero { display: none !important; } /* 怨듦컙 ?뺣낫瑜??꾪빐 ??댄?/?ㅻ챸 ?④? */
+    .hub-content { 
+        padding-bottom: 0; 
+        gap: 5px; 
+        width: 100%; 
+        grid-template-columns: 1fr; /* ?꾩껜 ?덈퉬 ?ъ슜 */
+    }
+    .hub-actions { width: 100%; }
+    .hub-grid { 
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); 
+        gap: 6px; 
+    }
+    .hub-card { padding: 6px; }
+    .hub-card-title { font-size: 0.85em; margin-bottom: 2px; }
+    .hub-card-desc { display: none; } /* ?ㅻ챸湲 ?④린怨??쒕ぉ留??쒖떆?섏뿬 怨듦컙 ?덉빟 */
+
+    /* 3. ?먯궗(Exploration) ?붾㈃ 理쒖쟻??*/
+    .scenario-header { 
+        padding: 4px 10px; 
+        margin-bottom: 4px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+    }
+    .scenario-header h2 { font-size: 1em; }
+    .progress-container { margin-top: 0; width: 50%; }
+    .prog-bar-bg { height: 6px; margin-bottom: 2px; }
+    
+    .location-view { 
+        margin-bottom: 5px; 
+        flex: 1; /* ?⑥? 怨듦컙 李⑥? */
+        min-height: 0; /* Flexbox 異뺤냼 ?덉슜 */
+        display: flex;
+        flex-direction: column;
+    }
+    #loc-img { 
+        height: 100%; 
+        max-height: 80px; /* ?대?吏 ?믪씠 ?쒗븳 */
+        width: 100%; 
+        object-fit: cover; 
+        opacity: 0.4; /* ?띿뒪??媛?낆꽦 ?꾪빐 ?대몼寃?*/
+    }
+    .loc-text { 
+        padding: 5px 10px; 
+        font-size: 0.9em; 
+        line-height: 1.2;
+        position: relative; /* ?대?吏 ?꾧? ?꾨땲??蹂꾨룄 ?곸뿭?쇰줈 諛곗튂 媛?ν븯硫?醫뗭쓬 */
+        background: transparent;
+    }
+    .action-grid { margin-bottom: 5px; }
+    .action-btn { padding: 4px 8px; font-size: 0.85em; }
+
+    /* 4. ?꾪닾(Battle) ?붾㈃ - 媛??以묒슂 */
+    .battle-area { 
+        flex: 1; /* ?⑥? 怨듦컙???좊룞?곸쑝濡?李⑥? */
+        min-height: 0; /* ?ㅻ쾭?뚮줈??諛⑹? */
+        margin-bottom: 2px; 
+        align-items: center; 
+        padding-top: 25px; /* ?좏떥由ы떚 諛?怨듦컙 ?뺣낫 */
+    }
+    
+    /* 罹먮┃?????ш린 ???異뺤냼 */
+    .character { width: 20%; padding: 2px; }
+    .char-img { width: 50px; height: 50px; margin-bottom: 2px; border-width: 1px; }
+    .enemies-wrapper { gap: 4px; padding-left: 0; }
+    .enemy-unit { width: 70px; }
+    .hp-bar-bg { height: 8px; margin: 2px 0; }
+    .stats { font-size: 0.65em; }
+    
+    /* 濡쒓렇 諛???醫낅즺 踰꾪듉 */
+    .control-group { 
+        height: 45px; 
+        gap: 4px; 
+        margin-bottom: 2px; 
+        flex-shrink: 0; /* 異뺤냼 湲덉? */
+    }
+    .status-panel { width: 80px; padding: 2px; font-size: 0.75em; line-height: 1.1; }
+    .log-area { font-size: 0.75em; padding: 3px; line-height: 1.2; }
+    .btn-end-turn-side { width: 50px; font-size: 0.8em; padding: 0; }
+    
+    /* 移대뱶 ?몃뱶 ?곸뿭 */
+    .hand-area { 
+        height: 90px; /* 移대뱶 蹂댁씪 理쒖냼 ?믪씠 */
+        margin-top: 0; 
+        padding: 2px; 
+        flex-shrink: 0; 
+        overflow: visible;
+        align-items: flex-end; /* 諛붾떏 ?뺣젹 */
+    }
+    .card { 
+        width: 65px; 
+        height: 90px; 
+        padding: 4px; 
+        border-width: 1px;
+    }
+    .card-cost { width: 18px; height: 18px; line-height: 18px; font-size: 0.8em; top: -5px; left: -5px; }
+    .card-name { font-size: 0.8em; margin-top: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-desc { font-size: 0.65em; line-height: 1.1; }
+    .card-rank { font-size: 0.8em; top: 2px; right: 2px; }
+    
+    /* ?쒕옒洹???移대뱶 ?ш린 */
+    .card:hover { transform: translateY(-10px) scale(1.2) !important; }
+
+    /* 5. ?ㅽ넗由???붿갹 理쒖쟻??*/
+    .dialog-container {
+        width: 96%;
+        bottom: 5px;
+        height: auto;
+        min-height: 60px;
+        padding: 8px;
+        font-size: 0.9em;
+    }
+    .name-tag { top: -10px; padding: 2px 8px; font-size: 0.9em; }
+    .story-char { max-height: 80%; }
+
+    /* 6. ??鍮뚮뜑 / ?곸젏 / ?몃깽?좊━ ?ㅽ겕濡?泥섎━ */
+    .deck-builder-container { overflow-y: hidden; } /* ?댁쨷 ?ㅽ겕濡?諛⑹? */
+    .deck-column { overflow: hidden; display: flex; flex-direction: column; }
+    .card-grid { overflow-y: auto; align-content: flex-start; }
+    .builder-card { width: 70px; height: 90px; font-size: 0.7em; }
+    
+    .shop-items { gap: 10px; margin-bottom: 10px; }
+    .event-content { padding: 10px; max-height: 95vh; overflow-y: auto; }
+}
+
+/* [異붽?] ?믪씠媛 留ㅼ슦 ???(320px ?댄븯) 珥덉냼???붾㈃ ?덉쟾?μ튂 */
+@media (max-height: 320px) and (orientation: landscape) {
+    .utility-dock { display: none; } /* 怨듦컙 ?뺣낫瑜??꾪빐 ?곷떒 諛??④? (?꾩슂??硫붾돱濡??대룞) */
+    .battle-area { padding-top: 5px; }
+    .card { height: 80px; font-size: 0.55em; }
+    .hand-area { height: 80px; }
+    .hub-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.next-icon {
+    position: absolute; bottom: 10px; right: 15px;
+    color: #f1c40f; animation: blink 1s infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ??ルㅎ臾며춯?뼿 ??븐뻼??*/
+#story-choice-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); z-index: 200;
+    flex-direction: column; justify-content: center; align-items: center; gap: 15px;
+}
+.story-choice-btn {
+    background: #2c3e50; color: #fff; border: 1px solid #7f8c8d;
+    padding: 15px 30px; font-size: 1.1em; border-radius: 5px;
+    cursor: pointer; width: 80%; max-width: 400px;
+    transition: 0.2s;
+}
+.story-choice-btn:hover {
+    background: #e67e22; border-color: #fff; transform: scale(1.05);
+}

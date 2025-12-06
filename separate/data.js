@@ -81,7 +81,14 @@ const ENEMY_DATA = {
         deckType: "custom",
         // 독을 걸거나 멘탈 공격(비명)을 섞어 쓰는 까다로운 패턴
         deck: ["독 뿌리기", "독 뿌리기", "비명", "타격"], 
-        img: "https://placehold.co/120x120/5e2a84/fff?text=DOLL"
+        img: "https://placehold.co/120x120/5e2a84/fff?text=DOLL",
+        // [추가 데이터] 패시브/태그/전리품 힌트
+        passive: {
+            name: "저주의 끈적임",
+            desc: "매 턴 시작 시 플레이어에게 독 1 중첩을 남깁니다."
+        },
+        tags: ["boss", "cursed", "doll"],
+        lootHint: ["울끈불끈 패딩", "고급 액세서리"] // 필수는 아니지만 테이블 구성 시 참고용
     }
 };
 

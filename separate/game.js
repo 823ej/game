@@ -1892,8 +1892,9 @@ function renderResultScreen() {
     
     switchScene('result');
     
-    let scId = game.scenario.id;
-    let rewardData = SCENARIOS[scId] ? SCENARIOS[scId].reward : { gold: 100, xp: 50, itemRank: 1 };
+    // 시나리오 정보가 없더라도 결과 처리가 멈추지 않도록 안전하게 처리
+    const scId = (game.scenario && game.scenario.id) || game.activeScenarioId;
+    let rewardData = (scId && SCENARIOS[scId]) ? SCENARIOS[scId].reward : { gold: 100, xp: 50, itemRank: 1 };
     
     let finalGold = rewardData.gold;
     let finalXp = rewardData.xp;
@@ -1909,12 +1910,12 @@ function renderResultScreen() {
         addItem(newItem);
         itemReward = newItem;
     }
-
+    
     document.getElementById('res-gold').innerText = `+${finalGold} G`;
     document.getElementById('res-xp').innerText = `+${finalXp} XP`;
     document.getElementById('res-item').innerText = itemReward;
     
-    if (SCENARIOS[scId]) {
+    if (scId && SCENARIOS[scId]) {
         SCENARIOS[scId].cleared = true;
     }
 }
@@ -1999,7 +2000,38 @@ function getRandomCard() {
     
     return pool[Math.floor(Math.random() * pool.length)]; 
 }
-function getRandomItem(typeFilter) { let pool = Object.keys(ITEM_DATA); if (typeFilter) pool = pool.filter(k => ITEM_DATA[k].type === typeFilter); let r=Math.random()*100; let rank=(r<70)?1:(r<90)?2:3; let rankPool=pool.filter(k=>ITEM_DATA[k].rank===rank); if(rankPool.length===0) rankPool=pool; return rankPool[Math.floor(Math.random()*rankPool.length)]; }
+function getRandomItem(filter) { 
+    let pool = Object.keys(ITEM_DATA);
+
+    if (filter) {
+        const normalized = filter.toLowerCase();
+        
+        // allow filtering by either item.type or usage(consume/passive)
+        pool = pool.filter(key => {
+            const item = ITEM_DATA[key];
+            if (!item) return false;
+
+            const typeMatch = item.type && item.type.toLowerCase() === normalized;
+            const usageMatch = item.usage && item.usage.toLowerCase() === normalized;
+            const consumeAlias = (normalized === "consumable" || normalized === "consume") && item.usage === "consume";
+            
+            return typeMatch || usageMatch || consumeAlias;
+        });
+
+        // fallback to full pool if nothing matched to avoid undefined picks
+        if (pool.length === 0) pool = Object.keys(ITEM_DATA);
+    }
+
+    if (pool.length === 0) return null;
+    
+    let r = Math.random() * 100; 
+    let rank = (r < 70) ? 1 : (r < 90) ? 2 : 3; 
+    
+    let rankPool = pool.filter(k => ITEM_DATA[k].rank === rank); 
+    if (rankPool.length === 0) rankPool = pool; 
+    
+    return rankPool[Math.floor(Math.random() * rankPool.length)]; 
+}
 
 /* --- UI Render Helpers --- */
 /* [수정] drawCards 함수: 손패 초과 시 자동 버림 처리 */
@@ -2747,50 +2779,91 @@ function calcPreview(cardName, user) {
     return desc;
 }
 
-/* [NEW] 미래의 턴 순서를 예측해서 보여주는 함수 */
+/* [수정] 턴 순서 예측 및 세로 타임라인 렌더링 */
 function updateTurnOrderList() {
-    // 1. 시뮬레이션용 데이터 복사 (원본 훼손 방지)
-    let simPlayer = { id: 'player', ag: player.ag, spd: getStat(player, 'spd'), name: "나" };
-    // 살아있는 적만 포함
-    let simEnemies = enemies.filter(e=>e.hp>0).map(e => ({
-        id: `enemy-${e.id}`, ag: e.ag, spd: getStat(e, 'spd'), name: e.name
+    // 1. 시뮬레이션용 데이터 준비 (이미지 소스 포함)
+    // 플레이어 이미지 소스 가져오기 (DOM에서 직접)
+    let pImgSrc = document.getElementById('p-img') ? document.getElementById('p-img').src : "";
+    
+    let simPlayer = { 
+        type: 'player', 
+        ag: player.ag, 
+        spd: getStat(player, 'spd'), 
+        img: pImgSrc 
+    };
+    
+    // 적 데이터 복사 (img 속성 포함)
+    let simEnemies = enemies.filter(e => e.hp > 0).map(e => ({
+        type: 'enemy',
+        id: e.id,
+        ag: e.ag,
+        spd: getStat(e, 'spd'),
+        img: e.img
     }));
     
     let allUnits = [simPlayer, ...simEnemies];
-    let predictedOrder = [];
-    const MAX_PREDICT = 6; // 앞으로 6턴만 예측
+    let predictedOrder = []; // 순서대로 저장될 배열
+    const MAX_PREDICT = 5;   // 미리 보여줄 턴 개수 (너무 많으면 화면 가림)
 
-    // 2. 시뮬레이션 루프 (실제 게임 상태는 변경 안 함)
+    // 2. 턴 시뮬레이션 루프
     let safety = 0;
     while (predictedOrder.length < MAX_PREDICT && safety < 1000) {
         safety++;
         
-        // 턴 잡을 사람 확인 (AG 1000 이상)
+        // 행동 게이지(AG)가 꽉 찬 유닛 찾기
         let readyUnits = allUnits.filter(u => u.ag >= game.AG_MAX);
         
         if (readyUnits.length > 0) {
-            // AG 높은 순 정렬
+            // AG 높은 순(턴 우선순위) 정렬
             readyUnits.sort((a, b) => b.ag - a.ag);
             
-            // 예측 리스트에 추가하고 AG 차감 (시뮬레이션 상에서만)
             for (let unit of readyUnits) {
-                predictedOrder.push(unit.name);
+                // 예측 리스트에 추가 (유닛 정보 전체 저장)
+                predictedOrder.push(unit);
+                
+                // 시뮬레이션 상에서만 게이지 소모
                 unit.ag -= game.AG_MAX;
+                
                 if (predictedOrder.length >= MAX_PREDICT) break;
             }
         } else {
-            // 아무도 없으면 시간 흐르게 함
+            // 행동 가능한 유닛이 없으면 시간(Tick) 흐르게 함
             allUnits.forEach(u => u.ag += u.spd);
         }
     }
 
-    // 3. UI에 표시 (상단 정보창 활용)
-    let orderStr = predictedOrder.join(" → ");
-    let turnMsg = (game.turnOwner === 'player') ? `나의 턴 (AP: ${player.ap})` : 
-                  (game.turnOwner === 'enemy') ? `적의 턴` : "대기 중...";
+    // 3. 타임라인 DOM 렌더링
+    const timelineContainer = document.getElementById('turn-timeline');
+    if (!timelineContainer) return;
 
-    document.getElementById('turn-info').innerHTML = 
-        `<div style="font-size:0.8em; color:#f1c40f; margin-bottom:3px;">🔜 ${orderStr}</div>
-         <div>${turnMsg}</div>`;
+    timelineContainer.innerHTML = ""; // 기존 내용 초기화
+
+    predictedOrder.forEach((unit, index) => {
+        let node = document.createElement('div');
+        // 클래스: 기본노드 + (플레이어/적 구분)
+        node.className = `timeline-node ${unit.type === 'player' ? 'node-player' : 'node-enemy'}`;
+        
+        // 애니메이션 딜레이 (순차적으로 나타나게)
+        node.style.animation = `fadeIn 0.1s ease forwards ${index * 0.05}s`;
+        node.style.opacity = "0"; // 애니메이션 전 숨김
+
+        // 이미지 삽입
+        node.innerHTML = `<img src="${unit.img}" class="timeline-img" alt="Unit">`;
+        
+        timelineContainer.appendChild(node);
+    });
+
+    // (선택 사항) 기존 텍스트 기반 턴 정보창은 간소화하거나 숨김
+    // document.getElementById('turn-info').innerHTML = `<div>${game.turnOwner === 'player' ? "나의 턴" : "적의 턴"}</div>`;
 }
+
+// [추가] CSS 애니메이션용 키프레임 (style.css에 넣거나 JS로 주입)
+const styleSheet = document.createElement("style");
+styleSheet.innerText = `
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+`;
+document.head.appendChild(styleSheet);
 window.onload = initGame;
