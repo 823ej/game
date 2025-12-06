@@ -1366,7 +1366,7 @@ function useCard(user, target, cardName) {
                 summonMinion(data.summonTarget); // 데이터에 지정된 몬스터("불량배") 소환
             }
         }
-        
+
         if (data.type.includes("attack")) {
             if (user === player) playAnim(userId, 'anim-atk-p');
             else playAnim(userId, 'anim-atk-e');
@@ -1446,19 +1446,24 @@ function summonMinion(enemyKey) {
 
     // 5. 배열 추가 및 화면 갱신
     enemies.push(newEnemy);
+
+    // 3. 화면에 추가 (깜빡임 없이)
+    const wrapper = document.getElementById('enemies-area');
+    let el = document.createElement('div');
+    el.className = 'enemy-unit';
+    el.id = `enemy-unit-${newId}`;
+    wrapper.appendChild(el);
+
+    updateUI(); 
     
-    // UI 전체 다시 그리기 (새로운 적의 HTML 요소를 생성하기 위해)
-    renderEnemies();
-    updateUI();
-    
-    // 등장 애니메이션 효과 (CSS 클래스 활용)
+    // 등장 효과
     setTimeout(() => {
-        let el = document.getElementById(`enemy-unit-${newId}`);
-        if(el) {
-            el.style.animation = "float-up 0.5s reverse forwards"; // 위에서 아래로 떨어지거나 나타나는 연출
+        let createdEl = document.getElementById(`enemy-unit-${newId}`);
+        if(createdEl) {
+            createdEl.style.animation = "float-up 0.5s reverse forwards";
             showDamageText(newEnemy, "APPEAR!");
         }
-    }, 100);
+    }, 50);
 
     log(`📢 <b>${data.name}</b>이(가) 증원되었습니다!`);
 }
