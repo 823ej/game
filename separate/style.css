@@ -932,43 +932,157 @@ body {
     }
 }
 
-@media (max-height: 360px) and (orientation: landscape) {
-    #story-scene {
-        --story-padding: clamp(6px, 2vw, 12px);
-        --dialog-height: clamp(115px, 30vh, 140px);
-        padding: calc(var(--safe-top) + var(--story-padding))
-                 var(--story-padding)
-                 calc(var(--safe-bottom) + var(--story-padding))
-                 var(--story-padding);
+/* [최적화] 높이가 낮은 가로 모드 (모바일 풍경 모드 등) 대응 */
+@media (max-height: 420px) and (orientation: landscape) {
+    /* 1. 전체 레이아웃 압축 */
+    body { font-size: 12px; }
+    .container { 
+        padding: 2px 10px; 
+        gap: 4px; 
+        height: 100dvh; 
+        justify-content: flex-start; /* 상단부터 채움 */
     }
+    .scene { border-radius: 8px; overflow: hidden; }
+    
+    /* 상단 유틸리티 바 축소 */
+    .utility-dock { padding: 2px 10px; position: absolute; width: auto; right: 0; left: auto; top: 0; z-index: 500; }
+    .utility-pill { padding: 2px 8px; font-size: 0.75em; background: rgba(0,0,0,0.6); }
+    .utility-buttons { transform: scale(0.9); transform-origin: top right; }
 
-    #story-bg,
-    #story-standing {
-        width: min(100vw, var(--stage-max-width));
+    /* 2. 허브(메인) 화면 최적화 */
+    .hub-scene { padding: 10px; justify-content: center; align-items: center; }
+    .hub-hero { display: none !important; } /* 공간 확보를 위해 타이틀/설명 숨김 */
+    .hub-content { 
+        padding-bottom: 0; 
+        gap: 5px; 
+        width: 100%; 
+        grid-template-columns: 1fr; /* 전체 너비 사용 */
     }
+    .hub-actions { width: 100%; }
+    .hub-grid { 
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); 
+        gap: 6px; 
+    }
+    .hub-card { padding: 6px; }
+    .hub-card-title { font-size: 0.85em; margin-bottom: 2px; }
+    .hub-card-desc { display: none; } /* 설명글 숨기고 제목만 표시하여 공간 절약 */
 
+    /* 3. 탐사(Exploration) 화면 최적화 */
+    .scenario-header { 
+        padding: 4px 10px; 
+        margin-bottom: 4px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+    }
+    .scenario-header h2 { font-size: 1em; }
+    .progress-container { margin-top: 0; width: 50%; }
+    .prog-bar-bg { height: 6px; margin-bottom: 2px; }
+    
+    .location-view { 
+        margin-bottom: 5px; 
+        flex: 1; /* 남은 공간 차지 */
+        min-height: 0; /* Flexbox 축소 허용 */
+        display: flex;
+        flex-direction: column;
+    }
+    #loc-img { 
+        height: 100%; 
+        max-height: 80px; /* 이미지 높이 제한 */
+        width: 100%; 
+        object-fit: cover; 
+        opacity: 0.4; /* 텍스트 가독성 위해 어둡게 */
+    }
+    .loc-text { 
+        padding: 5px 10px; 
+        font-size: 0.9em; 
+        line-height: 1.2;
+        position: relative; /* 이미지 위가 아니라 별도 영역으로 배치 가능하면 좋음 */
+        background: transparent;
+    }
+    .action-grid { margin-bottom: 5px; }
+    .action-btn { padding: 4px 8px; font-size: 0.85em; }
+
+    /* 4. 전투(Battle) 화면 - 가장 중요 */
+    .battle-area { 
+        flex: 1; /* 남은 공간을 유동적으로 차지 */
+        min-height: 0; /* 오버플로우 방지 */
+        margin-bottom: 2px; 
+        align-items: center; 
+        padding-top: 25px; /* 유틸리티 바 공간 확보 */
+    }
+    
+    /* 캐릭터/적 크기 대폭 축소 */
+    .character { width: 20%; padding: 2px; }
+    .char-img { width: 50px; height: 50px; margin-bottom: 2px; border-width: 1px; }
+    .enemies-wrapper { gap: 4px; padding-left: 0; }
+    .enemy-unit { width: 70px; }
+    .hp-bar-bg { height: 8px; margin: 2px 0; }
+    .stats { font-size: 0.65em; }
+    
+    /* 로그 및 턴 종료 버튼 */
+    .control-group { 
+        height: 45px; 
+        gap: 4px; 
+        margin-bottom: 2px; 
+        flex-shrink: 0; /* 축소 금지 */
+    }
+    .status-panel { width: 80px; padding: 2px; font-size: 0.75em; line-height: 1.1; }
+    .log-area { font-size: 0.75em; padding: 3px; line-height: 1.2; }
+    .btn-end-turn-side { width: 50px; font-size: 0.8em; padding: 0; }
+    
+    /* 카드 핸드 영역 */
+    .hand-area { 
+        height: 90px; /* 카드 보일 최소 높이 */
+        margin-top: 0; 
+        padding: 2px; 
+        flex-shrink: 0; 
+        overflow: visible;
+        align-items: flex-end; /* 바닥 정렬 */
+    }
+    .card { 
+        width: 65px; 
+        height: 90px; 
+        padding: 4px; 
+        border-width: 1px;
+    }
+    .card-cost { width: 18px; height: 18px; line-height: 18px; font-size: 0.8em; top: -5px; left: -5px; }
+    .card-name { font-size: 0.8em; margin-top: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-desc { font-size: 0.65em; line-height: 1.1; }
+    .card-rank { font-size: 0.8em; top: 2px; right: 2px; }
+    
+    /* 드래그 시 카드 크기 */
+    .card:hover { transform: translateY(-10px) scale(1.2) !important; }
+
+    /* 5. 스토리/대화창 최적화 */
     .dialog-container {
-        position: fixed;
-        left: 50%;
-        bottom: calc(var(--safe-bottom) + clamp(6px, 2vh, 12px));
-        transform: translateX(-50%);
-        width: min(96vw, var(--stage-max-width));
-        padding: clamp(10px, 2vw, 14px);
+        width: 96%;
+        bottom: 5px;
         height: auto;
-        font-size: 0.95em;
-        margin: 0;
+        min-height: 60px;
+        padding: 8px;
+        font-size: 0.9em;
     }
+    .name-tag { top: -10px; padding: 2px 8px; font-size: 0.9em; }
+    .story-char { max-height: 80%; }
 
-    .dialog-text {
-        font-size: 0.95em;
-        line-height: 1.4;
-    }
+    /* 6. 덱 빌더 / 상점 / 인벤토리 스크롤 처리 */
+    .deck-builder-container { overflow-y: hidden; } /* 이중 스크롤 방지 */
+    .deck-column { overflow: hidden; display: flex; flex-direction: column; }
+    .card-grid { overflow-y: auto; align-content: flex-start; }
+    .builder-card { width: 70px; height: 90px; font-size: 0.7em; }
+    
+    .shop-items { gap: 10px; margin-bottom: 10px; }
+    .event-content { padding: 10px; max-height: 95vh; overflow-y: auto; }
+}
 
-    .name-tag {
-        font-size: 0.95em;
-        top: -8px;
-        left: clamp(10px, 3vw, 16px);
-    }
+/* [추가] 높이가 매우 낮은(320px 이하) 초소형 화면 안전장치 */
+@media (max-height: 320px) and (orientation: landscape) {
+    .utility-dock { display: none; } /* 공간 확보를 위해 상단 바 숨김 (필요시 메뉴로 이동) */
+    .battle-area { padding-top: 5px; }
+    .card { height: 80px; font-size: 0.55em; }
+    .hand-area { height: 80px; }
+    .hub-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 .next-icon {
