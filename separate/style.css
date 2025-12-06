@@ -735,6 +735,24 @@ body {
     .story-char { max-width: 240px; }
 }
 
+@media (max-height: 360px) and (orientation: landscape) {
+    body { font-size: 12px; }
+    .container { padding: 3px 5px; gap: 3px; width: min(1000px, 100%); }
+    .scene { border-radius: 6px; }
+    .battle-area { gap: 4px; margin-bottom: 6px; min-height: 150px; }
+    .character { width: 32%; padding: 5px; }
+    .char-img { width: 90px; height: 90px; }
+    .enemies-wrapper { gap: 10px; padding-left: 8px; }
+    .enemy-unit { width: 110px; }
+    .control-group { height: 68px; gap: 3px; }
+    .status-panel { width: 80px; padding: 3px; font-size: 0.76em; }
+    .btn-end-turn-side { width: 58px; font-size: 0.78em; }
+    .log-area { font-size: 0.78em; padding: 4px; }
+    .hand-area { height: 90px; margin-top: 4px; padding: 4px; }
+    .action-btn { padding: 5px 8px; font-size: 0.82rem; box-shadow: 0 2px 0 #d35400; }
+    .small-btn { padding: 2px 5px; font-size: 0.68rem; min-width: 30px; }
+}
+
         /* ??밸씜 */
         #popup-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 200; }
         .popup-box { background: #333; padding: 30px; border-radius: 10px; width: 500px; max-height: 80%; display: flex; flex-direction: column; text-align: center; border: 1px solid #555; }
