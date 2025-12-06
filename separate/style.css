@@ -902,18 +902,31 @@ body {
     }
 }
 
-@media (max-height: 360px) {
+@media (max-height: 360px) and (orientation: landscape) {
     #story-scene {
         --story-padding: clamp(6px, 2vw, 12px);
-        --dialog-height: clamp(110px, 28vh, 140px);
-        padding: calc(var(--safe-top) + var(--story-padding)) var(--story-padding) calc(var(--safe-bottom) + var(--story-padding)) var(--story-padding);
+        --dialog-height: clamp(115px, 30vh, 140px);
+        padding: calc(var(--safe-top) + var(--story-padding))
+                 var(--story-padding)
+                 calc(var(--safe-bottom) + var(--story-padding))
+                 var(--story-padding);
+    }
+
+    #story-bg,
+    #story-standing {
+        width: min(100vw, var(--stage-max-width));
     }
 
     .dialog-container {
-        width: min(94vw, var(--stage-max-width));
+        position: fixed;
+        left: 50%;
+        bottom: calc(var(--safe-bottom) + clamp(6px, 2vh, 12px));
+        transform: translateX(-50%);
+        width: min(96vw, var(--stage-max-width));
         padding: clamp(10px, 2vw, 14px);
         height: auto;
         font-size: 0.95em;
+        margin: 0;
     }
 
     .dialog-text {
@@ -922,8 +935,9 @@ body {
     }
 
     .name-tag {
-        font-size: 1em;
-        top: -10px;
+        font-size: 0.95em;
+        top: -8px;
+        left: clamp(10px, 3vw, 16px);
     }
 }
 
