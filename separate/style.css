@@ -498,9 +498,9 @@
 
 /* --- 스토리 컷신 (Visual Novel) --- */
 #story-scene {
-    width: 100%;
+    width: 100vw;
     height: 100vh;
-    position: fixed;
+    position: fixed !important; /* 인라인 position 덮어씌워서 페이지 최상단 고정 */
     inset: 0;
     z-index: 300; /* 다른 UI와 팝업 위로 올려서 최상단에서 연출 */
 }
