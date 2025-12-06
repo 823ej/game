@@ -15,18 +15,15 @@ body {
     text-align: center;
     user-select: none;
     margin: 0;
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: block;
     min-height: 100dvh;
 }
 
 .container {
     width: min(1120px, 100%);
-    height: 100dvh;
     min-height: 100dvh;
-    max-height: 100dvh;
     margin: 0 auto;
     padding: calc(var(--safe-top) + clamp(8px, 1.8vw, 16px)) clamp(8px, 1.8vw, 16px) calc(var(--safe-bottom) + clamp(8px, 1.8vw, 16px)) clamp(8px, 1.8vw, 16px);
     position: relative;
@@ -34,7 +31,7 @@ body {
     flex-direction: column;
     gap: 8px;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* 상단 바 제거 후, 떠 있는 기능 도크 */
