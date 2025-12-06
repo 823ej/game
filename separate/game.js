@@ -1835,7 +1835,7 @@ function switchScene(sceneName) {
     const scenes = [
         'hub-scene', 'city-scene', 'exploration-scene', 
         'battle-scene', 'event-scene', 'deck-scene', 
-        'result-scene' // [NEW] 여기 추가!
+        'result-scene', 'story-scene' 
     ];
 
     scenes.forEach(id => {
