@@ -1352,6 +1352,21 @@ function useCard(user, target, cardName) {
     }
     // [CASE 1] 일반/공격 카드
     else {
+        if (data.special === "summon") {
+            // 1. 플레이어가 사용한 경우 (현재는 막힘/대체 효과)
+            if (user === player) {
+                log("🚫 플레이어는 부하를 부를 수 없습니다. (카드 효과 불발)");
+                // 추후 구현: "그림자 분신" 같은 걸로 대체 가능
+                // summonMinion("shadow_clone"); 
+                return; 
+            } 
+            // 2. 적(보스)이 사용한 경우
+            else {
+                playAnim(userId, 'anim-bounce'); // 보스가 명령 내리는 모션
+                summonMinion(data.summonTarget); // 데이터에 지정된 몬스터("불량배") 소환
+            }
+        }
+        
         if (data.type.includes("attack")) {
             if (user === player) playAnim(userId, 'anim-atk-p');
             else playAnim(userId, 'anim-atk-e');
@@ -1391,6 +1406,63 @@ function useCard(user, target, cardName) {
         }
     }
 }
+
+/* [NEW] 적 소환(증원) 함수 */
+function summonMinion(enemyKey) {
+    // 1. 소환 제한 확인 (화면에 적이 너무 많으면 소환 실패)
+    // 죽은 적은 제외하고 산 적만 카운트 (최대 3~4명 제한 추천)
+    let aliveCount = enemies.filter(e => e.hp > 0).length;
+    if (aliveCount >= 3) {
+        log("🚫 전장이 꽉 차서 더 이상 소환할 수 없습니다!");
+        return;
+    }
+
+    let data = ENEMY_DATA[enemyKey];
+    if (!data) return;
+
+    // 2. 새 ID 부여 (기존 ID 중 가장 큰 값 + 1)
+    // enemies 배열이 비어있을 리는 없지만(보스가 있으니), 안전하게 처리
+    let maxId = enemies.reduce((max, cur) => Math.max(max, cur.id), -1);
+    let newId = maxId + 1;
+
+    // 3. 레벨 스케일링 (startBattle의 로직과 비슷하게)
+    let growthMult = game.level - 1;
+    let maxHp = Math.floor(data.baseHp + (data.growth.hp * growthMult));
+    let atk = Math.floor(data.stats.atk + (data.growth.atk * growthMult));
+    let def = Math.floor(data.stats.def + (data.growth.def * growthMult));
+    let spd = Math.floor(data.stats.spd + (data.growth.spd * growthMult));
+
+    // 4. 새 적 객체 생성
+    let newEnemy = {
+        id: newId,
+        name: `${data.name} (증원)`, // 이름 뒤에 표식 추가
+        maxHp: maxHp, hp: maxHp,
+        baseAtk: atk, baseDef: def, baseSpd: spd,
+        block: 0, buffs: {}, 
+        deck: getEnemyDeck(data.deckType), // 덱 생성
+        img: data.img,
+        ag: 0 // 행동 게이지 0부터 시작 (바로 턴 잡지 않음)
+    };
+
+    // 5. 배열 추가 및 화면 갱신
+    enemies.push(newEnemy);
+    
+    // UI 전체 다시 그리기 (새로운 적의 HTML 요소를 생성하기 위해)
+    renderEnemies();
+    updateUI();
+    
+    // 등장 애니메이션 효과 (CSS 클래스 활용)
+    setTimeout(() => {
+        let el = document.getElementById(`enemy-unit-${newId}`);
+        if(el) {
+            el.style.animation = "float-up 0.5s reverse forwards"; // 위에서 아래로 떨어지거나 나타나는 연출
+            showDamageText(newEnemy, "APPEAR!");
+        }
+    }, 100);
+
+    log(`📢 <b>${data.name}</b>이(가) 증원되었습니다!`);
+}
+
 /* [수정] 데미지 처리 함수 (소셜 모드 완벽 지원) */
 function takeDamage(target, dmg) {
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;

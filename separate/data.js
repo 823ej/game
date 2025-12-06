@@ -31,9 +31,19 @@ const CARD_DATA = {
     
     // --- 보스 전용 기술 ---
     "강철 분쇄": { rank: 3, cost: 2, type: "attack", desc: "치명적인 일격! (피해 15)", dmg: 15 },
-    "부하 호출": { rank: 3, cost: 2, type: "skill", desc: "방어도 +15, 힘 모으기(강화)", block: 15, buff: {name:"강화", val:3} },
+    
     "광신의 춤": { rank: 3, cost: 2, type: "skill", desc: "체력 회복 +20, 방어도 +10", buff: {name:"활력", val:5}, block: 10 },
-    "정신 붕괴 파동": { rank: 3, cost: 2, type: "attack", desc: "전체 멘탈 공격 (SP 데미지)", dmg: 10, type: "social", val: -20 } // 소셜/배틀 하이브리드
+    "정신 붕괴 파동": { rank: 3, cost: 2, type: "attack", desc: "전체 멘탈 공격 (SP 데미지)", dmg: 10, type: "social", val: -20 }, // 소셜/배틀 하이브리드
+    
+    "부하 호출": { 
+        rank: 3, 
+        cost: 2, 
+        type: "skill", 
+        desc: "불량배를 1명 호출하여 전투에 합류시킵니다.", 
+        special: "summon",      // 특수 기능 태그
+        summonTarget: "불량배",   // 소환할 적의 ENEMY_DATA 키
+        playerDesc: "(사용 불가) 적 전용 스킬입니다." // 나중에 플레이어용 효과 구현 시 대체될 텍스트
+    }
 };
 
 /* [NEW] 적 데이터 정의 */
