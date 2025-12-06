@@ -886,12 +886,19 @@ body {
     }
 
     .dialog-container {
-        position: static;
-        transform: none;
+        position: fixed;
+        left: 50%;
+        bottom: clamp(8px, 3vh, 16px);
+        transform: translateX(-50%);
         width: min(92vw, var(--stage-max-width));
         height: auto;
-        margin-top: 10px;
-        margin-bottom: 6px;
+        margin: 0;
+        z-index: 120;
+    }
+
+    .name-tag {
+        top: -12px;
+        left: clamp(10px, 3vw, 18px);
     }
 }
 
