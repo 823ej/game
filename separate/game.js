@@ -2021,14 +2021,11 @@ function drawCards(n) {
 
 /* [수정] UI 업데이트 함수 (HP 표시 개선 & 죽음 처리 수정) */
 function updateUI() {
-    // 1. 상단 정보 (플레이어)
-    let xpPercent = Math.floor((player.xp / player.maxXp) * 100);
-    
-    document.getElementById('game-info').innerHTML = 
-        `Lv.${game.level} <span style="font-size:0.8em; color:#aaa;">(${player.xp}/${player.maxXp})</span> | 💰 ${player.gold}원
-         <div style="width:100%; height:4px; background:#444; margin-top:5px; border-radius:2px;">
-            <div style="width:${xpPercent}%; height:100%; background:#3498db; transition: width 0.3s;"></div>
-         </div>`;
+    // 1. 상단 정보 (플레이어) - 경험치 바 제거
+    const infoEl = document.getElementById('game-info');
+    if (infoEl) {
+        infoEl.innerHTML = `Lv.${game.level} | 💰 ${player.gold}원`;
+    }
 
     let playerBarHTML = "";
     if (game.state === "social") {
@@ -2676,7 +2673,7 @@ function getTargetUnderMouse(e) {
     if (el.closest('#player-char')) return { type: 'specific', unit: player };
 
     // 4. 전투 구역(허공) 확인
-    if (el.closest('.container') && !el.closest('.top-bar')) {
+    if (el.closest('.container') && !el.closest('.utility-dock')) {
         return { type: 'general' };
     }
 
