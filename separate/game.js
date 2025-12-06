@@ -695,9 +695,9 @@ function useItem(index, target) {
 }
 /* [수정] 인벤토리 UI 업데이트 (통합 리스트) */
 function updateInventoryUI() {
-    const list = document.getElementById('inventory-list'); 
+    const list = document.getElementById('inventory-list');
     document.getElementById('inv-count').innerText = player.inventory.length;
-    list.innerHTML = ""; 
+    list.innerHTML = "";
 
     player.inventory.forEach((name, idx) => { 
         let data = ITEM_DATA[name]; 
@@ -754,8 +754,17 @@ function updateInventoryUI() {
             el.onclick = () => log(`[${name}] 효과 적용 중.`);
         }
 
-        list.appendChild(el); 
+        list.appendChild(el);
     });
+}
+
+function openInventory() {
+    updateInventoryUI();
+    document.getElementById('inventory-overlay').classList.remove('hidden');
+}
+
+function closeInventory() {
+    document.getElementById('inventory-overlay').classList.add('hidden');
 }
 
 // [수정] confirmItemUse도 useConsumable 대신 useItem을 호출하도록 변경
