@@ -72,6 +72,16 @@ const ENEMY_DATA = {
         deckType: "custom",
         deck: ["광신의 춤", "독 뿌리기", "비명", "사격"], // 하이브리드 패턴
         img: "https://placehold.co/120x120/4b0082/fff?text=BOSS+2"
+    },
+    "boss_cursed_doll": {
+        name: "💀 저주받은 인형",
+        baseHp: 120,
+        stats: { atk: 4, def: 0, spd: 1 }, // 공격력은 세지만 방어/속도가 낮음
+        growth: { hp: 0, atk: 0, def: 0, spd: 0 },
+        deckType: "custom",
+        // 독을 걸거나 멘탈 공격(비명)을 섞어 쓰는 까다로운 패턴
+        deck: ["독 뿌리기", "독 뿌리기", "비명", "타격"], 
+        img: "https://placehold.co/120x120/5e2a84/fff?text=DOLL"
     }
 };
 
@@ -179,11 +189,18 @@ const DISTRICTS = {
         danger: 3, 
         color: "#8e44ad", 
         hidden: true, 
-        
         // ★ [이 부분이 빠져 있었습니다!] 추가해주세요. ★
         scenarios: ["cult_investigation"], 
-        
         facilities: [] 
+    },
+    "abandoned_mansion": {
+        name: "🏚️ 폐쇄된 저택",
+        desc: "오랫동안 방치되어 잡초가 무성한 대저택. 기분 나쁜 시선이 느껴진다.",
+        danger: 4, // 난이도 높음 (별 4개)
+        color: "#5e2a84", // 보라색 테마
+        hidden: true, // 평소에는 안 보임! (시나리오를 받아야 보임)
+        scenarios: ["cursed_antique"], // 이 구역에서 진행할 시나리오 ID
+        facilities: [] // 상점 없음 (오직 수사뿐)
     }
 };
 
@@ -235,6 +252,39 @@ const SCENARIOS = {
         
         // [NEW] 복귀 가능 여부
         canRetreat: true
+    },
+    "cursed_antique": {
+        title: "저주받은 골동품",
+        desc: "한 골동품점에서 시작된 저주가 사람들을 위협하고 있다. 원흉을 찾아라.",
+        
+        // 탐사 화면에서 이동할 장소들 (분위기용)
+        locations: ["먼지 쌓인 응접실", "어두운 복도", "인형의 방"],
+        
+        // 탐사 중 발생할 랜덤 이벤트 (기본 3종 세트)
+        events: [
+            { type: "battle", chance: 0.4 }, 
+            { type: "text", chance: 0.3 }, 
+            { type: "nothing", chance: 0.3 }
+        ],
+        
+        // ★ 위에서 만든 보스 연결
+        boss: "boss_cursed_doll",
+        
+        // ★ 의뢰 수락 시 해금될 구역 (위에서 만든 저택)
+        unlocks: ["abandoned_mansion"], 
+        
+       
+        
+        // 조사 성공 시 나오는 문구들
+        clueEvents: [
+            { text: "일기장의 찢어진 페이지를 발견했습니다.", gain: 15 },
+            { text: "누군가를 노려보는 듯한 그림을 찾았습니다.", gain: 20 },
+            { text: "바닥에 떨어진 핏방울을 따라갑니다.", gain: 25 }
+        ],
+        
+        // 클리어 보상
+        reward: { gold: 2000, xp: 500, itemRank: 2 },
+        canRetreat: true, // 도망 가능
     }
 };
 /* [수정] 이벤트 데이터 (종료 시 renderExploration 호출) */
@@ -356,5 +406,4 @@ const EVENT_DATA = [
             }
         ]
     }
-
 ];
