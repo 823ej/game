@@ -737,18 +737,30 @@ body {
 
 @media (max-height: 360px) and (orientation: landscape) {
     body { font-size: 12px; }
-    .container { padding: 3px 5px; gap: 3px; width: min(1000px, 100%); }
+    .container { padding: 3px 5px; gap: 3px; width: min(1000px, 100%); justify-content: flex-start; }
     .scene { border-radius: 6px; }
-    .battle-area { gap: 4px; margin-bottom: 6px; min-height: 150px; }
-    .character { width: 32%; padding: 5px; }
-    .char-img { width: 90px; height: 90px; }
-    .enemies-wrapper { gap: 10px; padding-left: 8px; }
-    .enemy-unit { width: 110px; }
-    .control-group { height: 68px; gap: 3px; }
-    .status-panel { width: 80px; padding: 3px; font-size: 0.76em; }
-    .btn-end-turn-side { width: 58px; font-size: 0.78em; }
-    .log-area { font-size: 0.78em; padding: 4px; }
-    .hand-area { height: 90px; margin-top: 4px; padding: 4px; }
+    .utility-dock { padding: calc(var(--safe-top) + 2px) 4px 2px 4px; }
+    .utility-dock-inner { gap: 2px; }
+    .utility-pill { padding: 2px 6px; font-size: 0.7em; }
+    .hub-scene { padding: 6px; }
+    .hub-hero { display: none; }
+    .hub-content { gap: 6px; grid-template-columns: 1fr; padding-bottom: 6px; }
+    .hub-copy { padding: 8px 10px; }
+    .hub-copy h1 { font-size: 1.1rem; margin: 4px 0; }
+    .hub-sub { font-size: 0.85rem; }
+    .battle-area { gap: 2px; margin-bottom: 4px; min-height: 110px; align-items: center; }
+    .character { width: 24%; padding: 4px; }
+    .char-img { width: 64px; height: 64px; }
+    .character.turn-active { border: 1px solid #f1c40f; box-shadow: 0 0 8px rgba(241,196,15,0.3); }
+    .enemies-wrapper { gap: 5px; padding-left: 4px; }
+    .enemy-unit { width: 84px; }
+    .enemy-unit.selected-target { border-color: #e74c3c; box-shadow: 0 0 8px rgba(231,76,60,0.5); }
+    .control-group { height: 58px; gap: 2px; }
+    .status-panel { width: 70px; padding: 2px; font-size: 0.7em; }
+    .btn-end-turn-side { width: 48px; font-size: 0.72em; }
+    .log-area { font-size: 0.72em; padding: 2px; }
+    .hand-area { height: 74px; margin-top: 2px; padding: 3px; }
+    .card { width: 68px; height: 96px; font-size: 0.66em; line-height: 1.18; padding: 5px; }
     .action-btn { padding: 5px 8px; font-size: 0.82rem; box-shadow: 0 2px 0 #d35400; }
     .small-btn { padding: 2px 5px; font-size: 0.68rem; min-width: 30px; }
 }
