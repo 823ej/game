@@ -868,6 +868,30 @@ body {
     }
 }
 
+@media (max-height: 520px) and (orientation: landscape) {
+    #story-scene {
+        --story-padding: clamp(8px, 2vw, 16px);
+        --dialog-height: clamp(120px, 18vh, 170px);
+        justify-content: flex-start;
+        overflow-y: auto;
+        padding: calc(var(--safe-top) + var(--story-padding)) var(--story-padding) calc(var(--safe-bottom) + var(--story-padding)) var(--story-padding);
+    }
+
+    #story-bg,
+    #story-standing {
+        width: min(100vw, var(--stage-max-width));
+    }
+
+    .dialog-container {
+        position: static;
+        transform: none;
+        width: min(92vw, var(--stage-max-width));
+        height: auto;
+        margin-top: 10px;
+        margin-bottom: 6px;
+    }
+}
+
 .next-icon {
     position: absolute; bottom: 10px; right: 15px;
     color: #f1c40f; animation: blink 1s infinite;
