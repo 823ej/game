@@ -937,25 +937,28 @@ body {
     position: absolute;
     left: 10px;
     top: 50%;
+    bottom: auto;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: clamp(6px, 1.5vw, 10px);
     z-index: 500;
-    width: 72px;
-    padding: 8px 6px;
+    width: clamp(52px, 8vw, 72px);
+    padding: clamp(6px, 2vw, 8px) clamp(4px, 1.6vw, 6px);
+    max-height: clamp(150px, 45vh, 260px); /* 캐릭터 높이 범위 안에서 표시 */
+    overflow: visible; /* 스크롤 대신 자체 축소 */
     border-radius: 12px;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.45);
+    background: none; /* 반투명 배경 제거 */
+    border: none;
+    box-shadow: none;
     pointer-events: none;
 }
 
 .timeline-node {
     position: relative;
-    width: 48px;
-    height: 48px;
+    width: clamp(36px, 8vw, 48px);
+    height: clamp(36px, 8vw, 48px);
     margin: 0;
     flex-shrink: 0;
     border-radius: 50%;
@@ -1006,6 +1009,18 @@ body {
     }
     .timeline-container {
         left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        max-height: clamp(200px, 48vh, 300px); /* PC에서 로그 영역과 겹치지 않도록 상단 정렬 */
+    }
+}
+
+/* 모바일 전투: 플레이어/적 사이 간격 확보 */
+@media (max-width: 768px) {
+    .battle-area {
+        gap: clamp(24px, 8vw, 64px);
+        margin-bottom: 14px;
+        justify-content: space-between;
     }
 }
 
