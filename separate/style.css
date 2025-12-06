@@ -1,5 +1,5 @@
-   body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #222; color: #eee; text-align: center; user-select: none; margin: 0; }
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; position: relative; min-height: 100vh; display: flex; flex-direction: column; }
+ body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #222; color: #eee; text-align: center; user-select: none; margin: 0; }
+        .container { width: min(1100px, 100% - 32px); margin: 0 auto; padding: clamp(12px, 2vw, 24px); position: relative; min-height: 100vh; display: flex; flex-direction: column; }
         
        /* [수정] 상단 바: 아주 얇게, 버튼 통합 */
         .top-bar { 
@@ -496,9 +496,35 @@
         .keyword:hover .tip-text { visibility: visible; opacity: 1; }
 
 
-        /* --- 스토리 컷신 (Visual Novel) --- */
+/* --- 스토리 컷신 (Visual Novel) --- */
 #story-scene {
-    width: 100%; height: 100%;
+    width: 100vw;
+    height: 100vh;
+    position: fixed !important; /* 인라인 position 덮어씌워서 페이지 최상단 고정 */
+    inset: 0;
+    z-index: 300; /* 다른 UI와 팝업 위로 올려서 최상단에서 연출 */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding: clamp(12px, 3vw, 48px);
+    box-sizing: border-box;
+}
+
+/* 가로가 넓은 환경에서도 중앙 정렬된 무대 유지 */
+#story-bg,
+#story-standing {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 1600px;
+}
+
+#story-bg {
+    width: min(1600px, 100vw);
+}
+
+#story-standing {
+    width: min(1400px, calc(100vw - clamp(24px, 6vw, 120px)));
 }
 
 /* 캐릭터 이미지 */
@@ -523,11 +549,13 @@
 
 /* 대화창 */
 .dialog-container {
-    position: absolute; bottom: 20px; left: 5%; right: 5%;
-    height: 150px;
+    position: absolute; bottom: clamp(12px, 4vh, 36px); left: 50%; right: auto;
+    width: min(1200px, 90vw);
+    height: clamp(140px, 22vh, 200px);
+    transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.85);
     border: 2px solid #fff; border-radius: 10px;
-    padding: 20px; box-sizing: border-box;
+    padding: clamp(16px, 2.5vw, 24px); box-sizing: border-box;
     display: flex; flex-direction: column;
     cursor: pointer; z-index: 100;
     text-align: left;
@@ -537,13 +565,44 @@
     background: #e67e22; color: #fff;
     padding: 5px 15px; border-radius: 5px;
     font-weight: bold; font-size: 1.1em;
-    position: absolute; top: -15px; left: 20px;
+    position: absolute; top: -15px; left: clamp(14px, 2vw, 24px);
     border: 2px solid #fff;
 }
 
 .dialog-text {
     color: #eee; font-size: 1.1em; line-height: 1.6;
     margin-top: 10px; white-space: pre-wrap;
+}
+
+@media (min-aspect-ratio: 16/9) {
+    .dialog-container {
+        width: min(1300px, 86vw);
+    }
+
+    .story-char {
+        max-width: 450px;
+    }
+}
+
+@media (max-width: 768px) {
+    #story-scene {
+        padding: 8px;
+    }
+
+    #story-standing {
+        width: 100%;
+    }
+
+    .story-char {
+        max-width: 280px;
+        height: auto;
+    }
+
+    .dialog-container {
+        width: 95vw;
+        padding: 14px;
+        height: auto;
+    }
 }
 
 .next-icon {
@@ -566,34 +625,4 @@
 }
 .story-choice-btn:hover {
     background: #e67e22; border-color: #fff; transform: scale(1.05);
-}
-
-html, body { height: 100%; margin: 0; }
-.container { height: 100vh; display: flex; flex-direction: column; } 
-
-/* style.css 수정 */
-
-#story-scene {
-    /* [핵심] 문서의 흐름을 무시하고 화면 전체를 덮어버립니다 */
-    position: fixed; 
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    
-    /* 다른 요소들보다 위에 뜨도록 순서 지정 */
-    z-index: 300; 
-    
-    /* 배경이 투명하면 뒤에 게임 화면이 비치니까 검은색으로 꽉 채움 */
-    background: #000; 
-    
-    /* 내용물 배치 */
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* 스토리 화면 안에서는 스크롤 안 생기게 */
-}
-
-/* [중요] switchScene 함수가 작동하려면 이 코드가 꼭 있어야 합니다 */
-.scene.hidden {
-    display: none !important;
 }
