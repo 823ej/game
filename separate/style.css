@@ -463,11 +463,7 @@
             align-items: center;
             text-align: center;
         }
-        /* 화면 너비가 768px 이하(모바일)이고, 세로 모드(portrait)일 때만 보임 */
-        @media screen and (max-width: 768px) and (orientation: portrait) {
-            #rotate-overlay { display: flex; }
-            .container { display: none; } /* 게임 화면 숨김 */
-        }
+     
         /* 이벤트(상점/휴식) 전체 화면 스타일 */
         #event-scene { justify-content: center; align-items: center; text-align: center; }
         .event-content { background: #2c3e50; padding: 40px; border-radius: 15px; width: 100%; max-width: 600px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); border: 1px solid #34495e; }
