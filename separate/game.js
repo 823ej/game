@@ -1716,7 +1716,7 @@ function renderShopScreen(shopType = "shop_black_market") {
     const container = document.getElementById('event-content-box');
     container.innerHTML = `
         <div class="event-title">${shopTitle}</div>
-        <div class="event-desc">${shopDesc}<br><span style="color:#f1c40f; font-weight:bold;">보유 골드: ${player.gold} G</span></div>
+        <div class="event-desc">${shopDesc}<br><span style="color:#f1c40f; font-weight:bold;">소지금{player.gold} 원</span></div>
         
         <h3 style="margin:10px 0; border-bottom:1px solid #555;">🃏 기술 교본</h3>
         <div class="shop-items" id="shop-cards"></div>
@@ -1791,7 +1791,7 @@ function renderShopScreen(shopType = "shop_black_market") {
 function buyShopItem(el, type, name, cost) {
     if (el.classList.contains('sold-out')) return;
     if (player.gold < cost) { 
-        alert("골드가 부족합니다."); 
+        alert("소지금이니다."); 
         return; 
     }
     
@@ -1820,7 +1820,7 @@ function buyShopItem(el, type, name, cost) {
 /* [NEW] 카드 제거 서비스 UI */
 function openCardRemoval(cost) {
     if (player.gold < cost) {
-        alert("골드가 부족합니다.");
+        alert("소지금이 부족합니다.");
         return;
     }
 
@@ -2048,7 +2048,7 @@ function updateUI() {
     // 1. 상단 정보 (플레이어) - 경험치 바 제거
     const infoEl = document.getElementById('game-info');
     if (infoEl) {
-        infoEl.innerHTML = `Lv.${game.level} | 💰 ${player.gold}원`;
+        infoEl.textContent = `Lv.${game.level} | ${player.gold}원 | HP ${player.maxHp}/${player.hp} | SP ${player.maxSp}/${player.sp}`;
     }
 
     let playerBarHTML = "";
