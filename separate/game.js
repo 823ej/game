@@ -1250,8 +1250,7 @@ function endPlayerTurn() {
         player.hand = []; 
     }
     renderHand(); 
-    
-    game.turnOwner = "none"; 
+
     document.getElementById('player-char').classList.remove('turn-active');
     
     // ★ 중요: 내 행동이 끝났으니 다시 타임라인을 돌립니다.
