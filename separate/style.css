@@ -902,6 +902,31 @@ body {
     }
 }
 
+@media (max-height: 360px) {
+    #story-scene {
+        --story-padding: clamp(6px, 2vw, 12px);
+        --dialog-height: clamp(110px, 28vh, 140px);
+        padding: calc(var(--safe-top) + var(--story-padding)) var(--story-padding) calc(var(--safe-bottom) + var(--story-padding)) var(--story-padding);
+    }
+
+    .dialog-container {
+        width: min(94vw, var(--stage-max-width));
+        padding: clamp(10px, 2vw, 14px);
+        height: auto;
+        font-size: 0.95em;
+    }
+
+    .dialog-text {
+        font-size: 0.95em;
+        line-height: 1.4;
+    }
+
+    .name-tag {
+        font-size: 1em;
+        top: -10px;
+    }
+}
+
 .next-icon {
     position: absolute; bottom: 10px; right: 15px;
     color: #f1c40f; animation: blink 1s infinite;
