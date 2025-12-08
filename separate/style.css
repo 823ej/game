@@ -40,27 +40,101 @@ body {
     overflow: visible;
 }
 
-/* ?怨룸뼊 獄???볤탢 ?? ????덈뮉 疫꿸퀡???袁り쾿 */
 .utility-dock {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    position: relative;
     display: flex;
     justify-content: center;
-    padding: calc(var(--safe-top) + clamp(4px, 1.5vw, 10px)) clamp(8px, 2vw, 16px);
+    /* 터치하기 편하게 하단 패딩 약간 추가 */
+    padding: calc(var(--safe-top) + 4px) 8px 12px 8px; 
     z-index: 260;
-    pointer-events: none;
+    pointer-events: auto;
+    background: transparent;
 }
 
-.utility-dock-inner {
-    width: min(1400px, 95vw, calc(100vh * 16 / 9)); /* 본 화면과 동일한 폭 유지 */
+#sc-title-mini {
+    font-size: 0.75em;
+    color: #f1c40f;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 공간 부족 시 ... 처리 */
+    width: 100%;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.mini-bar-group {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 4px;
+    width: 100%;
+    height: 6px;
+}
+.mini-prog-label { font-size: 0.6em; line-height: 1; }
+
+.mini-bar-bg {
+    flex: 1;
+    background: #111;
+    height: 100%;
+    border-radius: 3px;
+    border: 1px solid #555;
+    position: relative;
 }
 
+.mini-bar-fill { height: 100%; transition: width 0.3s; }
+.utility-dock-inner {
+    width: min(1400px, 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* 양쪽 끝 배분 */
+    gap: 8px; /* 요소 간 간격 */
+    flex-wrap: wrap; /* 공간에 맞춰 줄바꿈 허용 */
+}
+.utility-dock .small-btn,
+.utility-pill,
+.scenario-pill {
+    pointer-events: auto;
+}
+/* 1. 캐릭터 정보 (줄어들지 않음) */
+#game-info {
+    flex-shrink: 0; 
+    white-space: nowrap;
+}
+/* 2. 시나리오 정보 (공간에 맞춰 늘어나고 줄어듦) */
+.scenario-pill {
+    flex: 1; /* 남는 공간 차지 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(34, 40, 48, 0.9);
+    border: 1px solid #3c4b5c;
+    border-radius: 8px;
+    padding: 6px 12px;
+    min-width: 120px; /* 최소 폭 보장 */
+    max-width: 400px; /* 너무 넓어지지 않게 */
+    height: 36px;
+    overflow: hidden;
+}
+/* 모바일 최적화 (글씨 크기 및 간격 조절) */
+@media (max-width: 600px) {
+    .utility-dock-inner { gap: 4px; }
+    
+    .utility-pill {
+        font-size: 0.7em;
+        padding: 4px 6px;
+    }
+    
+    .small-btn {
+        padding: 4px 6px;
+        min-width: 30px;
+        font-size: 0.9em;
+    }
+
+    /* 화면이 아주 좁을 때 시나리오 바 숨기기 보단 크기 축소 */
+    .scenario-pill {
+        padding: 2px 4px;
+    }
+}
 .utility-dock .small-btn,
 .utility-pill {
     pointer-events: auto;
@@ -78,11 +152,12 @@ body {
     white-space: nowrap;
 }
 
+/* 3. 버튼 그룹 (줄어들지 않음) */
 .utility-buttons {
     display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    gap: 4px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
 }
         /* ?紐껉뭣?醫듼봺 ??살쒔??됱뵠 */
         .inventory-overlay {
@@ -374,16 +449,7 @@ body {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;
         }
 
-        /* ?袁る떮 ?遺얇늺 ?????*/
-        .battle-area { 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            gap: clamp(20px, 4vw, 60px); 
-            width: min(1100px, 90vw);
-            margin: 0 auto 20px; 
-            min-height: 200px; 
-        }
+      
 /* [수정] 플레이어/적 박스 크기 균형 */
         .character { 
             width: clamp(120px, 15vw, 170px); 
@@ -402,54 +468,14 @@ body {
         }
 
         /* [?곕떽?] 筌?Ŧ??????筌왖 ?????*/
-        .char-img {
-            width: clamp(80px, 10vw, 110px);
-            height: clamp(80px, 10vw, 110px);
+.char-img {
+    width: clamp(80px, 10vw, 110px);
+    height: clamp(80px, 10vw, 110px);
             object-fit: cover; /* ??쑴???醫???렽???筌?쑴? */
             border-radius: 10px;
             border: 2px solid #555;
             background: #000;
             margin-bottom: 5px;
-        }
-        
-                /* [1??ｍ??곕떽?] ?怨룸굶??????됱뱽 ?⑤벀而?*/
-.enemies-wrapper {
-    flex: 1 1 auto;
-    max-width: 70%;
-    width: 100%;
-    margin-left: auto;           /* 전체 그룹을 중앙에 놓고 적 묶음을 오른쪽으로 정렬 */
-    display: flex;         
-    justify-content: flex-end; 
-    gap: clamp(12px, 3vw, 36px);
-    align-items: flex-end; 
-    padding-left: 0;
-}
-
-        /* 揶쏆뮆????筌?Ŧ???獄쏅벡??(疫꿸퀣??.character癰귣???鈺곌퀗???臾롮쓺) */
-        .enemy-unit {
-            width: clamp(120px, 15vw, 170px); 
-            padding: clamp(8px, 1.5vw, 14px);
-            box-sizing: border-box;
-            background: transparent;
-            border-radius: 10px;
-            text-align: center;
-            position: relative;
-            transition: 0.2s;
-            border: 2px solid transparent; /* ??깅꺖????梨????あ??*/
-        }
-
-        /* ?怨몄뵠 雅뚯럩肉?????????*/
-        .enemy-unit.dead {
-            opacity: 0.4;
-            filter: grayscale(100%);
-            pointer-events: none;   /* ??????뺤삋域??븍뜃? */
-        }
-
-        /* ??野껋옖???癒?뱽 ??揶쏅벡??*/
-        .enemy-unit.selected-target {
-            border-color: #e74c3c;
-            box-shadow: 0 0 15px rgba(231, 76, 60, 0.6);
-            background: rgba(255, 255, 255, 0.05);
         }
 
         /* [?곕떽?] ?醫딅빍筌롫뗄?????쎈늄??됱뿫 ?類ㅼ벥 */
@@ -710,8 +736,7 @@ body {
     #loc-img { height: clamp(140px, 34vh, 190px); }
     .loc-text { padding: 12px; font-size: 1em; }
     .action-grid { gap: 6px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-    .battle-area { gap: clamp(18px, 4vw, 52px); margin-bottom: 10px; width: 100%; justify-content: center; }
-    .character { width: 36%; padding: 8px; }
+     .character { width: 36%; padding: 8px; }
     .control-group { height: 90px; gap: 4px; }
     .status-panel { width: 96px; padding: 4px; font-size: 0.86em; }
     .btn-end-turn-side { width: 70px; }
@@ -740,7 +765,6 @@ body {
     #loc-img { height: clamp(120px, 32vh, 160px); }
     .loc-text { padding: 10px; font-size: 0.96em; }
     .action-grid { gap: 5px; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
-    .battle-area { gap: clamp(14px, 4vw, 40px); margin-bottom: 8px; width: 100%; justify-content: center; }
     .character { width: auto; min-width: 120px; max-width: 180px; padding: 6px; flex: 0 0 auto; }
     .control-group { height: 82px; gap: 4px; }
     .status-panel { width: 90px; padding: 4px; font-size: 0.8em; }
@@ -764,7 +788,6 @@ body {
     .hub-copy { padding: 8px 10px; }
     .hub-copy h1 { font-size: 1.1rem; margin: 4px 0; }
     .hub-sub { font-size: 0.85rem; }
-    .battle-area { gap: clamp(12px, 4vw, 28px); margin-bottom: 4px; min-height: 110px; align-items: center; width: 100%; justify-content: center; }
     .character { width: clamp(80px, 22vw, 110px); padding: 4px; flex: 0 0 auto; }
     .char-img { width: clamp(56px, 14vw, 80px); height: clamp(56px, 14vw, 80px); }
     .character.turn-active { border: 1px solid #f1c40f; box-shadow: 0 0 8px rgba(241,196,15,0.3); }
@@ -1182,7 +1205,6 @@ body {
 /* [추가] 높이가 매우 낮은(420px 이하) 초소형 화면 안전장치 */
 @media (max-height: 420px) and (orientation: landscape) {
     .utility-dock { display: none; }
-    .battle-area { padding-top: 5px; }
     .card { height: 80px; font-size: 0.55em; }
     .hand-area { height: 80px; }
     .hub-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1206,11 +1228,6 @@ body {
         height: 10px;
     }
 
-    .battle-area {
-        gap: 20px;
-        padding-top: 10px;
-        margin-bottom: 5px;
-    }
     .character {
         width: auto;
         min-width: 160px;
@@ -1250,4 +1267,156 @@ body {
 @keyframes fadeInScale {
     from { opacity: 0; transform: translateY(-10px) scale(1.2); }
     to { opacity: 1; transform: translateY(0) scale(1.2); }
+}
+
+/* 4. 애니메이션 정의 */
+
+/* 적 등장 (바닥에서 솟아오름) */
+@keyframes popUp {
+    0% { transform: translateY(100%) scale(0.5); opacity: 0; }
+    60% { transform: translateY(-10px) scale(1.1); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* 걷기 (통통 튐) */
+@keyframes walkBob {
+    0% { transform: translateY(0); }
+    25% { transform: translateY(-5px); }
+    50% { transform: translateY(0); }
+    75% { transform: translateY(-3px); }
+    100% { transform: translateY(0); }
+}
+
+/* 배경 줌인 효과 (이동 시) */
+@keyframes bgZoom {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.anim-popup { animation: popUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+.anim-walk { animation: walkBob 0.6s ease-in-out infinite; }
+.anim-bg-move { animation: bgZoom 1s ease-in-out; }
+
+/* [style.css] 통합 스테이지 스타일 (기존 exploration-stage 대체) */
+
+/* 1. 공통 무대 (탐사/전투 동일한 외관) */
+.stage-view {
+    position: relative;
+    width: 100%;
+    height: 340px; /* 고정 높이 (캐릭터가 잘리지 않도록 여유 확보) */
+    background-color: #111;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 2px solid #555;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-end; /* 바닥 정렬 */
+    justify-content: space-between; /* 양쪽 끝 배치 */
+    padding: 20px 60px; /* 내부 여백 */
+    box-sizing: border-box;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+    transition: all 0.3s;
+    position: relative;
+}
+
+/* 2. 배경 레이어 (공통) */
+.stage-bg-layer {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-size: cover;
+    background-position: center;
+    z-index: 0;
+    opacity: 0.5;
+    filter: blur(2px);
+    transition: all 0.5s ease;
+}
+
+/* 3-A. 전투 레이어 (탐사/전투 공용 무대 위에 얹힘) */
+#battle-layer {
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+}
+#battle-layer #player-char {
+    flex: 0 0 35%;
+}
+#battle-layer #enemies-area {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+/* 3. 전투 화면 요소 위치 보정 */
+/* 기존 battle-area 대신 stage-view를 쓰면서 내부 요소 정렬 */
+.character {
+    /* 플레이어 위치: 왼쪽 정렬 */
+    position: relative;
+    z-index: 5;
+    margin-bottom: 0; /* 바닥에 딱 붙게 */
+    /* 기존 스타일 유지하되 위치만 잡음 */
+}
+
+/* [기존 수정] 적 유닛 배치 정렬을 좀 더 안정적으로 고정 */
+.enemies-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end; /* 오른쪽 정렬 */
+    gap: 15px;
+    align-items: flex-end; /* 바닥 정렬 */
+    padding-left: 20px;
+    min-height: 120px; /* 높이 확보로 점프 방지 */
+}
+
+/* 모바일 대응 (화면이 좁을 때 패딩 조정) */
+@media (max-width: 600px) {
+    .stage-view {
+        padding: 15px 20px; /* 좌우 여백 줄임 */
+        height: 280px;
+    }
+}
+
+/* 덱/버림/소멸 더미 버튼 배치 */
+.pile-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 10px;
+    margin: 6px 4px;
+    pointer-events: auto;
+}
+.pile-btn {
+    pointer-events: auto;
+    padding: 4px 8px;
+    font-size: 0.75em;
+}
+.pile-btn-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+}
+/* [추가] 탐색 모드일 때 적 유닛의 상세 정보(HP바, 아이콘 등) 숨기기 */
+.enemies-wrapper.preview-mode .hp-bar-bg,
+.enemies-wrapper.preview-mode .status-effects,
+.enemies-wrapper.preview-mode .block-icon,
+.enemies-wrapper.preview-mode .intent-icon {
+    opacity: 0;
+    transition: opacity 0.5s; /* 부드럽게 사라짐/나타남 */
+    visibility: hidden; /* 공간은 차지하되 보이지 않음 (위치 고정) */
+}
+
+/* 전투 모드로 전환되면 다시 보임 */
+.enemies-wrapper .hp-bar-bg,
+.enemies-wrapper .status-effects,
+.enemies-wrapper .block-icon,
+.enemies-wrapper .intent-icon {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.5s;
 }

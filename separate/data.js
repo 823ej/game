@@ -444,25 +444,27 @@ const EVENT_DATA = [
 ];
 /* [data.js] JOB_DATA 수정 */
 
+/* [data.js] JOB_DATA 수정 (이미지 경로 추가) */
 const JOB_DATA = {
     "detective": {
         name: "사립 탐정",
         desc: "논리와 이성으로 사건을 해결합니다.",
-        // [수정] DnD 스타일 스탯 (10 = 평범)
-        // 지능/정신 특화
         baseStats: { str: 10, con: 10, dex: 12, int: 16, wil: 14, cha: 12 }, 
         defaultTraits: ["sharp_eye"], 
-        starterDeck: ["타격", "수비", "수비", "달리기","관찰","사격" ],
-        starterSocialDeck: ["논리적 반박", "논리적 반박", "비꼬기", "심호흡", "무시"]
+        starterDeck: ["타격", "수비", "수비", "심호흡", "사격", "달리기", "관찰"],
+        starterSocialDeck: ["논리적 반박", "논리적 반박", "비꼬기", "심호흡", "무시"],
+        // [NEW] 탐정 이미지
+        img: "https://placehold.co/150x150/2c3e50/ffffff?text=Detective"
     },
     "fixer": {
         name: "해결사",
         desc: "주먹과 무력이 법보다 가깝습니다.",
-        // [수정] 근력/건강 특화, 지능/정신 약점
         baseStats: { str: 16, con: 14, dex: 12, int: 8, wil: 10, cha: 12 },
         defaultTraits: ["street_fighter"],
         starterDeck: ["타격", "타격", "타격", "강펀치", "수비", "도발"],
-        starterSocialDeck: ["위협", "위협", "무시", "무시", "심호흡"]
+        starterSocialDeck: ["위협", "위협", "무시", "무시", "심호흡"],
+        // [NEW] 해결사 이미지
+        img: "https://placehold.co/150x150/c0392b/ffffff?text=Fixer"
     }
 };
 

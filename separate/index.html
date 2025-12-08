@@ -14,11 +14,22 @@
 </head>
 <body>
 <div class="utility-dock">
-    <div id="game-info" class="utility-pill">Lv.1 | 0 | 30/30 | 100/100</div>
-    <div class="utility-buttons">
-        <button class="small-btn" onclick="toggleFullScreen()">⛶ 전체화면</button>
-        <button class="small-btn" onclick="openInventory()">🎒 인벤토리</button>
-        <button class="small-btn" style="background:#c0392b; border-color:#e74c3c;" onclick="confirmReset()">🗑️ 데이터 삭제</button>
+    <div class="utility-dock-inner">
+        <div id="game-info" class="utility-pill">Lv.1 | 0 | 30/30 | 100/100</div>
+
+        <div id="top-scenario-info" class="scenario-pill hidden">
+            <span id="sc-title-mini">의뢰명 | 0%</span>
+        </div>
+
+        <div id="doom-pill" class="utility-pill hidden">Doom 0%</div>
+
+        <div class="utility-buttons">
+            <button id="btn-player-stats" class="small-btn" onclick="openPlayerStats()">🧬</button>
+            <button id="btn-card-collection" class="small-btn" onclick="openAllCards()">🃏</button>
+            <button id="btn-main-inventory" class="small-btn" onclick="openInventory()">🎒</button>
+            <button class="small-btn" onclick="toggleFullScreen()">⛶</button>
+            <button class="small-btn" style="background:#c0392b; border-color:#e74c3c;" onclick="confirmReset()">🗑️</button>
+        </div>
     </div>
 </div>
 
@@ -122,72 +133,46 @@
 
     <button class="action-btn" style="margin-top:20px; background:#7f8c8d;" onclick="renderHub()">🏠 사무소 복귀</button>
 </div>
-
 <div id="exploration-scene" class="scene hidden">
-    <div class="scenario-header">
-        <h2 id="scenario-title" style="color:#3498db; margin:0;">시나리오 제목</h2>
-        <div class="progress-container">
-            <div class="prog-label">🕵️ 단서 (진척도)</div>
-            <div class="prog-bar-bg"><div id="clue-bar" class="prog-bar-fill" style="width:0%; background:#2ecc71;"></div></div>
-            <div class="prog-label">⚠️ 위협도 (Doom)</div>
-            <div class="prog-bar-bg"><div id="doom-bar" class="prog-bar-fill" style="width:0%; background:#e74c3c;"></div></div>
-        </div>
-    </div>
-
-    <div class="location-view">
-        <img id="loc-img" src="https://placehold.co/600x300/111/444?text=Night+City" alt="Location">
-        <div id="loc-desc" class="loc-text">
-            당신은 어두운 뒷골목에 서 있습니다.<br>
-            네온사인이 깜빡거리고, 어디선가 사이렌 소리가 들립니다.
-        </div>
-    </div>
-
-<div class="action-grid">
-    <button class="action-btn" onclick="exploreAction('investigate')">🔍 조사하기</button>
-    <button class="action-btn" onclick="exploreAction('move')">👣 장소 이동</button>
-    <button class="action-btn" onclick="exploreAction('rest')">☕ 잠깐 쉬기</button>
-    
-    <button id="btn-retreat" class="action-btn" style="background:#7f8c8d;" onclick="confirmRetreat()">🏠 복귀 (중단)</button>
-</div>
-
-</div>
-
-    <div id="battle-scene" class="scene hidden">
-        <div id="turn-timeline" class="timeline-container">
-        </div>
-        <div class="battle-area">
-            <div class="character" id="player-char">
-                    <h3 style="margin:2px 0; font-size:1em;">👤 플레이어</h3>
-                    <img id="p-img" src="https://placehold.co/150x150/3498db/ffffff?text=Hero" alt="Player" class="char-img" style="width:100px; height:100px;"> 
-                    <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar"></div></div>
-                    <div style="font-size:0.9em;">HP: <span id="p-hp">25</span>/<span id="p-max-hp">25</span> <span class="block-icon">🛡️<span id="p-block">0</span></span></div>
-                    <div class="stats" id="p-stats" style="font-size:0.8em;">공1 방1 속1</div>
-                    <div class="buffs" id="p-buffs" style="min-height:20px;"></div>
-                    <div style="margin-top: 5px; display: flex; justify-content: center; gap: 3px;">
-                        <button id="btn-draw-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('draw')">덱(0)</button>
-                        <button id="btn-discard-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('discard')">버림(0)</button>
-                        <button id="btn-exhaust-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('exhaust')">소멸(0)</button>
-                    </div>
-                </div>
-
+    <div class="stage-view">
+        <div id="expl-bg" class="stage-bg-layer"></div> 
+        <div id="battle-layer">
+            <div class="character" id="player-char"></div>
             <div id="enemies-area" class="enemies-wrapper"></div>
         </div>
+    </div>
 
-        <div class="control-group">
-            <div class="status-panel">
-                <div id="turn-info" style="word-break: keep-all;">게임 시작</div>
-            </div>
-            
-            <div class="log-area" id="log-box"></div>
-            
-            <button id="end-turn-btn" class="action-btn btn-end-turn-side" onclick="endPlayerTurn()">
-                턴<br>종료
-            </button>
+    <div id="loc-desc" class="loc-text exploration-ui" style="position:relative; background:#222; border-radius:5px; margin-bottom:10px; border:1px solid #444;">
+        주변을 둘러봅니다.
+    </div>
+
+    <div class="action-grid exploration-ui">
+        <button class="action-btn" onclick="exploreAction('investigate')">🔍 조사하기</button>
+        <button class="action-btn" onclick="exploreAction('move')">👣 장소 이동</button>
+        <button class="action-btn" onclick="exploreAction('rest')">☕ 잠깐 쉬기</button>
+        <button id="btn-retreat" class="action-btn" style="background:#7f8c8d;" onclick="confirmRetreat()">🏠 복귀 (중단)</button>
+    </div>
+
+    <div id="turn-timeline" class="timeline-container battle-ui hidden"></div>
+    <div class="pile-buttons battle-ui hidden">
+        <button id="btn-draw-pile-floating" class="small-btn pile-btn" onclick="openPileView('draw')">덱(0)</button>
+        <div class="pile-btn-stack">
+            <button id="btn-exhaust-pile-floating" class="small-btn pile-btn" onclick="openPileView('exhaust')">소멸(0)</button>
+            <button id="btn-discard-pile-floating" class="small-btn pile-btn" onclick="openPileView('discard')">버림(0)</button>
         </div>
+    </div>
+    <div class="control-group battle-ui hidden">
+        <div class="status-panel">
+            <div id="turn-info" style="word-break: keep-all;">게임 시작</div>
+        </div>
+        <div class="log-area" id="log-box"></div>
+        <button id="end-turn-btn" class="action-btn btn-end-turn-side" onclick="endPlayerTurn()">
+            턴<br>종료
+        </button>
+    </div>
 
-    <div class="hand-area" id="hand-container"></div>
+    <div class="hand-area battle-ui hidden" id="hand-container"></div>
 </div>
-
     <div id="event-scene" class="scene hidden">
         <div class="event-content" id="event-content-box"></div>
     </div>

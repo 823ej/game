@@ -1,4 +1,4 @@
-
+﻿
 
 /* [NEW] 적 덱 생성 헬퍼 함수 */
 function getEnemyDeck(type) {
@@ -31,6 +31,7 @@ function getRandomCardByRank(rank) {
 
 /* [수정] 도시 지도 렌더링 (수락한 의뢰 위치 강조) */
 function renderCityMap() {
+    game.state = 'city';
     switchScene('city');
     const grid = document.getElementById('district-grid');
     grid.innerHTML = "";
@@ -73,38 +74,42 @@ function renderCityMap() {
     }
     autoSave();
 }
-/* [수정] 구역 진입 함수 (안전장치 강화) */
+/* [game.js] enterDistrict 함수 수정 (버튼 통합) */
 function enterDistrict(key) {
     let d = DISTRICTS[key];
-    // scenarios 배열이 없으면 빈 배열로 취급 (에러 방지)
     let distScenarios = d.scenarios || []; 
     
     let content = `<div style="display:flex; flex-direction:column; gap:10px;">`;
 
-    // 1. [메인] 수락한 의뢰가 이 구역에 있는 경우
-    if (game.activeScenarioId && distScenarios.includes(game.activeScenarioId)) {
+    // [핵심 변경] 버튼 표시 로직 통합
+    // 현재 수락한 의뢰가 있고, 이 구역이 그 의뢰의 목표 장소인가?
+    let isTargetLocation = game.activeScenarioId && distScenarios.includes(game.activeScenarioId);
+
+    if (isTargetLocation) {
+        // [CASE A] 목표 구역임 -> '수사 시작' 버튼 표시
         let scId = game.activeScenarioId;
         let scTitle = SCENARIOS[scId].title;
         
         content += `
             <button class="action-btn" onclick="beginMission()" style="border-left:5px solid #e74c3c; background:#2c3e50;">
-                🕵️ <b>수사 시작: ${scTitle}</b><br>
-                <span style="font-size:0.7em; color:#ddd;">이 구역에서 사건을 조사합니다.</span>
+                🕵️ <b>수사 진행: ${scTitle}</b><br>
+                <span style="font-size:0.7em; color:#ddd;">메인 의뢰를 수행합니다.</span>
             </button>
-            <div style="height:1px; background:#444; margin:5px 0;"></div>
+        `;
+    } else {
+        // [CASE B] 목표 아님 (또는 의뢰 없음) -> '순찰' 버튼 표시
+        content += `
+            <button class="action-btn" onclick="startPatrol('${key}')" style="background:#555;">
+                🚓 주변 순찰 (자유 전투/파밍)
+            </button>
         `;
     }
 
-    // 2. [서브] 순찰
-    content += `
-        <button class="action-btn" onclick="startPatrol('${key}')" style="background:#555;">
-            🚓 주변 순찰 (랜덤 전투/파밍)
-        </button>
-    `;
-
-    // 3. [시설] 상점
-    // facilities가 없을 수도 있으니 안전하게 체크
-    if (d.facilities) {
+    // 구분선 (상점이 있을 때만 깔끔하게 보이도록)
+    if (d.facilities && d.facilities.length > 0) {
+        content += `<div style="height:1px; background:#444; margin:5px 0;"></div>`;
+        
+        // [시설] 상점 버튼들
         d.facilities.forEach(fac => {
             if (fac.startsWith("shop_")) {
                 let shopName = "상점";
@@ -121,7 +126,7 @@ function enterDistrict(key) {
 
     content += `</div>`;
 
-    showPopup(`📍 ${d.name}`, "무엇을 하시겠습니까?", [
+    showPopup(`📍 ${d.name}`, "이 구역에서 무엇을 하시겠습니까?", [
         {txt: "뒤로가기", func: closePopup}
     ], content);
 }
@@ -140,7 +145,6 @@ function beginMission() {
         id: game.activeScenarioId,
         title: scData.title,
         clues: 0,
-        doom: 0,
         location: scData.locations[0], 
         bossReady: false,
         isActive: true
@@ -159,17 +163,15 @@ function startPatrol(districtKey) {
         title: `${DISTRICTS[districtKey].name} 순찰`,
         location: DISTRICTS[districtKey].name,
         clues: 0,
-        doom: 0,
         isPatrol: true,
+        isActive: true,
         
         // [NEW] 순찰은 언제든 복귀 가능
         canRetreat: true 
     };
     
-    // 바로 인카운터 발생
-    let roll = Math.random();
-    if (roll < 0.5) startBattle(false);
-    else startSocialBattle("부패 경찰"); // 나중엔 구역별 랜덤 NPC로 변경 가능
+    // 바로 전투를 붙이지 않고 탐사 화면을 먼저 보여준다
+    renderExploration();
 }
 
 function applyTooltip(text) {
@@ -231,21 +233,19 @@ let game = {
     level: 1, 
     // turnCount는 이제 '라운드'가 아니라 '누적 행동 횟수' 정도로 씁니다.
     totalTurns: 0, 
-    state: "exploration", // [핵심] 기본 상태가 'battle'이 아니라 'exploration'
+    state: "char_creation", // [핵심] 초기에는 캐릭터 생성 화면
+    started: false, // 캐릭터 생성 완료 여부
+    doom: 0, // 글로벌 위험도
     turnOwner: "none", 
     pendingLoot: null,
     winMsg: "",
     lastTurnOwner: "none", // [NEW] 직전 턴 주인 기록용
     // [NEW] 행동 게이지 MAX 상수 (이 수치에 도달하면 턴 획득)
     AG_MAX: 1000,
+    // 현재 수락한 의뢰 id (없으면 null)
+    activeScenarioId: null,
     // [NEW] 시나리오 진행 상태
-    scenario: {
-        id: "tutorial",
-        clues: 0,       // 단서 (100 되면 보스)
-        doom: 0,        // 위협도 (100 되면 게임오버 or 페널티)
-        location: "뒷골목",
-        bossReady: false
-    }
+    scenario: null
 };
 
 // 현재 전투에서 사용할 적 목록을 전역으로 보관
@@ -301,6 +301,29 @@ function createBattleCheckpoint() {
     // 체크포인트 안의 game 객체에는 체크포인트 자신이 포함되지 않도록 주의(순환 참조 방지)
     // (game 변수 안에 battleCheckpoint를 넣지 않고 전역 변수로 뺐으므로 안전함)
 }
+
+/* [NEW] 적 데이터 생성 헬퍼 (중복 제거용) */
+function createEnemyData(key, index) {
+    let data = ENEMY_DATA[key];
+    if (!data) return null;
+    
+    let growthMult = game.level - 1;
+    let maxHp = Math.floor(data.baseHp + (data.growth.hp * growthMult));
+    let atk = Math.floor(data.stats.atk + (data.growth.atk * growthMult));
+    let def = Math.floor(data.stats.def + (data.growth.def * growthMult));
+    let spd = Math.floor(data.stats.spd + (data.growth.spd * growthMult));
+
+    return {
+        id: index,
+        name: `${data.name}${index > 0 ? ' ' + String.fromCharCode(65 + index) : ''}`,
+        maxHp: maxHp, hp: maxHp,
+        baseAtk: atk, baseDef: def, baseSpd: spd,
+        block: 0, buffs: {}, 
+        deck: (data.deckType === "custom") ? data.deck : getEnemyDeck(data.deckType),
+        img: data.img,
+        ag: Math.floor(Math.random() * 150)
+    };
+}
 /* [NEW] 스탯 기반 파생 능력치 재계산 */
 function recalcStats() {
  // 보정치 계산
@@ -333,6 +356,7 @@ function getClientPos(e) {
     // 마우스 이벤트인 경우
     return { x: e.clientX, y: e.clientY };
 }
+/* [NEW] 적 데이터 생성 헬퍼 (중복 제거용) */
 
 // [game.js] 
 
@@ -414,6 +438,8 @@ function loadGame() {
         // 데이터 복구
         player = loadedData.player;
         game = loadedData.game;
+        if (game.started === undefined) game.started = true;
+        if (game.activeScenarioId === undefined) game.activeScenarioId = null;
         enemies = loadedData.enemies || [];
 
         if (loadedData.clearedScenarios) {
@@ -421,7 +447,9 @@ function loadGame() {
                 if (SCENARIOS[id]) SCENARIOS[id].cleared = true;
             });
         }
-
+        if (!player.img && player.job && JOB_DATA[player.job]) {
+                    player.img = JOB_DATA[player.job].img;
+                }
         recalcStats();
         
         // 화면 복구 로직
@@ -435,6 +463,7 @@ function loadGame() {
             createBattleCheckpoint();
 
             switchScene('battle');
+            showBattleView();
             renderEnemies();
             renderHand();
             updateUI();
@@ -475,6 +504,8 @@ function resetGameData() {
 }
 
 function startCharacterCreation() {
+    game.state = 'char_creation';
+    game.started = false;
     switchScene('char-creation');
     renderJobSelection();
 }
@@ -708,8 +739,15 @@ function toggleTrait(key) {
 function finishCreation() {
     if (!tempJob) return;
 
+    // 캐릭터 생성 완료 상태로 전환
+    game.started = true;
+    game.state = 'hub';
+    game.activeScenarioId = null;
+    game.scenario = null;
+
     // 데이터 적용
     player.job = tempJob;
+    player.img = JOB_DATA[tempJob].img;
     player.traits = [...tempTraits];
     
     // [STEP 1] 직업 기본 스탯 적용
@@ -766,6 +804,7 @@ function finishCreation() {
 
 /* [NEW] 거점 화면 렌더링 */
 function renderHub() {
+    game.state = 'hub';
     switchScene('hub');
     updateUI(); // 상단 바 갱신
     autoSave();
@@ -796,6 +835,7 @@ function openDeckManager() {
 /* [NEW] 탭 전환 및 렌더링 */
 function switchDeckMode(mode) {
     currentDeckMode = mode;
+    game.state = 'deck';
     
     // 탭 스타일 갱신
     document.getElementById('tab-battle').style.opacity = (mode === 'battle') ? 1 : 0.5;
@@ -934,8 +974,9 @@ function startSocialBattle(npcKey) {
     log(`💬 [${data.name}]와(과) 설전을 벌입니다! (마음의 벽을 무너뜨리세요)`);
 
     switchScene('battle'); 
+    showBattleView();
     renderEnemies();
-    updateUI(); 
+    updateUI();
     processTimeline();
 }
 
@@ -1042,7 +1083,6 @@ function acceptMission(id) {
         id: id,
         title: scData.title,
         clues: 0,
-        doom: 0,
         location: scData.locations[0], 
         bossReady: false,
         isActive: false
@@ -1298,34 +1338,37 @@ function toggleItemSelect(e, idx) {
         icon.classList.remove('selected');
     }
 }
-/* [수정] 탐사 화면 렌더링 (복귀 버튼 제어 추가) */
+/* [game.js] renderExploration 함수 수정 (오류 수정판) */
 function renderExploration() {
+    game.state = 'exploration';
     switchScene('exploration');
     
-    // 잠금 해제
     game.inputLocked = false;
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
 
-    // 시나리오 데이터 확인
-    const scData = game.scenario; // 현재 진행 중인 시나리오 상태 객체
+    const scData = game.scenario;
     
-    // 타이틀 등 UI 업데이트
-    document.getElementById('scenario-title').innerText = `${scData.title} (${scData.location})`;
-    document.getElementById('clue-bar').style.width = `${scData.clues}%`;
-    document.getElementById('doom-bar').style.width = `${scData.doom}%`;
+    // [삭제됨] 아래 코드들이 에러의 원인입니다. (index.html에서 사라진 요소들)
+    // document.getElementById('scenario-title').innerText = ... 
+    // document.getElementById('clue-bar').style.width = ...
+    // document.getElementById('doom-bar').style.width = ...
     
-    // [NEW] 복귀 버튼 활성화/비활성화 처리
+    // [NEW] 탐사 스테이지 설정 (배경 및 캐릭터)
+    let bgUrl = "https://placehold.co/600x300/111/444?text=Night+City"; 
+    // (시나리오별 배경 이미지가 있다면 scData.bg 등으로 연동 가능)
+    document.getElementById('expl-bg').style.backgroundImage = `url('${bgUrl}')`;
+    // 적 프리뷰 영역 초기화 (전투용 영역을 재사용)
+    const enemyStage = document.getElementById('enemies-area');
+    if (enemyStage) enemyStage.innerHTML = "";
+
+    // 복귀 버튼 처리
     const retreatBtn = document.getElementById('btn-retreat');
     if (retreatBtn) {
-        // 시나리오 데이터에 canRetreat가 없거나 true면 -> 버튼 보이기 (기본값: 허용)
-        // 명시적으로 false라고 적혀있을 때만 -> 숨기기
         if (scData.canRetreat !== false) {
             retreatBtn.style.display = "inline-block"; 
             retreatBtn.disabled = false;
         } else {
-            retreatBtn.style.display = "none"; // 숨기기 (혹은 disabled)
-            // retreatBtn.disabled = true; // 비활성화만 하려면 이걸 사용
-            // retreatBtn.innerText = "🔒 봉쇄됨";
+            retreatBtn.style.display = "none";
         }
     }
     
@@ -1336,8 +1379,35 @@ function renderExploration() {
             {txt: "보스전 돌입", func: startBossBattle}
         ]);
     }
+
+    // 탐사 UI 보이고 배틀 UI 숨기기
+    showExplorationView();
+
+    // ★ 핵심: 상단 바(진척도 등) 갱신은 여기서 처리됨
     updateUI(); 
-    autoSave();
+    autoSave(); 
+}
+
+// 탐사/배틀 UI 토글 헬퍼
+function showExplorationView() {
+    document.querySelectorAll('.exploration-ui').forEach(el => {
+        el.classList.remove('hidden');
+        el.style.display = '';
+    });
+    document.querySelectorAll('.battle-ui').forEach(el => {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+    });
+}
+function showBattleView() {
+    document.querySelectorAll('.exploration-ui').forEach(el => {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+    });
+    document.querySelectorAll('.battle-ui').forEach(el => {
+        el.classList.remove('hidden');
+        el.style.display = '';
+    });
 }
 
 /* [NEW] 복귀 확인 팝업 */
@@ -1365,110 +1435,153 @@ function confirmRetreat() {
     ]);
 }
 
-/* [수정] 탐사 행동 처리 (랜덤 이벤트 연결) */
+/* [game.js] exploreAction 수정 (애니메이션 및 심리스 전투 연출) */
 function exploreAction(action) {
     if (game.inputLocked) return;
     const logBox = document.getElementById('loc-desc');
+    const pArea = document.getElementById('player-char'); // 통합 무대의 플레이어 카드
+    const bg = document.getElementById('expl-bg');
     let scData = SCENARIOS[game.scenario.id];
 
+    // --- [1] 조사하기 (전투 발생 가능) ---
     if (action === 'investigate') {
         game.inputLocked = true;
         document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = true);
         
-        // 확률 분포 조정
-        // 전투(30%) | 소셜(20%) | 랜덤 이벤트(25%) | 시나리오 단서/파밍(25%)
         let roll = Math.random();
         
+        // 1. 전투 발생 (30%) - 다키스트 던전 스타일 연출
         if (roll < 0.3) { 
-            // 1. 전투 (30%)
-            logBox.innerHTML = "<span style='color:#e74c3c'>살기가 느껴집니다! 적과 마주쳤습니다!</span>";
-            setTimeout(() => { game.inputLocked = false; startBattle(false); }, 800);
+            // 적 키 선택
+            let enemyKeys = Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
+            let key = enemyKeys[Math.floor(Math.random() * enemyKeys.length)];
+            let count = (Math.random() < 0.5) ? 2 : 1; 
+
+            // 실제 적 데이터 미리 생성
+            enemies = [];
+            for(let i=0; i<count; i++) {
+                enemies.push(createEnemyData(key, i));
+            }
+
+            logBox.innerHTML = `<span style='color:#e74c3c; font-weight:bold;'>⚠️ 적 발견! 전투 태세!</span>`;
+            
+            // 프리뷰 모드로 렌더링 (HP바 숨김)
+            const eArea = document.getElementById('enemies-area');
+            if (eArea) {
+                eArea.classList.add('preview-mode');
+            }
+            renderEnemies();
+            updateUI();
+
+            // 솟아오르는 애니메이션 적용
+            document.querySelectorAll('.enemy-unit').forEach(el => {
+                el.classList.add('anim-popup');
+            });
+
+            // 플레이어는 놀람 효과 (살짝 뜀)
+            pArea.classList.add('anim-walk');
+            
+            // 1초 뒤 전투 화면으로 전환
+            setTimeout(() => { 
+                pArea.classList.remove('anim-walk');
+                game.inputLocked = false; 
+                startBattle(false, null, true); // 이미 만든 적을 그대로 사용
+            }, 1000);
         } 
+        // 2. 소셜 발생 (20%) - 동일한 Pop-up 연출
         else if (roll < 0.5) { 
-            // 2. 소셜 (20%)
-            logBox.innerHTML = "<span style='color:#3498db'>수상한 인물을 발견했습니다. 대화를 시도합니다.</span>";
+            let keys = Object.keys(NPC_DATA);
+            let npcKey = keys[Math.floor(Math.random() * keys.length)];
+            let npcData = NPC_DATA[npcKey];
+
+            logBox.innerHTML = `<span style='color:#3498db'>누군가 다가옵니다. 대화가 가능해 보입니다.</span>`;
+            
+            const eArea = document.getElementById('enemies-area');
+            eArea.innerHTML = `
+                <div class="enemy-unit anim-popup">
+                    <img src="${npcData.img}" alt="${npcData.name}" class="char-img" style="width:80px; height:80px;">
+                    <div style="margin-top:4px; font-size:0.85em; color:#3498db; font-weight:bold;">${npcData.name}</div>
+                </div>
+            `;
+
             setTimeout(() => { 
                 game.inputLocked = false; 
-                let k = Object.keys(NPC_DATA); 
-                startSocialBattle(k[Math.floor(Math.random() * k.length)]); 
-            }, 800);
+                startSocialBattle(npcKey); 
+            }, 1000);
         } 
-        else if (roll < 0.75) {
-            // 3. [NEW] 랜덤 이벤트 (25%)
-            logBox.innerHTML = "무언가 흥미로운 상황입니다...";
-            setTimeout(() => {
-                game.inputLocked = false;
-                triggerRandomEvent(); // ★ 여기서 이벤트 발동!
-                
-            }, 800);
-        }
+        // 3. 랜덤 이벤트 / 파밍
         else {
-            // 4. 단서/파밍 (25%)
-            setTimeout(() => {
-                game.inputLocked = false;
-                if (scData && scData.clueEvents && !game.scenario.isPatrol) {
-                    let evt = scData.clueEvents[Math.floor(Math.random() * scData.clueEvents.length)];
-                    game.scenario.clues = Math.min(100, game.scenario.clues + evt.gain);
-                    game.scenario.doom = Math.min(100, game.scenario.doom + 5);
-                    logBox.innerHTML = `<span style='color:#f1c40f'>🔍 단서 발견!</span><br>${evt.text} (진척도 +${evt.gain}, 위협도 +5)`;
-                } else {
-                    let foundItem = null;
-                    if (Math.random() < 0.4) { foundItem = getRandomItem(); addItem(foundItem); }
-                    game.scenario.doom += 2;
-                    let msg = foundItem ? `주변을 뒤져 <span style='color:#2ecc71'>[${foundItem}]</span>을(를) 발견했습니다!` : "주변을 샅샅이 뒤져보았습니다. 별다른 특이사항은 없습니다.";
-                    logBox.innerHTML = `${msg} (위협도 +2)`;
-                }
-                renderExploration();
-            }, 600);
+            if(roll < 0.75) {
+                logBox.innerHTML = "무언가 흥미로운 상황입니다...";
+                setTimeout(() => { game.inputLocked = false; triggerRandomEvent(); }, 600);
+            } else {
+                setTimeout(() => {
+                    game.inputLocked = false;
+                    if (scData && scData.clueEvents && !game.scenario.isPatrol) {
+                        let evt = scData.clueEvents[Math.floor(Math.random() * scData.clueEvents.length)];
+                        game.scenario.clues = Math.min(100, game.scenario.clues + evt.gain);
+                        game.doom = Math.min(100, game.doom + 5);
+                        logBox.innerHTML = `<span style='color:#f1c40f'>🔍 단서 발견!</span><br>${evt.text}`;
+                    } else {
+                        let foundItem = null;
+                        if (Math.random() < 0.4) { foundItem = getRandomItem(); addItem(foundItem); }
+                        game.doom = Math.min(100, game.doom + 2);
+                        let msg = foundItem ? `주변을 뒤져 <span style='color:#2ecc71'>[${foundItem}]</span>을(를) 발견했습니다!` : "주변을 샅샅이 뒤져보았습니다. 별다른 특이사항은 없습니다.";
+                        logBox.innerHTML = `${msg}`;
+                    }
+                    renderExploration();
+                }, 600);
+            }
         }
     }
-    // --- [B] 휴식하기 (Rest) ---
+    // --- [2] 이동하기 (Move) ---
+    else if (action === 'move') {
+        game.inputLocked = true;
+        
+        // [연출] 걷는 애니메이션 + 배경 줌 효과
+        pArea.classList.add('anim-walk');
+        bg.classList.add('anim-bg-move');
+        logBox.innerHTML = "이동 중...";
+
+        setTimeout(() => {
+            game.inputLocked = false;
+            pArea.classList.remove('anim-walk');
+            bg.classList.remove('anim-bg-move');
+
+            if (scData && scData.locations) {
+                let nextLoc = scData.locations[Math.floor(Math.random() * scData.locations.length)];
+                while(nextLoc === game.scenario.location && scData.locations.length > 1) {
+                    nextLoc = scData.locations[Math.floor(Math.random() * scData.locations.length)];
+                }
+                game.scenario.location = nextLoc;
+                logBox.innerHTML = `[${nextLoc}] 구역에 도착했습니다.`;
+            } else {
+                logBox.innerHTML = "다른 골목으로 이동했습니다.";
+            }
+            
+            renderExploration();
+        }, 1000); // 1초간 이동 연출
+    }
+    // --- [3] 휴식 ---
     else if (action === 'rest') {
         game.inputLocked = true;
-        logBox.innerHTML = "잠시 숨을 고릅니다...";
+        logBox.innerHTML = "잠시 휴식을 취합니다...";
         
         setTimeout(() => {
             game.inputLocked = false;
+            game.doom = Math.min(100, game.doom + 10);
             
-            // 위협도 대폭 증가 (시간 많이 씀)
-            game.scenario.doom = Math.min(100, game.scenario.doom + 10);
-            
-            // HP, SP 소량 회복
-            let hpHeal = 5;
-            let spHeal = 3;
+            let hpHeal = 5; let spHeal = 3;
             player.hp = Math.min(player.maxHp, player.hp + hpHeal);
             player.sp = Math.min(player.maxSp, player.sp + spHeal);
             
-            logBox.innerHTML = `
-                <span style='color:#2ecc71'>잠시 휴식을 취했습니다.</span><br>
-                (체력 +${hpHeal}, 이성 +${spHeal}, 위협도 +10)
-            `;
-            
+            logBox.innerHTML = `<span style='color:#2ecc71'>체력을 회복했습니다. (+${hpHeal})</span>`;
             renderExploration();
-        }, 600);
-    }
-    // --- [C] 장소 이동 (Move) ---
-    else if (action === 'move') {
-        // 시나리오에 정의된 장소 목록 중 랜덤 이동 (분위기 전환용)
-        if (scData && scData.locations) {
-            let nextLoc = scData.locations[Math.floor(Math.random() * scData.locations.length)];
-            
-            // 같은 장소면 다시 뽑기 (선택사항)
-            while(nextLoc === game.scenario.location && scData.locations.length > 1) {
-                nextLoc = scData.locations[Math.floor(Math.random() * scData.locations.length)];
-            }
-            
-            game.scenario.location = nextLoc;
-            logBox.innerHTML = `[${nextLoc}]으로 이동했습니다. 주변을 둘러봅니다.`;
-        } else {
-            logBox.innerHTML = "이 구역의 다른 골목으로 이동했습니다.";
-        }
-        
-        renderExploration();
+        }, 800);
     }
 }
-/* [수정] 전투 시작 함수 (턴 기록 초기화 추가) */
-function startBattle(isBoss = false) {
+/* [수정] 전투 시작 함수 (턴 기록 초기화 + 프리뷰 유지) */
+function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) {
     game.state = "battle"; 
     game.totalTurns = 0; 
     game.isBossBattle = isBoss;
@@ -1491,50 +1604,72 @@ function startBattle(isBoss = false) {
     
     renderHand();
 
-    enemies = [];
-    
-    // 보스/일반 적 생성 로직 (기존과 동일)
-    if (isBoss) {
-        let scId = game.scenario.id;
-        let bossId = SCENARIOS[scId] ? SCENARIOS[scId].boss : "boss_gang_leader";
-        let data = ENEMY_DATA[bossId];
+    // 전투 진입 전에 적을 미리 그려 프리뷰 모드로 붙여두면 모든 전투가 심리스하게 이어짐
+    let preRenderedPreview = false;
+
+    if (!preserveEnemies) {
+        enemies = [];
         
-        enemies.push({
-            id: 0, name: data.name, maxHp: data.baseHp, hp: data.baseHp, 
-            baseAtk: data.stats.atk, baseDef: data.stats.def, baseSpd: data.stats.spd,
-            block: 0, buffs: {}, deck: (data.deckType === "custom") ? data.deck : getEnemyDeck(data.deckType),
-            img: data.img, ag: 0 
-        });
-        log(`⚠️ <b>${data.name}</b> 출현! 목숨을 걸어라!`);
-    } else {
-        let enemyCount = (Math.random() < 0.5) ? 2 : 1; 
-        const enemyKeys = Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
-        
-        for (let i = 0; i < enemyCount; i++) {
-            let key = enemyKeys[Math.floor(Math.random() * enemyKeys.length)]; 
-            let data = ENEMY_DATA[key]; 
-            let growthMult = game.level - 1;
+        // 보스/일반 적 생성 로직 (기존과 동일)
+        if (isBoss) {
+            let scId = game.scenario.id;
+            let bossId = SCENARIOS[scId] ? SCENARIOS[scId].boss : "boss_gang_leader";
+            let boss = createEnemyData(bossId, 0);
+            if (boss) enemies.push(boss);
+            log(`⚠️ <b>${boss ? boss.name : '적'}</b> 출현! 목숨을 걸어라!`);
+        } else {
+            // enemyKeys: null -> 랜덤 / 문자열 -> 단일 / 배열 -> 지정된 목록
+            let picked = [];
+            if (Array.isArray(enemyKeys) && enemyKeys.length > 0) picked = enemyKeys;
+            else if (typeof enemyKeys === 'string') picked = [enemyKeys];
+            else {
+                let count = (Math.random() < 0.5) ? 2 : 1; 
+                const pool = Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
+                for (let i = 0; i < count; i++) picked.push(pool[Math.floor(Math.random() * pool.length)]);
+            }
             
-            let maxHp = Math.floor(data.baseHp + (data.growth.hp * growthMult)); 
-            let atk = Math.floor(data.stats.atk + (data.growth.atk * growthMult));
-            let def = Math.floor(data.stats.def + (data.growth.def * growthMult)); 
-            let spd = Math.floor(data.stats.spd + (data.growth.spd * growthMult));
-            
-            enemies.push({ 
-                id: i, name: `${data.name} ${String.fromCharCode(65+i)}`, 
-                maxHp: maxHp, hp: maxHp, baseAtk: atk, baseDef: def, baseSpd: spd, 
-                block: 0, buffs: {}, deck: getEnemyDeck(data.deckType), img: data.img, 
-                ag: Math.floor(Math.random() * 150) 
+            picked.forEach((key, idx) => {
+                let enemy = createEnemyData(key, idx);
+                if (enemy) enemies.push(enemy);
             });
         }
+
+        // 탐사/이벤트 어디서든 동일하게 프리뷰 모드로 한 번 그려 둔다
+        const previewArea = document.getElementById('enemies-area');
+        if (previewArea) {
+            previewArea.classList.add('preview-mode');
+            renderEnemies();
+            updateUI();
+            preRenderedPreview = true;
+        }
     }
-    
+    let currentBg = document.getElementById('expl-bg').style.backgroundImage;
+    let battleBg = document.getElementById('battle-bg');
+    if (battleBg) {
+        battleBg.style.backgroundImage = currentBg;
+        
+        // (선택) 전투니까 배경이 살짝 더 붉어지거나 어두워지는 효과
+        // battleBg.style.filter = "blur(3px) brightness(0.8) sepia(0.3)";
+    }
 // [여기] 적 생성과 덱 셔플이 끝난 직후, 턴 시작 전에 체크포인트 생성
     createBattleCheckpoint(); // 체크포인트 생성
     autoSave(); // [추가] 체크포인트 내용으로 저장 (전투 중 끄면 여기로 돌아옴)
     switchScene('battle');
-    renderEnemies(); 
-    updateUI(); 
+    // 배틀 UI 보이고 탐사 UI 숨기기
+    showBattleView();
+    // 적 영역 처리 (탐사 프리뷰 제거)
+    const eArea = document.getElementById('enemies-area');
+    if (eArea) {
+        // 프리뷰를 미리 그렸다면 다시 그리지 않고 모드만 전환
+        if (!preRenderedPreview && !preserveEnemies) renderEnemies();
+        setTimeout(() => {
+            eArea.classList.remove('preview-mode');
+            updateUI();
+        }, 50);
+    } else {
+        renderEnemies();
+        updateUI();
+    }
     processTimeline();
 }
 
@@ -1550,10 +1685,11 @@ function nextStepAfterWin() {
 
     if (game.isBossBattle) {
         // [수정] 보스전 승리 -> 결과 정산 화면으로 이동
+        game.state = 'result';
         renderResultScreen();
     } 
     else if (game.scenario && game.scenario.isPatrol) {
-    
+        game.state = 'city';
         player.gold += 100; // 순찰 보상
         renderCityMap();
     }
@@ -1561,6 +1697,7 @@ function nextStepAfterWin() {
         // 일반 시나리오 전투 -> 탐사 화면 복귀
         let clueGain = 10;
         game.scenario.clues = Math.min(100, game.scenario.clues + clueGain);
+        game.state = 'exploration';
         renderExploration();
         autoSave(); // [추가] 결과 저장
         // 탐사 화면 텍스트 업데이트
@@ -2448,13 +2585,14 @@ function processCardRemoval(idx, cost) {
     renderShopScreen("shop_black_market"); // 임시: 무조건 암시장 리로드 (실제론 타입 변수 저장 필요)
 }
 /* [수정] 화면 전환 함수 (result 추가) */
+/* [game.js] switchScene 함수 수정 (인벤토리 버튼 제어 추가) */
 function switchScene(sceneName) {
-// 1. 모든 장면 숨기기 (목록에 'char-creation-scene' 추가)
+    // 1. 모든 장면 숨기기
     const scenes = [
         'hub-scene', 'city-scene', 'exploration-scene', 
-        'battle-scene', 'event-scene', 'deck-scene', 
+        'event-scene', 'deck-scene', 
         'result-scene', 'story-scene',
-        'char-creation-scene' // ★ 이 부분이 꼭 추가되어야 합니다!
+        'char-creation-scene'
     ];
 
     scenes.forEach(id => {
@@ -2464,11 +2602,21 @@ function switchScene(sceneName) {
 
     document.getElementById('popup-layer').style.display = 'none';
     
-    // 2. 선택된 장면만 보여주기
+    // 2. 선택된 장면만 보여주기 (배틀은 탐사 화면을 재사용)
+    if (sceneName === 'battle') sceneName = 'exploration';
     let targetId = sceneName + '-scene';
     let targetEl = document.getElementById(targetId);
     if (targetEl) targetEl.classList.remove('hidden');
     
+    // 3. [NEW] 인벤토리 버튼 제어 (캐릭터 생성 중에는 숨김)
+    const invBtn = document.getElementById('btn-main-inventory');
+    const statsBtn = document.getElementById('btn-player-stats');
+    const btnVisible = sceneName !== 'char-creation';
+    if (invBtn) invBtn.style.display = btnVisible ? 'inline-block' : 'none';
+    const cardBtn = document.getElementById('btn-card-collection');
+    if (cardBtn) cardBtn.style.display = btnVisible ? 'inline-block' : 'none';
+    if (statsBtn) statsBtn.style.display = btnVisible ? 'inline-block' : 'none';
+
     updateUI();
 }
 
@@ -2733,16 +2881,49 @@ function drawCards(n) {
     updateUI();
 }
 
-/* [수정] updateUI: 인내심 턴 표시 제거 및 소셜 UI 개선 */
+/* [game.js] updateUI 함수 수정 (상단 시나리오 정보 갱신 추가) */
 function updateUI() {
-    // 1. 상단 정보
+    // 1. 상단 플레이어 정보
     const infoEl = document.getElementById('game-info');
     if (infoEl) {
-        infoEl.textContent = `Lv.${game.level} | ${player.gold}원 | HP ${player.maxHp}/${player.hp} | SP ${player.maxSp}/${player.sp}`;
+        if (!game.started) {
+            infoEl.textContent = "";
+            infoEl.classList.add('hidden');
+        } else {
+            infoEl.classList.remove('hidden');
+            infoEl.textContent = `Lv.${game.level} | ${player.gold}G | HP ${player.hp}/${player.maxHp} | SP ${player.sp}/${player.maxSp}`;
+        }
     }
 
-    // 플레이어 바 (소셜일 땐 '마음의 벽')
+    // 2. [NEW] 상단 시나리오 정보 (진척도/위협도)
+    const topScInfo = document.getElementById('top-scenario-info');
+    
+    // 활성화된 시나리오나 진행 중인 상태(탐사, 전투)일 때만 표시
+    if (topScInfo) {
+        if (game.started && game.scenario && game.scenario.isActive && (game.state === 'exploration' || game.state === 'battle' || game.state === 'social')) {
+            topScInfo.classList.remove('hidden');
+            document.getElementById('sc-title-mini').innerText = game.scenario.title;
+            document.getElementById('sc-title-mini').innerText = `${game.scenario.title} | ${game.scenario.clues}%`;
+        } else {
+            topScInfo.classList.add('hidden');
+        }
+    }
+    // 글로벌 위험도 표시
+    const doomPill = document.getElementById('doom-pill');
+    if (doomPill) {
+        if (game.started) {
+            doomPill.classList.remove('hidden');
+            doomPill.innerText = `Doom ${game.doom}%`;
+        } else {
+            doomPill.classList.add('hidden');
+        }
+    }
+
+    // 3. (이하 기존 플레이어/적 UI 업데이트 로직 유지...)
+    // 플레이어 바
     let playerBarHTML = "";
+    const showBlock = (game.state === "battle" || game.state === "social");
+
     if (game.state === "social") {
         let mentalPct = Math.max(0, (player.mental / 100) * 100);
         playerBarHTML = `
@@ -2751,99 +2932,86 @@ function updateUI() {
             </div>
             <div style="font-size:0.9em;">
                 마음의 벽: <span id="p-hp">${player.mental}</span>/100 
-                <span class="block-icon">🛡️<span id="p-block">${player.block}</span></span>
+                ${showBlock ? `<span class="block-icon">🛡️<span id="p-block">${player.block}</span></span>` : ""}
             </div>
         `;
-    } else {
+    } else if (game.state === "battle") {
         let hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
         playerBarHTML = `
             <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar" style="width:${hpPct}%"></div></div>
-            <div style="font-size:0.9em;">HP: <span id="p-hp">${player.hp}</span>/<span id="p-max-hp">${player.maxHp}</span> <span class="block-icon">🛡️<span id="p-block">${player.block}</span></span></div>
+            <div style="font-size:0.9em;">HP: <span id="p-hp">${player.hp}</span>/<span id="p-max-hp">${player.maxHp}</span> ${showBlock ? `<span class="block-icon">🛡️<span id="p-block">${player.block}</span></span>` : ""}</div>
+        `;
+    } else {
+        // 탐사 등 비전투 상태: 방어도 숨김
+        let hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
+        playerBarHTML = `
+            <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar" style="width:${hpPct}%"></div></div>
+            <div style="font-size:0.9em;">HP: <span id="p-hp">${player.hp}</span>/<span id="p-max-hp">${player.maxHp}</span></div>
         `;
     }
-    // [수정] 스탯 표시부 (6개 스탯을 2줄로 표시하거나 작게 나열)
-    let statsHTML = `
-        <div class="stats-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:2px; font-size:0.7em; margin:5px 0;">
-            <div title="근력: 물리 공격력">💪 ${player.stats.str}</div>
-            <div title="건강: 체력/방어력">❤️ ${player.stats.con}</div>
-            <div title="민첩: 행동 속도">⚡ ${player.stats.dex}</div>
-            <div title="지능: 논리 방어">🧠 ${player.stats.int}</div>
-            <div title="정신: 이성/저항">👁️ ${player.stats.wil}</div>
-            <div title="매력: 설득/교섭">💋 ${player.stats.cha}</div>
-        </div>
-    `;
-   document.getElementById('player-char').innerHTML = `
-        <h3 style="margin:2px 0; font-size:1em;">👤 플레이어</h3>
-        <img id="p-img" src="https://placehold.co/150x150/3498db/ffffff?text=Hero" alt="Player" class="char-img" style="width:100px; height:100px;"> 
-        ${playerBarHTML}
-        ${statsHTML}
-        <div class="buffs" id="p-buffs" style="min-height:20px;">${applyTooltip(Object.entries(player.buffs).map(([k,v])=>`${k}(${v})`).join(', '))}</div>
-        <div style="margin-top: 5px; display: flex; justify-content: center; gap: 3px;">
-            <button id="btn-draw-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('draw')">덱(${player.drawPile.length})</button>
-            <button id="btn-discard-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('discard')">버림(${player.discardPile.length})</button>
-            <button id="btn-exhaust-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('exhaust')">소멸(${player.exhaustPile.length})</button>
-        </div>
-    `;
-    updateInventoryUI();
+    
+    // 스탯 표시는 무대에서 숨김 (팝업으로 확인)
+    let statsHTML = "";
 
-    // 2. 적 UI 업데이트
-    if (!enemies || enemies.length === 0) return;
-    enemies.forEach(e => {
-        let el = document.getElementById(`enemy-unit-${e.id}`);
-        if (!el) return; 
+    // 플레이어 DOM 업데이트
+    const pChar = document.getElementById('player-char');
+    if (pChar) {
+        // 이미지 경로 처리 (오류 방지)
+        let imgSrc = player.img || "https://placehold.co/150x150/3498db/ffffff?text=Hero";
         
-        if (e.hp <= 0 && game.state !== "social") { 
-            el.classList.add('dead');
-            el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
-            return;
-        } else {
-             el.classList.remove('dead');
-        }
-        el.classList.add('enemy-unit');
-        
-        let isSocialEnemy = (game.state === "social"); 
-        let barHTML = "";
-        let patienceHTML = ""; // ★ 빈 문자열로 초기화 (인내심 표시 제거)
-
-        if (isSocialEnemy) {
-       // [수정] 플레이어와 동일한 '마음의 벽' 스타일 적용
-            let mentalPct = Math.min(100, Math.max(0, e.hp)); 
-            
-            // 파란색 -> 보라색 그라데이션
-            barHTML = `
-                <div class="hp-bar-bg" style="background:#222; border-color:#3498db;">
-                    <div class="hp-bar-fill" style="width:${mentalPct}%; background: linear-gradient(90deg, #3498db, #8e44ad);"></div>
-                </div>
-                <div style="font-size:0.7em; color:#ddd; margin-top:2px;">마음의 벽: ${e.hp}/100</div>
-            `;
-        } else {
-            let hpPct = Math.max(0, (e.hp / e.maxHp) * 100);
-            barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
-        }
-
-        let intent = "💤";
-        if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = isSocialEnemy ? "💬" : "⚔️";
-        let buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
-
-        el.innerHTML = `
-            ${patienceHTML} 
-            <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} ${intent}</div>
-            <img src="${e.img}" alt="${e.name}" class="char-img" style="width:80px; height:80px;">
-            ${barHTML} 
-            <div style="background:#444; height:6px; margin:2px 10px; border-radius:3px; overflow:hidden;">
-                <div style="background:#f1c40f; height:100%; width:${Math.min(100, (e.ag / game.AG_MAX) * 100)}%"></div>
-            </div>
-            <div style="font-size:0.8em;">
-                ${isSocialEnemy ? `<span class="block-icon">🛡️${e.block}</span>` : `HP: ${e.hp}/${e.maxHp} <span class="block-icon">🛡️${e.block}</span>`} 
-            </div>
-            <div class="stats" style="font-size:0.7em;">공${getStat(e,'atk')} 방${getStat(e,'def')} <span style="color:#f1c40f; font-weight:bold;">⚡${getStat(e,'spd')}</span></div>
-            <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
+        pChar.innerHTML = `
+            <h3 style="margin:2px 0; font-size:1em;">👤 플레이어</h3>
+            <img id="p-img" src="${imgSrc}" alt="Player" class="char-img" style="width:100px; height:100px;"> 
+            ${playerBarHTML}
+            ${statsHTML}
+            <div class="buffs" id="p-buffs" style="min-height:20px;">${applyTooltip(Object.entries(player.buffs).map(([k,v])=>`${k}(${v})`).join(', '))}</div>
         `;
-    });
+    }
+    updateInventoryUI();
+    // 더미 버튼 텍스트 갱신
+    const drawBtn = document.getElementById('btn-draw-pile-floating');
+    if (drawBtn) drawBtn.textContent = `덱(${player.drawPile.length})`;
+    const discardBtn = document.getElementById('btn-discard-pile-floating');
+    if (discardBtn) discardBtn.textContent = `버림(${player.discardPile.length})`;
+    const exhaustBtn = document.getElementById('btn-exhaust-pile-floating');
+    if (exhaustBtn) exhaustBtn.textContent = `소멸(${player.exhaustPile.length})`;
+
+    // 4. 적 UI 업데이트 (기존 로직 유지)
+    if (enemies && enemies.length > 0) {
+        enemies.forEach(e => {
+            let el = document.getElementById(`enemy-unit-${e.id}`);
+            if (!el) return; 
+            
+            if (e.hp <= 0 && game.state !== "social") { 
+                el.classList.add('dead');
+                el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
+                return;
+            } else {
+                 el.classList.remove('dead');
+            }
+            el.classList.add('enemy-unit');
+            
+            let isSocialEnemy = (game.state === "social"); 
+            let hpPct = isSocialEnemy ? Math.min(100, Math.max(0, e.hp)) : Math.max(0, (e.hp / e.maxHp) * 100);
+            let barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
+
+            let intent = "💤";
+            if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = isSocialEnemy ? "💬" : "⚔️";
+            let buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
+    
+            el.innerHTML = `
+                <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} <span class="intent-icon">${intent}</span></div>
+                <img src="${e.img}" alt="${e.name}" class="char-img">
+                ${barHTML} 
+                <div style="font-size:0.8em;">HP: ${e.hp}${isSocialEnemy ? "" : `/${e.maxHp}`} ${showBlock ? `<span class="block-icon">🛡️${e.block}</span>` : ""}</div>
+                <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
+            `;
+        });
+    }
 
     if (typeof updateTurnOrderList === "function") updateTurnOrderList();
 
-    // (버튼 로직은 기존과 동일하므로 유지)
+    // 5. 추가 버튼 (무력행사/도망치기) 로직
     let controlGroup = document.querySelector('.control-group');
     let extraBtn = document.getElementById('extra-action-btn');
     if (extraBtn) extraBtn.remove();
@@ -2871,7 +3039,7 @@ function updateUI() {
             extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
             extraBtn.innerHTML = btnHTML;
             extraBtn.onclick = btnFunc;
-            controlGroup.insertBefore(extraBtn, document.getElementById('end-turn-btn'));
+            if(controlGroup) controlGroup.insertBefore(extraBtn, document.getElementById('end-turn-btn'));
         }
     }
 }
@@ -2899,7 +3067,7 @@ function escapePhysicalBattle() {
     }
 
     // 3. 살았다면 패널티 적용 후 복귀
-    game.scenario.doom += 5; // 위협도 증가
+    game.doom = Math.min(100, game.doom + 5); // 글로벌 위협도 증가
     
     // 탐사 화면으로 복귀
     document.getElementById('loc-desc').innerHTML = 
@@ -3490,4 +3658,60 @@ function toggleFullScreen() {
     }
 }
 
+// 플레이어 스탯/트레잇 확인 팝업
+function openPlayerStats() {
+    if (!game.started) return;
+    const s = player.stats;
+    const statRows = `
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:left;">
+            <div>💪 근력: <b>${s.str}</b></div>
+            <div>❤️ 건강: <b>${s.con}</b></div>
+            <div>⚡ 민첩: <b>${s.dex}</b></div>
+            <div>🧠 지능: <b>${s.int}</b></div>
+            <div>👁️ 정신: <b>${s.wil}</b></div>
+            <div>💋 매력: <b>${s.cha}</b></div>
+        </div>
+    `;
+
+    let traitList = "없음";
+    if (player.traits && player.traits.length > 0) {
+        traitList = player.traits.map(tKey => {
+            const t = TRAIT_DATA[tKey] || { name: tKey, desc: "" };
+            return `<li style="margin-bottom:4px;"><b>${t.name || tKey}</b> - <span style="color:#ccc;">${t.desc || ""}</span></li>`;
+        }).join("");
+        traitList = `<ul style="padding-left:18px; margin:6px 0 0 0;">${traitList}</ul>`;
+    }
+
+    const content = `
+        <div style="text-align:left; display:flex; flex-direction:column; gap:10px;">
+            <div>${statRows}</div>
+            <div>
+                <div style="color:#f1c40f; font-weight:bold; margin-bottom:4px;">보유 트레잇</div>
+                ${traitList}
+            </div>
+        </div>
+    `;
+
+    showPopup("플레이어 정보", "현재 스탯과 트레잇을 확인하세요.", [{ txt: "닫기", func: closePopup }], content);
+}
+
+// 전체 카드 목록 보기
+function openAllCards() {
+    if (!game.started) return;
+    const sections = [
+        { title: "전투 덱", list: player.deck },
+        { title: "소셜 덱", list: player.socialDeck },
+        { title: "보관함", list: player.storage }
+    ];
+    const makeList = (title, arr) => {
+        if (!arr || arr.length === 0) return `<div><b>${title}</b><br><span style="color:#777;">없음</span></div>`;
+        const counts = arr.reduce((m, c) => (m[c] = (m[c] || 0) + 1, m), {});
+        const rows = Object.keys(counts).sort().map(name => `<li>${name} x${counts[name]}</li>`).join("");
+        return `<div><b>${title}</b><ul style="margin:4px 0 10px 18px;">${rows}</ul></div>`;
+    };
+    const content = sections.map(s => makeList(s.title, s.list)).join("");
+    showPopup("보유 카드", "현재 가지고 있는 모든 카드를 확인하세요.", [{ txt: "닫기", func: closePopup }], content);
+}
+
 window.onload = initGame;
+
