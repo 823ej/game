@@ -314,7 +314,7 @@ function createEnemyData(key, index) {
     let spd = Math.floor(data.stats.spd + (data.growth.spd * growthMult));
 
     return {
-        id: index,
+       id: index,
         name: `${data.name}${index > 0 ? ' ' + String.fromCharCode(65 + index) : ''}`,
         maxHp: maxHp, hp: maxHp,
         baseAtk: atk, baseDef: def, baseSpd: spd,

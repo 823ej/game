@@ -451,7 +451,7 @@ const JOB_DATA = {
         desc: "논리와 이성으로 사건을 해결합니다.",
         baseStats: { str: 10, con: 10, dex: 12, int: 16, wil: 14, cha: 12 }, 
         defaultTraits: ["sharp_eye"], 
-        starterDeck: ["타격", "수비", "수비", "심호흡", "사격", "달리기", "관찰"],
+        starterDeck: ["타격", "타격", "수비", "수비", "사격", "달리기", "관찰"],
         starterSocialDeck: ["논리적 반박", "논리적 반박", "비꼬기", "심호흡", "무시"],
         // [NEW] 탐정 이미지
         img: "https://placehold.co/150x150/2c3e50/ffffff?text=Detective"
