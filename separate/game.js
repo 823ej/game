@@ -184,9 +184,26 @@ function applyTooltip(text) {
 /* --- 상태 변수 --- */
 /* [수정] 플레이어 상태 (인벤토리 통합) */
 let player = { 
-    // ... (기존 속성들 유지) ...
-    maxHp: 30, hp: 30, maxSp: 100, sp: 100, 
-    baseAtk: 1, baseDef: 1, baseSpd: 3, 
+// 기본 생명력/정신력 (현재값)
+    maxHp: 30, hp: 30, 
+    maxSp: 30, sp: 30, 
+    mental: 100, maxMental: 100, // 마음의 벽 (소셜용)
+    
+    // [NEW] 6대 스탯 도입
+    // 근력(Str): 물리 공격력
+    // 건강(Con): 물리 방어력 & 최대 HP
+    // 민첩(Dex): 속도 (행동 순서)
+    // 지능(Int): 논리 방어 (소셜 방어)
+    // 정신(Wil): 최대 SP & 마음의 벽 크기
+    // 매력(Cha): 소셜 공격력 (설득/기만)
+    stats: {
+        str: 1, // 근력
+        con: 1, // 건강
+        dex: 3, // 민첩 (기본 속도 유지)
+        int: 1, // 지능
+        wil: 1, // 정신
+        cha: 1  // 매력
+    },
     gold: 0, ap: 3, xp: 0, maxXp: 100,
     
     // 덱 관련
@@ -266,7 +283,23 @@ function showDamageText(target, msg) {
         }, 800);
     }
 }
+/* [NEW] 스탯 기반 파생 능력치 재계산 */
+function recalcStats() {
+    // 1. 최대 HP = 기본 20 + (건강 * 10)
+    // (건강 1일 때 30, 건강 2일 때 40...)
+    player.maxHp = 20 + (player.stats.con * 10);
+    if (player.hp > player.maxHp) player.hp = player.maxHp;
 
+    // 2. 최대 SP(SAN치) = 기본 20 + (정신 * 10)
+    // (정신 1일 때 30...)
+    player.maxSp = 20 + (player.stats.wil * 10);
+    if (player.sp > player.maxSp) player.sp = player.maxSp;
+
+    // 3. 마음의 벽(소셜 HP) = 기본 90 + (정신 * 10)
+    // (정신 1일 때 100...)
+    player.maxMental = 90 + (player.stats.wil * 10);
+    // 마음의 벽은 전투마다 초기화되므로 여기서 현재값 조정은 안 함 (startSocialBattle에서 함)
+}
 /* [NEW] 마우스/터치 좌표 통합 추출 함수 */
 function getClientPos(e) {
     // 터치 이벤트인 경우
@@ -286,14 +319,24 @@ function initGame() {
     // 1. 기본 전투 덱
     player.deck = ["타격","타격","타격","수비","수비","수비"];
     
-    // 2. 기본 소셜 덱
-    player.socialDeck = ["미소짓기", "미소짓기", "미소짓기", "인상 쓰기", "인상 쓰기", "안부 묻기"];
+   // 2. [수정] 기본 소셜 덱 (새로운 카드로 교체)
+    // 기존: ["미소짓기", "미소짓기", "미소짓기", "인상 쓰기", "인상 쓰기", "안부 묻기"]
+    player.socialDeck = [
+        "논리적 반박", "논리적 반박", "논리적 반박", 
+        "한귀로 흘리기", "한귀로 흘리기", 
+        "심호흡"
+    ];
     
     // 3. 보관함 (테스트용 여분 카드 지급)
-    player.storage = ["잠자기", "도발", "농담하기", "거짓말", "비명"]; 
+    player.storage = ["잠자기", "도발", "농담하기", "거짓말", "비명"];
     
     addRandomCard(2); // 랜덤 카드는 덱으로 들어감 (기존 로직)
     
+   // [추가] 초기 스탯 반영
+    recalcStats();
+    player.hp = player.maxHp;
+    player.sp = player.maxSp;
+
     renderHub();
 }
 
@@ -425,16 +468,20 @@ function moveCardToDeck(storageIdx) {
     renderDeckBuilder(); // 재렌더링
 }
 
-/* [수정] 대화 모드 시작 (턴 기록 초기화 추가) */
+// [game.js] startSocialBattle 함수 교체
+
 function startSocialBattle(npcKey) {
     game.state = "social";
     game.totalTurns = 0;
     game.isBossBattle = false;
-
-    // [핵심 수정] 턴 기록 초기화
     game.turnOwner = "none";     
     game.lastTurnOwner = "none"; 
 
+    // 1. 플레이어 상태 초기화 (소셜 전용 스탯 설정)
+    // 기존 sp 대신 'mental'이라는 임시 스탯을 사용 (100점 만점)
+    player.mental = 100; 
+    player.maxMental = 100;
+    
     // 덱 교체
     player.drawPile = [...player.socialDeck]; 
     shuffle(player.drawPile);
@@ -443,19 +490,23 @@ function startSocialBattle(npcKey) {
 
     renderHand();
 
+    // 2. 적(NPC) 생성
     enemies = [];
     let data = NPC_DATA[npcKey];
+    
+    // NPC도 동일하게 100의 마음의 벽을 가짐
     enemies.push({ 
         id: 0, 
         name: data.name, 
-        maxHp: 100, hp: 50, maxSp: 100, 
+        maxHp: 100, hp: 100, // hp 변수를 '마음의 벽' 수치로 사용
         baseAtk: data.baseAtk, baseDef: data.baseDef, baseSpd: data.baseSpd,
         block: 0, buffs: {}, deck: data.deck, img: data.img, ag: 0,
-        patience: 6 + Math.floor(Math.random() * 4),
-        maxPatience: 9
+        
+        // 인내심 시스템은 제거하거나, 특수 기믹으로만 남김
+        isNpc: true 
     });
 
-    log(`💬 [${data.name}]와(과) 대화를 시작합니다! (목표: SP 0 또는 100)`);
+    log(`💬 [${data.name}]와(과) 설전을 벌입니다! (마음의 벽을 무너뜨리세요)`);
 
     switchScene('battle'); 
     renderEnemies();
@@ -959,7 +1010,7 @@ function exploreAction(action) {
             
             // HP, SP 소량 회복
             let hpHeal = 5;
-            let spHeal = 10;
+            let spHeal = 3;
             player.hp = Math.min(player.maxHp, player.hp + hpHeal);
             player.sp = Math.min(player.maxSp, player.sp + spHeal);
             
@@ -1298,7 +1349,7 @@ async function startEnemyTurnLogic(actor) {
     }
 }
 
-/* [수정] useCard: 방어 로그 텍스트 분기 처리 */
+/* [수정] useCard: 방어/버프/드로우 로직을 공통으로 분리 */
 function useCard(user, target, cardName) {
     let data = CARD_DATA[cardName];
     let userId = (user === player) ? "player-char" : `enemy-unit-${user.id}`;
@@ -1306,64 +1357,50 @@ function useCard(user, target, cardName) {
 
     log(`🃏 [${cardName}] 사용!`);
 
-    // [CASE 0] 소셜 카드 (대화)
+    // --- [1] 모드별 특수 효과 처리 ---
+    
+    // [A] 소셜 카드 (공격/회복/특수)
     if (data.type === "social") {
         playAnim(userId, 'anim-bounce');
-        
-        if (data.special === "gamble" && Math.random() < 0.3) {
-             log("💦 실패! 내 멘탈이 흔들립니다. (-10)");
-             if(user === player) {
-                 player.sp -= 10;
-                 updateUI();
-             }
-             return;
+
+        // 1. 공격 (dmg)
+      if (data.dmg) {
+            // [수정] 소셜 공격력(매력) 적용
+            let finalDmg = data.dmg + getStat(user, 'socialAtk'); 
+            takeDamage(target, finalDmg);
+        }
+        // 2. 회복 (heal) - 내 마음의 벽 회복
+        if (data.heal) {
+            if (user === player) {
+                user.mental = Math.min(100, user.mental + data.heal);
+                log(`🌿 마음의 벽 회복 +${data.heal}`);
+                showDamageText(user, `💚+${data.heal}`);
+            } else {
+                user.hp = Math.min(100, user.hp + data.heal);
+            }
+            updateUI(); // 회복 즉시 반영
         }
 
-        let val = data.val;
-        
-        // 방어(마음의 벽) 계산
-        if (target.block > 0) {
-            let absorb = Math.min(target.block, Math.abs(val));
-            target.block -= absorb;
-            if (val > 0) val -= absorb; 
-            else val += absorb;         
-            
-            log(`🛡️ 상대의 마음의 벽이 ${absorb}만큼 막아냈습니다.`);
-        }
-
-        if (val !== 0) {
-            if (target === player) {
-                player.sp += val; 
+        // 3. 도박 (거짓말)
+        if (data.special === "gamble_lie") {
+            if (Math.random() < 0.5) {
+                log("🎲 거짓말 성공! 상대가 크게 동요합니다.");
+                takeDamage(target, 40);
             } else {
-                target.hp += val; 
-            }
-            
-            if (val > 0) {
-                log(`🥰 설득 시도! SP +${val}`);
-                showDamageText(target, `❤️+${val}`);
-                playAnim(targetId, 'anim-bounce');
-            } else {
-                log(`👿 위압감 조성! SP ${val}`); 
-                showDamageText(target, `💔${val}`);
-                playAnim(targetId, 'anim-hit');
+                log("💦 거짓말을 들켰습니다! 망신살이 뻗칩니다.");
+                takeDamage(user, 20); 
             }
         }
-        updateUI();
     }
-    // [CASE 1] 일반/공격 카드
+    // [B] 일반/전투 카드 (소환/공격)
     else {
         if (data.special === "summon") {
-            // 1. 플레이어가 사용한 경우 (현재는 막힘/대체 효과)
             if (user === player) {
-                log("🚫 플레이어는 부하를 부를 수 없습니다. (카드 효과 불발)");
-                // 추후 구현: "그림자 분신" 같은 걸로 대체 가능
-                // summonMinion("shadow_clone"); 
+                log("🚫 플레이어는 부하를 부를 수 없습니다.");
                 return; 
-            } 
-            // 2. 적(보스)이 사용한 경우
-            else {
-                playAnim(userId, 'anim-bounce'); // 보스가 명령 내리는 모션
-                summonMinion(data.summonTarget); // 데이터에 지정된 몬스터("불량배") 소환
+            } else {
+                playAnim(userId, 'anim-bounce');
+                summonMinion(data.summonTarget);
             }
         }
 
@@ -1379,31 +1416,37 @@ function useCard(user, target, cardName) {
         else {
             playAnim(userId, 'anim-bounce');
         }
-// [NEW] 상태이상 해제 (진정시키기)
+        
+        // 상태이상 해제
         if (data.special === "cure_anger") {
             if (target.buffs["분노"]) { delete target.buffs["분노"]; log("😌 상대가 분노를 가라앉혔습니다."); }
             if (target.buffs["우울"]) { delete target.buffs["우울"]; log("😐 상대가 평정심을 찾았습니다."); }
         }
-        // 2. 방어 (Block) 로그 수정
-        if (data.block) {
-            let finalBlock = data.block + getStat(user, 'def');
-            user.block += finalBlock;
-            
-            // [핵심 변경] 모드에 따라 텍스트 다르게 출력
-            let defenseText = (game.state === "social") ? "멘탈 방어" : "방어도";
-            log(`🛡️ ${defenseText} +${finalBlock}`);
-        }
+    }
 
-        if (data.buff) {
-            let buffName = data.buff.name;
-            let buffTarget = (data.target === "self" || ["강화","건강","쾌속"].includes(buffName)) ? user : target;
-            applyBuff(buffTarget, buffName, data.buff.val);
-        }
+    // --- [2] 공통 처리 (방어/버프/드로우) ---
+    // ★ 이제 소셜 카드도 방어도(block) 속성이 있으면 여기서 적용됩니다!
+    
+    if (data.block) {
+      let statType = (game.state === "social") ? 'socialDef' : 'def';
+        let finalBlock = data.block + getStat(user, statType);
         
-        if (data.draw && user === player) {
-            drawCards(data.draw);
-            log(`🃏 카드를 ${data.draw}장 뽑았습니다.`);
-        }
+        user.block += finalBlock;
+        
+        let defenseText = (game.state === "social") ? "논리 방어" : "방어도";
+        log(`🛡️ ${defenseText} +${finalBlock}`);
+        updateUI(); // 방어도 즉시 반영
+    }
+
+    if (data.buff) {
+        let buffName = data.buff.name;
+        let buffTarget = (data.target === "self" || ["강화","건강","쾌속"].includes(buffName)) ? user : target;
+        applyBuff(buffTarget, buffName, data.buff.val);
+    }
+    
+    if (data.draw && user === player) {
+        drawCards(data.draw);
+        log(`🃏 카드를 ${data.draw}장 뽑았습니다.`);
     }
 }
 
@@ -1486,24 +1529,22 @@ function takeDamage(target, dmg) {
     }
 
     // 2. 실제 피해 적용 및 시각 효과
-    if (dmg > 0) {
+if (dmg > 0) {
+        let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
         playAnim(targetId, 'anim-hit');
         
-        // [핵심] 게임 모드에 따른 분기
         if (game.state === "social") {
-            // 소셜 모드: 무조건 SP(멘탈) 피해
+            // [변경] 소셜 모드: 'mental'(플레이어) 또는 'hp'(NPC)를 깎음
             if (target === player) {
-                target.sp -= dmg;
-                log(`🧠 내 멘탈 피해 -${dmg}! (SP: ${target.sp})`);
-                showDamageText(target, `💔-${dmg}`); // 멘탈 깨지는 연출
-            } else {
-                // 적(NPC)의 SP를 깎음 (협박/공포) -> 0 방향으로 이동
-                target.hp -= dmg; 
-                log(`👿 적 멘탈 타격! -${dmg} (SP: ${target.hp})`);
+                target.mental -= dmg;
+                log(`💔 내 마음의 벽 손상 -${dmg}! (남은 벽: ${target.mental})`);
                 showDamageText(target, `💔-${dmg}`);
+            } else {
+                target.hp -= dmg; // NPC는 hp를 마음의 벽으로 씀
+                log(`🗣️ 적 마음의 벽 타격! -${dmg} (남은 벽: ${target.hp})`);
+                showDamageText(target, `💢-${dmg}`);
             }
-        } 
-        else {
+        } else {
             // 일반 전투: HP 피해
             target.hp -= dmg;
             log(`💥 체력 피해 -${dmg}! (HP: ${target.hp})`);
@@ -1526,31 +1567,33 @@ function takeDamage(target, dmg) {
 }
 /* [수정] 승패 판정 로직 (전체 코드) */
 function checkGameOver() {
-if (game.state !== "social" && player.hp <= 0) { 
+// 1. [물리적 사망] HP 0
+    if (player.hp <= 0) { 
         showPopup("💀 사망", "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.", [{txt:"다시 하기", func: ()=>location.reload()}]); 
         return true; 
     }
     
-    if (game.state === "social") {
-        if (player.sp <= 0) {
-            showPopup("😵 멘탈 붕괴", "정신적 충격으로 대화를 이어갈 수 없습니다...<br>(SP 0 도달)", [{txt:"다시 하기", func: ()=>location.reload()}]);
-            return true;
-        }
+    // 2. [정신적 사망] SP 0 (광기/발광)
+    // ★ 여기가 추가/수정된 부분입니다 ★
+    if (player.sp <= 0) {
+        showPopup("🤪 발광(Insanity)", "공포를 견디지 못하고 정신이 붕괴되었습니다.<br>당신은 어둠 속으로 사라집니다...", [{txt:"다시 하기", func: ()=>location.reload()}]);
+        return true;
+    } 
+if (game.state === "social") {
+        let npc = enemies[0];
 
-        let npc = enemies[0]; 
-        if (!npc) return false;
-
-        // [변경] 설득 성공 기준: 100 이상
-        if (npc.hp >= 100) { 
-            game.winMsg = `<span style='color:#3498db'>🤝 설득 성공!</span><br>${npc.name}의 마음을 완전히 열었습니다.`;
+        // 1. [승리] NPC의 마음의 벽이 0이 됨 -> 정보 획득
+        if (npc.hp <= 0) { 
+            game.winMsg = `<span style='color:#3498db'>🤝 설득 성공!</span><br>${npc.name}의 마음의 벽을 허물었습니다.`;
             endSocialBattle(true);
             return true;
         } 
-        // 굴복 기준: 0 이하 (동일)
-        else if (npc.hp <= 0) { 
-            game.winMsg = `<span style='color:#e74c3c'>😱 굴복 성공!</span><br>${npc.name}은(는) 공포에 질려 입을 열었습니다.`;
-            endSocialBattle(true);
-            return true;
+        
+        // 2. [패배] 내 마음의 벽이 0이 됨 -> 선택지 발생
+        if (player.mental <= 0) {
+            // 게임 오버가 아님! 선택지 팝업 호출
+            showSocialLossPopup(npc.name);
+            return true; // 턴 진행을 멈추기 위해 true 반환
         }
     }
 
@@ -1573,7 +1616,7 @@ if (game.state !== "social" && player.hp <= 0) {
             player.xp += gainXp;
             
             // 승리 메시지 생성
-            game.winMsg = `승리! <span style="color:#f1c40f">${rewardGold}G</span>, <span style="color:#3498db">${gainXp} XP</span> 획득.`; 
+            game.winMsg = `승리! <span style="color:#f1c40f">${rewardGold}원</span>, <span style="color:#3498db">${gainXp} XP</span> 획득.`; 
             if (player.lucky) game.winMsg += " (🍀럭키피스 효과!)";
             
             // 3. 전리품(아이템) 드랍 (확률 50%)
@@ -1606,7 +1649,38 @@ function endSocialBattle(success) {
         { txt: "떠나기", func: nextStepAfterWin } // 기존 복귀 함수 재사용
     ]);
 }
+// [game.js] 적절한 곳(checkGameOver 근처)에 추가
 
+function showSocialLossPopup(npcName) {
+    let msg = `
+        <div style="color:#e74c3c; font-size:1.2em; font-weight:bold;">😵 말문이 막혔습니다!</div>
+        <br>
+        상대의 논리에 압도당해 더 이상 대화를 이어갈 수 없습니다.<br>
+        (내 마음의 벽 0 도달)
+    `;
+
+    showPopup("💬 협상 실패", msg, [
+        { 
+            txt: "👊 무력 행사 (전투 돌입)", 
+            func: () => { 
+                closePopup(); 
+                // 체력 페널티 없이 바로 전투 시작? 아니면 약간의 불리함?
+                // 여기선 '기습 실패'로 간주하여 적의 턴게이지를 채워주는 식으로 구현 가능
+                forcePhysicalBattle(); 
+            }
+        },
+        { 
+            txt: "🏃 포기하고 떠나기", 
+            func: () => { 
+                closePopup();
+                log("패배를 인정하고 물러납니다...");
+                // 보상 없이 복귀
+                if (game.scenario && game.scenario.isPatrol) renderCityMap();
+                else renderExploration();
+            }
+        }
+    ]);
+}
 /* [NEW] 무력 행사 확인 팝업 */
 function confirmForceBattle() {
     showPopup("👊 무력 행사", "대화를 중단하고 공격하시겠습니까?<br><span style='color:#e74c3c; font-size:0.8em;'>※ 적이 전투 태세를 갖춥니다.</span>", [
@@ -1722,13 +1796,15 @@ function renderRestScreen() {
     `;
 }
 /* [수정] 휴식 로직 (SP 회복 추가) */
+// [game.js] restAction 함수 수정
+
 function restAction() {
-    let maxHeal = Math.floor(player.maxHp / 2);
+    let maxHeal = Math.floor(player.maxHp / 2); // 체력 50%
     let missingHp = player.maxHp - player.hp;
     let actualHeal = Math.min(maxHeal, missingHp);
     
-    // [NEW] 이성(SP)도 회복
-    let spHeal = 30;
+    // [수정] 이성(SP) 회복량 조정 (30 -> 10)
+    let spHeal = 10; 
     player.sp = Math.min(player.maxSp, player.sp + spHeal);
     
     player.hp += actualHeal;
@@ -1835,7 +1911,7 @@ function renderShopScreen(shopType = "shop_black_market") {
                 <div class="card-name">${cName}</div>
                 <div class="card-desc">${applyTooltip(data.desc)}</div>
             </div>
-            <div class="shop-price">${price} G</div>
+            <div class="shop-price">${price} 원</div>
         `;
         el.onclick = () => buyShopItem(el, 'card', cName, price);
         cardContainer.appendChild(el);
@@ -1857,7 +1933,7 @@ function renderShopScreen(shopType = "shop_black_market") {
             <div class="item-icon item-rank-${data.rank}" style="width:60px; height:60px; font-size:1.5em;">
                 ${data.icon}
             </div>
-            <div class="shop-price">${price} G</div>
+            <div class="shop-price">${price} 원</div>
             <div style="font-size:0.8em; margin-top:5px;">${iName}</div>
         `;
         el.onclick = () => buyShopItem(el, 'item', iName, price);
@@ -1989,7 +2065,7 @@ function renderResultScreen() {
         itemReward = newItem;
     }
     
-    document.getElementById('res-gold').innerText = `+${finalGold} G`;
+    document.getElementById('res-gold').innerText = `+${finalGold} 원`;
     document.getElementById('res-xp').innerText = `+${finalXp} XP`;
     document.getElementById('res-item').innerText = itemReward;
     
@@ -2015,31 +2091,57 @@ function returnToHub() {
 }
 
 /* --- 유틸리티 및 계산 --- */
-/* [수정] 스탯 계산 함수 (소셜 상태이상 적용) */
+// [game.js] getStat 함수 교체
+
 function getStat(entity, type) {
-    let val = (type==='atk')? entity.baseAtk : (type==='def')? entity.baseDef : entity.baseSpd;
-    
-    // 플레이어 패시브 아이템 체크
+    let val = 0;
+
+    // 1. 기초 값 가져오기
     if (entity === player) {
-        if (type === 'atk' && player.inventory.includes("쿠보탄")) val += 1; 
-        if (type === 'def' && player.inventory.includes("강인함의 부적")) val += 1; 
-        if (type === 'spd' && player.inventory.includes("좋은 운동화")) val += 1; 
+        // 플레이어: 6대 스탯 기반 매핑
+        switch (type) {
+            case 'atk': val = player.stats.str; break; // 물리 공격 = 근력
+            case 'def': val = player.stats.con; break; // 물리 방어 = 건강
+            case 'spd': val = player.stats.dex; break; // 속도 = 민첩
+            
+            // [소셜 스탯]
+            case 'socialAtk': val = player.stats.cha; break; // 소셜 공격 = 매력
+            case 'socialDef': val = player.stats.int; break; // 소셜 방어(방어도) = 지능
+            
+            // 원본 스탯 직접 호출 시
+            default: val = player.stats[type] || 0; break; 
+        }
+    } else {
+        // 적(Enemy): 기존 방식 유지 (단순 atk/def/spd)
+        // 적에게도 socialAtk 등이 필요하다면 여기서 매핑 (일단 atk/def로 퉁침)
+        if (type === 'socialAtk') val = entity.baseAtk;
+        else if (type === 'socialDef') val = entity.baseDef;
+        else if (type === 'atk') val = entity.baseAtk;
+        else if (type === 'def') val = entity.baseDef;
+        else if (type === 'spd') val = entity.baseSpd;
+    }
+    
+    // 2. 아이템 보정 (플레이어만)
+    if (entity === player) {
+        if ((type === 'atk' || type === 'str') && player.inventory.includes("쿠보탄")) val += 1; 
+        if ((type === 'def' || type === 'con') && player.inventory.includes("강인함의 부적")) val += 1; 
+        if ((type === 'spd' || type === 'dex') && player.inventory.includes("좋은 운동화")) val += 1; 
+        // 추가 아이템 예시:
+        // if (type === 'socialAtk' && player.inventory.includes("멋진 정장")) val += 1;
     }
 
-    // 버프/디버프 계산
-    if (type==='atk') { 
+    // 3. 버프/디버프 계산 (기존 유지)
+    if (type === 'atk' || type === 'socialAtk') { 
         if (entity.buffs["약화"]) val /= 2; 
         if (entity.buffs["강화"]) val *= 2; 
-        // [NEW] 우울: 공격력 1.5배 (상대 멘탈을 더 아프게 때림)
         if (entity.buffs["우울"]) val *= 1.5; 
     } 
-    else if (type==='def') { 
+    else if (type === 'def' || type === 'socialDef') { 
         if (entity.buffs["취약"]) val /= 2; 
         if (entity.buffs["건강"]) val *= 2; 
-        // [NEW] 헤롱헤롱: 방어력 절반 (설득/협박이 더 잘 먹힘)
         if (entity.buffs["헤롱헤롱"]) val /= 2; 
     } 
-    else if (type==='spd') { 
+    else if (type === 'spd') { 
         if (entity.buffs["마비"]) val /= 2; 
         if (entity.buffs["쾌속"]) val *= 2; 
     }
@@ -2152,22 +2254,26 @@ function drawCards(n) {
     updateUI();
 }
 
-/* [수정] UI 업데이트 함수 (HP 표시 개선 & 죽음 처리 수정) */
+/* [수정] updateUI: 인내심 턴 표시 제거 및 소셜 UI 개선 */
 function updateUI() {
-    // 1. 상단 정보 (플레이어) - 경험치 바 제거
+    // 1. 상단 정보
     const infoEl = document.getElementById('game-info');
     if (infoEl) {
         infoEl.textContent = `Lv.${game.level} | ${player.gold}원 | HP ${player.maxHp}/${player.hp} | SP ${player.maxSp}/${player.sp}`;
     }
 
+    // 플레이어 바 (소셜일 땐 '마음의 벽')
     let playerBarHTML = "";
     if (game.state === "social") {
-        let spPct = Math.max(0, (player.sp / player.maxSp) * 100);
+        let mentalPct = Math.max(0, (player.mental / 100) * 100);
         playerBarHTML = `
-            <div class="hp-bar-bg" style="background:#222; border-color:#8e44ad;">
-                <div class="hp-bar-fill" style="width:${spPct}%; background: linear-gradient(90deg, #8e44ad, #9b59b6);"></div>
+            <div class="hp-bar-bg" style="background:#222; border-color:#3498db;">
+                <div class="hp-bar-fill" style="width:${mentalPct}%; background: linear-gradient(90deg, #3498db, #8e44ad);"></div>
             </div>
-            <div style="font-size:0.9em;">이성(SAN): <span id="p-hp">${player.sp}</span>/${player.maxSp} <span class="block-icon">🛡️<span id="p-block">${player.block}</span></span></div>
+            <div style="font-size:0.9em;">
+                마음의 벽: <span id="p-hp">${player.mental}</span>/100 
+                <span class="block-icon">🛡️<span id="p-block">${player.block}</span></span>
+            </div>
         `;
     } else {
         let hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
@@ -2176,12 +2282,22 @@ function updateUI() {
             <div style="font-size:0.9em;">HP: <span id="p-hp">${player.hp}</span>/<span id="p-max-hp">${player.maxHp}</span> <span class="block-icon">🛡️<span id="p-block">${player.block}</span></span></div>
         `;
     }
-    
-    document.getElementById('player-char').innerHTML = `
+    // [수정] 스탯 표시부 (6개 스탯을 2줄로 표시하거나 작게 나열)
+    let statsHTML = `
+        <div class="stats-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:2px; font-size:0.7em; margin:5px 0;">
+            <div title="근력: 물리 공격력">💪 ${player.stats.str}</div>
+            <div title="건강: 체력/방어력">❤️ ${player.stats.con}</div>
+            <div title="민첩: 행동 속도">⚡ ${player.stats.dex}</div>
+            <div title="지능: 논리 방어">🧠 ${player.stats.int}</div>
+            <div title="정신: 이성/저항">👁️ ${player.stats.wil}</div>
+            <div title="매력: 설득/교섭">💋 ${player.stats.cha}</div>
+        </div>
+    `;
+   document.getElementById('player-char').innerHTML = `
         <h3 style="margin:2px 0; font-size:1em;">👤 플레이어</h3>
         <img id="p-img" src="https://placehold.co/150x150/3498db/ffffff?text=Hero" alt="Player" class="char-img" style="width:100px; height:100px;"> 
         ${playerBarHTML}
-        <div class="stats" id="p-stats" style="font-size:0.8em;">공${getStat(player,'atk')} 방${getStat(player,'def')} 속${getStat(player,'spd')}</div>
+        ${statsHTML}
         <div class="buffs" id="p-buffs" style="min-height:20px;">${applyTooltip(Object.entries(player.buffs).map(([k,v])=>`${k}(${v})`).join(', '))}</div>
         <div style="margin-top: 5px; display: flex; justify-content: center; gap: 3px;">
             <button id="btn-draw-pile" class="small-btn" style="font-size:0.7em;" onclick="openPileView('draw')">덱(${player.drawPile.length})</button>
@@ -2197,34 +2313,30 @@ function updateUI() {
         let el = document.getElementById(`enemy-unit-${e.id}`);
         if (!el) return; 
         
-        // [수정] className을 덮어쓰지 않고 dead 클래스만 제어합니다.
-        // 이렇게 해야 playAnim으로 추가된 애니메이션 클래스가 유지됩니다.
         if (e.hp <= 0 && game.state !== "social") { 
             el.classList.add('dead');
             el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
             return;
         } else {
              el.classList.remove('dead');
-             // el.className = 'enemy-unit';  <-- 이 줄을 삭제하거나 주석 처리해야 합니다!
         }
         el.classList.add('enemy-unit');
+        
         let isSocialEnemy = (game.state === "social"); 
         let barHTML = "";
-        let patienceHTML = ""; // [NEW] 인내심 HTML
+        let patienceHTML = ""; // ★ 빈 문자열로 초기화 (인내심 표시 제거)
 
         if (isSocialEnemy) {
-            // [변경] 분모를 100으로 변경 (e.hp / 100 * 100 이므로 그냥 e.hp)
-            let spPct = Math.min(100, Math.max(0, e.hp)); 
-            let barColor = `linear-gradient(90deg, #e74c3c 0%, #f1c40f 50%, #3498db 100%)`;
+       // [수정] 플레이어와 동일한 '마음의 벽' 스타일 적용
+            let mentalPct = Math.min(100, Math.max(0, e.hp)); 
+            
+            // 파란색 -> 보라색 그라데이션
             barHTML = `
-                <div style="font-size:0.7em; color:#aaa; margin-bottom:2px;">멘탈: ${e.hp}/100</div>
-                <div class="hp-bar-bg" style="background: #333; position:relative;">
-                    <div style="width:100%; height:100%; background:${barColor}; opacity:0.3;"></div>
-                    <div style="position:absolute; top:0; left:${spPct}%; width:4px; height:100%; background:#fff; box-shadow:0 0 5px #fff; transform:translateX(-50%); transition:left 0.5s;"></div>
+                <div class="hp-bar-bg" style="background:#222; border-color:#3498db;">
+                    <div class="hp-bar-fill" style="width:${mentalPct}%; background: linear-gradient(90deg, #3498db, #8e44ad);"></div>
                 </div>
+                <div style="font-size:0.7em; color:#ddd; margin-top:2px;">마음의 벽: ${e.hp}/100</div>
             `;
-            // [NEW] 인내심 표시
-            patienceHTML = `<div style="color:#e67e22; font-weight:bold; font-size:0.9em; margin-bottom:5px;">💢 인내심: ${e.patience}턴</div>`;
         } else {
             let hpPct = Math.max(0, (e.hp / e.maxHp) * 100);
             barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
@@ -2235,50 +2347,44 @@ function updateUI() {
         let buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
 
         el.innerHTML = `
-            ${patienceHTML} <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} ${intent}</div>
+            ${patienceHTML} 
+            <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} ${intent}</div>
             <img src="${e.img}" alt="${e.name}" class="char-img" style="width:80px; height:80px;">
             ${barHTML} 
             <div style="background:#444; height:6px; margin:2px 10px; border-radius:3px; overflow:hidden;">
                 <div style="background:#f1c40f; height:100%; width:${Math.min(100, (e.ag / game.AG_MAX) * 100)}%"></div>
             </div>
             <div style="font-size:0.8em;">
-                ${isSocialEnemy ? "" : `HP: ${e.hp}/${e.maxHp}`} 
-                <span class="block-icon">🛡️${e.block}</span>
+                ${isSocialEnemy ? `<span class="block-icon">🛡️${e.block}</span>` : `HP: ${e.hp}/${e.maxHp} <span class="block-icon">🛡️${e.block}</span>`} 
             </div>
             <div class="stats" style="font-size:0.7em;">공${getStat(e,'atk')} 방${getStat(e,'def')} <span style="color:#f1c40f; font-weight:bold;">⚡${getStat(e,'spd')}</span></div>
             <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
         `;
     });
 
-if (typeof updateTurnOrderList === "function") updateTurnOrderList();
+    if (typeof updateTurnOrderList === "function") updateTurnOrderList();
 
-    // [NEW] 특수 행동 버튼 처리 (무력행사 or 도망치기)
+    // (버튼 로직은 기존과 동일하므로 유지)
     let controlGroup = document.querySelector('.control-group');
     let extraBtn = document.getElementById('extra-action-btn');
-    
-    // 일단 기존 버튼이 있다면 제거 (상태가 바뀌었을 수 있으므로)
     if (extraBtn) extraBtn.remove();
 
-    // 플레이어 턴일 때만 버튼 생성
     if (game.turnOwner === "player") {
         let btnHTML = "";
         let btnFunc = null;
         let btnColor = "";
 
-        // 1. 소셜 모드 -> [무력 행사]
         if (game.state === "social") {
             btnHTML = "👊<br>무력행사";
-            btnColor = "#c0392b"; // 빨강
+            btnColor = "#c0392b"; 
             btnFunc = () => confirmForceBattle();
         }
-        // 2. 배틀 모드 (보스전 제외) -> [도망치기]
         else if (game.state === "battle" && !game.isBossBattle) {
             btnHTML = "🏃<br>도망치기";
-            btnColor = "#7f8c8d"; // 회색
+            btnColor = "#7f8c8d";
             btnFunc = () => confirmRunAway();
         }
 
-        // 버튼이 필요하면 생성해서 삽입
         if (btnHTML) {
             extraBtn = document.createElement('button');
             extraBtn.id = 'extra-action-btn';
@@ -2286,8 +2392,6 @@ if (typeof updateTurnOrderList === "function") updateTurnOrderList();
             extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
             extraBtn.innerHTML = btnHTML;
             extraBtn.onclick = btnFunc;
-            
-            // 턴 종료 버튼 앞에 삽입
             controlGroup.insertBefore(extraBtn, document.getElementById('end-turn-btn'));
         }
     }
@@ -2404,13 +2508,30 @@ function closePopup() {
 }
 
 function showLevelUp() {
-    // game.level++;  <-- [삭제] 이 줄을 찾아서 지우거나 주석 처리하세요!
+    let content = `
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <button class="action-btn" onclick="applyStatUp('str')">💪 근력 (공격↑)</button>
+            <button class="action-btn" onclick="applyStatUp('con')">❤️ 건강 (체력/방어↑)</button>
+            <button class="action-btn" onclick="applyStatUp('dex')">⚡ 민첩 (속도↑)</button>
+            <button class="action-btn" onclick="applyStatUp('int')">🧠 지능 (논리방어↑)</button>
+            <button class="action-btn" onclick="applyStatUp('wil')">👁️ 정신 (이성↑)</button>
+            <button class="action-btn" onclick="applyStatUp('cha')">💋 매력 (설득↑)</button>
+        </div>
+    `;
+
+    showPopup("🆙 레벨 업!", "강화할 능력을 선택하세요.", [], content);
+}
+/* [NEW] 스탯 적용 헬퍼 */
+function applyStatUp(type) {
+    player.stats[type]++; // 해당 스탯 증가
+    recalcStats();        // 파생 스탯(HP/SP) 재계산 (최대치 증가분 반영)
     
-    showPopup("🆙 레벨 업!", "올릴 스탯을 선택하세요.", [
-        {txt: "공격력 +1", func: ()=> { player.baseAtk++; getCardReward(); }},
-        {txt: "방어력 +1", func: ()=> { player.baseDef++; getCardReward(); }},
-        {txt: "속도 +1", func: ()=> { player.baseSpd++; getCardReward(); }}
-    ]);
+    // 만약 건강/정신을 찍어서 최대치가 늘었다면, 현재 수치도 소폭 회복시켜주는 센스
+    if(type === 'con') player.hp += 10;
+    if(type === 'wil') player.sp += 10;
+    
+    closePopup();
+    getCardReward(); // 카드 보상으로 이어짐
 }
 /* [수정] 카드 보상 획득 로직 (화면 이동 강제 제거) */
 function getCardReward() {

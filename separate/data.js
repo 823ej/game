@@ -102,42 +102,41 @@ const ENEMY_DATA = {
     }
 };
 
-/* [수정] 대화(탐문) 카드 데이터 (상태이상 카드 추가) */
+// [data.js] SOCIAL_CARD_DATA 수정
+
 const SOCIAL_CARD_DATA = {
-    // 1성
-    "미소짓기": { rank: 1, cost: 1, type: "social", subtype: "friendly", desc: "호감도 +15", val: 15 },
-    "안부 묻기": { rank: 1, cost: 1, type: "social", subtype: "friendly", desc: "호감도 +10, 방어도 +3", val: 10, block: 3 },
-    "인상 쓰기": { rank: 1, cost: 1, type: "social", subtype: "hostile", desc: "멘탈 -15", val: -15 },
-    "증거 제시": { rank: 1, cost: 1, type: "social", subtype: "hostile", desc: "멘탈 -10, 방어도 +3", val: -10, block: 3 },
+    // [공격 계열] 적의 마음의 벽을 깎음 (dmg 사용)
+    "논리적 반박": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 마음의 벽 -10", dmg: 10 },
+    "비꼬기": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 마음의 벽 -15", dmg: 15 },
+    "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 마음의 벽 -25", dmg: 25 },
+    "호통치기": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 마음의 벽 -15, 적 취약(2턴)", dmg: 15, buff: {name:"취약", val:2} },
+
+    // [방어 계열] 내 마음의 벽 보호 (block 사용)
+    "한귀로 흘리기": { rank: 1, cost: 1, type: "social", subtype: "defend", desc: "방어도 +10", block: 10 },
+    "무시": { rank: 1, cost: 1, type: "social", subtype: "defend", desc: "방어도 +15", block: 15 },
+    "침묵": { rank: 1, cost: 0, type: "social", subtype: "defend", desc: "방어도 +8", block: 8 },
+
+    // [회복/유틸 계열] 내 마음의 벽 회복 (heal 사용)
+    "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 마음의 벽 +15 회복", heal: 15, target: "self" },
+    "차 한잔": { rank: 2, cost: 1, type: "social", subtype: "skill", desc: "내 마음의 벽 +20 회복, 카드 1장 뽑기", heal: 20, target: "self", draw: 1 },
     
-    // [NEW] 상태이상 카드 (1성)
-    "진정시키기": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "적의 분노/우울 상태 해제, 호감도 +5", val: 5, target: "enemy", special: "cure_anger" },
-
-    // [NEW] 상태이상 카드 (2성)
-    "매혹": { rank: 2, cost: 2, type: "social", subtype: "magic", desc: "적 헤롱헤롱(2턴). 방어력 감소.", buff: {name:"헤롱헤롱", val:2}, target:"enemy", val: 0 },
-    "비꼬기": { rank: 2, cost: 1, type: "social", subtype: "hostile", desc: "멘탈 -30. 적 분노(3턴). (인내심 빠르게 감소)", val: -30, buff: {name:"분노", val:3}, target:"enemy" },
-    "죄책감 자극": { rank: 2, cost: 2, type: "social", subtype: "hostile", desc: "멘탈 -25. 적 우울(3턴). (적 공격력 증가)", val: -25, buff: {name:"우울", val:3}, target:"enemy" },
-
-    // (기존 2~3성 카드들 유지)
-    "농담하기": { rank: 2, cost: 2, type: "social", subtype: "friendly", desc: "호감도 +25, 방어도 +5", val: 25, block: 5 },
-    "침묵": { rank: 1, cost: 1, type: "social", subtype: "defend", desc: "방어도 +10", block: 10, val: 0 },
-    "비명": { rank: 1, cost: 1, type: "social", subtype: "hostile", desc: "멘탈 -20", val: -20 },
-    "무시": { rank: 1, cost: 1, type: "social", subtype: "defend", desc: "방어도 +15", block: 15, val: 0 },
-    "거짓말": { rank: 2, cost: 1, type: "social", subtype: "trick", desc: "호감도 +30. 실패 시 내 멘탈 -10", special: "gamble", val: 30 },
-    "기억 조작": { rank: 3, cost: 3, type: "social", subtype: "magic", desc: "호감도 +50. 마법적인 매료.", val: 50 },
-    "심연의 응시": { rank: 3, cost: 3, type: "social", subtype: "magic", desc: "멘탈 -50. 공포를 심어줍니다.", val: -50 },
+    // [특수]
+    "매혹": { rank: 2, cost: 2, type: "social", subtype: "magic", desc: "적 공격력 감소(2턴), 마음의 벽 -10", dmg: 10, buff: {name:"약화", val:2} },
+    "거짓말": { rank: 2, cost: 1, type: "social", subtype: "trick", desc: "성공 시 적 벽 -40, 실패 시 나 벽 -20", special: "gamble_lie" }
 };
 
 // 기존 카드 데이터에 합치기
 Object.assign(CARD_DATA, SOCIAL_CARD_DATA);
 
-/* [수정] 대화 상대(NPC) 데이터 (100/50 스케일 적용) */
+// [data.js] NPC_DATA 수정
+
 const NPC_DATA = {
     "겁먹은 목격자": {
         name: "겁먹은 목격자",
-        maxSp: 100, sp: 50, // [변경] 200/100 -> 100/50
+        maxSp: 100, sp: 50,
         baseAtk: 2, baseDef: 0, baseSpd: 2,
-        deck: ["침묵", "비명", "미소짓기", "안부 묻기"], 
+        // [수정] 덱을 새 카드로 교체 (침묵, 무시, 심호흡 등)
+        deck: ["침묵", "무시", "심호흡", "논리적 반박"], 
         img: "https://placehold.co/100x100/7f8c8d/ffffff?text=Witness",
         desc: "무언가 끔찍한 것을 본 것 같다. 대화가 통할까?",
         likes: ["drink", "food", "warm", "money"], 
@@ -146,9 +145,10 @@ const NPC_DATA = {
     },
     "부패 경찰": {
         name: "부패 경찰",
-        maxSp: 100, sp: 50, // [변경] 200/100 -> 100/50
+        maxSp: 100, sp: 50,
         baseAtk: 3, baseDef: 2, baseSpd: 3,
-        deck: ["증거 제시", "인상 쓰기", "책상 내려치기", "무시"],
+        // [수정] 덱을 새 카드로 교체 (증거 제시, 비꼬기, 호통치기 등)
+        deck: ["증거 제시", "비꼬기", "호통치기", "무시"],
         img: "https://placehold.co/100x100/2c3e50/ffffff?text=Police",
         desc: "돈 냄새를 맡고 왔다. 뇌물이면 통하겠지만, 장난감 같은 건 싫어한다.",
         likes: ["money", "valuable", "alcohol"], 
@@ -325,7 +325,7 @@ const EVENT_DATA = [
         desc: "골목길 구석에 네온사인이 깜빡이는 낡은 자판기가 있습니다.<br>안에 내용물이 들어있지만 전원이 불안정해 보입니다.",
         choices: [
             { 
-                txt: "돈을 넣는다 (100G)", 
+                txt: "돈을 넣는다 (100원)", 
                 func: () => {
                     if(player.gold < 100) { alert("돈이 부족합니다."); return; }
                     player.gold -= 100;
@@ -360,12 +360,12 @@ const EVENT_DATA = [
         desc: "코트 깃을 세운 남자가 은밀하게 접근합니다.<br>\"좋은 물건이 있는데, 피를 좀 나눌 수 있나?\"",
         choices: [
             { 
-                txt: "피를 판다 (HP -10, +500G)", 
+                txt: "피를 판다 (HP -10, +500원)", 
                 func: () => {
                     takeDamage(player, 10);
                     if(player.hp > 0) {
                         player.gold += 500;
-                        alert("남자는 피를 뽑아가고 돈을 쥐어줍니다. (HP -10, +500G)");
+                        alert("남자는 피를 뽑아가고 돈을 쥐어줍니다. (HP -10, +500원)");
                         closePopup();
                         renderExploration(); // [핵심]
                     } else {
@@ -389,11 +389,11 @@ const EVENT_DATA = [
         desc: "건물 지하에서 촛불이 켜진 작은 제단을 발견했습니다.<br>알 수 없는 속삭임이 들려옵니다.",
         choices: [
             { 
-                txt: "기도한다 (SP +30, 위협 +10)", 
+                txt: "기도한다 (SP +10, 위협 +10)", 
                 func: () => {
-                    player.sp = Math.min(player.maxSp, player.sp + 30);
+                    player.sp = Math.min(player.maxSp, player.sp + 10);
                     game.scenario.doom += 10;
-                    alert("마음이 차분해지지만, 시간이 많이 흘렀습니다. (SP +30, 위협도 +10)");
+                    alert("마음이 차분해지지만, 시간이 많이 흘렀습니다. (SP +10, 위협도 +10)");
                     closePopup();
                     renderExploration();
                 }
@@ -415,21 +415,21 @@ const EVENT_DATA = [
         desc: "바닥에 두툼한 지갑이 떨어져 있습니다.",
         choices: [
             { 
-                txt: "가진다 (+골드, SP -10)", 
+                txt: "가진다 (+소지금, SP -3)", 
                 func: () => {
                     let gain = 300 + Math.floor(Math.random() * 200);
                     player.gold += gain;
-                    player.sp -= 10;
-                    alert(`죄책감이 들지만 지갑은 두둑합니다. (+${gain}G, SP -10)`);
+                    player.sp -= 3;
+                    alert(`죄책감이 들지만 지갑은 두둑합니다. (+${gain}원, SP -3)`);
                     closePopup();
                     renderExploration();
                 }
             },
             { 
-                txt: "경찰서에 맡긴다 (SP +20)", 
+                txt: "경찰서에 맡긴다 (SP +5)", 
                 func: () => {
-                    player.sp = Math.min(player.maxSp, player.sp + 20);
-                    alert("착한 일을 했다는 뿌듯함이 느껴집니다. (SP +20)");
+                    player.sp = Math.min(player.maxSp, player.sp + 5);
+                    alert("착한 일을 했다는 뿌듯함이 느껴집니다. (SP +5)");
                     closePopup();
                     renderExploration();
                 }
