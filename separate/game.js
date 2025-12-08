@@ -1616,23 +1616,18 @@ async function processTimeline() {
         }
     }
 }
-/* [수정] 유닛 턴 시작 (인내심 감소 로직 추가) */
+/* [game.js] startTurn 함수 수정 (현재 행동 주체 기록 시점 변경) */
 async function startTurn(unit, type) {
-// [NEW] 턴 넘기기 전에, 방금 누가 했는지 기록
-game.lastTurnOwner = game.turnOwner; // 직전 턴 기록
+    // [NEW] 턴 넘기기 전에, 방금 누가 했는지 기록
+    game.lastTurnOwner = game.turnOwner; 
     game.turnOwner = type;
     game.totalTurns++;
     
     // 인내심 처리 (소셜 모드 & 적 턴일 때)
     if (game.state === "social" && type === "enemy") {
         if (unit.patience !== undefined) {
-            // [NEW] 분노 상태면 인내심이 2씩 감소, 아니면 1씩 감소
             let decrement = unit.buffs["분노"] ? 2 : 1;
-            
             unit.patience -= decrement;
-            
-            let statusMsg = unit.buffs["분노"] ? " (😡분노로 인해 빠르게 감소!)" : "";
-            log(`💢 [${unit.name}]의 인내심이 ${decrement} 줄어듭니다.${statusMsg} (남은 턴: ${unit.patience})`);
             
             if (unit.patience <= 0) {
                 updateUI();
@@ -1649,18 +1644,25 @@ game.lastTurnOwner = game.turnOwner; // 직전 턴 기록
     decrementBuffs(unit);
     
     if (checkGameOver()) return;
-    if (unit.hp <= 0 && game.state !== 'social') { // 소셜모드 아닐때 죽음 체크
+    if (unit.hp <= 0 && game.state !== 'social') { 
         processTimeline(); 
         return; 
     }
 
     unit.ag -= game.AG_MAX;
+
+    // ★ [핵심 변경] updateUI 호출 전에 현재 행동 중인 적 ID를 미리 설정
+    // (그래야 updateUI 내부의 타임라인 그리기 함수가 '현재 턴이 누구인지' 알 수 있음)
+    if (type === 'enemy') {
+        game.currentActorId = unit.id;
+    }
+
     updateUI();
 
     if (type === 'player') {
         startPlayerTurnLogic();
     } else {
-        game.currentActorId = unit.id;
+        // game.currentActorId = unit.id; // (기존 위치: 여기였던 것을 위로 올림)
         await startEnemyTurnLogic(unit);
     }
 }
@@ -3394,91 +3396,84 @@ function calcPreview(cardName, user) {
     return desc;
 }
 
-/* [수정] 턴 순서 예측 및 세로 타임라인 렌더링 */
+/* [game.js] updateTurnOrderList 함수 수정 */
 function updateTurnOrderList() {
-    // 1. 시뮬레이션용 데이터 준비 (이미지 소스 포함)
-    // 플레이어 이미지 소스 가져오기 (DOM에서 직접)
-    let pImgSrc = document.getElementById('p-img') ? document.getElementById('p-img').src : "";
-    
-    let simPlayer = { 
-        type: 'player', 
-        ag: player.ag, 
-        spd: getStat(player, 'spd'), 
-        img: pImgSrc 
-    };
-    
-    // 적 데이터 복사 (img 속성 포함)
-    let simEnemies = enemies.filter(e => e.hp > 0).map(e => ({
-        type: 'enemy',
-        id: e.id,
-        ag: e.ag,
-        spd: getStat(e, 'spd'),
-        img: e.img
-    }));
-    
-    let allUnits = [simPlayer, ...simEnemies];
-    let predictedOrder = []; // 순서대로 저장될 배열
-    const MAX_PREDICT = 5;   // 미리 보여줄 턴 개수 (너무 많으면 화면 가림)
+    let predictedOrder = []; 
+    const MAX_PREDICT = 5;
 
-    // 2. 턴 시뮬레이션 루프
+    // 1. 현재 턴 주인 추가
+    if (game.turnOwner === 'player') {
+        let pImgSrc = document.getElementById('p-img') ? document.getElementById('p-img').src : "";
+        predictedOrder.push({ type: 'player', img: pImgSrc, isCurrent: true });
+    } else if (game.turnOwner === 'enemy') {
+        let currentEnemy = enemies.find(e => e.id === game.currentActorId);
+        if (currentEnemy && currentEnemy.hp > 0) {
+            predictedOrder.push({ type: 'enemy', img: currentEnemy.img, isCurrent: true });
+        }
+    }
+
+    // 2. 미래 예측 시뮬레이션
+    let pImgSrc = document.getElementById('p-img') ? document.getElementById('p-img').src : "";
+    let simPlayer = { type: 'player', ag: player.ag, spd: getStat(player, 'spd'), img: pImgSrc };
+    let simEnemies = enemies.filter(e => e.hp > 0).map(e => ({
+        type: 'enemy', id: e.id, ag: e.ag, spd: getStat(e, 'spd'), img: e.img
+    }));
+    let allUnits = [simPlayer, ...simEnemies];
+
     let safety = 0;
     while (predictedOrder.length < MAX_PREDICT && safety < 1000) {
         safety++;
-        
-        // 행동 게이지(AG)가 꽉 찬 유닛 찾기
         let readyUnits = allUnits.filter(u => u.ag >= game.AG_MAX);
-        
         if (readyUnits.length > 0) {
-            // AG 높은 순(턴 우선순위) 정렬
             readyUnits.sort((a, b) => b.ag - a.ag);
-            
             for (let unit of readyUnits) {
-                // 예측 리스트에 추가 (유닛 정보 전체 저장)
                 predictedOrder.push(unit);
-                
-                // 시뮬레이션 상에서만 게이지 소모
                 unit.ag -= game.AG_MAX;
-                
                 if (predictedOrder.length >= MAX_PREDICT) break;
             }
         } else {
-            // 행동 가능한 유닛이 없으면 시간(Tick) 흐르게 함
             allUnits.forEach(u => u.ag += u.spd);
         }
     }
 
-    // 3. 타임라인 DOM 렌더링
+    // 3. 렌더링
     const timelineContainer = document.getElementById('turn-timeline');
     if (!timelineContainer) return;
-
-    timelineContainer.innerHTML = ""; // 기존 내용 초기화
+    timelineContainer.innerHTML = "";
 
     predictedOrder.forEach((unit, index) => {
         let node = document.createElement('div');
-        // 클래스: 기본노드 + (플레이어/적 구분)
         node.className = `timeline-node ${unit.type === 'player' ? 'node-player' : 'node-enemy'}`;
-        
-        // 애니메이션 딜레이 (순차적으로 나타나게)
-        node.style.animation = `fadeIn 0.1s ease forwards ${index * 0.05}s`;
-        node.style.opacity = "0"; // 애니메이션 전 숨김
-
-        // 이미지 삽입
         node.innerHTML = `<img src="${unit.img}" class="timeline-img" alt="Unit">`;
         
+        // [수정됨] 애니메이션 충돌 방지를 위해 animation 속성으로 크기 제어
+        if (index === 0 && unit.isCurrent) {
+            // ★ 현재 턴: 크기가 커진 상태(scale 1.2)로 등장하는 전용 애니메이션 사용
+            node.style.animation = `fadeInScale 0.2s ease forwards`; 
+            node.style.borderWidth = "3px";
+            node.style.zIndex = "10";
+            // node.style.boxShadow = "0 0 15px #f1c40f"; // 발광 효과 (원하면 주석 해제)
+        } else {
+            // ★ 대기열: 일반 등장 애니메이션
+            node.style.animation = `fadeIn 0.2s ease forwards ${index * 0.1}s`;
+        }
+        node.style.opacity = "0"; 
+
         timelineContainer.appendChild(node);
     });
-
-    // (선택 사항) 기존 텍스트 기반 턴 정보창은 간소화하거나 숨김
-    // document.getElementById('turn-info').innerHTML = `<div>${game.turnOwner === 'player' ? "나의 턴" : "적의 턴"}</div>`;
+}
+/* [game.js] 맨 아래에 추가: 전체화면 토글 함수 */
+function toggleFullScreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            // 아이폰(Safari) 등 일부 브라우저는 지원하지 않을 수 있음
+            console.log(`전체화면 오류: ${err.message}`);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
 }
 
-// [추가] CSS 애니메이션용 키프레임 (style.css에 넣거나 JS로 주입)
-const styleSheet = document.createElement("style");
-styleSheet.innerText = `
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-`;
-document.head.appendChild(styleSheet);
 window.onload = initGame;

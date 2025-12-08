@@ -21,6 +21,9 @@ body {
     flex-direction: column;
     align-items: center;
     min-height: 100dvh;
+    overscroll-behavior-y: none;  /* 화면 당겨서 새로고침/주소창 노출 방지 */
+    touch-action: pan-x pan-y;    /* 더블탭 확대 등 불필요한 제스처 방지 */
+    -webkit-tap-highlight-color: transparent; /* 터치 시 파란색 깜빡임 제거 */
 }
 
 .container {
@@ -1236,4 +1239,15 @@ body {
 }
 .story-choice-btn:hover {
     background: #e67e22; border-color: #fff; transform: scale(1.05);
+}
+/* 일반 등장 애니메이션 (크기 1배) */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px) scale(1); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 현재 턴 강조 등장 애니메이션 (크기 1.2배) */
+@keyframes fadeInScale {
+    from { opacity: 0; transform: translateY(-10px) scale(1.2); }
+    to { opacity: 1; transform: translateY(0) scale(1.2); }
 }
