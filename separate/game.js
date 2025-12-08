@@ -1907,7 +1907,7 @@ function endPlayerTurn() {
     processTimeline();
 }
 
-/* [수정] 적 AI 로직 (종료 조건 100으로 변경) */
+/* [game.js] startEnemyTurnLogic 함수 수정 (안전장치 추가) */
 async function startEnemyTurnLogic(actor) {
     actor.block = 0; 
     actor.ap = 2; 
@@ -1918,7 +1918,6 @@ async function startEnemyTurnLogic(actor) {
     try {
         while (actor.ap > 0) {
             if (game.state === "social") {
-                // [변경] 200 -> 100
                 if (player.sp <= 0 || actor.hp <= 0 || actor.hp >= 100) break;
             } else {
                 if (player.hp <= 0 || actor.hp <= 0) break;
@@ -1926,9 +1925,16 @@ async function startEnemyTurnLogic(actor) {
 
             await sleep(800);
 
-            // (카드 선택 및 사용 로직 기존과 동일)
             let cName = actor.deck[Math.floor(Math.random() * actor.deck.length)];
             let cData = CARD_DATA[cName];
+
+            // [수정/보완] 카드 데이터가 없는 경우(비명 등 누락 시) 방어 로직
+            if (!cData) {
+                console.warn(`Missing card data: ${cName}. Defaulting to '타격'.`);
+                cName = "타격";
+                cData = CARD_DATA["타격"];
+            }
+
             if (game.state === "battle" && cData.type === "social") cName = "타격"; 
             else if (game.state === "social" && cData.type !== "social") cName = "횡설수설"; 
 
@@ -2160,6 +2166,9 @@ if (dmg > 0) {
             target.jumadeung=true; 
             log("⚡ [주마등] 버티기!"); 
             updateUI(); 
+        } else {
+            // 보스전 등에서 사망 처리가 누락되는 경우를 방지하기 위해 즉시 체크
+            checkGameOver();
         }
     }
 }
