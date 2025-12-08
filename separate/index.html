@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#121418">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Midnight Detective RPG</title>
     
@@ -173,31 +174,33 @@
 
     <div class="hand-area battle-ui hidden" id="hand-container"></div>
 </div>
-    <div id="event-scene" class="scene hidden">
+<div id="event-scene" class="scene hidden">
         <div class="event-content" id="event-content-box"></div>
     </div>
-</div>
 
-<div id="result-scene" class="scene hidden" style="background:#111; justify-content:center; align-items:center;">
-    <div style="text-align:center; animation: fadeIn 1s;">
-        <h1 style="color:#f1c40f; font-size:3em; margin-bottom:10px; text-shadow:0 0 10px #f1c40f;">MISSION COMPLETE</h1>
-        <p style="color:#aaa; margin-bottom:40px;">의뢰를 성공적으로 완수했습니다.</p>
-        
-        <div style="background:#222; padding:30px; border-radius:10px; border:1px solid #444; width:300px; margin:0 auto; text-align:left;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span>💰 의뢰비:</span> <span id="res-gold" style="color:#f1c40f; font-weight:bold;">0 원</span>
+    <div id="result-scene" class="scene hidden" style="background:#111; justify-content:center; align-items:center;">
+        <div style="text-align:center; animation: fadeIn 1s;">
+            <h1 style="color:#f1c40f; font-size:3em; margin-bottom:10px; text-shadow:0 0 10px #f1c40f;">MISSION COMPLETE</h1>
+            <p style="color:#aaa; margin-bottom:40px;">의뢰를 성공적으로 완수했습니다.</p>
+            
+            <div style="background:#222; padding:30px; border-radius:10px; border:1px solid #444; width:300px; margin:0 auto; text-align:left;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span>💰 의뢰비:</span> <span id="res-gold" style="color:#f1c40f; font-weight:bold;">0 원</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span>✨ 경험치:</span> <span id="res-xp" style="color:#3498db; font-weight:bold;">0 XP</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span>🎁 특별 보상:</span> <span id="res-item" style="color:#2ecc71;">없음</span>
+                </div>
             </div>
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span>✨ 경험치:</span> <span id="res-xp" style="color:#3498db; font-weight:bold;">0 XP</span>
-            </div>
-            <div style="display:flex; justify-content:space-between;">
-                <span>🎁 특별 보상:</span> <span id="res-item" style="color:#2ecc71;">없음</span>
-            </div>
+
+            <button class="action-btn" style="margin-top:40px; width:200px;" onclick="returnToHub()">🏠 사무소로 복귀</button>
         </div>
-
-        <button class="action-btn" style="margin-top:40px; width:200px;" onclick="returnToHub()">🏠 사무소로 복귀</button>
     </div>
-</div>
+    </div> ```
+
+이렇게 수정하면 결과 화면이 메인 레이아웃 안쪽으로 들어오면서 정상적으로 보일 것입니다. (스크롤 없이 바로 뜹니다!)
 
 <div id="story-scene" class="scene hidden" style="background:#000; position:relative; overflow:hidden;">
         <div id="story-bg" style="position:absolute; top:0; left:0; width:100%; height:100%; background-size:cover; background-position:center; opacity:0.5;"></div>
