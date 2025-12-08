@@ -1,4 +1,4 @@
-﻿
+
 
 /* [NEW] 적 덱 생성 헬퍼 함수 */
 function getEnemyDeck(type) {
@@ -1907,7 +1907,7 @@ function endPlayerTurn() {
     processTimeline();
 }
 
-/* [수정] 적 AI 로직 (종료 조건 100으로 변경) */
+/* [game.js] startEnemyTurnLogic 함수 수정 (안전장치 추가) */
 async function startEnemyTurnLogic(actor) {
     actor.block = 0; 
     actor.ap = 2; 
@@ -1918,7 +1918,6 @@ async function startEnemyTurnLogic(actor) {
     try {
         while (actor.ap > 0) {
             if (game.state === "social") {
-                // [변경] 200 -> 100
                 if (player.sp <= 0 || actor.hp <= 0 || actor.hp >= 100) break;
             } else {
                 if (player.hp <= 0 || actor.hp <= 0) break;
@@ -1926,9 +1925,16 @@ async function startEnemyTurnLogic(actor) {
 
             await sleep(800);
 
-            // (카드 선택 및 사용 로직 기존과 동일)
             let cName = actor.deck[Math.floor(Math.random() * actor.deck.length)];
             let cData = CARD_DATA[cName];
+
+            // [수정/보완] 카드 데이터가 없는 경우(비명 등 누락 시) 방어 로직
+            if (!cData) {
+                console.warn(`Missing card data: ${cName}. Defaulting to '타격'.`);
+                cName = "타격";
+                cData = CARD_DATA["타격"];
+            }
+
             if (game.state === "battle" && cData.type === "social") cName = "타격"; 
             else if (game.state === "social" && cData.type !== "social") cName = "횡설수설"; 
 
@@ -2160,6 +2166,9 @@ if (dmg > 0) {
             target.jumadeung=true; 
             log("⚡ [주마등] 버티기!"); 
             updateUI(); 
+        } else {
+            // 보스전 등에서 사망 처리가 누락되는 경우를 방지하기 위해 즉시 체크
+            checkGameOver();
         }
     }
 }
@@ -2615,8 +2624,7 @@ function processCardRemoval(idx, cost) {
     // 여기선 간단히 닫고 끝내거나, 편의상 암시장으로 리로드 (개선 포인트)
     renderShopScreen("shop_black_market"); // 임시: 무조건 암시장 리로드 (실제론 타입 변수 저장 필요)
 }
-/* [수정] 화면 전환 함수 (result 추가) */
-/* [game.js] switchScene 함수 수정 (인벤토리 버튼 제어 추가) */
+/* [수정] 화면 전환 함수 (안전장치 추가) */
 function switchScene(sceneName) {
     // 1. 모든 장면 숨기기
     const scenes = [
@@ -2633,24 +2641,35 @@ function switchScene(sceneName) {
 
     document.getElementById('popup-layer').style.display = 'none';
     
-    // 2. 선택된 장면만 보여주기 (배틀은 탐사 화면을 재사용)
+    // 2. 선택된 장면만 보여주기
     if (sceneName === 'battle') sceneName = 'exploration';
+    
     let targetId = sceneName + '-scene';
     let targetEl = document.getElementById(targetId);
-    if (targetEl) targetEl.classList.remove('hidden');
     
-    // 3. [NEW] 인벤토리 버튼 제어 (캐릭터 생성 중에는 숨김)
-    const invBtn = document.getElementById('btn-main-inventory');
-    const statsBtn = document.getElementById('btn-player-stats');
-    const btnVisible = sceneName !== 'char-creation';
-    if (invBtn) invBtn.style.display = btnVisible ? 'inline-block' : 'none';
-    const cardBtn = document.getElementById('btn-card-collection');
-    if (cardBtn) cardBtn.style.display = btnVisible ? 'inline-block' : 'none';
-    if (statsBtn) statsBtn.style.display = btnVisible ? 'inline-block' : 'none';
+    // [★수정] 대상 화면이 없는 경우(캐시 문제 등) 에러 방지
+    if (targetEl) {
+        targetEl.classList.remove('hidden');
+        
+        // [NEW] 인벤토리 버튼 제어 (캐릭터 생성 중에는 숨김)
+        const invBtn = document.getElementById('btn-main-inventory');
+        const statsBtn = document.getElementById('btn-player-stats');
+        const btnVisible = sceneName !== 'char-creation';
+        
+        if (invBtn) invBtn.style.display = btnVisible ? 'inline-block' : 'none';
+        
+        const cardBtn = document.getElementById('btn-card-collection');
+        if (cardBtn) cardBtn.style.display = btnVisible ? 'inline-block' : 'none';
+        if (statsBtn) statsBtn.style.display = btnVisible ? 'inline-block' : 'none';
 
-    updateUI();
+        updateUI();
+    } else {
+        console.error(`[Error] 화면을 찾을 수 없습니다: ${targetId}`);
+        alert("화면 로딩 실패! 페이지를 새로고침 해주세요.\n(브라우저 캐시 문제일 수 있습니다.)");
+        // 강제로 허브로 보내거나 재시도
+        if(sceneName !== 'hub') switchScene('hub');
+    }
 }
-
 /* [수정] 결과 화면 렌더링 (상태값 설정 추가) */
 function renderResultScreen() {
     // [핵심] 현재 상태를 'result'로 설정 (getCardReward가 알 수 있게)
