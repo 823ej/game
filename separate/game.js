@@ -341,13 +341,27 @@ function getClientPos(e) {
    ============================================================ */
 
 // [1] 게임 초기화 (진입점)
+/* [game.js] initGame 함수 수정 */
 function initGame() {
-    // 저장된 데이터가 있는지 확인
+    // 1. 모바일 자동 전체화면 트리거 (첫 터치 시 발동)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        document.body.addEventListener('click', function() {
+            // 아직 전체화면이 아니라면 요청
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    // 아이폰(Safari) 등 API 미지원 브라우저는 조용히 무시
+                    // (아이폰은 '홈 화면에 추가'로만 전체화면 가능)
+                });
+            }
+        }, { once: true }); // ★ 딱 한 번만 실행되고 사라짐
+    }
+
+    // 2. 기존 저장 데이터 확인 로직
     if (localStorage.getItem('midnight_rpg_save')) {
-        // 데이터가 있으면 자동으로 로드
         loadGame();
     } else {
-        // 데이터가 없으면 캐릭터 생성 시작
         startCharacterCreation();
     }
 }
