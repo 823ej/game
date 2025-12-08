@@ -1,5 +1,6 @@
 const CARD_DATA = {
 // [공용] 누구나 사용 가능
+    "테스트용": { rank: 1, cost: 0, type: "attack", desc: "테스트용, 적 HP -50", dmg: 50, job: "common" },
     "타격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5", dmg: 5, job: "common" },
     "수비": { rank: 1, cost: 1, type: "skill", desc: "방어도 +4", block: 4, job: "common" },
     "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 마음의 벽 +15 회복", heal: 15, target: "self", job: "common" },
@@ -9,7 +10,7 @@ const CARD_DATA = {
     "껴입기": { rank: 2, cost: 2, type: "skill", desc: "나 건강(2턴), 방어도+4", buff: {name:"건강", val:2}, target:"self", job: "common", block: 4 },
     "넘어뜨리기": { rank: 2, cost: 2, type: "attack", desc: "적 취약(2턴), 적 HP -4", buff: {name:"취약", val:2}, job: "common", dmg: 4 },
     "전기 충격": { rank: 2, cost: 2, type: "attack", desc: "적 마비(2턴), 적 HP -4", buff: {name:"마비", val:2}, job: "common", dmg: 4 },
-    "달리기": { rank: 2, cost: 2, type: "attack", desc: "나 쾌속(2턴), 적 HP -4", buff: {name:"쾌속", val:2}, target:"self", job: "common", mg: 4 },
+    "달리기": { rank: 2, cost: 2, type: "attack", desc: "나 쾌속(2턴), 적 HP -4", buff: {name:"쾌속", val:2}, target:"self", job: "common", dmg: 4 },
    // 특수 기능 (special 태그 사용)
     "방패 부수기": { rank: 2, cost: 2, type: "attack", desc: "적 방어도 제거, 적 HP -2", special: "break_block", job: "common", dmg: 2 },
     "주머니 뒤지기": { rank: 2, cost: 1, type: "skill", desc: "방어도 +2, 카드 2장 뽑기", job: "common", block: 2, draw: 2 },
@@ -28,11 +29,15 @@ const CARD_DATA = {
     "무기 손질": { rank: 2, cost: 1, type: "skill", desc: "나 강화(3턴)", buff: {name:"강화", val:3}, target:"self", job: "fixer" },
     "근육자랑": { rank: 2, cost: 2, type: "attack", desc: "나 강화(2턴), 적 HP -4", buff: {name:"강화", val:2}, target:"self",job: "fixer", dmg: 4 },
     "돌진" : { rank: 2, cost: 2, type: "attack", desc: "적 8 피해, 방어도 +8", job: "fixer", dmg: 8, block: 8},
-
-
-   
-    "마구 뽑기": { rank: 3, cost: 0, type: "skill", desc: "카드 5장 뽑기 (소멸)", job: "common",draw: 5, isExhaust: true },
+     "마구 뽑기": { rank: 3, cost: 0, type: "skill", desc: "카드 5장 뽑기 (소멸)", job: "common",draw: 5, isExhaust: true },
     
+
+     "비명": { 
+        rank: 2, cost: 1, type: "social", subtype: "attack", 
+        desc: "날카로운 비명! (SP -10)", 
+        dmg: 10, 
+        job: "enemy"
+    },
     // --- 보스 전용 기술 ---
     "강철 분쇄": { rank: 3, cost: 2, type: "attack", desc: "치명적인 일격! (피해 15)",job: "common", dmg: 15 },
     
@@ -451,7 +456,7 @@ const JOB_DATA = {
         desc: "논리와 이성으로 사건을 해결합니다.",
         baseStats: { str: 10, con: 10, dex: 12, int: 16, wil: 14, cha: 12 }, 
         defaultTraits: ["sharp_eye"], 
-        starterDeck: ["타격", "타격", "수비", "수비", "사격", "달리기", "관찰"],
+        starterDeck: ["테스트용", "타격", "수비", "수비", "사격", "달리기", "관찰"],
         starterSocialDeck: ["논리적 반박", "논리적 반박", "비꼬기", "심호흡", "무시"],
         // [NEW] 탐정 이미지
         img: "https://placehold.co/150x150/2c3e50/ffffff?text=Detective"
