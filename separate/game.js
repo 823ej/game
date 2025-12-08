@@ -1,4 +1,4 @@
-﻿
+
 
 /* [NEW] 적 덱 생성 헬퍼 함수 */
 function getEnemyDeck(type) {
