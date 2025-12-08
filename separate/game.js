@@ -551,18 +551,18 @@ function adjustStat(type, delta) {
     // 화면 갱신하여 숫자 업데이트
     renderTraitSelection();
 }
-// [game.js] renderTraitSelection 함수 수정 (스탯 조정 UI 추가)
+/* [game.js] renderTraitSelection 함수 교체 (UI 레이아웃 통일) */
 function renderTraitSelection() {
-    calculateTP(); // TP 갱신
+    calculateTP(); // TP 계산
 
     const container = document.getElementById('char-creation-content');
     
-    // TP 관련 UI 변수
+    // TP 상태 변수 및 UI 텍스트 설정
     let tpColor = currentTP >= 0 ? "#2ecc71" : "#e74c3c";
     let btnText = currentTP >= 0 ? "결정 완료 (게임 시작)" : `포인트 부족! (${currentTP})`;
     let btnDisabled = currentTP < 0 ? "disabled" : "";
 
-    // [NEW] 스탯 분배 UI 생성
+    // 직업 기본 정보 가져오기
     let base = JOB_DATA[tempJob].baseStats;
     const statLabels = {str:"💪근력", con:"❤️건강", dex:"⚡민첩", int:"🧠지능", wil:"👁️정신", cha:"💋매력"};
     const statDesc = {
@@ -570,6 +570,7 @@ function renderTraitSelection() {
         int:"논리 방어(소셜)", wil:"이성/저항(소셜)", cha:"설득/공격(소셜)"
     };
     
+    // --- [UI 1] 스탯 조정 패널 ---
     let statHtml = `
         <div class="hub-card" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#3498db;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -579,59 +580,60 @@ function renderTraitSelection() {
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
     `;
 
-   for(let k in tempBonusStats) {
+    for(let k in tempBonusStats) {
         let currentVal = base[k] + tempBonusStats[k];
         
-        // [추가된 부분] 보정치 계산 및 표시 텍스트 생성
         let mod = Math.floor((currentVal - 10) / 2);
         let modSign = mod >= 0 ? "+" : "";
         let modText = `<span style="color:#888; font-size:0.8em; margin-left:2px;">(${modSign}${mod})</span>`;
+        let valColor = tempBonusStats[k] > 0 ? "#2ecc71" : (tempBonusStats[k] < 0 ? "#e74c3c" : "#eee");
 
-        let bonusText = tempBonusStats[k] > 0 ? `<span style="color:#2ecc71">(+${tempBonusStats[k]})</span>` : "";
-        
         statHtml += `
             <div style="background:#222; padding:8px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
                 <div title="${statDesc[k]}">${statLabels[k]}</div>
                 <div style="display:flex; align-items:center; gap:5px;">
-                    <button class="small-btn" onclick="adjustStat('${k}', -1)" style="width:24px;">-</button>
-                    
-                    <span style="width:30px; text-align:center; font-weight:bold;">${currentVal}</span>
-                    ${modText}
-                    
-                    <button class="small-btn" onclick="adjustStat('${k}', 1)" style="width:24px;">+</button>
+                    <button class="small-btn" onclick="adjustStat('${k}', -1)" style="width:24px; pointer-events:auto;">-</button>
+                    <span style="width:50px; text-align:center; font-weight:bold; color:${valColor};">${currentVal} ${modText}</span>
+                    <button class="small-btn" onclick="adjustStat('${k}', 1)" style="width:24px; pointer-events:auto;">+</button>
                 </div>
             </div>
         `;
     }
-    statHtml += `</div><div style="font-size:0.7em; color:#777; margin-top:5px; text-align:center;">포인트를 사용하여 기초 능력을 강화하세요.</div></div>`;
+    statHtml += `</div><div style="font-size:0.7em; color:#777; margin-top:5px; text-align:center;">최소 8, 기본 10점 기준. (괄호 안은 보정치)</div></div>`;
 
-    // 전체 HTML 조합
+    // --- [UI 2] 특성 선택 패널 (디자인 변경됨) ---
+    let traitHtml = `
+        <div class="hub-card" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#9b59b6;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0; color:#9b59b6;">🧬 특성 선택</h3>
+                <div style="font-size:0.9em;">남은 포인트: <span style="color:${tpColor}; font-weight:bold; font-size:1.2em;">${currentTP}</span></div>
+            </div>
+            <div style="font-size:0.7em; color:#aaa; margin-bottom:10px; text-align:center;">
+                부정적 특성을 선택하여 포인트를 얻으세요.
+            </div>
+            <div class="action-grid" id="trait-list" style="max-height:250px; overflow-y:auto; padding-right:5px;"></div>
+        </div>
+    `;
+
+    // --- [UI 3] 전체 조립 ---
     container.innerHTML = `
         <h2 style="color:#f1c40f">캐릭터 상세 설정</h2>
-        
         ${statHtml}
-
-        <div style="background:#222; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #444;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.9em; color:#aaa;">특성 포인트 (TP)</span>
-                <span style="font-size:1.5em; font-weight:bold; color:${tpColor};">${currentTP}</span>
-            </div>
-            <div style="font-size:0.7em; color:#777; text-align:right;">부정적 특성을 선택하여 포인트를 얻으세요.</div>
-        </div>
-
-        <div class="action-grid" id="trait-list" style="max-height:250px; overflow-y:auto; padding-right:5px;"></div>
+        ${traitHtml}
         
-        <button id="btn-finish-creation" class="action-btn" style="margin-top:20px; width:100%;" onclick="finishCreation()" ${btnDisabled}>
+        <button id="btn-finish-creation" class="action-btn" style="margin-top:10px; width:100%;" onclick="finishCreation()" ${btnDisabled}>
             ${btnText}
         </button>
     `;
 
+    // 특성 목록 생성 (기존 로직 유지)
     const list = document.getElementById('trait-list');
     let jobDefaults = JOB_DATA[tempJob].defaultTraits || [];
 
     for (let key in TRAIT_DATA) {
         let t = TRAIT_DATA[key];
         
+        // 직업 전용 특성 필터링 (내 직업 거 아니면 숨김)
         if (t.type === 'job_unique') {
             if (!tempTraits.includes(key)) continue; 
         }
