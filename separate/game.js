@@ -321,7 +321,8 @@ function createEnemyData(key, index) {
         block: 0, buffs: {}, 
         deck: (data.deckType === "custom") ? data.deck : getEnemyDeck(data.deckType),
         img: data.img,
-        ag: Math.floor(Math.random() * 150)
+        // 적에게만 선행 게이지를 주지 않도록 0에서 시작 (플레이어와 동일 조건)
+        ag: 0
     };
 }
 /* [NEW] 스탯 기반 파생 능력치 재계산 */

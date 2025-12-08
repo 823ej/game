@@ -299,6 +299,38 @@ body {
             overflow: hidden;
         }
         .hidden { display: none !important; }
+
+        /* 캐릭터 생성 화면: 모바일에서도 스크롤 가능 + 하단 버튼 접근 보장 */
+        .char-creation-scene {
+            background: #111;
+            align-items: flex-start;
+            justify-content: flex-start;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: clamp(12px, 3vw, 18px);
+        }
+        .char-creation-content {
+            width: min(640px, 100%);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-align: center;
+            padding: clamp(12px, 4vw, 20px);
+            box-sizing: border-box;
+        }
+        #btn-finish-creation {
+            position: sticky;
+            bottom: calc(var(--safe-bottom) + 10px);
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+            z-index: 5;
+        }
+        @media (max-width: 600px) {
+            .char-creation-content {
+                padding-bottom: clamp(18px, 8vw, 28px);
+            }
+        }
         
                 /* [NEW] ????슢???????*/
         .deck-builder-container {
