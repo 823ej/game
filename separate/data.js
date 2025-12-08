@@ -442,67 +442,61 @@ const EVENT_DATA = [
         ]
     }
 ];
-/* [data.js] 맨 아래에 추가 */
+/* [data.js] JOB_DATA 수정 */
 
-/* [data.js] 하단 JOB_DATA, TRAIT_DATA 교체 */
-
-/* [NEW] 직업 데이터 (기본 제공 트레잇 추가) */
 const JOB_DATA = {
     "detective": {
         name: "사립 탐정",
         desc: "논리와 이성으로 사건을 해결합니다.",
-        baseStats: { str: 1, con: 1, dex: 2, int: 3, wil: 3, cha: 2 },
-        // [NEW] 기본 제공 트레잇 (포인트 소모 없음)
+        // [수정] DnD 스타일 스탯 (10 = 평범)
+        // 지능/정신 특화
+        baseStats: { str: 10, con: 10, dex: 12, int: 16, wil: 14, cha: 12 }, 
         defaultTraits: ["sharp_eye"], 
-        starterDeck: ["타격", "수비", "수비", "심호흡", "논리적 반박", "논리적 반박", "관찰"],
+        starterDeck: ["타격", "수비", "수비", "달리기","관찰","사격" ],
         starterSocialDeck: ["논리적 반박", "논리적 반박", "비꼬기", "심호흡", "무시"]
     },
     "fixer": {
         name: "해결사",
         desc: "주먹과 무력이 법보다 가깝습니다.",
-        baseStats: { str: 3, con: 3, dex: 2, int: 1, wil: 1, cha: 2 },
-        // [NEW] 기본 제공 트레잇
+        // [수정] 근력/건강 특화, 지능/정신 약점
+        baseStats: { str: 16, con: 14, dex: 12, int: 8, wil: 10, cha: 12 },
         defaultTraits: ["street_fighter"],
         starterDeck: ["타격", "타격", "타격", "강펀치", "수비", "도발"],
         starterSocialDeck: ["위협", "위협", "무시", "무시", "심호흡"]
     }
 };
 
-/* [NEW] 특성(트레잇) 데이터 (비용 cost 추가) */
-// cost 양수: 좋은 거 (포인트 소모)
-// cost 음수: 나쁜 거 (포인트 획득)
+/* [data.js] TRAIT_DATA 수정 (스탯 보너스 수치 상향) */
+/* 기존 +1, +2는 티가 안 나므로 +2, +3 정도로 조정하거나 유지하되 Mod 계산에 맡김 */
 const TRAIT_DATA = {
-    // --- 직업 전용 (일반 선택 불가하거나 0코스트) ---
     "sharp_eye": {
         name: "예리한 눈",
         type: "job_unique",
-        desc: "[탐정 기본] 치명타 확률 증가 (미구현), 관찰력 보정",
+        desc: "[탐정] 관찰력 보정 (지능 +2)",
         cost: 0,
-        stats: { int: 1 }
+        stats: { int: 2 } // [수정] +1 -> +2 (보정치 +1 효과)
     },
     "street_fighter": {
         name: "싸움꾼",
         type: "job_unique",
-        desc: "[해결사 기본] 맨손 공격력 보정",
+        desc: "[해결사] 주먹질 보정 (근력 +2)",
         cost: 0,
-        stats: { str: 1 }
+        stats: { str: 2 } // [수정] +1 -> +2
     },
-
-    // --- 긍정적 특성 (포인트 사용) ---
     "genius": { 
         name: "천재성", 
         type: "positive", 
-        desc: "지능 +2, 경험치 +20%", 
-        cost: 4, // 비쌈
-        stats: { int: 2 },
+        desc: "지능 +4, 경험치 +20%", 
+        cost: 4,
+        stats: { int: 4 }, // [수정] +2 -> +4 (확실한 보너스)
         onGainXp: (val) => Math.floor(val * 1.2)
     },
     "tough_body": { 
         name: "강철 신체", 
         type: "positive", 
-        desc: "건강 +2, 최대 HP +10", 
+        desc: "건강 +4, 최대 HP 증가", 
         cost: 3,
-        stats: { con: 2 } 
+        stats: { con: 4 } 
     },
     "rich": {
         name: "금수저",
@@ -514,25 +508,23 @@ const TRAIT_DATA = {
     "attractive": {
         name: "매력적",
         type: "positive",
-        desc: "매력 +2 (설득력 증가)",
+        desc: "매력 +4 (설득력 증가)",
         cost: 2,
-        stats: { cha: 2 }
+        stats: { cha: 4 }
     },
-
-    // --- 부정적 특성 (포인트 획득) ---
     "weak_mind": { 
         name: "유리 멘탈", 
         type: "negative", 
-        desc: "정신 -2 (최대 SP 감소)", 
-        cost: -3, // 3포인트 획득
-        stats: { wil: -2 } 
+        desc: "정신 -4 (최대 SP 감소)", 
+        cost: -3,
+        stats: { wil: -4 } 
     },
     "clumsy": { 
         name: "덜렁이", 
         type: "negative", 
-        desc: "민첩 -2 (행동 순서 느림)", 
+        desc: "민첩 -4 (행동 순서 느림)", 
         cost: -2, 
-        stats: { dex: -2 } 
+        stats: { dex: -4 } 
     },
     "debt": {
         name: "빚쟁이",
@@ -543,9 +535,9 @@ const TRAIT_DATA = {
     },
     "frail": {
         name: "허약함",
-        type: "negative",
-        desc: "건강 -2, 최대 HP 감소",
+        type: "negative", 
+        desc: "건강 -4, 최대 HP 감소",
         cost: -3,
-        stats: { con: -2 }
+        stats: { con: -4 }
     }
 };

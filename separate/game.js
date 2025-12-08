@@ -218,7 +218,8 @@ let player = {
     jumadeung: false, lucky: false,
     drawPile: [], discardPile: [], exhaustPile: [], buffs: {}
 };
-
+let tempBonusStats = {};   // 스탯 분배로 추가된 보너스 스탯
+let currentStatPoints = 0; // 남은 스탯 포인트
 let tempJob = null;
 let tempTraits = [];
 let currentTP = 0;
@@ -290,20 +291,22 @@ function showDamageText(target, msg) {
 }
 /* [NEW] 스탯 기반 파생 능력치 재계산 */
 function recalcStats() {
-    // 1. 최대 HP = 기본 20 + (건강 * 10)
-    // (건강 1일 때 30, 건강 2일 때 40...)
-    player.maxHp = 20 + (player.stats.con * 10);
+ // 보정치 계산
+    let conMod = Math.floor((player.stats.con - 10) / 2);
+    let wilMod = Math.floor((player.stats.wil - 10) / 2);
+
+    // [안전장치] 보정치가 마이너스여도 최소 HP/SP는 보장
+    // 기본 30 + (보정치 * 5) -> 계수를 10에서 5로 줄이거나, 최소값을 10으로 고정 추천
+    // 여기선 기존 10배수 유지하되 최소값 10 보장
+    
+    player.maxHp = Math.max(10, 30 + (conMod * 10));
     if (player.hp > player.maxHp) player.hp = player.maxHp;
 
-    // 2. 최대 SP(SAN치) = 기본 20 + (정신 * 10)
-    // (정신 1일 때 30...)
-    player.maxSp = 20 + (player.stats.wil * 10);
+    player.maxSp = Math.max(10, 30 + (wilMod * 10));
     if (player.sp > player.maxSp) player.sp = player.maxSp;
-
-    // 3. 마음의 벽(소셜 HP) = 기본 90 + (정신 * 10)
-    // (정신 1일 때 100...)
-    player.maxMental = 90 + (player.stats.wil * 10);
-    // 마음의 벽은 전투마다 초기화되므로 여기서 현재값 조정은 안 함 (startSocialBattle에서 함)
+    
+    // 소셜 HP (마음의 벽)
+    player.maxMental = Math.max(50, 100 + (wilMod * 10));
 }
 /* [NEW] 마우스/터치 좌표 통합 추출 함수 */
 function getClientPos(e) {
@@ -364,33 +367,138 @@ function selectJob(key) {
     // [NEW] 직업 변경 시 선택한 특성 초기화 및 기본 특성 장착
     tempTraits = [...JOB_DATA[key].defaultTraits];
     
-    // TP 초기화 (기본 제공 트레잇은 0코스트라 영향 없지만 재계산)
+    // [NEW] 스탯 포인트 시스템 초기화 (기본 3 포인트 제공)
+    currentStatPoints = 3; 
+    tempBonusStats = { str:0, con:0, dex:0, int:0, wil:0, cha:0 };
+
+    // TP 초기화
     calculateTP();
     
     renderTraitSelection();
 }
 
-// [game.js] renderTraitSelection 함수 교체
+/* [game.js] recalcStats 함수 수정 (보정치 기반 HP/SP 계산) */
+function recalcStats() {
+    // [NEW] 보정치 계산 (DnD식: (스탯-10)/2)
+    // 예: 건강 10 -> Mod 0 -> HP 30
+    // 예: 건강 14 -> Mod +2 -> HP 50 (기존 밸런스와 유사)
+    // 예: 건강 8  -> Mod -1 -> HP 20
+    
+    let conMod = Math.floor((player.stats.con - 10) / 2);
+    let wilMod = Math.floor((player.stats.wil - 10) / 2);
 
+    // 기본 30 + (보정치 * 10)
+    player.maxHp = 30 + (conMod * 10);
+    if (player.hp > player.maxHp) player.hp = player.maxHp;
+
+    // 기본 30 + (보정치 * 10)
+    player.maxSp = 30 + (wilMod * 10);
+    if (player.sp > player.maxSp) player.sp = player.maxSp;
+    
+    // 소셜 HP (마음의 벽)
+    player.maxMental = 90 + (wilMod * 10);
+}
+// 2. 스탯 조정 함수 (버튼 클릭 시 호출됨)
+function adjustStat(type, delta) {
+    // 현재 수치 계산 (직업 기본값 + 투자한 보너스)
+    let baseVal = JOB_DATA[tempJob].baseStats[type];
+    let currentVal = baseVal + tempBonusStats[type];
+
+    // [CASE 1] 스탯 올리기 (+)
+    if (delta > 0) {
+        if (currentStatPoints < 1) return; // 포인트 부족하면 중단
+        
+        tempBonusStats[type] += 1;
+        currentStatPoints -= 1;
+    } 
+    // [CASE 2] 스탯 내리기 (-)
+    else {
+        // ★ 핵심: 현재 수치가 8 이하라면 더 이상 내릴 수 없음 (DnD 룰)
+        // 만약 data.js를 업데이트하지 않아 기본 스탯이 1이라면, 여기서 막혀서 버튼이 안 눌리는 것처럼 보입니다.
+        if (currentVal <= 8) {
+            console.log("최소 수치(8) 제한에 도달했습니다.");
+            return;
+        }
+        // 보너스 스탯이 0 이하라면(직업 기본치보다 낮추려 한다면) 불가능하게 설정
+        // (원한다면 이 줄을 지워 직업 기본치보다 깎고 포인트를 벌게 할 수도 있습니다)
+        //if (tempBonusStats[type] <= 0) return; 
+
+        tempBonusStats[type] -= 1;
+        currentStatPoints += 1; // 포인트 반환
+    }
+    
+    // 화면 갱신하여 숫자 업데이트
+    renderTraitSelection();
+}
+// [game.js] renderTraitSelection 함수 수정 (스탯 조정 UI 추가)
 function renderTraitSelection() {
     calculateTP(); // TP 갱신
 
     const container = document.getElementById('char-creation-content');
     
-    // TP 색상 처리 (0 이상이면 초록, 미만이면 빨강)
+    // TP 관련 UI 변수
     let tpColor = currentTP >= 0 ? "#2ecc71" : "#e74c3c";
     let btnText = currentTP >= 0 ? "결정 완료 (게임 시작)" : `포인트 부족! (${currentTP})`;
     let btnDisabled = currentTP < 0 ? "disabled" : "";
 
+    // [NEW] 스탯 분배 UI 생성
+    let base = JOB_DATA[tempJob].baseStats;
+    const statLabels = {str:"💪근력", con:"❤️건강", dex:"⚡민첩", int:"🧠지능", wil:"👁️정신", cha:"💋매력"};
+    const statDesc = {
+        str:"물리 공격력", con:"체력/물리방어", dex:"행동 속도", 
+        int:"논리 방어(소셜)", wil:"이성/저항(소셜)", cha:"설득/공격(소셜)"
+    };
+    
+    let statHtml = `
+        <div class="hub-card" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#3498db;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0; color:#3498db;">📊 능력치 조정</h3>
+                <div style="font-size:0.9em;">남은 포인트: <span style="color:#f1c40f; font-weight:bold; font-size:1.2em;">${currentStatPoints}</span></div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+    `;
+
+   for(let k in tempBonusStats) {
+        let currentVal = base[k] + tempBonusStats[k];
+        
+        // [추가된 부분] 보정치 계산 및 표시 텍스트 생성
+        let mod = Math.floor((currentVal - 10) / 2);
+        let modSign = mod >= 0 ? "+" : "";
+        let modText = `<span style="color:#888; font-size:0.8em; margin-left:2px;">(${modSign}${mod})</span>`;
+
+        let bonusText = tempBonusStats[k] > 0 ? `<span style="color:#2ecc71">(+${tempBonusStats[k]})</span>` : "";
+        
+        statHtml += `
+            <div style="background:#222; padding:8px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div title="${statDesc[k]}">${statLabels[k]}</div>
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <button class="small-btn" onclick="adjustStat('${k}', -1)" style="width:24px;">-</button>
+                    
+                    <span style="width:30px; text-align:center; font-weight:bold;">${currentVal}</span>
+                    ${modText}
+                    
+                    <button class="small-btn" onclick="adjustStat('${k}', 1)" style="width:24px;">+</button>
+                </div>
+            </div>
+        `;
+    }
+    statHtml += `</div><div style="font-size:0.7em; color:#777; margin-top:5px; text-align:center;">포인트를 사용하여 기초 능력을 강화하세요.</div></div>`;
+
+    // 전체 HTML 조합
     container.innerHTML = `
-        <h2 style="color:#f1c40f">특성 선택</h2>
+        <h2 style="color:#f1c40f">캐릭터 상세 설정</h2>
+        
+        ${statHtml}
+
         <div style="background:#222; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #444;">
-            <div style="font-size:0.9em; color:#aaa;">남은 트레잇 포인트 (TP)</div>
-            <div style="font-size:2em; font-weight:bold; color:${tpColor};">${currentTP}</div>
-            <div style="font-size:0.7em; color:#777;">부정적 특성을 선택하여 포인트를 얻으세요.</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9em; color:#aaa;">특성 포인트 (TP)</span>
+                <span style="font-size:1.5em; font-weight:bold; color:${tpColor};">${currentTP}</span>
+            </div>
+            <div style="font-size:0.7em; color:#777; text-align:right;">부정적 특성을 선택하여 포인트를 얻으세요.</div>
         </div>
 
-        <div class="action-grid" id="trait-list" style="max-height:350px; overflow-y:auto; padding-right:5px;"></div>
+        <div class="action-grid" id="trait-list" style="max-height:250px; overflow-y:auto; padding-right:5px;"></div>
         
         <button id="btn-finish-creation" class="action-btn" style="margin-top:20px; width:100%;" onclick="finishCreation()" ${btnDisabled}>
             ${btnText}
@@ -398,22 +506,18 @@ function renderTraitSelection() {
     `;
 
     const list = document.getElementById('trait-list');
-    
-    // 직업 기본 트레잇인지 확인하기 위해 현재 직업 데이터 가져오기
     let jobDefaults = JOB_DATA[tempJob].defaultTraits || [];
 
     for (let key in TRAIT_DATA) {
         let t = TRAIT_DATA[key];
         
-        // 직업 전용 특성(cost 0)은 목록에서 숨기거나, 내 직업 것만 보여주되 비활성화
         if (t.type === 'job_unique') {
-            if (!tempTraits.includes(key)) continue; // 내 직업 거 아니면 숨김
+            if (!tempTraits.includes(key)) continue; 
         }
 
         let isSelected = tempTraits.includes(key);
         let isDefault = jobDefaults.includes(key);
         
-        // 스타일링
         let borderColor = "#444";
         if (isSelected) borderColor = t.type === 'positive' ? "#2ecc71" : (t.type==='negative' ? "#e74c3c" : "#f1c40f");
         
@@ -423,8 +527,6 @@ function renderTraitSelection() {
         el.style.opacity = isSelected ? "1" : "0.6";
         el.style.position = "relative";
 
-        // 비용 표시 텍스트 (+N / -N)
-        // cost가 양수(좋은거)면 "-N P", 음수(나쁜거)면 "+N P"
         let costText = "";
         if (t.cost > 0) costText = `<span style="color:#e74c3c">-${t.cost} P</span>`;
         else if (t.cost < 0) costText = `<span style="color:#2ecc71">+${Math.abs(t.cost)} P</span>`;
@@ -438,7 +540,6 @@ function renderTraitSelection() {
             <div style="font-size:0.75em; color:#ccc; margin-top:5px; text-align:left;">${t.desc}</div>
         `;
 
-        // 기본 트레잇은 클릭 불가
         if (isDefault) {
             el.onclick = () => alert("이 직업의 기본 특성입니다. 해제할 수 없습니다.");
             el.style.cursor = "default";
@@ -465,6 +566,7 @@ function toggleTrait(key) {
 }
 
 // 3. 생성 완료 처리
+// [game.js] finishCreation 함수 수정
 function finishCreation() {
     if (!tempJob) return;
 
@@ -472,20 +574,40 @@ function finishCreation() {
     player.job = tempJob;
     player.traits = [...tempTraits];
     
-    // 직업 스탯 적용
+    // [STEP 1] 직업 기본 스탯 적용
     player.stats = { ...JOB_DATA[tempJob].baseStats };
+
+    // [STEP 2] 보너스 스탯 합산 (스탯 포인트로 찍은 것)
+    for(let k in tempBonusStats) {
+        if(player.stats[k] !== undefined) {
+            player.stats[k] += tempBonusStats[k];
+        }
+    }
     
     // 직업 덱 지급
     player.deck = [...JOB_DATA[tempJob].starterDeck];
     player.socialDeck = [...JOB_DATA[tempJob].starterSocialDeck];
     
-    // 특성 효과 적용 (onAcquire 등)
+    // [STEP 3] 특성(Trait) 효과 적용 (수정됨)
     player.traits.forEach(tKey => {
         let t = TRAIT_DATA[tKey];
+        if (!t) return;
+
+        // 1. 획득 시 발동 효과 (예: 골드 획득)
         if (t.onAcquire) t.onAcquire(player);
+
+        // 2. [추가됨] 스탯 보너스 적용 로직
+        // data.js의 stats: { int: 4 } 등을 읽어서 플레이어 스탯에 더함
+        if (t.stats) {
+            for (let statKey in t.stats) {
+                if (player.stats[statKey] !== undefined) {
+                    player.stats[statKey] += t.stats[statKey];
+                }
+            }
+        }
     });
 
-    recalcStats();
+    recalcStats(); // HP/SP 재계산 (변경된 스탯 반영)
     player.hp = player.maxHp;
     player.sp = player.maxSp;
     
@@ -2258,60 +2380,73 @@ function calculateTP() {
     currentTP = 0 - usedPoints;
 }
 
+/* [game.js] getStat 함수 수정 (모든 스탯 보정치 공식 통일) */
 function getStat(entity, type) {
     let val = 0;
-
-    // 1. 기초 값 가져오기
+    
+    // [1] 플레이어
     if (entity === player) {
-        // 플레이어: 6대 스탯 기반 매핑
+        let rawVal = 0;
+        
+        // 1. 기초 스탯 매핑
         switch (type) {
-            case 'atk': val = player.stats.str; break; // 물리 공격 = 근력
-            case 'def': val = player.stats.con; break; // 물리 방어 = 건강
-            case 'spd': val = player.stats.dex; break; // 속도 = 민첩
+            case 'atk': rawVal = player.stats.str; break; // 공격 -> 근력
+            case 'def': rawVal = player.stats.con; break; // 방어 -> 건강
+            case 'spd': rawVal = player.stats.dex; break; // 속도 -> 민첩
+            case 'socialAtk': rawVal = player.stats.cha; break; // 소셜공격 -> 매력
+            case 'socialDef': rawVal = player.stats.int; break; // 소셜방어 -> 지능
             
-            // [소셜 스탯]
-            case 'socialAtk': val = player.stats.cha; break; // 소셜 공격 = 매력
-            case 'socialDef': val = player.stats.int; break; // 소셜 방어(방어도) = 지능
-            
-            // 원본 스탯 직접 호출 시
-            default: val = player.stats[type] || 0; break; 
+            // 그 외 직접 호출 시 (str, con 등)
+            default: rawVal = player.stats[type] || 10; break;
         }
-    } else {
-        // 적(Enemy): 기존 방식 유지 (단순 atk/def/spd)
-        // 적에게도 socialAtk 등이 필요하다면 여기서 매핑 (일단 atk/def로 퉁침)
+
+        // 2. 아이템 보정 (스탯 자체를 증가시킴)
+        // (예: 운동화는 민첩+2 -> 보정치+1 효과)
+        if ((type === 'atk' || type === 'str') && player.inventory.includes("쿠보탄")) rawVal += 2;
+        if ((type === 'def' || type === 'con') && player.inventory.includes("강인함의 부적")) rawVal += 2;
+        if ((type === 'spd' || type === 'dex') && player.inventory.includes("좋은 운동화")) rawVal += 2;
+
+        // 3. [핵심 수정] 보정치 계산 공식 통일
+        // 공식: (스탯 - 10) / 2 (소수점 버림)
+        // 예: 10~11 -> +0, 12~13 -> +1, 14~15 -> +2
+        let mod = Math.floor((rawVal - 10) / 2);
+
+        if (type === 'spd') {
+            // ★ 속도 = 기본속도(2) + 민첩 보정치
+            // 민첩 10(보정0) -> 속도 2 (기본)
+            // 민첩 8(보정-1) -> 속도 1 (느림)
+            val = Math.max(1, 2 + mod); // 최소 1 보장
+        } else {
+            // 공격/방어 등은 보정치 그대로 사용
+            val = mod;
+        }
+    } 
+    // [2] 적 (기존 유지)
+    else {
         if (type === 'socialAtk') val = entity.baseAtk;
         else if (type === 'socialDef') val = entity.baseDef;
         else if (type === 'atk') val = entity.baseAtk;
         else if (type === 'def') val = entity.baseDef;
         else if (type === 'spd') val = entity.baseSpd;
     }
-    
-    // 2. 아이템 보정 (플레이어만)
-    if (entity === player) {
-        if ((type === 'atk' || type === 'str') && player.inventory.includes("쿠보탄")) val += 1; 
-        if ((type === 'def' || type === 'con') && player.inventory.includes("강인함의 부적")) val += 1; 
-        if ((type === 'spd' || type === 'dex') && player.inventory.includes("좋은 운동화")) val += 1; 
-        // 추가 아이템 예시:
-        // if (type === 'socialAtk' && player.inventory.includes("멋진 정장")) val += 1;
-    }
 
-    // 3. 버프/디버프 계산 (기존 유지)
+    // 4. 버프/디버프 계산 (최종 값에 적용)
     if (type === 'atk' || type === 'socialAtk') { 
-        if (entity.buffs["약화"]) val /= 2; 
-        if (entity.buffs["강화"]) val *= 2; 
-        if (entity.buffs["우울"]) val *= 1.5; 
+        if (entity.buffs["약화"]) val = Math.floor(val * 0.5); 
+        if (entity.buffs["강화"]) val = Math.max(1, val * 2); 
+        if (entity.buffs["우울"]) val = Math.floor(val * 1.5); 
     } 
     else if (type === 'def' || type === 'socialDef') { 
-        if (entity.buffs["취약"]) val /= 2; 
-        if (entity.buffs["건강"]) val *= 2; 
-        if (entity.buffs["헤롱헤롱"]) val /= 2; 
+        if (entity.buffs["취약"]) val = Math.floor(val * 0.5); 
+        if (entity.buffs["건강"]) val = Math.max(1, val * 2);
+        if (entity.buffs["헤롱헤롱"]) val = Math.floor(val * 0.5); 
     } 
     else if (type === 'spd') { 
-        if (entity.buffs["마비"]) val /= 2; 
-        if (entity.buffs["쾌속"]) val *= 2; 
+        if (entity.buffs["마비"]) val = Math.floor(val * 0.5); 
+        if (entity.buffs["쾌속"]) val = Math.max(1, val * 2); 
     }
     
-    return Math.floor(val);
+    return val;
 }
 // [game.js] 특성 추가/제거 함수(이벤트용)
 
