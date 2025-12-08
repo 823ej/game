@@ -1,4 +1,4 @@
-
+﻿
 
 /* [NEW] 적 덱 생성 헬퍼 함수 */
 function getEnemyDeck(type) {
@@ -2174,18 +2174,40 @@ if (dmg > 0) {
 }
 /* [수정] 승패 판정 로직 (전체 코드) */
 function checkGameOver() {
-// 1. [물리적 사망] HP 0
+// 0. 이미 게임오버 상태라면 중복 실행 방지
+    if (game.state === "gameover") return true;
+
+    // 1. [물리적 사망] HP 0
     if (player.hp <= 0) { 
-        showPopup("💀 사망", "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.", [{txt:"다시 하기", func: ()=>location.reload()}]); 
+        game.state = "gameover"; // 상태 잠금
+        showPopup("💀 사망", "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.", [
+            {
+                txt: "다시 하기 (초기화)", 
+                func: () => {
+                    // [핵심 수정] 세이브 파일을 지우고 새로고침해야 처음으로 돌아갑니다.
+                    localStorage.removeItem('midnight_rpg_save'); 
+                    location.reload(); 
+                }
+            }
+        ]); 
         return true; 
     }
     
-    // 2. [정신적 사망] SP 0 (광기/발광)
-    // ★ 여기가 추가/수정된 부분입니다 ★
+    // 2. [정신적 사망] SP 0
     if (player.sp <= 0) {
-        showPopup("🤪 발광(Insanity)", "공포를 견디지 못하고 정신이 붕괴되었습니다.<br>당신은 어둠 속으로 사라집니다...", [{txt:"다시 하기", func: ()=>location.reload()}]);
+        game.state = "gameover"; // 상태 잠금
+        showPopup("🤪 발광(Insanity)", "공포를 견디지 못하고 정신이 붕괴되었습니다.<br>당신은 어둠 속으로 사라집니다...", [
+            {
+                txt: "다시 하기 (초기화)", 
+                func: () => {
+                    // [핵심 수정] 세이브 파일을 지우고 새로고침
+                    localStorage.removeItem('midnight_rpg_save'); 
+                    location.reload(); 
+                }
+            }
+        ]);
         return true;
-    } 
+    }
 if (game.state === "social") {
         let npc = enemies[0];
 
@@ -2626,6 +2648,10 @@ function processCardRemoval(idx, cost) {
 }
 /* [수정] 화면 전환 함수 (안전장치 추가) */
 function switchScene(sceneName) {
+    // [핵심] 플레이어가 죽었거나 게임오버 상태면 화면 전환 금지 (캐릭터 생성 화면 제외)
+    if (sceneName !== 'char-creation' && (game.state === "gameover" || player.hp <= 0 || player.sp <= 0)) {
+        return; 
+    }
     // 1. 모든 장면 숨기기
     const scenes = [
         'hub-scene', 'city-scene', 'exploration-scene', 
@@ -3201,6 +3227,9 @@ function showPopup(title, desc, buttons, contentHTML = "") {
 
 /* [누락된 함수 추가] 팝업 닫기 기능 */
 function closePopup() {
+   // [핵심] 게임오버 상태일 때는 팝업을 절대 닫지 않음 (새로고침만 가능하게)
+    if (game.state === "gameover") return;
+    
     document.getElementById('popup-layer').style.display = 'none';
 }
 
