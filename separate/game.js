@@ -219,7 +219,9 @@ let player = {
     drawPile: [], discardPile: [], exhaustPile: [], buffs: {}
 };
 
-let enemies = [];
+let tempJob = null;
+let tempTraits = [];
+let currentTP = 0;
 
 /* [수정] game 상태 변수 */
 let game = { 
@@ -242,6 +244,9 @@ let game = {
         bossReady: false
     }
 };
+
+// 현재 전투에서 사용할 적 목록을 전역으로 보관
+let enemies = [];
 
 /* [NEW] 랜덤 이벤트 실행기 */
 function triggerRandomEvent() {
@@ -314,29 +319,176 @@ function getClientPos(e) {
     return { x: e.clientX, y: e.clientY };
 }
 
-/* [수정] initGame (기본 덱 + 보관함 초기화) */
+// [game.js] 
+
+// 게임 시작 진입점
 function initGame() {
-    // 1. 기본 전투 덱
-    player.deck = ["타격","타격","타격","수비","수비","수비"];
+    // 저장된 게임이 있는지 확인하는 로직이 있다면 여기서 분기
+    // 없다면 캐릭터 생성 시작
+    startCharacterCreation();
+}
+
+function startCharacterCreation() {
+    switchScene('char-creation');
+    renderJobSelection();
+}
+
+// 1. 직업 선택 UI
+function renderJobSelection() {
+    const container = document.getElementById('char-creation-content');
+    container.innerHTML = `<h2 style="color:#f1c40f">직업 선택</h2><div class="hub-grid" id="job-list"></div>`;
     
-   // 2. [수정] 기본 소셜 덱 (새로운 카드로 교체)
-    // 기존: ["미소짓기", "미소짓기", "미소짓기", "인상 쓰기", "인상 쓰기", "안부 묻기"]
-    player.socialDeck = [
-        "논리적 반박", "논리적 반박", "논리적 반박", 
-        "한귀로 흘리기", "한귀로 흘리기", 
-        "심호흡"
-    ];
+    const list = document.getElementById('job-list');
+    for (let key in JOB_DATA) {
+        let job = JOB_DATA[key];
+        let el = document.createElement('div');
+        el.className = 'hub-card';
+        el.innerHTML = `
+            <div class="hub-card-title">${job.name}</div>
+            <div class="hub-card-desc">${job.desc}</div>
+            <div style="font-size:0.7em; color:#aaa; margin-top:5px;">
+                💪${job.baseStats.str} ❤️${job.baseStats.con} ⚡${job.baseStats.dex}<br>
+                🧠${job.baseStats.int} 👁️${job.baseStats.wil} 💋${job.baseStats.cha}
+            </div>
+        `;
+        el.onclick = () => selectJob(key);
+        list.appendChild(el);
+    }
+}
+
+// [game.js] selectJob 함수 수정
+
+function selectJob(key) {
+    tempJob = key;
     
-    // 3. 보관함 (테스트용 여분 카드 지급)
-    player.storage = ["잠자기", "도발", "농담하기", "거짓말", "비명"];
+    // [NEW] 직업 변경 시 선택한 특성 초기화 및 기본 특성 장착
+    tempTraits = [...JOB_DATA[key].defaultTraits];
     
-    addRandomCard(2); // 랜덤 카드는 덱으로 들어감 (기존 로직)
+    // TP 초기화 (기본 제공 트레잇은 0코스트라 영향 없지만 재계산)
+    calculateTP();
     
-   // [추가] 초기 스탯 반영
+    renderTraitSelection();
+}
+
+// [game.js] renderTraitSelection 함수 교체
+
+function renderTraitSelection() {
+    calculateTP(); // TP 갱신
+
+    const container = document.getElementById('char-creation-content');
+    
+    // TP 색상 처리 (0 이상이면 초록, 미만이면 빨강)
+    let tpColor = currentTP >= 0 ? "#2ecc71" : "#e74c3c";
+    let btnText = currentTP >= 0 ? "결정 완료 (게임 시작)" : `포인트 부족! (${currentTP})`;
+    let btnDisabled = currentTP < 0 ? "disabled" : "";
+
+    container.innerHTML = `
+        <h2 style="color:#f1c40f">특성 선택</h2>
+        <div style="background:#222; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #444;">
+            <div style="font-size:0.9em; color:#aaa;">남은 트레잇 포인트 (TP)</div>
+            <div style="font-size:2em; font-weight:bold; color:${tpColor};">${currentTP}</div>
+            <div style="font-size:0.7em; color:#777;">부정적 특성을 선택하여 포인트를 얻으세요.</div>
+        </div>
+
+        <div class="action-grid" id="trait-list" style="max-height:350px; overflow-y:auto; padding-right:5px;"></div>
+        
+        <button id="btn-finish-creation" class="action-btn" style="margin-top:20px; width:100%;" onclick="finishCreation()" ${btnDisabled}>
+            ${btnText}
+        </button>
+    `;
+
+    const list = document.getElementById('trait-list');
+    
+    // 직업 기본 트레잇인지 확인하기 위해 현재 직업 데이터 가져오기
+    let jobDefaults = JOB_DATA[tempJob].defaultTraits || [];
+
+    for (let key in TRAIT_DATA) {
+        let t = TRAIT_DATA[key];
+        
+        // 직업 전용 특성(cost 0)은 목록에서 숨기거나, 내 직업 것만 보여주되 비활성화
+        if (t.type === 'job_unique') {
+            if (!tempTraits.includes(key)) continue; // 내 직업 거 아니면 숨김
+        }
+
+        let isSelected = tempTraits.includes(key);
+        let isDefault = jobDefaults.includes(key);
+        
+        // 스타일링
+        let borderColor = "#444";
+        if (isSelected) borderColor = t.type === 'positive' ? "#2ecc71" : (t.type==='negative' ? "#e74c3c" : "#f1c40f");
+        
+        let el = document.createElement('button');
+        el.className = 'hub-card';
+        el.style.border = `2px solid ${borderColor}`;
+        el.style.opacity = isSelected ? "1" : "0.6";
+        el.style.position = "relative";
+
+        // 비용 표시 텍스트 (+N / -N)
+        // cost가 양수(좋은거)면 "-N P", 음수(나쁜거)면 "+N P"
+        let costText = "";
+        if (t.cost > 0) costText = `<span style="color:#e74c3c">-${t.cost} P</span>`;
+        else if (t.cost < 0) costText = `<span style="color:#2ecc71">+${Math.abs(t.cost)} P</span>`;
+        else costText = `<span style="color:#f1c40f">기본</span>`;
+
+        el.innerHTML = `
+            <div style="display:flex; justify-content:space-between;">
+                <b style="color:${isSelected?'#fff':'#aaa'}">${t.name}</b>
+                <span style="font-weight:bold;">${costText}</span>
+            </div>
+            <div style="font-size:0.75em; color:#ccc; margin-top:5px; text-align:left;">${t.desc}</div>
+        `;
+
+        // 기본 트레잇은 클릭 불가
+        if (isDefault) {
+            el.onclick = () => alert("이 직업의 기본 특성입니다. 해제할 수 없습니다.");
+            el.style.cursor = "default";
+        } else {
+            el.onclick = () => toggleTrait(key);
+        }
+        
+        list.appendChild(el);
+    }
+}
+// [game.js] toggleTrait 함수 수정
+
+function toggleTrait(key) {
+    if (tempTraits.includes(key)) {
+        // 해제
+        tempTraits = tempTraits.filter(k => k !== key);
+    } else {
+        // 선택
+        tempTraits.push(key);
+    }
+    
+    // 화면 갱신 (TP 재계산 포함)
+    renderTraitSelection();
+}
+
+// 3. 생성 완료 처리
+function finishCreation() {
+    if (!tempJob) return;
+
+    // 데이터 적용
+    player.job = tempJob;
+    player.traits = [...tempTraits];
+    
+    // 직업 스탯 적용
+    player.stats = { ...JOB_DATA[tempJob].baseStats };
+    
+    // 직업 덱 지급
+    player.deck = [...JOB_DATA[tempJob].starterDeck];
+    player.socialDeck = [...JOB_DATA[tempJob].starterSocialDeck];
+    
+    // 특성 효과 적용 (onAcquire 등)
+    player.traits.forEach(tKey => {
+        let t = TRAIT_DATA[tKey];
+        if (t.onAcquire) t.onAcquire(player);
+    });
+
     recalcStats();
     player.hp = player.maxHp;
     player.sp = player.maxSp;
-
+    
     renderHub();
 }
 
@@ -1869,7 +2021,7 @@ function renderShopScreen(shopType = "shop_black_market") {
     const container = document.getElementById('event-content-box');
     container.innerHTML = `
         <div class="event-title">${shopTitle}</div>
-        <div class="event-desc">${shopDesc}<br><span style="color:#f1c40f; font-weight:bold;">소지금{player.gold} 원</span></div>
+        <div class="event-desc">${shopDesc}<br><span style="color:#f1c40f; font-weight:bold;">소지금${player.gold} 원</span></div>
         
         <h3 style="margin:10px 0; border-bottom:1px solid #555;">🃏 기술 교본</h3>
         <div class="shop-items" id="shop-cards"></div>
@@ -2017,11 +2169,12 @@ function processCardRemoval(idx, cost) {
 }
 /* [수정] 화면 전환 함수 (result 추가) */
 function switchScene(sceneName) {
-    // 1. 모든 장면 숨기기
+// 1. 모든 장면 숨기기 (목록에 'char-creation-scene' 추가)
     const scenes = [
         'hub-scene', 'city-scene', 'exploration-scene', 
         'battle-scene', 'event-scene', 'deck-scene', 
-        'result-scene', 'story-scene' 
+        'result-scene', 'story-scene',
+        'char-creation-scene' // ★ 이 부분이 꼭 추가되어야 합니다!
     ];
 
     scenes.forEach(id => {
@@ -2091,7 +2244,19 @@ function returnToHub() {
 }
 
 /* --- 유틸리티 및 계산 --- */
-// [game.js] getStat 함수 교체
+
+//트레잇 포인트 계산
+function calculateTP() {
+    let usedPoints = 0;
+    tempTraits.forEach(tKey => {
+        let t = TRAIT_DATA[tKey];
+        if (t) usedPoints += t.cost;
+    });
+    
+    // 시작 포인트 0 - 사용한 포인트
+    // (부정적 특성은 cost가 음수이므로 빼면 더해짐 => 포인트 획득)
+    currentTP = 0 - usedPoints;
+}
 
 function getStat(entity, type) {
     let val = 0;
@@ -2147,6 +2312,27 @@ function getStat(entity, type) {
     }
     
     return Math.floor(val);
+}
+// [game.js] 특성 추가/제거 함수(이벤트용)
+
+function addTrait(key) {
+    if (player.traits.includes(key)) return;
+    player.traits.push(key);
+    
+    let t = TRAIT_DATA[key];
+    if (t.onAcquire) t.onAcquire(player);
+    
+    recalcStats();
+    alert(`[특성 획득] ${t.name}: ${t.desc}`);
+}
+
+function removeTrait(key) {
+    if (!player.traits.includes(key)) return;
+    player.traits = player.traits.filter(k => k !== key);
+    
+    // onRemove가 있다면 호출
+    recalcStats();
+    alert(`[특성 제거] ${TRAIT_DATA[key].name} 특성이 사라졌습니다.`);
 }
 
 function applyBuff(entity, name, dur) { if (name === "독" || name === "활력") entity.buffs[name] = (entity.buffs[name] || 0) + dur; else entity.buffs[name] = dur; log(`✨ ${entity===player?"나":"적"}에게 [${name}] 적용`); }

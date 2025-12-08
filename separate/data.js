@@ -1,45 +1,50 @@
 const CARD_DATA = {
-    // 1성 (기본)
-    "타격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5", dmg: 5 },
-    "수비": { rank: 1, cost: 1, type: "skill", desc: "방어도 +4", block: 4 },
+// [공용] 누구나 사용 가능
+    "타격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5", dmg: 5, job: "common" },
+    "수비": { rank: 1, cost: 1, type: "skill", desc: "방어도 +4", block: 4, job: "common" },
+    "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 마음의 벽 +15 회복", heal: 15, target: "self", job: "common" },
+    "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3, target: "enemy", job: "common" },
+    "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: {name:"독", val:2}, block: 3, target: "enemy", job: "common" },   
+    "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:2}, target:"self", job: "common", block: 3 },
+    "껴입기": { rank: 2, cost: 2, type: "skill", desc: "나 건강(2턴), 방어도+4", buff: {name:"건강", val:2}, target:"self", job: "common", block: 4 },
+    "넘어뜨리기": { rank: 2, cost: 2, type: "attack", desc: "적 취약(2턴), 적 HP -4", buff: {name:"취약", val:2}, job: "common", dmg: 4 },
+    "전기 충격": { rank: 2, cost: 2, type: "attack", desc: "적 마비(2턴), 적 HP -4", buff: {name:"마비", val:2}, job: "common", dmg: 4 },
+    "달리기": { rank: 2, cost: 2, type: "attack", desc: "나 쾌속(2턴), 적 HP -4", buff: {name:"쾌속", val:2}, target:"self", job: "common", mg: 4 },
+   // 특수 기능 (special 태그 사용)
+    "방패 부수기": { rank: 2, cost: 2, type: "attack", desc: "적 방어도 제거, 적 HP -2", special: "break_block", job: "common", dmg: 2 },
+    "주머니 뒤지기": { rank: 2, cost: 1, type: "skill", desc: "방어도 +2, 카드 2장 뽑기", job: "common", block: 2, draw: 2 },
+   "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, job: "common", isExhaust: true },
    
+   // [탐정 전용] (Detective) - 논리, 이성적
+    "논리적 반박": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 마음의 벽 -10", dmg: 10, job: "detective" },
+    "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 마음의 벽 -25", dmg: 25, job: "detective" },
+    "관찰": { rank: 1, cost: 0, type: "skill", desc: "카드 2장 뽑기", draw: 2, job: "detective" },
+    "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: {name:"강화", val:2}, target:"self", job: "detective", dmg: 8 },
     
-    // 1성 (특수)
-    "잠자기": { rank: 1, cost: 0, type: "skill", desc: "활력(2턴), 방어도+2 (소멸)", buff: {name:"활력", val:2}, block: 2, isExhaust: true },
+   
+    // [해결사 전용] (Fixer) - 물리, 전투적
+    "강펀치": { rank: 1, cost: 2, type: "attack", desc: "적 HP -12", dmg: 12, job: "fixer" },
+    "위협": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 마음의 벽 -15 (공포)", dmg: 15, job: "fixer" },
+    "무기 손질": { rank: 2, cost: 1, type: "skill", desc: "나 강화(3턴)", buff: {name:"강화", val:3}, target:"self", job: "fixer" },
+    "근육자랑": { rank: 2, cost: 2, type: "attack", desc: "나 강화(2턴), 적 HP -4", buff: {name:"강화", val:2}, target:"self",job: "fixer", dmg: 4 },
+    "돌진" : { rank: 2, cost: 2, type: "attack", desc: "적 8 피해, 방어도 +8", job: "fixer", dmg: 8, block: 8},
 
-    // 2성 (디버프 & 복합)
-    // 기존: val이 방어도였음 -> block: 3으로 명시
-    "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3, target: "enemy" },
-    "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: {name:"독", val:2}, block: 3, target: "enemy" },    "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:2}, target:"self", block: 3 },
-    "껴입기": { rank: 2, cost: 2, type: "skill", desc: "나 건강(2턴), 방어도+4", buff: {name:"건강", val:2}, target:"self", block: 4 },
 
-    // 2성 (공격 + 디버프/버프)
-    "넘어뜨리기": { rank: 2, cost: 2, type: "attack", desc: "적 취약(2턴), 적 HP -4", buff: {name:"취약", val:2}, dmg: 4 },
-    "전기 충격": { rank: 2, cost: 2, type: "attack", desc: "적 마비(2턴), 적 HP -4", buff: {name:"마비", val:2}, dmg: 4 },
-    "근육자랑": { rank: 2, cost: 2, type: "attack", desc: "나 강화(2턴), 적 HP -4", buff: {name:"강화", val:2}, target:"self", dmg: 4 },
-    "달리기": { rank: 2, cost: 2, type: "attack", desc: "나 쾌속(2턴), 적 HP -4", buff: {name:"쾌속", val:2}, target:"self", dmg: 4 },
-
-    "돌진" : { rank: 2, cost: 2, type: "attack", desc: "적 8 피해, 방어도 +8", dmg: 8, block: 8},
-
-    // 특수 기능 (special 태그 사용)
-    "방패 부수기": { rank: 2, cost: 2, type: "attack", desc: "적 방어도 제거, 적 HP -2", special: "break_block", dmg: 2 },
-    "주머니 뒤지기": { rank: 2, cost: 1, type: "skill", desc: "방어도 +2, 카드 2장 뽑기", block: 2, draw: 2 },
-    // 3성
-    "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: {name:"강화", val:2}, target:"self", dmg: 8 },
-    "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, isExhaust: true },
-    "마구 뽑기": { rank: 3, cost: 0, type: "skill", desc: "카드 5장 뽑기 (소멸)", draw: 5, isExhaust: true },
+   
+    "마구 뽑기": { rank: 3, cost: 0, type: "skill", desc: "카드 5장 뽑기 (소멸)", job: "common",draw: 5, isExhaust: true },
     
     // --- 보스 전용 기술 ---
-    "강철 분쇄": { rank: 3, cost: 2, type: "attack", desc: "치명적인 일격! (피해 15)", dmg: 15 },
+    "강철 분쇄": { rank: 3, cost: 2, type: "attack", desc: "치명적인 일격! (피해 15)",job: "common", dmg: 15 },
     
-    "광신의 춤": { rank: 3, cost: 2, type: "skill", desc: "체력 회복 +20, 방어도 +10", buff: {name:"활력", val:5}, block: 10 },
-    "정신 붕괴 파동": { rank: 3, cost: 2, type: "attack", desc: "전체 멘탈 공격 (SP 데미지)", dmg: 10, type: "social", val: -20 }, // 소셜/배틀 하이브리드
+    "광신의 춤": { rank: 3, cost: 2, type: "skill", desc: "체력 회복 +20, 방어도 +10",job: "common", buff: {name:"활력", val:5}, block: 10 },
+    "정신 붕괴 파동": { rank: 3, cost: 2, type: "attack", desc: "전체 멘탈 공격 (SP 데미지)",job: "common", dmg: 10, type: "social", val: -20 }, // 소셜/배틀 하이브리드
     
     "부하 호출": { 
         rank: 3, 
         cost: 2, 
         type: "skill", 
         desc: "불량배를 1명 호출하여 전투에 합류시킵니다.", 
+        job: "common",
         special: "summon",      // 특수 기능 태그
         summonTarget: "불량배",   // 소환할 적의 ENEMY_DATA 키
         playerDesc: "(사용 불가) 적 전용 스킬입니다." // 나중에 플레이어용 효과 구현 시 대체될 텍스트
@@ -437,3 +442,110 @@ const EVENT_DATA = [
         ]
     }
 ];
+/* [data.js] 맨 아래에 추가 */
+
+/* [data.js] 하단 JOB_DATA, TRAIT_DATA 교체 */
+
+/* [NEW] 직업 데이터 (기본 제공 트레잇 추가) */
+const JOB_DATA = {
+    "detective": {
+        name: "사립 탐정",
+        desc: "논리와 이성으로 사건을 해결합니다.",
+        baseStats: { str: 1, con: 1, dex: 2, int: 3, wil: 3, cha: 2 },
+        // [NEW] 기본 제공 트레잇 (포인트 소모 없음)
+        defaultTraits: ["sharp_eye"], 
+        starterDeck: ["타격", "수비", "수비", "심호흡", "논리적 반박", "논리적 반박", "관찰"],
+        starterSocialDeck: ["논리적 반박", "논리적 반박", "비꼬기", "심호흡", "무시"]
+    },
+    "fixer": {
+        name: "해결사",
+        desc: "주먹과 무력이 법보다 가깝습니다.",
+        baseStats: { str: 3, con: 3, dex: 2, int: 1, wil: 1, cha: 2 },
+        // [NEW] 기본 제공 트레잇
+        defaultTraits: ["street_fighter"],
+        starterDeck: ["타격", "타격", "타격", "강펀치", "수비", "도발"],
+        starterSocialDeck: ["위협", "위협", "무시", "무시", "심호흡"]
+    }
+};
+
+/* [NEW] 특성(트레잇) 데이터 (비용 cost 추가) */
+// cost 양수: 좋은 거 (포인트 소모)
+// cost 음수: 나쁜 거 (포인트 획득)
+const TRAIT_DATA = {
+    // --- 직업 전용 (일반 선택 불가하거나 0코스트) ---
+    "sharp_eye": {
+        name: "예리한 눈",
+        type: "job_unique",
+        desc: "[탐정 기본] 치명타 확률 증가 (미구현), 관찰력 보정",
+        cost: 0,
+        stats: { int: 1 }
+    },
+    "street_fighter": {
+        name: "싸움꾼",
+        type: "job_unique",
+        desc: "[해결사 기본] 맨손 공격력 보정",
+        cost: 0,
+        stats: { str: 1 }
+    },
+
+    // --- 긍정적 특성 (포인트 사용) ---
+    "genius": { 
+        name: "천재성", 
+        type: "positive", 
+        desc: "지능 +2, 경험치 +20%", 
+        cost: 4, // 비쌈
+        stats: { int: 2 },
+        onGainXp: (val) => Math.floor(val * 1.2)
+    },
+    "tough_body": { 
+        name: "강철 신체", 
+        type: "positive", 
+        desc: "건강 +2, 최대 HP +10", 
+        cost: 3,
+        stats: { con: 2 } 
+    },
+    "rich": {
+        name: "금수저",
+        type: "positive", 
+        desc: "시작금 +3000원", 
+        cost: 2,
+        onAcquire: (p) => { p.gold += 3000; }
+    },
+    "attractive": {
+        name: "매력적",
+        type: "positive",
+        desc: "매력 +2 (설득력 증가)",
+        cost: 2,
+        stats: { cha: 2 }
+    },
+
+    // --- 부정적 특성 (포인트 획득) ---
+    "weak_mind": { 
+        name: "유리 멘탈", 
+        type: "negative", 
+        desc: "정신 -2 (최대 SP 감소)", 
+        cost: -3, // 3포인트 획득
+        stats: { wil: -2 } 
+    },
+    "clumsy": { 
+        name: "덜렁이", 
+        type: "negative", 
+        desc: "민첩 -2 (행동 순서 느림)", 
+        cost: -2, 
+        stats: { dex: -2 } 
+    },
+    "debt": {
+        name: "빚쟁이",
+        type: "negative", 
+        desc: "시작금 -1000원", 
+        cost: -1,
+        onAcquire: (p) => { p.gold -= 1000; }
+    },
+    "frail": {
+        name: "허약함",
+        type: "negative",
+        desc: "건강 -2, 최대 HP 감소",
+        cost: -3,
+        stats: { con: -2 }
+    }
+};
