@@ -377,26 +377,18 @@ function selectJob(key) {
     renderTraitSelection();
 }
 
-/* [game.js] recalcStats 함수 수정 (보정치 기반 HP/SP 계산) */
+/* [game.js] recalcStats 함수 수정 (최소값 제한 해제: 있는 그대로 계산) */
 function recalcStats() {
-    // [NEW] 보정치 계산 (DnD식: (스탯-10)/2)
-    // 예: 건강 10 -> Mod 0 -> HP 30
-    // 예: 건강 14 -> Mod +2 -> HP 50 (기존 밸런스와 유사)
-    // 예: 건강 8  -> Mod -1 -> HP 20
-    
     let conMod = Math.floor((player.stats.con - 10) / 2);
     let wilMod = Math.floor((player.stats.wil - 10) / 2);
 
-    // 기본 30 + (보정치 * 10)
+    // [수정] 0 이하가 될 수 있도록 Math.max 제거 (생성 제한 확인을 위해)
+    // 기본 공식: 30 + (보정치 * 10)
     player.maxHp = 30 + (conMod * 10);
-    if (player.hp > player.maxHp) player.hp = player.maxHp;
-
-    // 기본 30 + (보정치 * 10)
     player.maxSp = 30 + (wilMod * 10);
-    if (player.sp > player.maxSp) player.sp = player.maxSp;
     
     // 소셜 HP (마음의 벽)
-    player.maxMental = 90 + (wilMod * 10);
+    player.maxMental = 100 + (wilMod * 10);
 }
 // 2. 스탯 조정 함수 (버튼 클릭 시 호출됨)
 function adjustStat(type, delta) {
@@ -567,6 +559,7 @@ function toggleTrait(key) {
 
 // 3. 생성 완료 처리
 // [game.js] finishCreation 함수 수정
+/* [game.js] finishCreation 함수 수정 (생성 제한 유효성 검사 추가) */
 function finishCreation() {
     if (!tempJob) return;
 
@@ -588,16 +581,15 @@ function finishCreation() {
     player.deck = [...JOB_DATA[tempJob].starterDeck];
     player.socialDeck = [...JOB_DATA[tempJob].starterSocialDeck];
     
-    // [STEP 3] 특성(Trait) 효과 적용 (수정됨)
+    // [STEP 3] 특성(Trait) 효과 적용
     player.traits.forEach(tKey => {
         let t = TRAIT_DATA[tKey];
         if (!t) return;
 
-        // 1. 획득 시 발동 효과 (예: 골드 획득)
+        // 1. 획득 시 발동 효과
         if (t.onAcquire) t.onAcquire(player);
 
-        // 2. [추가됨] 스탯 보너스 적용 로직
-        // data.js의 stats: { int: 4 } 등을 읽어서 플레이어 스탯에 더함
+        // 2. 스탯 보너스 적용
         if (t.stats) {
             for (let statKey in t.stats) {
                 if (player.stats[statKey] !== undefined) {
@@ -607,7 +599,19 @@ function finishCreation() {
         }
     });
 
-    recalcStats(); // HP/SP 재계산 (변경된 스탯 반영)
+    // [STEP 4] 스탯 재계산 및 유효성 검사
+    recalcStats(); 
+
+    // ★ [핵심] HP나 SP가 0 이하라면 생성 차단
+    if (player.maxHp <= 0 || player.maxSp <= 0) {
+        alert(`⛔ 캐릭터 생성 불가!\n\n현재 세팅으로는 생존할 수 없습니다.\n(최대 HP: ${player.maxHp}, 최대 SP: ${player.maxSp})\n\n건강/정신 스탯을 높이거나, 페널티 특성을 해제해주세요.`);
+        
+        // 플레이어 상태를 롤백하거나 단순히 함수를 종료하여 진행을 막음
+        // (이미 player 객체에 스탯이 적용되었지만, 다시 설정 화면에서 수정하고 버튼을 누르면 덮어씌워지므로 괜찮습니다.)
+        return; 
+    }
+
+    // 통과 시 체력 회복 및 게임 시작
     player.hp = player.maxHp;
     player.sp = player.maxSp;
     
