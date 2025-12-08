@@ -71,6 +71,7 @@ function renderCityMap() {
         el.onclick = () => enterDistrict(key);
         grid.appendChild(el);
     }
+    autoSave();
 }
 /* [수정] 구역 진입 함수 (안전장치 강화) */
 function enterDistrict(key) {
@@ -182,6 +183,7 @@ function applyTooltip(text) {
 
 
 /* --- 상태 변수 --- */
+let battleCheckpoint = null; // 전투 시작 시점 저장용
 /* [수정] 플레이어 상태 (인벤토리 통합) */
 let player = { 
 // 기본 생명력/정신력 (현재값)
@@ -289,6 +291,16 @@ function showDamageText(target, msg) {
         }, 800);
     }
 }
+function createBattleCheckpoint() {
+    battleCheckpoint = {
+        // 객체를 깊은 복사(Deep Copy)하여 현재 상태와 분리
+        player: JSON.parse(JSON.stringify(player)),
+        enemies: JSON.parse(JSON.stringify(enemies)),
+        game: JSON.parse(JSON.stringify(game))
+    };
+    // 체크포인트 안의 game 객체에는 체크포인트 자신이 포함되지 않도록 주의(순환 참조 방지)
+    // (game 변수 안에 battleCheckpoint를 넣지 않고 전역 변수로 뺐으므로 안전함)
+}
 /* [NEW] 스탯 기반 파생 능력치 재계산 */
 function recalcStats() {
  // 보정치 계산
@@ -324,11 +336,128 @@ function getClientPos(e) {
 
 // [game.js] 
 
-// 게임 시작 진입점
+/* ============================================================
+   [시스템] 자동 저장 & 이어하기 (Auto-Save System)
+   ============================================================ */
+
+// [1] 게임 초기화 (진입점)
 function initGame() {
-    // 저장된 게임이 있는지 확인하는 로직이 있다면 여기서 분기
-    // 없다면 캐릭터 생성 시작
-    startCharacterCreation();
+    // 저장된 데이터가 있는지 확인
+    if (localStorage.getItem('midnight_rpg_save')) {
+        // 데이터가 있으면 자동으로 로드
+        loadGame();
+    } else {
+        // 데이터가 없으면 캐릭터 생성 시작
+        startCharacterCreation();
+    }
+}
+
+// [2] 자동 저장 함수 (알림 없이 조용히 저장)
+function autoSave() {
+    // 전투 중 로직: 현재 상태가 아니라 '체크포인트(시작 시점)'를 저장
+    let targetPlayer = player;
+    let targetEnemies = enemies;
+    let targetGame = game;
+
+    if ((game.state === 'battle' || game.state === 'social') && battleCheckpoint) {
+        targetPlayer = battleCheckpoint.player;
+        targetEnemies = battleCheckpoint.enemies;
+        targetGame = battleCheckpoint.game;
+        // console.log("자동 저장: 전투 시작 시점으로 기록됨");
+    }
+
+    // 클리어 목록
+    let clearedList = [];
+    for (let id in SCENARIOS) {
+        if (SCENARIOS[id].cleared) clearedList.push(id);
+    }
+
+    const saveData = {
+        version: "2.3",
+        player: targetPlayer,
+        enemies: targetEnemies,
+        game: targetGame,
+        clearedScenarios: clearedList,
+        timestamp: new Date().toLocaleString()
+    };
+
+    try {
+        localStorage.setItem('midnight_rpg_save', JSON.stringify(saveData));
+        // console.log(`[AutoSave] 저장 완료 (${saveData.timestamp})`);
+    } catch (e) {
+        console.error("자동 저장 실패:", e);
+    }
+}
+
+// [3] 게임 불러오기 (시작 시 자동 호출)
+function loadGame() {
+    const saveString = localStorage.getItem('midnight_rpg_save');
+    if (!saveString) return; // 안전장치
+
+    try {
+        const loadedData = JSON.parse(saveString);
+
+        // 데이터 복구
+        player = loadedData.player;
+        game = loadedData.game;
+        enemies = loadedData.enemies || [];
+
+        if (loadedData.clearedScenarios) {
+            loadedData.clearedScenarios.forEach(id => {
+                if (SCENARIOS[id]) SCENARIOS[id].cleared = true;
+            });
+        }
+
+        recalcStats();
+        
+        // 화면 복구 로직
+        // [A] 전투/소셜 상태에서 종료했던 경우 -> 전투 시작 시점으로 복구
+        if (game.state === 'battle' || game.state === 'social') {
+            // 전투 관련 변수 초기화
+            game.turnOwner = "none";
+            game.lastTurnOwner = "none";
+            
+            // 체크포인트도 현재(로드된 깨끗한 상태)로 다시 갱신
+            createBattleCheckpoint();
+
+            switchScene('battle');
+            renderEnemies();
+            renderHand();
+            updateUI();
+            processTimeline(); 
+            
+            // 유저에게 알림 (선택사항)
+            // alert("전투 시작 시점으로 복귀했습니다.");
+        } 
+        // [B] 탐사 중
+        else if (game.activeScenarioId && game.scenario) {
+            renderExploration();
+        } 
+        // [C] 그 외 (사무소, 맵 등)
+        else {
+            if (game.state === 'city') renderCityMap();
+            else renderHub();
+        }
+
+        updateUI();
+
+    } catch (e) {
+        console.error(e);
+        alert("세이브 파일 오류. 데이터를 초기화합니다.");
+        resetGameData();
+    }
+}
+
+// [4] 데이터 삭제 (초기화)
+function confirmReset() {
+    if (confirm("정말 모든 데이터를 삭제하고 처음부터 시작하시겠습니까?\n(되돌릴 수 없습니다)")) {
+        resetGameData();
+    }
+}
+
+function resetGameData() {
+    localStorage.removeItem('midnight_rpg_save');
+    location.reload(); // 페이지 새로고침 -> initGame에서 데이터 없으므로 생성 화면으로
 }
 
 function startCharacterCreation() {
@@ -616,12 +745,14 @@ function finishCreation() {
     player.sp = player.maxSp;
     
     renderHub();
+    autoSave(); // [추가] 생성 직후 저장
 }
 
 /* [NEW] 거점 화면 렌더링 */
 function renderHub() {
     switchScene('hub');
     updateUI(); // 상단 바 갱신
+    autoSave();
 }
 
 /* [NEW] 거점 휴식 */
@@ -783,7 +914,7 @@ function startSocialBattle(npcKey) {
         // 인내심 시스템은 제거하거나, 특수 기믹으로만 남김
         isNpc: true 
     });
-
+    createBattleCheckpoint();
     log(`💬 [${data.name}]와(과) 설전을 벌입니다! (마음의 벽을 무너뜨리세요)`);
 
     switchScene('battle'); 
@@ -1189,8 +1320,8 @@ function renderExploration() {
             {txt: "보스전 돌입", func: startBossBattle}
         ]);
     }
-
     updateUI(); 
+    autoSave();
 }
 
 /* [NEW] 복귀 확인 팝업 */
@@ -1382,7 +1513,10 @@ function startBattle(isBoss = false) {
         }
     }
     
-    switchScene('battle'); 
+// [여기] 적 생성과 덱 셔플이 끝난 직후, 턴 시작 전에 체크포인트 생성
+    createBattleCheckpoint(); // 체크포인트 생성
+    autoSave(); // [추가] 체크포인트 내용으로 저장 (전투 중 끄면 여기로 돌아옴)
+    switchScene('battle');
     renderEnemies(); 
     updateUI(); 
     processTimeline();
@@ -1412,7 +1546,7 @@ function nextStepAfterWin() {
         let clueGain = 10;
         game.scenario.clues = Math.min(100, game.scenario.clues + clueGain);
         renderExploration();
-        
+        autoSave(); // [추가] 결과 저장
         // 탐사 화면 텍스트 업데이트
         const logBox = document.getElementById('loc-desc');
         if(logBox) {
@@ -2245,8 +2379,9 @@ function buyShopItem(el, type, name, cost) {
         alert(`[${name}] 구매 완료!`);
     }
     
-    updateInventoryUI();
+ updateInventoryUI();
     updateUI();
+    autoSave(); // [추가] 돈 쓰고 물건 샀으니 저장
 }
 /* [NEW] 카드 제거 서비스 UI */
 function openCardRemoval(cost) {
@@ -2289,6 +2424,7 @@ function processCardRemoval(idx, cost) {
     // 상점 화면 갱신 (돈 줄어든 거 반영)
     // 현재 상점 타입을 알기 어려우므로 간단히 다시 렌더링하거나 UI만 업데이트
     updateUI();
+    autoSave();
     // 상점 화면을 유지하고 싶다면 renderShopScreen을 다시 호출해야 하는데 type을 기억해야 함.
     // 여기선 간단히 닫고 끝내거나, 편의상 암시장으로 리로드 (개선 포인트)
     renderShopScreen("shop_black_market"); // 임시: 무조건 암시장 리로드 (실제론 타입 변수 저장 필요)
@@ -2937,54 +3073,7 @@ function playAnim(elementId, animClass) {
         el.classList.remove(animClass);
     }, 600); // 가장 긴 애니메이션 시간(0.6s)에 맞춤
 }
-/* --- [추가] 저장 및 불러오기 시스템 --- */
 
-function saveGame() {
-    // 1. 저장할 데이터 묶기
-    const saveData = {
-        playerData: player,       // 플레이어의 모든 정보 (덱, 체력, 아이템 등)
-        gameLevel: game.level     // 현재 레벨
-    };
-
-    // 2. 브라우저 저장소(Local Storage)에 'myRPG_save'라는 이름으로 저장
-    // 객체(Object)는 저장 못 하므로 JSON.stringify로 문자열로 변환합니다.
-    localStorage.setItem('myRPG_save', JSON.stringify(saveData));
-
-    // 3. 알림
-    alert("게임이 저장되었습니다! (브라우저를 닫아도 유지됩니다)");
-}
-
-function loadGame() {
-    // 1. 저장소에서 데이터 가져오기
-    const saveString = localStorage.getItem('myRPG_save');
-
-    // 2. 데이터가 없으면 중단
-    if (!saveString) {
-        alert("저장된 파일이 없습니다.");
-        return;
-    }
-
-    // 3. 데이터 복구
-    try {
-        const loadedData = JSON.parse(saveString); // 문자열을 다시 객체로 변환
-
-        // 데이터 덮어쓰기
-        player = loadedData.playerData;
-        game.level = loadedData.gameLevel;
-
-        // [중요] 불러온 뒤, 현재 레벨의 전투를 '처음부터' 다시 시작
-        // (전투 중간 상태까지 완벽하게 저장하는 건 매우 복잡하므로, 체크포인트 방식 사용)
-        alert(`Lv.${game.level} 데이터를 불러왔습니다.`);
-        
-        // UI 갱신 및 전투 재시작
-        updateUI();
-        startBattle(); 
-
-    } catch (e) {
-        console.error(e);
-        alert("세이브 파일이 손상되어 불러올 수 없습니다.");
-    }
-}
 /* [NEW] 승리 팝업을 상황에 맞춰 그려주는 함수 */
 function renderWinPopup() {
     let btns = [];
