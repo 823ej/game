@@ -325,6 +325,27 @@ function createEnemyData(key, index) {
         ag: 0
     };
 }
+
+/* [NEW] 소셜 NPC 전투 데이터 생성 */
+function createNpcEnemyData(npcKey, index = 0) {
+    let data = NPC_DATA[npcKey];
+    if (!data) return null;
+
+    return {
+        id: index,
+        npcKey,
+        name: data.name,
+        maxHp: 100, hp: 100, // 마음의 벽 게이지
+        baseAtk: data.baseAtk || 0, 
+        baseDef: data.baseDef || 0, 
+        baseSpd: data.baseSpd || 2,
+        block: 0, buffs: {}, 
+        deck: data.deck || ["횡설수설"], 
+        img: data.img,
+        ag: 0,
+        isNpc: true
+    };
+}
 /* [NEW] 스탯 기반 파생 능력치 재계산 */
 function recalcStats() {
  // 보정치 계산
@@ -936,7 +957,7 @@ function moveCardToDeck(storageIdx) {
 
 // [game.js] startSocialBattle 함수 교체
 
-function startSocialBattle(npcKey) {
+function startSocialBattle(npcKey, preserveEnemies = false) {
     game.state = "social";
     game.totalTurns = 0;
     game.isBossBattle = false;
@@ -944,7 +965,6 @@ function startSocialBattle(npcKey) {
     game.lastTurnOwner = "none"; 
 
     // 1. 플레이어 상태 초기화 (소셜 전용 스탯 설정)
-    // 기존 sp 대신 'mental'이라는 임시 스탯을 사용 (100점 만점)
     player.mental = 100; 
     player.maxMental = 100;
     
@@ -956,28 +976,42 @@ function startSocialBattle(npcKey) {
 
     renderHand();
 
-    // 2. 적(NPC) 생성
-    enemies = [];
-    let data = NPC_DATA[npcKey];
-    
-    // NPC도 동일하게 100의 마음의 벽을 가짐
-    enemies.push({ 
-        id: 0, 
-        name: data.name, 
-        maxHp: 100, hp: 100, // hp 변수를 '마음의 벽' 수치로 사용
-        baseAtk: data.baseAtk, baseDef: data.baseDef, baseSpd: data.baseSpd,
-        block: 0, buffs: {}, deck: data.deck, img: data.img, ag: 0,
-        
-        // 인내심 시스템은 제거하거나, 특수 기믹으로만 남김
-        isNpc: true 
-    });
+    // 2. 적(NPC) 생성 (프리뷰에서 만들어졌다면 재생성하지 않음)
+    if (!preserveEnemies) {
+        enemies = [];
+        let npc = createNpcEnemyData(npcKey, 0);
+        if (npc) enemies.push(npc);
+    }
+
+    let data = NPC_DATA[npcKey] || enemies[0];
+    if (data) log(`💬 [${data.name}]와(과) 설전을 벌입니다! (마음의 벽을 무너뜨리세요)`);
+
+    // 탐사 배경을 전투 배경과 동기화
+    let explBg = document.getElementById('expl-bg');
+    let battleBg = document.getElementById('battle-bg');
+    if (explBg && battleBg) {
+        battleBg.style.backgroundImage = explBg.style.backgroundImage;
+    }
+
     createBattleCheckpoint();
-    log(`💬 [${data.name}]와(과) 설전을 벌입니다! (마음의 벽을 무너뜨리세요)`);
+    autoSave();
 
     switchScene('battle'); 
     showBattleView();
-    renderEnemies();
-    updateUI();
+
+    // 적 영역 업데이트 (프리뷰 모드 해제)
+    const eArea = document.getElementById('enemies-area');
+    if (eArea) {
+        if (!preserveEnemies) renderEnemies();
+        setTimeout(() => {
+            eArea.classList.remove('preview-mode');
+            updateUI();
+        }, 50);
+    } else {
+        renderEnemies();
+        updateUI();
+    }
+    
     processTimeline();
 }
 
@@ -1445,50 +1479,52 @@ function exploreAction(action) {
     let scData = SCENARIOS[game.scenario.id];
 
     // --- [1] 조사하기 (전투 발생 가능) ---
-    if (action === 'investigate') {
+   if (action === 'investigate') {
         game.inputLocked = true;
         document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = true);
         
         let roll = Math.random();
         
-        // 1. 전투 발생 (30%) - 다키스트 던전 스타일 연출
+        // 1. 전투 발생 (30%)
         if (roll < 0.3) { 
             // 적 키 선택
             let enemyKeys = Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
             let key = enemyKeys[Math.floor(Math.random() * enemyKeys.length)];
             let count = (Math.random() < 0.5) ? 2 : 1; 
 
-            // 실제 적 데이터 미리 생성
+            // [핵심] 실제 적 데이터 미리 생성
             enemies = [];
             for(let i=0; i<count; i++) {
+                // (만약 적 종류를 섞고 싶다면 key를 다시 뽑으면 됨)
                 enemies.push(createEnemyData(key, i));
             }
 
             logBox.innerHTML = `<span style='color:#e74c3c; font-weight:bold;'>⚠️ 적 발견! 전투 태세!</span>`;
             
-            // 프리뷰 모드로 렌더링 (HP바 숨김)
+            // [핵심] 프리뷰 모드로 렌더링 (HP바 숨김)
             const eArea = document.getElementById('enemies-area');
-            if (eArea) {
-                eArea.classList.add('preview-mode');
-            }
-            renderEnemies();
-            updateUI();
+            eArea.classList.add('preview-mode'); // CSS로 HP바 숨김
+            
+            renderEnemies(); // 빈 div 생성
+            updateUI();      // 이미지 채우기
 
             // 솟아오르는 애니메이션 적용
             document.querySelectorAll('.enemy-unit').forEach(el => {
                 el.classList.add('anim-popup');
             });
 
-            // 플레이어는 놀람 효과 (살짝 뜀)
+            // 플레이어 깜짝 놀람
             pArea.classList.add('anim-walk');
             
-            // 1초 뒤 전투 화면으로 전환
+            // 1초 뒤 자연스럽게 전투 시작 (Seamless)
             setTimeout(() => { 
                 pArea.classList.remove('anim-walk');
                 game.inputLocked = false; 
-                startBattle(false, null, true); // 이미 만든 적을 그대로 사용
+                
+                // startBattle에 '이미 적이 있다(true)'는 플래그 전달
+                startBattle(false, null, true); 
             }, 1000);
-        } 
+        }
         // 2. 소셜 발생 (20%) - 동일한 Pop-up 연출
         else if (roll < 0.5) { 
             let keys = Object.keys(NPC_DATA);
@@ -1497,17 +1533,25 @@ function exploreAction(action) {
 
             logBox.innerHTML = `<span style='color:#3498db'>누군가 다가옵니다. 대화가 가능해 보입니다.</span>`;
             
+            // 적 데이터 미리 생성 후 프리뷰 렌더링
+            enemies = [];
+            let npc = createNpcEnemyData(npcKey, 0);
+            if (npc) enemies.push(npc);
+
             const eArea = document.getElementById('enemies-area');
-            eArea.innerHTML = `
-                <div class="enemy-unit anim-popup">
-                    <img src="${npcData.img}" alt="${npcData.name}" class="char-img" style="width:80px; height:80px;">
-                    <div style="margin-top:4px; font-size:0.85em; color:#3498db; font-weight:bold;">${npcData.name}</div>
-                </div>
-            `;
+            if (eArea) {
+                eArea.classList.add('preview-mode'); 
+                renderEnemies(); 
+                updateUI();      
+
+                document.querySelectorAll('.enemy-unit').forEach(el => {
+                    el.classList.add('anim-popup');
+                });
+            }
 
             setTimeout(() => { 
                 game.inputLocked = false; 
-                startSocialBattle(npcKey); 
+                startSocialBattle(npcKey, true); 
             }, 1000);
         } 
         // 3. 랜덤 이벤트 / 파밍
@@ -1582,12 +1626,11 @@ function exploreAction(action) {
     }
 }
 /* [수정] 전투 시작 함수 (턴 기록 초기화 + 프리뷰 유지) */
+/* [수정] startBattle: Seamless 전환 지원 */
 function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) {
     game.state = "battle"; 
     game.totalTurns = 0; 
     game.isBossBattle = isBoss;
-    
-    // [핵심 수정] 새 전투니까 '직전 턴 주인' 기록을 지워야 함
     game.turnOwner = "none";     
     game.lastTurnOwner = "none"; 
 
@@ -1599,25 +1642,22 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     player.hand = []; 
     player.buffs = {}; 
     player.block = 0; 
-    player.lucky = false; 
-    player.jumadeung = false; 
     player.ag = 0;
     
     renderHand();
 
-    // 전투 진입 전에 적을 미리 그려 프리뷰 모드로 붙여두면 모든 전투가 심리스하게 이어짐
-    let preRenderedPreview = false;
-
+    // [핵심] 이미 탐색 단계에서 적을 생성했다면 생략
     if (!preserveEnemies) {
         enemies = [];
         
-        // 보스/일반 적 생성 로직 (기존과 동일)
         if (isBoss) {
             let scId = game.scenario.id;
             let bossId = SCENARIOS[scId] ? SCENARIOS[scId].boss : "boss_gang_leader";
             let boss = createEnemyData(bossId, 0);
-            if (boss) enemies.push(boss);
-            log(`⚠️ <b>${boss ? boss.name : '적'}</b> 출현! 목숨을 걸어라!`);
+            if (boss) {
+                enemies.push(boss);
+                log(`⚠️ <b>${boss.name}</b> 출현! 목숨을 걸어라!`);
+            }
         } else {
             // enemyKeys: null -> 랜덤 / 문자열 -> 단일 / 배열 -> 지정된 목록
             let picked = [];
@@ -1634,35 +1674,24 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
                 if (enemy) enemies.push(enemy);
             });
         }
+    }
 
-        // 탐사/이벤트 어디서든 동일하게 프리뷰 모드로 한 번 그려 둔다
-        const previewArea = document.getElementById('enemies-area');
-        if (previewArea) {
-            previewArea.classList.add('preview-mode');
-            renderEnemies();
-            updateUI();
-            preRenderedPreview = true;
-        }
-    }
-    let currentBg = document.getElementById('expl-bg').style.backgroundImage;
+    // 전투 배경을 현재 탐사 배경과 동기화
+    let explBg = document.getElementById('expl-bg');
     let battleBg = document.getElementById('battle-bg');
-    if (battleBg) {
-        battleBg.style.backgroundImage = currentBg;
-        
-        // (선택) 전투니까 배경이 살짝 더 붉어지거나 어두워지는 효과
-        // battleBg.style.filter = "blur(3px) brightness(0.8) sepia(0.3)";
+    if (explBg && battleBg) {
+        battleBg.style.backgroundImage = explBg.style.backgroundImage;
     }
-// [여기] 적 생성과 덱 셔플이 끝난 직후, 턴 시작 전에 체크포인트 생성
-    createBattleCheckpoint(); // 체크포인트 생성
-    autoSave(); // [추가] 체크포인트 내용으로 저장 (전투 중 끄면 여기로 돌아옴)
-    switchScene('battle');
-    // 배틀 UI 보이고 탐사 UI 숨기기
-    showBattleView();
-    // 적 영역 처리 (탐사 프리뷰 제거)
+
+    createBattleCheckpoint(); 
+    autoSave(); 
+    switchScene('battle'); 
+    showBattleView();      
+
+    // 적 영역 업데이트 (프리뷰 모드 해제)
     const eArea = document.getElementById('enemies-area');
     if (eArea) {
-        // 프리뷰를 미리 그렸다면 다시 그리지 않고 모드만 전환
-        if (!preRenderedPreview && !preserveEnemies) renderEnemies();
+        if (!preserveEnemies) renderEnemies();
         setTimeout(() => {
             eArea.classList.remove('preview-mode');
             updateUI();
@@ -1671,6 +1700,7 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
         renderEnemies();
         updateUI();
     }
+    
     processTimeline();
 }
 
