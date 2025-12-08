@@ -208,7 +208,7 @@ let player = {
         wil: 1, // 정신
         cha: 1  // 매력
     },
-    gold: 0, ap: 3, xp: 0, maxXp: 100,
+    gold: 0, ap: 3, maxAp: 3, xp: 0, maxXp: 100,
     
     // 덱 관련
     deck: [],       // 전투 덱 (Active)
@@ -1880,9 +1880,13 @@ function startPlayerTurnLogic() {
     player.ap = 3; 
     drawCards(5); 
 
-    document.getElementById('end-turn-btn').disabled = false;
-    document.getElementById('turn-info').innerText = `나의 턴 (AP: ${player.ap})`;
+   document.getElementById('end-turn-btn').disabled = false;
     
+    // [수정] turn-info 요소가 사라졌으므로, 에러가 안 나게 체크합니다.
+    const turnInfo = document.getElementById('turn-info');
+    if (turnInfo) {
+        turnInfo.innerText = `나의 턴 (AP: ${player.ap})`;
+    }
     document.getElementById('player-char').classList.add('turn-active'); 
     document.querySelectorAll('.enemy-unit').forEach(e => e.classList.remove('turn-active'));
     
@@ -2994,7 +2998,22 @@ function updateUI() {
             doomPill.classList.add('hidden');
         }
     }
-
+// [★추가] 플로팅 AP 인디케이터 갱신
+    const apIndicator = document.getElementById('ap-indicator');
+    if (apIndicator) {
+        // 값 갱신
+        document.getElementById('ap-val').innerText = player.ap;
+        document.getElementById('ap-max').innerText = player.maxAp || 3;
+        
+        // 시각 효과: AP가 없으면 회색으로 변함
+        if (player.ap <= 0) {
+            apIndicator.classList.add('low-ap');
+            apIndicator.style.transform = "scale(0.9)";
+        } else {
+            apIndicator.classList.remove('low-ap');
+            apIndicator.style.transform = "scale(1)";
+        }
+    }
     // 3. (이하 기존 플레이어/적 UI 업데이트 로직 유지...)
     // 플레이어 바
     let playerBarHTML = "";

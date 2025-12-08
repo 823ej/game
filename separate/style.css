@@ -1003,55 +1003,64 @@ body {
     }
 }
 
-/* [최적화] 높이가 낮은 가로 모드 (모바일 풍경 모드 등) 대응 */
 .timeline-container {
+    /* [위치] 무대 내부 왼쪽 상단에 고정 */
     position: absolute;
+    top: 10px;
     left: 10px;
-    top: 50%;
-    bottom: auto;
-    transform: translateY(-50%);
+    bottom: auto; /* 하단 고정 해제 */
+    transform: none; /* 중앙 정렬 해제 */
+    
+    /* [배치] 세로(Vertical)로 나열 */
     display: flex;
-    flex-direction: column;
+    flex-direction: column; 
     align-items: center;
-    gap: clamp(6px, 1.5vw, 10px);
-    z-index: 500;
-    width: clamp(52px, 8vw, 72px);
-    padding: clamp(6px, 2vw, 8px) clamp(4px, 1.6vw, 6px);
-    max-height: clamp(150px, 45vh, 260px); /* 캐릭터 높이 범위 안에서 표시 */
-    overflow: visible; /* 스크롤 대신 자체 축소 */
-    border-radius: 12px;
-    background: none; /* 반투명 배경 제거 */
+    gap: clamp(2px, 1vh, 5px); /* 화면 높이에 따라 간격도 조절 */
+    
+    z-index: 100; /* 배경보다 위에 */
+    pointer-events: none; /* 클릭 통과 */
+    
+    /* [크기 제한] 내용물만큼만 차지 */
+    width: auto;
+    height: auto;
+    padding: 0;
+    background: none;
     border: none;
-    box-shadow: none;
-    pointer-events: none;
 }
 
 .timeline-node {
     position: relative;
-    width: clamp(36px, 8vw, 48px);
-    height: clamp(36px, 8vw, 48px);
+    
+    /* [★핵심] 스케일링: 화면 높이(vh)에 비례하여 크기 자동 조절 */
+    /* 최소 25px ~ 최대 45px 사이에서 유동적으로 변함 */
+    width: clamp(25px, 9vh, 45px);
+    height: clamp(25px, 9vh, 45px);
+    
     margin: 0;
     flex-shrink: 0;
     border-radius: 50%;
     border: 2px solid #555;
     background: #161616;
-    overflow: visible;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.55);
-    z-index: 2;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    
+    /* 등장 애니메이션용 초기값 */
     opacity: 0;
-    animation: fadeInNode 0.5s forwards;
 }
 
-/* ??? ??? (?? ??) */
+/* [연결선] 세로 배치에 어울리는 짧은 선 */
 .timeline-node:not(:last-child)::after {
     content: "";
     position: absolute;
-    top: 100%;
+    top: 100%; /* 아이콘 바로 아래 */
     left: 50%;
     transform: translateX(-50%);
-    width: 3px;
-    height: 12px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.25), rgba(255,255,255,0.05));
+    width: 2px;
+    
+    /* 선 길이도 화면 높이에 따라 조절 */
+    height: clamp(2px, 1vh, 5px); 
+    
+    background: rgba(255,255,255,0.3);
     z-index: -1;
 }
 
@@ -1413,25 +1422,62 @@ body {
     }
 }
 
-/* 덱/버림/소멸 더미 버튼 배치 */
 .pile-buttons {
+    /* [위치] 무대 내부 오른쪽 상단 고정 */
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    
+    /* [배치] 세로(Vertical)로 쌓기 */
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 10px;
-    margin: 6px 4px;
-    pointer-events: auto;
+    flex-direction: column; 
+    align-items: flex-end; /* 오른쪽 정렬 */
+    gap: 5px;
+    
+    margin: 0;
+    pointer-events: none; /* 컨테이너는 클릭 통과 */
+    z-index: 100; /* 배경/캐릭터보다 위에 */
 }
+
+/* 개별 버튼 스타일 */
 .pile-btn {
-    pointer-events: auto;
+    pointer-events: auto; /* 버튼은 클릭 가능해야 함 */
     padding: 4px 8px;
     font-size: 0.75em;
+    
+    /* 반투명 배경으로 무대 가림 최소화 */
+    background: rgba(30, 30, 30, 0.8); 
+    border: 1px solid #555;
+    color: #ddd;
+    backdrop-filter: blur(2px);
+    border-radius: 4px;
+    
+    /* 텍스트 줄바꿈 방지 */
+    white-space: nowrap; 
 }
+
+/* 버튼 묶음 (버림/소멸)도 세로로 자연스럽게 연결 */
 .pile-btn-stack {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
     align-items: flex-end;
+}
+
+/* [반응형] 모바일 등 작은 화면에서 위치/크기 미세 조정 */
+@media (max-width: 600px) {
+    .pile-buttons {
+        top: 5px;
+        right: 5px;
+        gap: 3px;
+    }
+    .pile-btn-stack {
+        gap: 3px;
+    }
+    .pile-btn {
+        font-size: 0.7em; /* 글씨 조금 더 작게 */
+        padding: 3px 6px;
+    }
 }
 /* [추가] 탐색 모드일 때 적 유닛의 상세 정보(HP바, 아이콘 등) 숨기기 */
 .enemies-wrapper.preview-mode .hp-bar-bg,
@@ -1451,4 +1497,77 @@ body {
     opacity: 1;
     visibility: visible;
     transition: opacity 0.5s;
+}
+/* [style.css] 맨 아래에 추가 */
+
+/* 플로팅 AP 인디케이터 */
+#ap-indicator {
+    /* [수정] 둥둥 떠다니기(absolute) -> 자리 잡기(relative) */
+    position: relative;
+    bottom: auto; 
+    left: auto;
+    
+    /* 크기 유지 */
+    width: 64px;
+    height: 64px;
+    
+    /* 플렉스 박스 안에서 정렬 */
+    flex-shrink: 0;      /* 찌그러짐 방지 */
+    align-self: center;  /* 세로 중앙 정렬 */
+    margin: 0 8px;       /* 좌우 간격 */
+
+    /* 디자인 (기존 유지) */
+    background: rgba(20, 30, 40, 0.95);
+    border: 3px solid #3498db;
+    border-radius: 50%;
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    z-index: 10;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+/* AP 부족할 때 스타일 (JS에서 클래스 추가 가능) */
+#ap-indicator.low-ap {
+    border-color: #7f8c8d;
+    box-shadow: none;
+    opacity: 0.7;
+}
+
+.ap-inner {
+    font-family: 'Courier New', monospace; /* 디지털 숫자 느낌 */
+    font-weight: 900;
+    font-size: 1.3em;
+    color: #fff;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+.ap-val { color: #3498db; }
+.ap-sep { font-size: 0.8em; color: #777; margin: 0 1px; }
+.ap-max { font-size: 0.8em; color: #aaa; }
+
+.ap-label {
+    font-size: 0.6em;
+    color: #3498db;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+/* 모바일 가로 모드 등 화면이 작을 때 자동 크기 조절 */
+@media (max-height: 420px) {
+    #ap-indicator {
+        width: 50px;
+        height: 50px;
+        bottom: 100px; /* 핸드 높이에 맞춰 내림 */
+        left: 10px;
+        border-width: 2px;
+    }
+    .ap-inner { font-size: 1em; }
+    .ap-label { font-size: 0.5em; }
 }

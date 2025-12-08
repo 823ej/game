@@ -141,6 +141,14 @@
             <div class="character" id="player-char"></div>
             <div id="enemies-area" class="enemies-wrapper"></div>
         </div>
+         <div id="turn-timeline" class="timeline-container battle-ui hidden"></div>
+             <div class="pile-buttons battle-ui hidden">
+        <button id="btn-draw-pile-floating" class="small-btn pile-btn" onclick="openPileView('draw')">덱(0)</button>
+        <div class="pile-btn-stack">
+            <button id="btn-exhaust-pile-floating" class="small-btn pile-btn" onclick="openPileView('exhaust')">소멸(0)</button>
+            <button id="btn-discard-pile-floating" class="small-btn pile-btn" onclick="openPileView('discard')">버림(0)</button>
+        </div>
+    </div>
     </div>
 
     <div id="loc-desc" class="loc-text exploration-ui" style="position:relative; background:#222; border-radius:5px; margin-bottom:10px; border:1px solid #444;">
@@ -154,17 +162,17 @@
         <button id="btn-retreat" class="action-btn" style="background:#7f8c8d;" onclick="confirmRetreat()">🏠 복귀 (중단)</button>
     </div>
 
-    <div id="turn-timeline" class="timeline-container battle-ui hidden"></div>
-    <div class="pile-buttons battle-ui hidden">
-        <button id="btn-draw-pile-floating" class="small-btn pile-btn" onclick="openPileView('draw')">덱(0)</button>
-        <div class="pile-btn-stack">
-            <button id="btn-exhaust-pile-floating" class="small-btn pile-btn" onclick="openPileView('exhaust')">소멸(0)</button>
-            <button id="btn-discard-pile-floating" class="small-btn pile-btn" onclick="openPileView('discard')">버림(0)</button>
-        </div>
-    </div>
+   
+
     <div class="control-group battle-ui hidden">
-        <div class="status-panel">
-            <div id="turn-info" style="word-break: keep-all;">게임 시작</div>
+        
+        <div id="ap-indicator">
+            <div class="ap-inner">
+                <span id="ap-val">3</span>
+                <span class="ap-sep">/</span>
+                <span id="ap-max">3</span>
+            </div>
+            <div class="ap-label">AP</div>
         </div>
         <div class="log-area" id="log-box"></div>
         <button id="end-turn-btn" class="action-btn btn-end-turn-side" onclick="endPlayerTurn()">
