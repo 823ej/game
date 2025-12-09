@@ -327,7 +327,8 @@ const SCENARIOS = {
         canRetreat: true, // 도망 가능
     }
 };
-/* [수정] 이벤트 데이터 (종료 시 renderExploration 호출) */
+/* [data.js] EVENT_DATA 수정 (alert -> showPopup) */
+
 const EVENT_DATA = [
     {
         id: "vending_machine",
@@ -337,13 +338,20 @@ const EVENT_DATA = [
             { 
                 txt: "돈을 넣는다 (100원)", 
                 func: () => {
-                    if(player.gold < 100) { alert("돈이 부족합니다."); return; }
+                    if(player.gold < 100) { 
+                        showPopup("잔액 부족", "돈이 부족합니다.", [{txt:"확인", func: closePopup}]); 
+                        return; 
+                    }
+                    
                     player.gold -= 100;
                     let item = getRandomItem("consumable");
-                    addItem(item);
-                    alert(`덜컹! [${item}]이(가) 나왔습니다.`);
-                    closePopup();
-                    renderExploration(); // [핵심] 여기서 화면 갱신 및 버튼 활성화
+                    
+                    // 아이템 획득 시도 (성공 시 팝업 띄우고 종료)
+                    addItem(item, () => {
+                        showPopup("획득", `덜컹! [${item}]이(가) 나왔습니다.`, [
+                            { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                        ]);
+                    });
                 }
             },
             { 
@@ -351,14 +359,20 @@ const EVENT_DATA = [
                 func: () => {
                     if(Math.random() < 0.5) {
                         let item = getRandomItem("consumable");
-                        addItem(item);
-                        alert(`쾅! 충격으로 [${item}]이(가) 떨어졌습니다!`);
+                        addItem(item, () => {
+                            showPopup("성공!", `쾅! 충격으로 [${item}]이(가) 떨어졌습니다!`, [
+                                { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                            ]);
+                        });
                     } else {
                         takeDamage(player, 5);
-                        alert("쾅! 자판기가 쓰러지며 발을 찧었습니다. (체력 -5)");
+                        // 사망 체크는 takeDamage -> checkGameOver에서 처리되지만, 생존 시 팝업
+                        if (player.hp > 0) {
+                            showPopup("실패", "쾅! 자판기가 쓰러지며 발을 찧었습니다.<br>(체력 -5)", [
+                                { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                            ]);
+                        }
                     }
-                    closePopup();
-                    renderExploration(); // [핵심]
                 }
             },
             { txt: "무시한다", func: () => { closePopup(); renderExploration(); } }
@@ -375,20 +389,18 @@ const EVENT_DATA = [
                     takeDamage(player, 10);
                     if(player.hp > 0) {
                         player.gold += 500;
-                        alert("남자는 피를 뽑아가고 돈을 쥐어줍니다. (HP -10, +500원)");
-                        closePopup();
-                        renderExploration(); // [핵심]
-                    } else {
-                        closePopup(); // 죽으면 어차피 게임오버 팝업 뜸
+                        showPopup("거래 성사", "남자는 피를 뽑아가고 돈을 쥐어줍니다.<br>(HP -10, +500원)", [
+                            { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                        ]);
                     }
                 }
             },
             { 
                 txt: "거절한다", 
                 func: () => {
-                    alert("남자는 혀를 차며 사라졌습니다.");
-                    closePopup();
-                    renderExploration(); // [핵심]
+                    showPopup("거절", "남자는 혀를 차며 사라졌습니다.", [
+                        { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                    ]);
                 }
             }
         ]
@@ -403,17 +415,17 @@ const EVENT_DATA = [
                 func: () => {
                     player.sp = Math.min(player.maxSp, player.sp + 10);
                     game.scenario.doom += 10;
-                    alert("마음이 차분해지지만, 시간이 많이 흘렀습니다. (SP +10, 위협도 +10)");
-                    closePopup();
-                    renderExploration();
+                    showPopup("기도", "마음이 차분해지지만, 시간이 많이 흘렀습니다.<br>(SP +10, 위협도 +10)", [
+                        { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                    ]);
                 }
             },
             { 
                 txt: "제단을 부순다 (전투)", 
                 func: () => {
-                    alert("제단을 걷어차자 숨어있던 광신도가 튀어나옵니다!");
-                    closePopup();
-                    startBattle(false); // 전투는 끝나면 알아서 복귀하므로 renderExploration 불필요
+                    showPopup("전투 개시!", "제단을 걷어차자 숨어있던 광신도가 튀어나옵니다!", [
+                        { txt: "전투!", func: () => { closePopup(); startBattle(false); } }
+                    ]);
                 }
             },
             { txt: "지나친다", func: () => { closePopup(); renderExploration(); } }
@@ -430,18 +442,18 @@ const EVENT_DATA = [
                     let gain = 300 + Math.floor(Math.random() * 200);
                     player.gold += gain;
                     player.sp -= 3;
-                    alert(`죄책감이 들지만 지갑은 두둑합니다. (+${gain}원, SP -3)`);
-                    closePopup();
-                    renderExploration();
+                    showPopup("획득", `죄책감이 들지만 지갑은 두둑합니다.<br>(+${gain}원, SP -3)`, [
+                        { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                    ]);
                 }
             },
             { 
                 txt: "경찰서에 맡긴다 (SP +5)", 
                 func: () => {
                     player.sp = Math.min(player.maxSp, player.sp + 5);
-                    alert("착한 일을 했다는 뿌듯함이 느껴집니다. (SP +5)");
-                    closePopup();
-                    renderExploration();
+                    showPopup("선행", "착한 일을 했다는 뿌듯함이 느껴집니다.<br>(SP +5)", [
+                        { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                    ]);
                 }
             }
         ]

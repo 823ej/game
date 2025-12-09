@@ -138,7 +138,7 @@ function beginMission() {
     closePopup();
     
     if (!game.activeScenarioId || !SCENARIOS[game.activeScenarioId]) {
-        alert("진행 중인 의뢰 정보를 찾을 수 없습니다.");
+        showPopup("진행 중인 의뢰 정보를 찾을 수 없습니다.");
         return;
     }
 
@@ -458,15 +458,14 @@ function autoSave() {
     }
 }
 
-// [3] 게임 불러오기 (시작 시 자동 호출)
+// [수정] loadGame: showPopup -> showPopup
 function loadGame() {
     const saveString = localStorage.getItem('midnight_rpg_save');
-    if (!saveString) return; // 안전장치
+    if (!saveString) return;
 
     try {
         const loadedData = JSON.parse(saveString);
-
-        // 데이터 복구
+        // ... (데이터 로드 로직 기존 유지) ...
         player = loadedData.player;
         game = loadedData.game;
         if (game.started === undefined) game.started = true;
@@ -479,54 +478,54 @@ function loadGame() {
             });
         }
         if (!player.img && player.job && JOB_DATA[player.job]) {
-                    player.img = JOB_DATA[player.job].img;
-                }
+            player.img = JOB_DATA[player.job].img;
+        }
         recalcStats();
         
-        // 화면 복구 로직
-        // [A] 전투/소셜 상태에서 종료했던 경우 -> 전투 시작 시점으로 복구
+        // 화면 복구 로직 (기존 유지)
         if (game.state === 'battle' || game.state === 'social') {
-            // 전투 관련 변수 초기화
+            // ... (전투 복구) ...
             game.turnOwner = "none";
             game.lastTurnOwner = "none";
-            
-            // 체크포인트도 현재(로드된 깨끗한 상태)로 다시 갱신
             createBattleCheckpoint();
-
             switchScene('battle');
             showBattleView();
             renderEnemies();
             renderHand();
             updateUI();
             processTimeline(); 
-            
-            // 유저에게 알림 (선택사항)
-            // alert("전투 시작 시점으로 복귀했습니다.");
         } 
-        // [B] 탐사 중
         else if (game.activeScenarioId && game.scenario) {
             renderExploration();
         } 
-        // [C] 그 외 (사무소, 맵 등)
         else {
             if (game.state === 'city') renderCityMap();
             else renderHub();
         }
-
         updateUI();
 
     } catch (e) {
         console.error(e);
-        alert("세이브 파일 오류. 데이터를 초기화합니다.");
-        resetGameData();
+        // [수정] 에러 알림 교체
+        showPopup("오류", "세이브 파일 오류입니다. 데이터를 초기화합니다.", [
+            { txt: "확인", func: () => { closePopup(); resetGameData(); } }
+        ]);
     }
 }
 
 // [4] 데이터 삭제 (초기화)
+// [수정] confirmReset: confirm -> showPopup
 function confirmReset() {
-    if (confirm("정말 모든 데이터를 삭제하고 처음부터 시작하시겠습니까?\n(되돌릴 수 없습니다)")) {
-        resetGameData();
-    }
+    showPopup("⚠️ 데이터 초기화", "정말 모든 데이터를 삭제하고 처음부터 시작하시겠습니까?<br><span style='color:#e74c3c'>(되돌릴 수 없습니다)</span>", [
+        { 
+            txt: "예 (삭제)", 
+            func: () => { 
+                closePopup(); 
+                resetGameData(); 
+            } 
+        },
+        { txt: "아니오", func: closePopup }
+    ]);
 }
 
 function resetGameData() {
@@ -740,7 +739,7 @@ function renderTraitSelection() {
         `;
 
         if (isDefault) {
-            el.onclick = () => alert("이 직업의 기본 특성입니다. 해제할 수 없습니다.");
+            el.onclick = () => showPopup("이 직업의 기본 특성입니다. 해제할 수 없습니다.");
             el.style.cursor = "default";
         } else {
             el.onclick = () => toggleTrait(key);
@@ -817,12 +816,12 @@ function finishCreation() {
     recalcStats(); 
 
     // ★ [핵심] HP나 SP가 0 이하라면 생성 차단
-    if (player.maxHp <= 0 || player.maxSp <= 0) {
-        alert(`⛔ 캐릭터 생성 불가!\n\n현재 세팅으로는 생존할 수 없습니다.\n(최대 HP: ${player.maxHp}, 최대 SP: ${player.maxSp})\n\n건강/정신 스탯을 높이거나, 페널티 특성을 해제해주세요.`);
-        
-        // 플레이어 상태를 롤백하거나 단순히 함수를 종료하여 진행을 막음
-        // (이미 player 객체에 스탯이 적용되었지만, 다시 설정 화면에서 수정하고 버튼을 누르면 덮어씌워지므로 괜찮습니다.)
-        return; 
+   if (player.maxHp <= 0 || player.maxSp <= 0) {
+        showPopup("⛔ 캐릭터 생성 불가", 
+            `현재 세팅으로는 생존할 수 없습니다.<br>(최대 HP: ${player.maxHp}, 최대 SP: ${player.maxSp})<br><br>건강/정신 스탯을 높이거나, 페널티 특성을 해제해주세요.`,
+            [{txt: "확인", func: closePopup}]
+        );
+        return;
     }
 
     // 통과 시 체력 회복 및 게임 시작
@@ -944,7 +943,7 @@ function moveCardToStorage(deckIdx) {
     
     // 최소 덱 매수 제한 (예: 5장)
     if (targetDeck.length <= 5) {
-        alert("최소 5장의 카드는 있어야 합니다.");
+        showPopup("최소 5장의 카드는 있어야 합니다.");
         return;
     }
 
@@ -1145,8 +1144,11 @@ function acceptMission(id) {
     renderHub(); // 사무소 화면으로 복귀
 
     // 약간의 딜레이를 주어 화면 전환 후 알림이 뜨게 함
-    setTimeout(() => {
-        alert(`✅ 의뢰 수락 완료: [${scData.title}]\n\n"${targetDistrictName}" 구역으로 이동하여 조사를 시작하세요.`);
+   setTimeout(() => {
+        showPopup("✅ 의뢰 수락", 
+            `<b>[${scData.title}]</b><br><br>"${targetDistrictName}" 구역으로 이동하여 조사를 시작하세요.`, 
+            [{txt: "확인", func: closePopup}]
+        );
     }, 100);
     
     updateUI();
@@ -1304,7 +1306,7 @@ function moveItemFromWarehouse(idx) {
 
     // 공간 확인 (소모품인 경우만)
     if (data.usage === 'consume' && player.inventory.length >= player.maxInventory) {
-        alert("가방(소모품) 공간이 부족합니다!");
+        showPopup("공간 부족", "가방(소모품) 공간이 부족합니다!", [{txt: "확인", func: closePopup}]);
         return;
     }
 
@@ -2801,76 +2803,83 @@ function renderShopScreen(shopType = "shop_black_market") {
         itemContainer.appendChild(el);
     });
 }
-/* [game.js] buyShopItem 수정 */
+// [수정] buyShopItem: alert -> showPopup
 function buyShopItem(el, type, name, cost) {
     if (el.classList.contains('sold-out')) return;
-    if (player.gold < cost) { alert("소지금이 부족합니다."); return; }
+    
+    // [수정] 잔액 부족 알림
+    if (player.gold < cost) { 
+        showPopup("잔액 부족", "소지금이 부족합니다.", [{txt: "확인", func: closePopup}]); 
+        return; 
+    }
 
-    // [1] 카드 구매
     if (type === 'card') {
         player.gold -= cost;
         player.storage.push(name);
-        alert(`[${name}] 구매 완료! 보관함으로 이동되었습니다.`);
+        
+        // [수정] 구매 완료 알림
+        showPopup("구매 성공", `[${name}] 구매 완료!<br>보관함으로 이동되었습니다.`, [{txt: "확인", func: closePopup}]);
+        
         el.classList.add('sold-out');
         el.style.opacity = 0.5;
         updateUI();
         autoSave();
     } 
-    // [2] 아이템 구매 (addItem에 콜백 전달)
     else {
-        // 성공 시 실행할 함수 정의
         const onBuySuccess = () => {
-            player.gold -= cost; // 돈 차감
-            alert(`[${name}] 구매 완료!`);
+            player.gold -= cost;
+            // [수정] 구매 완료 알림
+            showPopup("구매 성공", `[${name}] 구매 완료!`, [{txt: "확인", func: closePopup}]);
+            
             el.classList.add('sold-out');
             el.style.opacity = 0.5;
             updateUI();
             autoSave();
         };
 
-        // addItem 실행 (꽉 찼으면 팝업 뜸 -> 교체 시 onBuySuccess 실행됨)
-        // 유물 중복의 경우 addItem 내부에서 false 반환하고 끝남 (알림은 아래에서 처리)
         let result = addItem(name, onBuySuccess);
         
-        // 유물 중복 등 즉시 실패한 경우에만 알림
-        if (!result) {
+        if (result === false) {
             let data = ITEM_DATA[name];
-            if (data.usage === 'passive' && player.relics.includes(name)) {
-                alert("이미 보유하고 있는 유물입니다. (중복 불가)");
+            // [수정] 중복 알림
+            if (data.usage === 'passive' && (player.relics.includes(name) || player.warehouse.includes(name))) {
+                showPopup("중복 불가", "이미 보유하고 있는 유물입니다.", [{txt: "확인", func: closePopup}]);
             }
-            // 소모품 꽉 찬 경우는 showSwapPopup이 뜨므로 여기선 아무것도 안 해도 됨
         }
     }
 }
-/* [NEW] 카드 제거 서비스 UI */
-function openCardRemoval(cost) {
-    if (player.gold < cost) {
-        alert("소지금이 부족합니다.");
+// [수정] processCardRemoval: alert -> showPopup
+function processCardRemoval(idx, cost) {
+    if (player.deck.length <= 5) {
+        showPopup("불가", "최소 5장의 카드는 남겨야 합니다.", [{txt: "확인", func: closePopup}]);
         return;
     }
 
-    // 덱 목록 보여주기 (클릭 시 삭제)
-    let content = `<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">`;
+    let removed = player.deck.splice(idx, 1)[0];
+    player.gold -= cost;
     
-    player.deck.forEach((cName, idx) => {
-        content += `
-            <button onclick="processCardRemoval(${idx}, ${cost})" class="small-btn" style="width:80px; height:100px; background:#eee; color:#333; display:flex; flex-direction:column; justify-content:center; align-items:center; border:2px solid #c0392b;">
-                <b>${cName}</b>
-                <span style="font-size:0.7em; margin-top:5px; color:#555;">제거하기</span>
-            </button>
-        `;
-    });
-    content += `</div>`;
-
-    showPopup("🔥 기술 망각", "제거할 카드를 선택하세요. (되돌릴 수 없습니다)", [
-        {txt: "취소", func: closePopup}
-    ], content);
+    // 팝업 닫고 알림 (여기서 closePopup은 카드 선택 팝업을 닫는 용도)
+    closePopup(); 
+    
+    // [수정] 제거 완료 알림
+    setTimeout(() => {
+        showPopup("제거 완료", `[${removed}] 카드를 태워버렸습니다.`, [{txt: "확인", func: closePopup}]);
+    }, 100);
+    
+    updateUI();
+    autoSave();
+    
+    // 상점 리로드 (임시)
+    const container = document.getElementById('event-content-box');
+    if (container && container.classList.contains('shop-mode')) {
+        // 현재 상점 화면이면 갱신 필요 (간단히 UI만 업데이트)
+    }
 }
 
 /* [NEW] 실제 카드 삭제 로직 */
 function processCardRemoval(idx, cost) {
     if (player.deck.length <= 5) {
-        alert("최소 5장의 카드는 남겨야 합니다.");
+        showPopup("최소 5장의 카드는 남겨야 합니다.");
         return;
     }
 
@@ -2878,7 +2887,7 @@ function processCardRemoval(idx, cost) {
     player.gold -= cost;
     
     closePopup();
-    alert(`[${removed}] 카드를 태워버렸습니다.`);
+    showPopup(`[${removed}] 카드를 태워버렸습니다.`);
     
     // 상점 화면 갱신 (돈 줄어든 거 반영)
     // 현재 상점 타입을 알기 어려우므로 간단히 다시 렌더링하거나 UI만 업데이트
@@ -2936,7 +2945,7 @@ function switchScene(sceneName) {
         updateUI();
     } else {
         console.error(`[Error] 화면을 찾을 수 없습니다: ${targetId}`);
-        alert("화면 로딩 실패! 페이지를 새로고침 해주세요.\n(브라우저 캐시 문제일 수 있습니다.)");
+        showPopup("화면 로딩 실패! 페이지를 새로고침 해주세요.\n(브라우저 캐시 문제일 수 있습니다.)");
         // 강제로 허브로 보내거나 재시도
         if(sceneName !== 'hub') switchScene('hub');
     }
@@ -3094,6 +3103,7 @@ function getStat(entity, type) {
 }
 // [game.js] 특성 추가/제거 함수(이벤트용)
 
+// [수정] addTrait / removeTrait: alert -> showPopup
 function addTrait(key) {
     if (player.traits.includes(key)) return;
     player.traits.push(key);
@@ -3102,16 +3112,15 @@ function addTrait(key) {
     if (t.onAcquire) t.onAcquire(player);
     
     recalcStats();
-    alert(`[특성 획득] ${t.name}: ${t.desc}`);
+    showPopup("특성 획득", `[${t.name}]<br>${t.desc}`, [{txt: "확인", func: closePopup}]);
 }
 
 function removeTrait(key) {
     if (!player.traits.includes(key)) return;
     player.traits = player.traits.filter(k => k !== key);
     
-    // onRemove가 있다면 호출
     recalcStats();
-    alert(`[특성 제거] ${TRAIT_DATA[key].name} 특성이 사라졌습니다.`);
+    showPopup("특성 제거", `${TRAIT_DATA[key].name} 특성이 사라졌습니다.`, [{txt: "확인", func: closePopup}]);
 }
 
 function applyBuff(entity, name, dur) { if (name === "독" || name === "활력") entity.buffs[name] = (entity.buffs[name] || 0) + dur; else entity.buffs[name] = dur; log(`✨ ${entity===player?"나":"적"}에게 [${name}] 적용`); }
