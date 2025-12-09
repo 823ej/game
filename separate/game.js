@@ -219,9 +219,10 @@ let player = {
     storage: [],    // 보관함 (Inactive - 모든 타입 섞여 있음)
     
     // 인벤토리 관련
-    inventory: [], maxInventory: 6,
-    relics: [],         // [NEW] 유물 (무제한)
-
+   inventory: [],      // 소모품
+    relics: [],         // 유물 (활성화됨)
+    warehouse: [],      // [NEW] 창고 (비활성화됨)
+    maxInventory: 6,
     // 상태
     jumadeung: false, lucky: false,
     drawPile: [], discardPile: [], exhaustPile: [], buffs: {}
@@ -1154,46 +1155,151 @@ function acceptMission(id) {
 // 교체 성공 시 실행할 콜백 저장 변수
 let tempSwapCallback = null;
 
+// [수정] addItem 함수: 중복 체크 범위 확대 (창고 포함)
 function addItem(name, onAcquireCallback = null) {
     let data = ITEM_DATA[name];
     if (!data) return false;
 
-    // [CASE A] 유물 (개수 제한 없음)
+    // [CASE A] 유물 (Passive)
     if (data.usage === "passive") {
-        if (player.relics.includes(name)) {
-            // 중복 시 처리는 호출한 곳에서(상점 등) 메시지 띄우도록 false 반환
-            return false;
+        // [★핵심] 보유 중이거나 '창고'에 있어도 중복 획득 불가
+        if (player.relics.includes(name) || player.warehouse.includes(name)) {
+            return false; // 중복 실패
         }
+        
         player.relics.push(name);
         log(`💍 유물 획득! [${name}]`);
         
-        // 획득 즉시 효과
-        if (name === "울끈불끈 패딩") { player.maxHp += 50; player.hp += 50; updateUI(); }
+        // 획득 시 즉시 효과 (스탯 재계산으로 반영)
+        recalcStats(); 
         
         updateInventoryUI();
         if (onAcquireCallback) onAcquireCallback();
         return true;
     } 
     
-    // [CASE B] 소모품 (6개 제한)
+    // [CASE B] 소모품 (기존과 동일)
     else {
-        // 1. 공간 있음 -> 즉시 획득
         if (player.inventory.length < player.maxInventory) {
             player.inventory.push(name);
             log(`🎒 아이템 획득! [${name}]`);
             updateInventoryUI();
             if (onAcquireCallback) onAcquireCallback();
             return true;
-        } 
-        
-        // 2. 가방 꽉 참 -> [교체 팝업] 호출
-        else {
-            log("🚫 가방이 꽉 찼습니다! 버릴 아이템을 선택하세요.");
+        } else {
+            log("🚫 가방이 꽉 찼습니다! 교체할 아이템을 선택하세요.");
             showSwapPopup(name, onAcquireCallback);
-            return false; // 즉시 획득은 실패 (사용자 선택 대기)
+            return false;
         }
     }
 }
+/* [NEW] 창고 화면 열기 */
+function openStorage() {
+    game.state = 'storage';
+    switchScene('storage'); // HTML에 storage-scene 추가 필요
+    renderStorage();
+}
+
+/* [NEW] 창고 화면 렌더링 */
+function renderStorage() {
+    const bagList = document.getElementById('storage-bag-list');
+    const warehouseList = document.getElementById('storage-warehouse-list');
+    
+    bagList.innerHTML = "";
+    warehouseList.innerHTML = "";
+
+    // 1. 왼쪽: 가방 (인벤토리 + 유물)
+    // 소모품 먼저 표시
+    player.inventory.forEach((name, idx) => {
+        let el = createStorageItemEl(name, () => moveItemToWarehouse('consume', idx));
+        bagList.appendChild(el);
+    });
+    // 유물 표시 (구분을 위해 스타일 추가 가능)
+    player.relics.forEach((name, idx) => {
+        let el = createStorageItemEl(name, () => moveItemToWarehouse('relic', idx));
+        el.style.borderColor = "#f1c40f"; // 유물은 금색 테두리
+        bagList.appendChild(el);
+    });
+
+    // 2. 오른쪽: 창고 (모든 아이템)
+    player.warehouse.forEach((name, idx) => {
+        let el = createStorageItemEl(name, () => moveItemFromWarehouse(idx));
+        // 창고에 있는 유물은 효과가 꺼져있음을 시각적으로 표시 (약간 투명하게)
+        if (ITEM_DATA[name].usage === 'passive') {
+            el.style.opacity = "0.7";
+            el.style.borderColor = "#7f8c8d"; // 회색 테두리
+        }
+        warehouseList.appendChild(el);
+    });
+
+    // 카운트 갱신
+    document.getElementById('storage-bag-count').innerText = player.inventory.length + player.relics.length;
+    document.getElementById('storage-wh-count').innerText = player.warehouse.length;
+}
+
+/* [NEW] 창고 아이템 엘리먼트 생성 헬퍼 */
+function createStorageItemEl(name, onClick) {
+    let data = ITEM_DATA[name];
+    let el = document.createElement('div');
+    el.className = 'shop-item'; // 기존 스타일 재사용
+    el.style.width = "60px";
+    el.style.margin = "5px";
+    
+    el.innerHTML = `
+        <div class="item-icon item-rank-${data.rank}" style="width:50px; height:50px; font-size:1.2em; pointer-events:none;">
+            ${data.icon}
+        </div>
+        <div style="font-size:0.7em; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:60px;">${name}</div>
+    `;
+    el.onclick = onClick;
+    return el;
+}
+
+/* [NEW] 가방 -> 창고 이동 */
+function moveItemToWarehouse(type, idx) {
+    let item;
+    if (type === 'consume') {
+        item = player.inventory.splice(idx, 1)[0];
+    } else {
+        item = player.relics.splice(idx, 1)[0];
+        // 유물 해제 시 스탯 재계산 (효과 제거됨)
+        recalcStats();
+    }
+    
+    player.warehouse.push(item);
+    renderStorage();
+    updateUI(); // 스탯 변경 반영
+    autoSave();
+}
+
+/* [NEW] 창고 -> 가방 이동 */
+function moveItemFromWarehouse(idx) {
+    let item = player.warehouse[idx];
+    let data = ITEM_DATA[item];
+
+    // 공간 확인 (소모품인 경우만)
+    if (data.usage === 'consume' && player.inventory.length >= player.maxInventory) {
+        alert("가방(소모품) 공간이 부족합니다!");
+        return;
+    }
+
+    // 창고에서 제거
+    player.warehouse.splice(idx, 1);
+
+    // 가방으로 이동
+    if (data.usage === 'passive') {
+        player.relics.push(item);
+        // 유물 장착 시 스탯 재계산 (효과 적용됨)
+        recalcStats();
+    } else {
+        player.inventory.push(item);
+    }
+
+    renderStorage();
+    updateUI(); // 스탯 변경 반영
+    autoSave();
+}
+
 /* [NEW] 교체 팝업 표시 함수 */
 function showSwapPopup(newItemName, onSuccess) {
     // 1. 현재 가방의 아이템들을 버튼으로 나열
@@ -2756,7 +2862,7 @@ function switchScene(sceneName) {
     // 1. 모든 장면 숨기기
     const scenes = [
         'hub-scene', 'city-scene', 'exploration-scene', 
-        'event-scene', 'deck-scene', 
+        'event-scene', 'deck-scene', 'storage-scene',
         'result-scene', 'story-scene',
         'char-creation-scene'
     ];

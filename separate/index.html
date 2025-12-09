@@ -97,9 +97,9 @@
                         <div class="hub-card-title">🃏 덱 정비 (카드)</div>
                         <div class="hub-card-desc">전투용/대화용 덱을 편집합니다.</div>
                     </button>
-                    <button class="hub-card" onclick="saveGame()">
-                        <div class="hub-card-title">💾 업무 일지 (저장)</div>
-                        <div class="hub-card-desc">현재 상태를 기록합니다.</div>
+                    <button class="hub-card" onclick="openStorage()">
+                        <div class="hub-card-title">📦 창고 (보관함)</div>
+                        <div class="hub-card-desc">아이템과 유물을 보관합니다.<br><span style="color:#777; font-size:0.9em;">(보관 중인 유물은 효과가 꺼집니다)</span></div>
                     </button>
                 </div>
             </div>
@@ -132,6 +132,31 @@
                 <span style="font-size:0.8em; color:#aaa;">대기 중인 카드입니다.</span>
             </div>
             <div id="storage-list" class="card-grid"></div>
+        </div>
+    </div>
+</div>
+<div id="storage-scene" class="scene hidden" style="background:#222;">
+    <div style="padding:10px; background:#333; box-shadow:0 2px 5px rgba(0,0,0,0.5); display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0; color:#f39c12;">📦 개인 창고</h2>
+        <button class="small-btn" onclick="renderHub()">❌ 나가기</button>
+    </div>
+<div class="deck-builder-container">
+        <div class="deck-column">
+            <div class="deck-header">
+                <h3>🎒 소지품 (<span id="storage-bag-count">0</span>)</h3>
+                <span style="font-size:0.8em; color:#aaa;">현재 보유 중인 아이템과 유물</span>
+            </div>
+            <div id="storage-bag-list" class="card-grid" style="display:flex; flex-wrap:wrap; align-content:flex-start; gap:5px;"></div>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:center; color:#555; font-size:2em; width:40px;">⇄</div>
+
+        <div class="deck-column" style="background:#1f2a36;">
+            <div class="deck-header">
+                <h3>📦 창고 (<span id="storage-wh-count">0</span>)</h3>
+                <span style="font-size:0.8em; color:#aaa;">보관 중 (유물 효과 비활성화)</span>
+            </div>
+            <div id="storage-warehouse-list" class="card-grid" style="display:flex; flex-wrap:wrap; align-content:flex-start; gap:5px;"></div>
         </div>
     </div>
 </div>
