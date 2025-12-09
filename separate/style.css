@@ -1621,3 +1621,26 @@ body {
     .ap-inner { font-size: 1em; }
     .ap-label { font-size: 0.5em; }
 }
+/* 카드 컬렉션용 그리드 (인벤토리 그리드보다 칸이 큼) */
+.card-list-grid {
+    display: grid;
+    /* 카드가 100px 너비이므로 여유 있게 110px 잡음 */
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
+    gap: 15px;
+    justify-items: center;
+    padding: 10px;
+}
+
+/* 컬렉션 뷰 전용 카드 스타일 (기존 .card 상속하되 클릭 방지 등) */
+.collection-card-view {
+    /* 기존 card 클래스와 함께 사용됨 */
+    position: relative;
+    cursor: default; /* 클릭해도 아무 일 없음 */
+    transform: scale(1) !important; /* 호버 확대 효과 제거 (선택사항) */
+    margin: 0 !important;
+}
+.collection-card-view:hover {
+    transform: translateY(-5px) scale(1.05) !important; /* 살짝만 움직이게 */
+    z-index: 10;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}

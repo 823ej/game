@@ -4020,23 +4020,80 @@ function openPlayerStats() {
 
     showPopup("플레이어 정보", "현재 스탯과 트레잇을 확인하세요.", [{ txt: "닫기", func: closePopup }], content);
 }
-
-// 전체 카드 목록 보기
+// 현재 보고 있는 덱 탭 ('battle' or 'social')
+let currentCollectionTab = 'battle';
+/* [수정] 카드 컬렉션 열기 */
 function openAllCards() {
     if (!game.started) return;
-    const sections = [
-        { title: "전투 덱", list: player.deck },
-        { title: "소셜 덱", list: player.socialDeck },
-        { title: "보관함", list: player.storage }
-    ];
-    const makeList = (title, arr) => {
-        if (!arr || arr.length === 0) return `<div><b>${title}</b><br><span style="color:#777;">없음</span></div>`;
-        const counts = arr.reduce((m, c) => (m[c] = (m[c] || 0) + 1, m), {});
-        const rows = Object.keys(counts).sort().map(name => `<li>${name} x${counts[name]}</li>`).join("");
-        return `<div><b>${title}</b><ul style="margin:4px 0 10px 18px;">${rows}</ul></div>`;
-    };
-    const content = sections.map(s => makeList(s.title, s.list)).join("");
-    showPopup("보유 카드", "현재 가지고 있는 모든 카드를 확인하세요.", [{ txt: "닫기", func: closePopup }], content);
+    
+    currentCollectionTab = 'battle'; // 기본은 전투 덱
+    document.getElementById('card-collection-overlay').classList.remove('hidden');
+    
+    // 탭 UI 초기화
+    document.getElementById('tab-col-battle').className = 'inv-tab active';
+    document.getElementById('tab-col-social').className = 'inv-tab';
+    
+    renderCardCollection();
+}
+
+/* [NEW] 닫기 */
+function closeCardCollection() {
+    document.getElementById('card-collection-overlay').classList.add('hidden');
+}
+
+/* [NEW] 탭 전환 */
+function switchCollectionTab(tab) {
+    currentCollectionTab = tab;
+    
+    // 버튼 스타일
+    document.getElementById('tab-col-battle').className = (tab === 'battle' ? 'inv-tab active' : 'inv-tab');
+    document.getElementById('tab-col-social').className = (tab === 'social' ? 'inv-tab active' : 'inv-tab');
+    
+    renderCardCollection();
+}
+
+/* [NEW] 카드 리스트 렌더링 */
+function renderCardCollection() {
+    const list = document.getElementById('collection-list');
+    list.innerHTML = "";
+
+    // 카운트 갱신
+    document.getElementById('cnt-col-battle').innerText = `(${player.deck.length})`;
+    document.getElementById('cnt-col-social').innerText = `(${player.socialDeck.length})`;
+
+    // 대상 덱 가져오기
+    let targetDeck = (currentCollectionTab === 'battle') ? player.deck : player.socialDeck;
+
+    // 카드 정렬 (가나다순 or 랭크순 -> 여기선 랭크순 추천)
+    // 원본 덱 순서를 건드리지 않기 위해 복사본(...) 사용
+    let sortedDeck = [...targetDeck].sort((a, b) => {
+        let da = CARD_DATA[a], db = CARD_DATA[b];
+        if (db.rank !== da.rank) return db.rank - da.rank; // 랭크 높은 순
+        return a.localeCompare(b); // 이름 순
+    });
+
+    if (sortedDeck.length === 0) {
+        list.innerHTML = `<div style="grid-column: 1/-1; color:#777; margin-top:50px;">(카드가 없습니다)</div>`;
+        return;
+    }
+
+    sortedDeck.forEach(cName => {
+        let data = CARD_DATA[cName];
+        let el = document.createElement('div');
+        
+        // 기존 card 클래스 사용하여 디자인 통일 + 컬렉션 전용 클래스 추가
+        el.className = 'card collection-card-view';
+        
+        // 카드 내용 HTML 구성 (기존 renderHand와 동일한 구조)
+        el.innerHTML = `
+            <div class="card-cost">${data.cost}</div>
+            <div class="card-rank">${"★".repeat(data.rank)}</div>
+            <div class="card-name">${cName}</div>
+            <div class="card-desc">${applyTooltip(data.desc)}</div>
+        `;
+        
+        list.appendChild(el);
+    });
 }
 
 window.onload = initGame;

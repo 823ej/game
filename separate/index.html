@@ -62,6 +62,23 @@
             </div>
         </div>
     </div>
+    <div id="card-collection-overlay" class="inventory-overlay hidden" onclick="closeCardCollection()">
+        <div class="inventory-panel" onclick="event.stopPropagation()" style="height: 600px;"> <div class="inventory-header-tabs">
+                <button id="tab-col-battle" class="inv-tab active" onclick="switchCollectionTab('battle')">
+                    ⚔️ 전투 덱 <span id="cnt-col-battle" style="font-size:0.8em">(0)</span>
+                </button>
+                <button id="tab-col-social" class="inv-tab" onclick="switchCollectionTab('social')">
+                    💬 소셜 덱 <span id="cnt-col-social" style="font-size:0.8em">(0)</span>
+                </button>
+                <button class="small-btn close-inv-btn" onclick="closeCardCollection()">✖</button>
+            </div>
+
+            <div class="inventory-body">
+                <div class="card-list-grid" id="collection-list">
+                    </div>
+            </div>
+        </div>
+    </div>
     <div id="hub-scene" class="scene hidden hub-scene">
         <div class="hub-illustration"></div>
         <div class="hub-overlay-gradient"></div>
