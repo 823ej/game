@@ -179,9 +179,9 @@ const TOOLTIPS = {
     // [추가된 부분] 소멸 설명 추가
     "소멸": "카드를 사용하면 덱에서 제거되어, 이번 전투 동안 다시 나오지 않습니다.",
     // [NEW] 소셜 모드 전용 상태이상
-    "헤롱헤롱": "정신을 못 차립니다. 방어(멘탈 방어) 스탯이 절반으로 감소합니다.",
+    "헤롱헤롱": "정신을 못 차립니다. 멘탈 방어 스탯이 절반으로 감소합니다.",
     "분노": "화가 나서 참을성이 없어집니다. 턴마다 인내심이 2배로 감소합니다.",
-    "우울": "감정이 격해집니다. 공격(멘탈 공격) 스탯이 50% 증가합니다."
+    "우울": "감정이 격해집니다. 멘탈 공격 스탯이 50% 증가합니다."
     
 };
 
@@ -243,7 +243,7 @@ const ITEM_DATA = {
     // --- 소모성 아이템 ---
     "회복약": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복 (사용 시 소모)", effect: "heal", val: 25, target: "self", tags: ["drink", "alcohol"]},
     "호신용 스프레이": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🧴", desc: "적 10 피해 (사용 시 소모)", effect: "damage", val: 10, target: "enemy", tags: ["weapon", "chemical"]},
-    "피난의 피리": {type: "item", usage: "consume", rank: 2, price: 2000, icon: "🎼", desc: "다음 이벤트 휴식 고정", effect: "event_rest", target: "self", tags: ["instrument", "noise"]},
+    "피리": {type: "item", usage: "consume", rank: 2, price: 1000, icon: "🎼", desc: "NPC 호감도 상승", effect: "none", target: "enemy", tags: ["instrument", "noise"]},
     "뇌물 봉투": {type: "item", usage: "consume", rank: 2, price: 1500, icon: "✉️", desc: "NPC 호감도 대폭 상승", effect: "none", target: "enemy", tags: ["money", "paper"]},
     "공포 영화 포스터": {type: "item", usage: "consume", rank: 1, price: 500, icon: "👻", desc: "NPC 멘탈 감소", effect: "none", target: "enemy", tags: ["horror", "paper"]},
     

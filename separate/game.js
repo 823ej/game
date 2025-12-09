@@ -3009,48 +3009,45 @@ function calculateTP() {
     currentTP = 0 - usedPoints;
 }
 
-/* [game.js] getStat 함수 수정 (모든 스탯 보정치 공식 통일) */
+/* [game.js] getStat 함수 전면 수정 (6대 스탯 기반 상태이상 분리) */
 function getStat(entity, type) {
     let val = 0;
     
-    // [1] 플레이어
+    // [1] 플레이어: 스탯 기반 보정치 계산
     if (entity === player) {
         let rawVal = 0;
         
-        // 1. 기초 스탯 매핑
         switch (type) {
-            case 'atk': rawVal = player.stats.str; break; // 공격 -> 근력
-            case 'def': rawVal = player.stats.con; break; // 방어 -> 건강
-            case 'spd': rawVal = player.stats.dex; break; // 속도 -> 민첩
-            case 'socialAtk': rawVal = player.stats.cha; break; // 소셜공격 -> 매력
-            case 'socialDef': rawVal = player.stats.int; break; // 소셜방어 -> 지능
-            
-            // 그 외 직접 호출 시 (str, con 등)
+            case 'atk': rawVal = player.stats.str; break; // 물리공격 <- 근력
+            case 'def': rawVal = player.stats.con; break; // 물리방어 <- 건강
+            case 'spd': rawVal = player.stats.dex; break; // 속도 <- 민첩
+            case 'socialAtk': rawVal = player.stats.cha; break; // 소셜공격 <- 매력
+            case 'socialDef': rawVal = player.stats.int; break; // 소셜방어 <- 지능
             default: rawVal = player.stats[type] || 10; break;
         }
 
-        // 2. 아이템 보정 (스탯 자체를 증가시킴)
-        // (예: 운동화는 민첩+2 -> 보정치+1 효과)
-       // [수정] 유물 체크: player.inventory.includes -> player.relics.includes
-        if ((type === 'atk' || type === 'str') && player.relics.includes("쿠보탄")) rawVal += 2;
-        if ((type === 'def' || type === 'con') && player.relics.includes("강인함의 부적")) rawVal += 2;
-        if ((type === 'spd' || type === 'dex') && player.relics.includes("좋은 운동화")) rawVal += 2;
-        // 3. [핵심 수정] 보정치 계산 공식 통일
-        // 공식: (스탯 - 10) / 2 (소수점 버림)
-        // 예: 10~11 -> +0, 12~13 -> +1, 14~15 -> +2
+        // 아이템 보정 (보유 시 스탯 직접 증가)
+        if ((type === 'atk' || type === 'str') && player.inventory.includes("쿠보탄")) rawVal += 2;
+        if ((type === 'def' || type === 'con') && player.inventory.includes("강인함의 부적")) rawVal += 2;
+        if ((type === 'spd' || type === 'dex') && player.inventory.includes("좋은 운동화")) rawVal += 2;
+        
+        // ★ 창고가 아닌 '유물(relics)' 목록도 체크 (상태창 등에서 호출 시)
+        if (player.relics) {
+            if ((type === 'atk' || type === 'str') && player.relics.includes("쿠보탄")) rawVal += 2;
+            if ((type === 'def' || type === 'con') && player.relics.includes("강인함의 부적")) rawVal += 2;
+            if ((type === 'spd' || type === 'dex') && player.relics.includes("좋은 운동화")) rawVal += 2;
+        }
+
+        // 보정치(Mod) 계산 공식: (스탯 - 10) / 2
         let mod = Math.floor((rawVal - 10) / 2);
 
         if (type === 'spd') {
-            // ★ 속도 = 기본속도(2) + 민첩 보정치
-            // 민첩 10(보정0) -> 속도 2 (기본)
-            // 민첩 8(보정-1) -> 속도 1 (느림)
-            val = Math.max(1, 2 + mod); // 최소 1 보장
+            val = Math.max(1, 2 + mod); // 속도는 최소 1 보장
         } else {
-            // 공격/방어 등은 보정치 그대로 사용
-            val = mod;
+            val = mod; // 공격/방어는 음수 가능 (패널티)
         }
     } 
-    // [2] 적 (기존 유지)
+    // [2] 적: 기본 스탯 사용
     else {
         if (type === 'socialAtk') val = entity.baseAtk;
         else if (type === 'socialDef') val = entity.baseDef;
@@ -3059,20 +3056,38 @@ function getStat(entity, type) {
         else if (type === 'spd') val = entity.baseSpd;
     }
 
-    // 4. 버프/디버프 계산 (최종 값에 적용)
-    if (type === 'atk' || type === 'socialAtk') { 
-        if (entity.buffs["약화"]) val = Math.floor(val * 0.5); 
-        if (entity.buffs["강화"]) val = Math.max(1, val * 2); 
-        if (entity.buffs["우울"]) val = Math.floor(val * 1.5); 
+    // [3] 상태이상(버프/디버프) 적용 - ★ 핵심 수정 파트
+    
+    // 1. 물리 공격력 (근력 기반)
+    if (type === 'atk') { 
+        if (entity.buffs["강화"]) val = Math.floor(val * 1.5) + 2; // 50% 증가 + 2
+        if (entity.buffs["약화"]) val = Math.floor(val * 0.5);     // 50% 감소
     } 
-    else if (type === 'def' || type === 'socialDef') { 
+    
+    // 2. 물리 방어력 (건강 기반)
+    else if (type === 'def') { 
+        if (entity.buffs["건강"]) val = Math.floor(val * 1.5) + 2; 
         if (entity.buffs["취약"]) val = Math.floor(val * 0.5); 
-        if (entity.buffs["건강"]) val = Math.max(1, val * 2);
-        if (entity.buffs["헤롱헤롱"]) val = Math.floor(val * 0.5); 
     } 
+    
+    // 3. 속도 (민첩 기반)
     else if (type === 'spd') { 
+        if (entity.buffs["쾌속"]) val = Math.floor(val * 1.5) + 1; 
         if (entity.buffs["마비"]) val = Math.floor(val * 0.5); 
-        if (entity.buffs["쾌속"]) val = Math.max(1, val * 2); 
+    }
+
+    // 4. 소셜 공격력 (매력 기반) - ★ 물리 버프 영향 제외
+    else if (type === 'socialAtk') {
+        // '우울'은 감정이 격해져 공격성이 늘어나는 컨셉
+        if (entity.buffs["우울"]) val = Math.floor(val * 1.5) + 2; 
+        // '약화'는 물리적이므로 소셜엔 영향 없음 (혹은 미미하게)
+    }
+
+    // 5. 소셜 방어력 (지능 기반) - ★ 물리 버프 영향 제외
+    else if (type === 'socialDef') {
+        // '헤롱헤롱'은 정신을 못 차려 논리 방어가 뚫림
+        if (entity.buffs["헤롱헤롱"]) val = Math.floor(val * 0.5);
+        // '건강' 버프는 몸이 튼튼한 거지 멘탈이 센 게 아니므로 제외
     }
     
     return val;
