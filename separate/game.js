@@ -1193,14 +1193,30 @@ function addItem(name, onAcquireCallback = null) {
         }
     }
 }
-/* [NEW] 창고 화면 열기 */
+// 현재 창고 탭 상태 ('consume' 또는 'relic')
+let currentStorageMode = 'consume';
+/* [수정] 창고 열기 (초기화) */
 function openStorage() {
+    switchStorageMode('consume'); // 기본은 소모품 탭
     game.state = 'storage';
-    switchScene('storage'); // HTML에 storage-scene 추가 필요
+    switchScene('storage');
+}
+
+/* [NEW] 창고 탭 전환 */
+function switchStorageMode(mode) {
+    currentStorageMode = mode;
+    
+    // 버튼 스타일 업데이트 (선택된 탭 밝게, 아니면 흐리게)
+    document.getElementById('tab-storage-consume').style.opacity = (mode === 'consume') ? 1 : 0.5;
+    document.getElementById('tab-storage-relic').style.opacity = (mode === 'relic') ? 1 : 0.5;
+    
+    // 제목 업데이트
+    document.getElementById('storage-bag-title').innerText = (mode === 'consume') ? "🎒 소모품" : "💍 유물";
+    
     renderStorage();
 }
 
-/* [NEW] 창고 화면 렌더링 */
+/* [수정] 창고 렌더링 (필터링 적용) */
 function renderStorage() {
     const bagList = document.getElementById('storage-bag-list');
     const warehouseList = document.getElementById('storage-warehouse-list');
@@ -1208,33 +1224,42 @@ function renderStorage() {
     bagList.innerHTML = "";
     warehouseList.innerHTML = "";
 
-    // 1. 왼쪽: 가방 (인벤토리 + 유물)
-    // 소모품 먼저 표시
-    player.inventory.forEach((name, idx) => {
-        let el = createStorageItemEl(name, () => moveItemToWarehouse('consume', idx));
-        bagList.appendChild(el);
-    });
-    // 유물 표시 (구분을 위해 스타일 추가 가능)
-    player.relics.forEach((name, idx) => {
-        let el = createStorageItemEl(name, () => moveItemToWarehouse('relic', idx));
-        el.style.borderColor = "#f1c40f"; // 유물은 금색 테두리
-        bagList.appendChild(el);
-    });
+    // --- [1] 왼쪽: 가방 (현재 탭에 맞는 아이템만 표시) ---
+    if (currentStorageMode === 'consume') {
+        // 소모품 표시
+        player.inventory.forEach((name, idx) => {
+            let el = createStorageItemEl(name, () => moveItemToWarehouse('consume', idx));
+            bagList.appendChild(el);
+        });
+    } else {
+        // 유물 표시
+        player.relics.forEach((name, idx) => {
+            let el = createStorageItemEl(name, () => moveItemToWarehouse('relic', idx));
+            el.style.borderColor = "#f1c40f"; // 유물 강조
+            bagList.appendChild(el);
+        });
+    }
 
-    // 2. 오른쪽: 창고 (모든 아이템)
-    player.warehouse.forEach((name, idx) => {
-        let el = createStorageItemEl(name, () => moveItemFromWarehouse(idx));
-        // 창고에 있는 유물은 효과가 꺼져있음을 시각적으로 표시 (약간 투명하게)
-        if (ITEM_DATA[name].usage === 'passive') {
+    // --- [2] 오른쪽: 창고 (현재 탭에 맞는 아이템만 필터링해서 표시) ---
+    player.warehouse.forEach((name, originalIdx) => {
+        let data = ITEM_DATA[name];
+        let isRelic = (data.usage === 'passive');
+        
+        // 필터링: 현재 탭과 타입이 맞지 않으면 건너뜀
+        if (currentStorageMode === 'consume' && isRelic) return;
+        if (currentStorageMode === 'relic' && !isRelic) return;
+
+        // 아이템 생성 (클릭 시 originalIdx를 사용해 정확한 아이템을 가져옴)
+        let el = createStorageItemEl(name, () => moveItemFromWarehouse(originalIdx));
+        
+        // 창고에 있는 유물은 효과 꺼짐 표시 (흐리게 + 회색 테두리)
+        if (isRelic) {
             el.style.opacity = "0.7";
-            el.style.borderColor = "#7f8c8d"; // 회색 테두리
+            el.style.borderColor = "#7f8c8d";
         }
+        
         warehouseList.appendChild(el);
     });
-
-    // 카운트 갱신
-    document.getElementById('storage-bag-count').innerText = player.inventory.length + player.relics.length;
-    document.getElementById('storage-wh-count').innerText = player.warehouse.length;
 }
 
 /* [NEW] 창고 아이템 엘리먼트 생성 헬퍼 */
@@ -1255,24 +1280,24 @@ function createStorageItemEl(name, onClick) {
     return el;
 }
 
-/* [NEW] 가방 -> 창고 이동 */
+/* [수정] 가방 -> 창고 이동 (렌더링 갱신 추가) */
 function moveItemToWarehouse(type, idx) {
     let item;
     if (type === 'consume') {
         item = player.inventory.splice(idx, 1)[0];
     } else {
         item = player.relics.splice(idx, 1)[0];
-        // 유물 해제 시 스탯 재계산 (효과 제거됨)
-        recalcStats();
+        recalcStats(); // 유물 해제 효과
     }
     
     player.warehouse.push(item);
-    renderStorage();
-    updateUI(); // 스탯 변경 반영
+    
+    renderStorage(); // 화면 갱신
+    updateUI(); 
     autoSave();
 }
 
-/* [NEW] 창고 -> 가방 이동 */
+/* [수정] 창고 -> 가방 이동 (렌더링 갱신 추가) */
 function moveItemFromWarehouse(idx) {
     let item = player.warehouse[idx];
     let data = ITEM_DATA[item];
@@ -1289,14 +1314,13 @@ function moveItemFromWarehouse(idx) {
     // 가방으로 이동
     if (data.usage === 'passive') {
         player.relics.push(item);
-        // 유물 장착 시 스탯 재계산 (효과 적용됨)
-        recalcStats();
+        recalcStats(); // 유물 장착 효과
     } else {
         player.inventory.push(item);
     }
 
-    renderStorage();
-    updateUI(); // 스탯 변경 반영
+    renderStorage(); // 화면 갱신
+    updateUI(); 
     autoSave();
 }
 

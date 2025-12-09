@@ -137,14 +137,21 @@
 </div>
 <div id="storage-scene" class="scene hidden" style="background:#222;">
     <div style="padding:10px; background:#333; box-shadow:0 2px 5px rgba(0,0,0,0.5); display:flex; justify-content:space-between; align-items:center;">
-        <h2 style="margin:0; color:#f39c12;">📦 개인 창고</h2>
+        <h2 style="margin:0; color:#f39c12; font-size:1.2em;">📦 개인 창고</h2>
+        
+        <div>
+            <button id="tab-storage-consume" class="small-btn" style="background:#27ae60; font-weight:bold;" onclick="switchStorageMode('consume')">🎒 소모품</button>
+            <button id="tab-storage-relic" class="small-btn" style="background:#e67e22; font-weight:bold; opacity:0.5;" onclick="switchStorageMode('relic')">💍 유물</button>
+        </div>
+
         <button class="small-btn" onclick="renderHub()">❌ 나가기</button>
     </div>
-<div class="deck-builder-container">
+
+    <div class="deck-builder-container">
         <div class="deck-column">
             <div class="deck-header">
-                <h3>🎒 소지품 (<span id="storage-bag-count">0</span>)</h3>
-                <span style="font-size:0.8em; color:#aaa;">현재 보유 중인 아이템과 유물</span>
+                <h3 id="storage-bag-title">🎒 가방</h3>
+                <span style="font-size:0.8em; color:#aaa;">현재 소지 중</span>
             </div>
             <div id="storage-bag-list" class="card-grid" style="display:flex; flex-wrap:wrap; align-content:flex-start; gap:5px;"></div>
         </div>
@@ -153,8 +160,8 @@
 
         <div class="deck-column" style="background:#1f2a36;">
             <div class="deck-header">
-                <h3>📦 창고 (<span id="storage-wh-count">0</span>)</h3>
-                <span style="font-size:0.8em; color:#aaa;">보관 중 (유물 효과 비활성화)</span>
+                <h3 id="storage-wh-title">📦 창고</h3>
+                <span style="font-size:0.8em; color:#aaa;">보관 중 (유물 효과 꺼짐)</span>
             </div>
             <div id="storage-warehouse-list" class="card-grid" style="display:flex; flex-wrap:wrap; align-content:flex-start; gap:5px;"></div>
         </div>
