@@ -1644,3 +1644,98 @@ body {
     z-index: 10;
     box-shadow: 0 5px 15px rgba(0,0,0,0.5);
 }
+/* [style.css] 맨 아래에 추가 */
+
+/* --- 상점 와이드 모드 (가로 레이아웃) --- */
+.event-content.shop-mode {
+    max-width: 1100px; /* 너비 대폭 확장 */
+    width: 95%;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    /* 높이가 모자르면 스크롤 */
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.shop-header-area {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+/* 3단 레이아웃 (카드 / 아이템 / 서비스) */
+.shop-main-area {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+    align-items: flex-start;
+}
+
+/* 개별 컬럼 스타일 */
+.shop-col {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #3a4b5d;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+.shop-sec-title {
+    margin: 0 0 15px 0;
+    color: #ddd;
+    font-size: 1.1em;
+    border-bottom: 2px solid #555;
+    padding-bottom: 5px;
+    text-align: left;
+}
+
+/* 아이템 그리드 */
+.shop-items-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-content: flex-start;
+}
+
+/* 서비스(기술 망각) 박스 스타일 */
+.shop-service-box {
+    background: #c0392b;
+    border-radius: 8px;
+    padding: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: 0.2s;
+    border: 2px solid transparent;
+    width: 100%;
+    box-sizing: border-box;
+}
+.shop-service-box:hover { transform: scale(1.02); border-color: #f1c40f; }
+.service-icon { font-size: 2em; }
+.service-info { display: flex; flex-direction: column; align-items: flex-start; color: white; }
+.shop-price-tag { background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; margin-top: 3px; color:#f1c40f; font-weight:bold; }
+
+/* 나가기 버튼 영역 (우하단 배치) */
+.shop-footer-area {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end; /* 오른쪽 정렬 */
+    border-top: 1px solid #444;
+    padding-top: 15px;
+}
+
+/* 모바일 대응 (좁을 땐 세로로) */
+@media (max-width: 800px) {
+    .shop-main-area { flex-direction: column; }
+    .event-content.shop-mode { padding: 15px; }
+}

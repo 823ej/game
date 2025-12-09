@@ -2672,18 +2672,21 @@ function restAction() {
         }
     ]);
 }
-/* [수정] 상점 화면 렌더링 (인터넷 상점 추가) */
+/* [game.js] renderShopScreen 함수 전체 교체 */
 function renderShopScreen(shopType = "shop_black_market") {
     switchScene('event');
     
-    // 1. 상점 설정 (기본값)
+    // [핵심] 상점 전용 와이드 스타일 적용
+    const container = document.getElementById('event-content-box');
+    container.classList.add('shop-mode');
+
+    // 1. 상점 설정
     let shopTitle = "상점";
     let shopDesc = "물건을 보고 가세요.";
     let poolRank = 1; 
     let cardCount = 3;
     let itemCount = 2;
     
-    // 2. 타입별 설정
     if (shopType === "shop_black_market") {
         shopTitle = "💀 뒷골목 암시장";
         shopDesc = "출처는 묻지 마쇼. 싸게 넘길 테니.";
@@ -2694,74 +2697,84 @@ function renderShopScreen(shopType = "shop_black_market") {
         poolRank = 1; 
     } else if (shopType === "shop_high_end") {
         shopTitle = "💎 아라사카 부티크";
-        shopDesc = "최고급 장비만을 취급합니다. 가격은 비쌉니다.";
+        shopDesc = "최고급 장비만을 취급합니다.";
         poolRank = 2; 
-    } 
-    // [NEW] 인터넷 상점 추가
-    else if (shopType === "shop_internet") {
+    } else if (shopType === "shop_internet") {
         shopTitle = "📦 익명 배송 센터";
-        shopDesc = "집에서 편하게 주문하세요. (배송비 포함 가격)";
+        shopDesc = "집에서 편하게 주문하세요. (배송비 포함)";
         poolRank = 1;
-        itemCount = 3; // 인터넷은 물건 종류가 더 많음
+        itemCount = 3;
     }
 
-    // 3. 물품 생성
+    // 2. 물품 생성 (기존 로직 유지)
     let cardsForSale = [];
     for(let i=0; i<cardCount; i++) cardsForSale.push(getRandomCardByRank(poolRank + (Math.random()>0.7?1:0)));
     
     let itemsForSale = [];
     for(let i=0; i<itemCount; i++) itemsForSale.push(getRandomItem());
 
-    // 4. 카드 제거 비용
     let removeCost = 200 + (player.deck.length * 10); 
 
-    // 5. HTML 생성
-    const container = document.getElementById('event-content-box');
+    // 3. HTML 구조 생성 (3단 레이아웃 + 우하단 버튼)
     container.innerHTML = `
-        <div class="event-title">${shopTitle}</div>
-        <div class="event-desc">${shopDesc}<br><span style="color:#f1c40f; font-weight:bold;">소지금${player.gold} 원</span></div>
-        
-        <h3 style="margin:10px 0; border-bottom:1px solid #555;">🃏 기술 교본</h3>
-        <div class="shop-items" id="shop-cards"></div>
-
-        <h3 style="margin:10px 0; border-bottom:1px solid #555;">🎒 장비 및 도구</h3>
-        <div class="shop-items" id="shop-items"></div>
-
-        <h3 style="margin:10px 0; border-bottom:1px solid #555;">🛠️ 서비스</h3>
-        <div style="display:flex; justify-content:center; gap:20px; margin-bottom:20px;">
-            <div class="shop-item" onclick="openCardRemoval(${removeCost})">
-                <div style="background:#c0392b; width:120px; padding:15px; border-radius:8px;">
-                    <div style="font-size:2em;">🔥</div>
-                    <b>기술 망각</b>
-                </div>
-                <div class="shop-price">${removeCost} G</div>
+        <div class="shop-header-area">
+            <div>
+                <div class="event-title" style="margin:0; font-size:1.8em;">${shopTitle}</div>
+                <div style="color:#aaa; font-size:0.9em; margin-top:5px;">${shopDesc}</div>
             </div>
         </div>
 
-        <button class="action-btn" onclick="${shopType === 'shop_internet' ? 'renderHub()' : 'renderCityMap()'}" style="background:#7f8c8d; margin-top:20px;">나가기</button>
+        <div class="shop-main-area">
+            <div class="shop-col">
+                <h3 class="shop-sec-title">🃏 기술 교본</h3>
+                <div class="shop-items-grid" id="shop-cards"></div>
+            </div>
+
+            <div class="shop-col">
+                <h3 class="shop-sec-title">🎒 장비 및 도구</h3>
+                <div class="shop-items-grid" id="shop-items"></div>
+            </div>
+
+            <div class="shop-col">
+                <h3 class="shop-sec-title">🛠️ 서비스</h3>
+                <div class="shop-service-box" onclick="openCardRemoval(${removeCost})">
+                    <div class="service-icon">🔥</div>
+                    <div class="service-info">
+                        <b>기술 망각</b>
+                        <span style="font-size:0.8em; opacity:0.8;">덱에서 카드 제거</span>
+                        <span class="shop-price-tag">${removeCost} G</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="shop-footer-area">
+            <button class="action-btn" onclick="${shopType === 'shop_internet' ? 'renderHub()' : 'renderCityMap()'}" style="background:#7f8c8d; padding: 10px 30px; font-size:1.1em;">
+                🚪 나가기
+            </button>
+        </div>
     `;
 
-    // 물품 렌더링
+    // 4. 물품 렌더링 (기존 로직 + 스타일 연결)
     const cardContainer = document.getElementById('shop-cards');
     cardsForSale.forEach(cName => {
         let data = CARD_DATA[cName];
         let price = data.rank * 150 + Math.floor(Math.random()*50);
-        
-        // [가격 정책]
         if (shopType === "shop_high_end") price *= 2; 
         if (shopType === "shop_black_market") price = Math.floor(price * 0.8);
-        if (shopType === "shop_internet") price = Math.floor(price * 1.1); // 배송비 10% 추가
+        if (shopType === "shop_internet") price = Math.floor(price * 1.1);
 
         let el = document.createElement('div');
         el.className = "shop-item";
+        // 기존 카드 스타일 재사용하되 크기 조정
         el.innerHTML = `
-            <div class="card" style="transform:scale(0.8);">
+            <div class="card" style="transform:scale(0.85); margin:0;">
                 <div class="card-cost">${data.cost}</div>
                 <div class="card-rank">${"★".repeat(data.rank)}</div>
                 <div class="card-name">${cName}</div>
                 <div class="card-desc">${applyTooltip(data.desc)}</div>
             </div>
-            <div class="shop-price">${price} 원</div>
+            <div class="shop-price">${price} G</div>
         `;
         el.onclick = () => buyShopItem(el, 'card', cName, price);
         cardContainer.appendChild(el);
@@ -2771,20 +2784,18 @@ function renderShopScreen(shopType = "shop_black_market") {
     itemsForSale.forEach(iName => {
         let data = ITEM_DATA[iName];
         let price = data.price;
-        
-        // [가격 정책]
         if (shopType === "shop_black_market") price = Math.floor(price * 0.7); 
         if (shopType === "shop_high_end") price = Math.floor(price * 1.5);
-        if (shopType === "shop_internet") price = Math.floor(price * 1.1); // 배송비 10% 추가
+        if (shopType === "shop_internet") price = Math.floor(price * 1.1);
 
         let el = document.createElement('div');
         el.className = "shop-item";
         el.innerHTML = `
-            <div class="item-icon item-rank-${data.rank}" style="width:60px; height:60px; font-size:1.5em;">
+            <div class="item-icon item-rank-${data.rank}" style="width:60px; height:60px; font-size:1.5em; margin:0 auto;">
                 ${data.icon}
             </div>
-            <div class="shop-price">${price} 원</div>
-            <div style="font-size:0.8em; margin-top:5px;">${iName}</div>
+            <div class="shop-price">${price} G</div>
+            <div style="font-size:0.8em; margin-top:5px; color:#ddd;">${iName}</div>
         `;
         el.onclick = () => buyShopItem(el, 'item', iName, price);
         itemContainer.appendChild(el);
@@ -2879,6 +2890,9 @@ function processCardRemoval(idx, cost) {
 }
 /* [수정] 화면 전환 함수 (안전장치 추가) */
 function switchScene(sceneName) {
+    // [추가] 상점 모드 클래스 제거 (초기화)
+    const eventBox = document.getElementById('event-content-box');
+    if (eventBox) eventBox.classList.remove('shop-mode');
     // [핵심] 플레이어가 죽었거나 게임오버 상태면 화면 전환 금지 (캐릭터 생성 화면 제외)
     if (sceneName !== 'char-creation' && (game.state === "gameover" || player.hp <= 0 || player.sp <= 0)) {
         return; 
