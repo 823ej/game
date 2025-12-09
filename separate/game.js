@@ -217,11 +217,16 @@ let player = {
     
     // 인벤토리 관련
     inventory: [], maxInventory: 6,
-    
+    relics: [],         // [NEW] 유물 (무제한)
+
     // 상태
     jumadeung: false, lucky: false,
     drawPile: [], discardPile: [], exhaustPile: [], buffs: {}
+    
 };
+// 2. 현재 보고 있는 탭 상태 변수
+let currentInvTab = 'consume'; // 'consume' or 'relic'
+
 let tempBonusStats = {};   // 스탯 분배로 추가된 보너스 스탯
 let currentStatPoints = 0; // 남은 스탯 포인트
 let tempJob = null;
@@ -1143,38 +1148,116 @@ function acceptMission(id) {
     updateUI();
 }
 
-/* [수정] 아이템 획득 함수 (인벤토리 제한 적용) */
-function addItem(name) {
-    // 1. 인벤토리 공간 확인
-    if (player.inventory.length >= player.maxInventory) {
-        log("🚫 가방이 꽉 찼습니다! (최대 6개)");
-        // (나중에 '버리기' 기능을 추가하거나 획득 취소 처리를 할 수 있음)
-        showPopup("가방 가득 참", `[${name}]을(를) 넣을 공간이 없습니다.<br>기존 아이템을 버리시겠습니까?`, [
-            {txt: "포기하기", func: closePopup}
-            // 여기에 '인벤토리 관리' 버튼을 넣어 교체하게 할 수도 있음
-        ]);
-        return false; 
-    }
+// 교체 성공 시 실행할 콜백 저장 변수
+let tempSwapCallback = null;
 
-    // 2. 아이템 추가
-    player.inventory.push(name);
+function addItem(name, onAcquireCallback = null) {
+    let data = ITEM_DATA[name];
+    if (!data) return false;
+
+    // [CASE A] 유물 (개수 제한 없음)
+    if (data.usage === "passive") {
+        if (player.relics.includes(name)) {
+            // 중복 시 처리는 호출한 곳에서(상점 등) 메시지 띄우도록 false 반환
+            return false;
+        }
+        player.relics.push(name);
+        log(`💍 유물 획득! [${name}]`);
+        
+        // 획득 즉시 효과
+        if (name === "울끈불끈 패딩") { player.maxHp += 50; player.hp += 50; updateUI(); }
+        
+        updateInventoryUI();
+        if (onAcquireCallback) onAcquireCallback();
+        return true;
+    } 
     
-    // 3. 즉시 효과 적용 (최대 체력 증가 등 획득 시 발동하는 패시브)
-    if (name === "울끈불끈 패딩") { 
-        player.maxHp += 50; 
-        player.hp += 50; 
-        log("🧥 패딩 장착! 최대 체력이 50 증가했습니다."); 
-        updateUI();
+    // [CASE B] 소모품 (6개 제한)
+    else {
+        // 1. 공간 있음 -> 즉시 획득
+        if (player.inventory.length < player.maxInventory) {
+            player.inventory.push(name);
+            log(`🎒 아이템 획득! [${name}]`);
+            updateInventoryUI();
+            if (onAcquireCallback) onAcquireCallback();
+            return true;
+        } 
+        
+        // 2. 가방 꽉 참 -> [교체 팝업] 호출
+        else {
+            log("🚫 가방이 꽉 찼습니다! 버릴 아이템을 선택하세요.");
+            showSwapPopup(name, onAcquireCallback);
+            return false; // 즉시 획득은 실패 (사용자 선택 대기)
+        }
     }
-    
-    updateInventoryUI(); 
-    return true;
 }
-/* [수정] 아이템 사용 함수 (useItem으로 이름 변경) */
-function useItem(index, target) {
-    const name = player.inventory[index];
-    const data = ITEM_DATA[name];
+/* [NEW] 교체 팝업 표시 함수 */
+function showSwapPopup(newItemName, onSuccess) {
+    // 1. 현재 가방의 아이템들을 버튼으로 나열
+    let content = `<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; padding:10px;">`;
+    
+    player.inventory.forEach((itemName, idx) => {
+        let item = ITEM_DATA[itemName];
+        content += `
+            <button class="hub-card" onclick="processItemSwap(${idx}, '${newItemName}')" style="display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px; border:1px solid #555;">
+                <div class="item-icon item-rank-${item.rank}" style="pointer-events:none;">${item.icon}</div>
+                <div style="font-size:0.8em; font-weight:bold; color:#ddd;">${itemName}</div>
+                <div style="font-size:0.7em; color:#e74c3c;">▼ 버리기</div>
+            </button>
+        `;
+    });
+    content += `</div>`;
 
+    // 2. 콜백 저장 (교체 성공 시 실행하기 위해)
+    tempSwapCallback = onSuccess;
+
+    // 3. 팝업 띄우기
+    showPopup(
+        "🎒 가방 정리", 
+        `<span style='color:#2ecc71'>[${newItemName}]</span>을(를) 넣을 공간이 없습니다.<br>대신 버릴 아이템을 선택하세요.`, 
+        [
+            { txt: "포기하기 (획득 취소)", func: closePopup }
+        ],
+        content
+    );
+}
+
+/* [NEW] 실제 교체 실행 함수 */
+function processItemSwap(idx, newItemName) {
+    let oldItem = player.inventory[idx];
+    
+    // 교체 (덮어쓰기)
+    player.inventory[idx] = newItemName;
+    log(`♻️ [${oldItem}] 버림 -> [${newItemName}] 획득`);
+    
+    // UI 갱신
+    updateInventoryUI();
+    updateUI();
+    closePopup(); // 팝업 닫기
+
+    // 성공 콜백 실행 (골드 차감, 전리품 삭제 등)
+    if (tempSwapCallback) {
+        tempSwapCallback();
+        tempSwapCallback = null;
+    }
+}
+// [NEW] 탭 전환 함수
+function switchInvTab(tab) {
+    currentInvTab = tab;
+    
+    // 버튼 스타일 갱신
+    document.getElementById('tab-consume').className = (tab === 'consume' ? 'inv-tab active' : 'inv-tab');
+    document.getElementById('tab-relic').className = (tab === 'relic' ? 'inv-tab active' : 'inv-tab');
+    
+    updateInventoryUI();
+}
+// [수정] 아이템 사용 함수 (배열 인덱스 참조 문제 해결)
+function useItem(index, target) {
+    // 유물 탭에서는 사용 불가 (안전장치)
+    if (currentInvTab === 'relic') return;
+
+    const name = player.inventory[index]; // 소모품 배열에서 찾음
+    const data = ITEM_DATA[name];
     // 패시브 아이템은 직접 사용 불가 (단, 선물은 가능하게 할 수도 있음 - 아래 로직에서 처리)
     // 여기서는 기본적으로 '사용(consume)' 속성이 아니면 사용 불가로 처리하되, 소셜 모드 선물은 예외 허용
     
@@ -1261,72 +1344,67 @@ function useItem(index, target) {
         }
     }
    // 3. 소모 및 갱신
-    if (used) {
-        player.inventory.splice(index, 1); // 인벤토리에서 제거
-        updateInventoryUI(); 
+   if (used) {
+        player.inventory.splice(index, 1); // 소모품 배열에서 제거
+        updateInventoryUI();
         updateUI();
     }
 }
-/* [수정] 인벤토리 UI 업데이트 (통합 리스트) */
-
-    function updateInventoryUI() {
+/// [수정] 인벤토리 UI 그리기 (현재 탭에 맞는 리스트 출력)
+function updateInventoryUI() {
     const list = document.getElementById('inventory-list');
-    document.getElementById('inv-count').innerText = player.inventory.length;
     list.innerHTML = "";
 
-    player.inventory.forEach((name, idx) => { 
-        let data = ITEM_DATA[name]; 
-        let el = document.createElement('div'); 
-        
-        // 클래스: 기본 item-icon + 랭크 + 사용타입(passive/consumable)에 따른 스타일 구분
+    // 카운트 갱신
+    document.getElementById('cnt-consume').innerText = `(${player.inventory.length}/${player.maxInventory})`;
+    document.getElementById('cnt-relic').innerText = `(${player.relics.length})`;
+
+    // 보여줄 배열 선택
+    let targetArray = (currentInvTab === 'consume') ? player.inventory : player.relics;
+
+    if (targetArray.length === 0) {
+        list.innerHTML = `<div style="grid-column: 1/-1; color:#777; margin-top:50px;">(비어있음)</div>`;
+        return;
+    }
+
+    targetArray.forEach((name, idx) => {
+        let data = ITEM_DATA[name];
+        let el = document.createElement('div');
         el.className = `item-icon item-rank-${data.rank}`;
-        el.id = `item-el-${idx}`;
-        
-        // 패시브 아이템은 테두리나 배경을 다르게 해서 시각적 구분
+        el.id = `item-el-${idx}`; // 드래그용 ID
+
+        // 유물은 금색 테두리 강조
         if (data.usage === "passive") {
-            el.style.borderColor = "#f39c12"; // 금색 테두리
-            el.style.borderStyle = "double";
-        } else {
-            el.style.borderColor = "#555"; // 일반 테두리
+            el.style.borderColor = "#f39c12";
+            el.style.boxShadow = "0 0 5px rgba(243, 156, 18, 0.5)";
         }
-        
+
         el.innerHTML = `
             ${data.icon}
             <span class="tooltip">
-                <b>${name}</b> <span style="font-size:0.8em; color:#aaa;">(${data.usage==="passive"?"패시브":"소모품"})</span><br>
-                ${data.desc}<br>
-                <span style='color:#f1c40f'>태그: ${data.tags ? data.tags.join(', ') : '-'}</span>
+                <b>${name}</b><br>
+                <span style="font-size:0.8em; color:#aaa;">${data.usage==="passive"?"[유물/지속효과]":"[소모품]"}</span><br>
+                ${data.desc}
             </span>
+            ${data.usage === "consume" ? `
             <div class="item-actions" id="item-actions-${idx}" style="display:none;">
-                <button class="item-btn btn-confirm" onclick="confirmItemUse(event, ${idx})">V</button>
-                <button class="item-btn btn-cancel" onclick="toggleItemSelect(event, ${idx})">X</button>
-            </div>
+                <button class="item-btn btn-confirm" onclick="confirmItemUse(event, ${idx})">사용</button>
+            </div>` : ""}
         `;
-        
-        // 드래그 및 클릭 이벤트 (이전과 동일 로직이지만 대상 변수명만 변경)
-        let isSocial = (game.state === "social");
-        let isBattle = (game.state === "battle");
-        let canUse = (data.usage === "consume"); // 소모품만 기본 사용 가능
 
-        // 소셜 모드면 모든 아이템(패시브 포함) 선물 가능
-        // 배틀 모드면 소모품 중 target!=passive 인 것만 가능
-        let canDrag = (isSocial) || (isBattle && canUse && data.target !== 'passive');
-
-        if (canDrag) {
-            el.onmousedown = (e) => startDrag(e, idx, name, 'item');
-            el.ontouchstart = (e) => startDrag(e, idx, name, 'item');
-        } else if (!canUse && !isSocial) {
-            // 패시브 아이템 클릭 시 (사용 불가 메시지 대신 정보 확인용으로 놔두거나)
-            // 여기선 그냥 둠
-        }
-        
-        // 클릭 시 메뉴 토글 (사용 가능한 경우만)
-        // 패시브 아이템도 버리기 기능 등을 위해 메뉴는 뜨게 할 수 있음 (일단은 사용 가능할 때만 뜨게 설정)
-        if (canDrag || canUse) {
+        // 클릭/드래그 이벤트 연결
+        // 소모품: 사용 및 드래그 가능
+        if (currentInvTab === 'consume') {
             el.onclick = (e) => toggleItemSelect(e, idx);
-        } else {
-            // 패시브 아이템 클릭 시 "착용 중입니다" 로그
-            el.onclick = () => log(`[${name}] 효과 적용 중.`);
+            // 전투/소셜 중일 때만 드래그 가능
+            if (game.state === "battle" || game.state === "social") {
+                el.onmousedown = (e) => startDrag(e, idx, name, 'item');
+                el.ontouchstart = (e) => startDrag(e, idx, name, 'item');
+            }
+        } 
+        // 유물: 클릭 시 정보만 (사용 불가)
+        else {
+            el.onclick = () => log(`[${name}] 보유 중인 유물입니다.`);
         }
 
         list.appendChild(el);
@@ -1342,18 +1420,24 @@ function closeInventory() {
     document.getElementById('inventory-overlay').classList.add('hidden');
 }
 
-// [수정] confirmItemUse도 useConsumable 대신 useItem을 호출하도록 변경
+// [수정] confirmItemUse (인자 전달 방식 수정)
 function confirmItemUse(e, idx) {
     e.stopPropagation();
-    let name = player.inventory[idx]; // inventory 참조
+    // 현재 탭이 소모품일 때만 동작
+    if (currentInvTab !== 'consume') return;
+
+    let name = player.inventory[idx];
     let data = ITEM_DATA[name];
+    
+    // 타겟팅 로직
+    let target = player;
+    if (data.target === "enemy" && enemies.length > 0) target = enemies[0];
 
-    // ... (타겟팅 로직 동일) ...
-    let target = player; 
-    if (data.target === "enemy") target = enemies.find(en => en.hp > 0);
-
-    useItem(idx, target); // useItem 호출
-    toggleItemSelect(e, idx);
+    useItem(idx, target);
+    
+    // 메뉴 닫기
+    document.querySelectorAll('.item-actions').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.item-icon').forEach(el => el.classList.remove('selected'));
 }
 // [추가] 아이템 선택 토글 함수
 function toggleItemSelect(e, idx) {
@@ -2573,36 +2657,46 @@ function renderShopScreen(shopType = "shop_black_market") {
         itemContainer.appendChild(el);
     });
 }
-/* [수정] 아이템 구매 로직 */
+/* [game.js] buyShopItem 수정 */
 function buyShopItem(el, type, name, cost) {
     if (el.classList.contains('sold-out')) return;
-    if (player.gold < cost) { 
-        alert("소지금이니다."); 
-        return; 
-    }
-    
-    // 인벤토리 체크
-    if (type === 'item' && player.inventory.length >= player.maxInventory) {
-        alert("가방이 꽉 찼습니다.");
-        return;
-    }
+    if (player.gold < cost) { alert("소지금이 부족합니다."); return; }
 
-    player.gold -= cost;
-    el.classList.add('sold-out');
-    el.style.opacity = 0.5; // 시각적 품절 처리
-
+    // [1] 카드 구매
     if (type === 'card') {
-        // 구매한 카드는 바로 덱이 아니라 '보관함(Storage)'으로 가는 게 안전
+        player.gold -= cost;
         player.storage.push(name);
         alert(`[${name}] 구매 완료! 보관함으로 이동되었습니다.`);
-    } else {
-        player.inventory.push(name);
-        alert(`[${name}] 구매 완료!`);
+        el.classList.add('sold-out');
+        el.style.opacity = 0.5;
+        updateUI();
+        autoSave();
+    } 
+    // [2] 아이템 구매 (addItem에 콜백 전달)
+    else {
+        // 성공 시 실행할 함수 정의
+        const onBuySuccess = () => {
+            player.gold -= cost; // 돈 차감
+            alert(`[${name}] 구매 완료!`);
+            el.classList.add('sold-out');
+            el.style.opacity = 0.5;
+            updateUI();
+            autoSave();
+        };
+
+        // addItem 실행 (꽉 찼으면 팝업 뜸 -> 교체 시 onBuySuccess 실행됨)
+        // 유물 중복의 경우 addItem 내부에서 false 반환하고 끝남 (알림은 아래에서 처리)
+        let result = addItem(name, onBuySuccess);
+        
+        // 유물 중복 등 즉시 실패한 경우에만 알림
+        if (!result) {
+            let data = ITEM_DATA[name];
+            if (data.usage === 'passive' && player.relics.includes(name)) {
+                alert("이미 보유하고 있는 유물입니다. (중복 불가)");
+            }
+            // 소모품 꽉 찬 경우는 showSwapPopup이 뜨므로 여기선 아무것도 안 해도 됨
+        }
     }
-    
- updateInventoryUI();
-    updateUI();
-    autoSave(); // [추가] 돈 쓰고 물건 샀으니 저장
 }
 /* [NEW] 카드 제거 서비스 UI */
 function openCardRemoval(cost) {
@@ -2700,30 +2794,32 @@ function switchScene(sceneName) {
         if(sceneName !== 'hub') switchScene('hub');
     }
 }
-/* [수정] 결과 화면 렌더링 (상태값 설정 추가) */
+/* [game.js] renderResultScreen 수정 */
 function renderResultScreen() {
-    // [핵심] 현재 상태를 'result'로 설정 (getCardReward가 알 수 있게)
     game.state = "result"; 
-    
     switchScene('result');
     
-    // 시나리오 정보가 없더라도 결과 처리가 멈추지 않도록 안전하게 처리
     const scId = (game.scenario && game.scenario.id) || game.activeScenarioId;
     let rewardData = (scId && SCENARIOS[scId]) ? SCENARIOS[scId].reward : { gold: 100, xp: 50, itemRank: 1 };
     
     let finalGold = rewardData.gold;
     let finalXp = rewardData.xp;
-    
     if (player.lucky) finalGold = Math.floor(finalGold * 1.5);
 
     player.gold += finalGold;
     player.xp += finalXp;
 
+    // [수정] 아이템 보상 처리
     let itemReward = "없음";
     let newItem = getRandomItem(); 
+    
     if (newItem) {
-        addItem(newItem);
-        itemReward = newItem;
+        // 일단 획득 시도. 
+        // 성공하면 인벤토리에 들어감.
+        // 꽉 찼으면 팝업 뜸 -> 교체하면 들어감.
+        // 포기하면 -> 안 들어감.
+        addItem(newItem); 
+        itemReward = newItem; 
     }
     
     document.getElementById('res-gold').innerText = `+${finalGold} 원`;
@@ -2788,10 +2884,10 @@ function getStat(entity, type) {
 
         // 2. 아이템 보정 (스탯 자체를 증가시킴)
         // (예: 운동화는 민첩+2 -> 보정치+1 효과)
-        if ((type === 'atk' || type === 'str') && player.inventory.includes("쿠보탄")) rawVal += 2;
-        if ((type === 'def' || type === 'con') && player.inventory.includes("강인함의 부적")) rawVal += 2;
-        if ((type === 'spd' || type === 'dex') && player.inventory.includes("좋은 운동화")) rawVal += 2;
-
+       // [수정] 유물 체크: player.inventory.includes -> player.relics.includes
+        if ((type === 'atk' || type === 'str') && player.relics.includes("쿠보탄")) rawVal += 2;
+        if ((type === 'def' || type === 'con') && player.relics.includes("강인함의 부적")) rawVal += 2;
+        if ((type === 'spd' || type === 'dex') && player.relics.includes("좋은 운동화")) rawVal += 2;
         // 3. [핵심 수정] 보정치 계산 공식 통일
         // 공식: (스탯 - 10) / 2 (소수점 버림)
         // 예: 10~11 -> +0, 12~13 -> +1, 14~15 -> +2
@@ -3409,19 +3505,18 @@ function renderWinPopup() {
     showPopup("전투 승리!", finalMsg, btns, contentHTML);
 }
 
-/* [NEW] 아이템 획득 처리 함수 */
+/* [game.js] getLoot 수정 */
 function getLoot() {
     if (game.pendingLoot) {
-        addItem(game.pendingLoot); // 인벤토리에 추가
-        
-        // 메시지 갱신
-        game.winMsg = game.winMsg.replace("전리품이 바닥에 떨어져 있습니다.", "");
-        game.winMsg += `<br><span style="color:#2ecc71">✔ [${game.pendingLoot}] 획득함.</span>`;
-        
-        game.pendingLoot = null; // 바닥에서 치움
-        
-        updateUI(); // 인벤토리 갱신
-        renderWinPopup(); // [핵심] 팝업 다시 그리기 (이제 줍기 버튼은 사라짐)
+        // 성공 시 실행할 함수
+        const onLootSuccess = () => {
+            game.winMsg = game.winMsg.replace("전리품이 바닥에 떨어져 있습니다.", "");
+            game.winMsg += `<br><span style="color:#2ecc71">✔ [${game.pendingLoot}] 획득함.</span>`;
+            game.pendingLoot = null; // 바닥에서 삭제
+            renderWinPopup(); // 팝업 갱신 (줍기 버튼 제거)
+        };
+
+        addItem(game.pendingLoot, onLootSuccess);
     }
 }
 /* --- [NEW] 드래그 타겟팅 & 미리보기 시스템 --- */

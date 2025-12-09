@@ -170,28 +170,78 @@ body {
             z-index: 250;
             padding: 16px;
         }
-        .inventory-panel {
-            width: min(880px, 100%);
-            background: #1f2a36;
-            border: 1px solid #3a4b5d;
-            border-radius: 12px;
-            box-shadow: 0 12px 32px rgba(0,0,0,0.6);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding: 14px;
-        }
-        .inventory-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-        .inventory-title { font-weight: bold; color: #f1c40f; font-size: 1.1em; }
-        .inventory-body { background: #243445; border: 1px solid #3a4b5d; border-radius: 10px; padding: 12px; min-height: 120px; }
-        .item-list { display: flex; gap: 8px; flex-wrap: wrap; }
+/* [style.css] 인벤토리 관련 스타일 전면 수정 */
+
+/* 1. 패널 스타일 */
+.inventory-panel {
+    width: min(600px, 95%);
+    height: 500px; /* 고정 높이 (스크롤 위해) */
+    background: #1f2a36;
+    border: 2px solid #3a4b5d;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 자식 요소 튀어나옴 방지 */
+    padding: 0; /* 패딩 제거 (탭이 꽉 차게) */
+}
+
+/* 2. 상단 탭 영역 */
+.inventory-header-tabs {
+    display: flex;
+    background: #111;
+    border-bottom: 2px solid #3a4b5d;
+    height: 50px;
+    align-items: stretch;
+}
+
+/* 탭 버튼 */
+.inv-tab {
+    flex: 1; /* 공간 등분 */
+    background: #2c3e50;
+    border: none;
+    color: #aaa;
+    font-weight: bold;
+    font-size: 1em;
+    cursor: pointer;
+    transition: 0.2s;
+    border-right: 1px solid #111;
+}
+
+/* 활성화된 탭 */
+.inv-tab.active {
+    background: #1f2a36; /* 패널 몸체와 같은 색 */
+    color: #f1c40f;       /* 강조색 */
+    border-bottom: 3px solid #f1c40f; /* 활성 표시 */
+}
+
+/* 닫기 버튼 */
+.close-inv-btn {
+    width: 50px;
+    background: #c0392b;
+    color: white;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+}
+
+/* 3. 몸체 (스크롤 영역) */
+.inventory-body {
+    flex: 1; /* 남은 높이 모두 차지 */
+    background: #1f2a36;
+    padding: 15px;
+    overflow-y: auto; /* ★ 세로 스크롤 활성화 */
+}
+
+/* 4. 아이템 그리드 */
+.item-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); /* 반응형 그리드 */
+    gap: 10px;
+    justify-items: center;
+}
         .item-icon { 
-            width: 40px; height: 40px; border-radius: 4px; display: flex; justify-content: center; align-items: center; 
+            width: 60px; height: 60px; border-radius: 4px; display: flex; justify-content: center; align-items: center; 
             font-size: 1.2em; cursor: pointer; position: relative; border: 2px solid #555; transition: 0.2s;
         }
         .item-icon:hover { transform: scale(1.1); z-index: 5; }
