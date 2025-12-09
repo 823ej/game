@@ -33,6 +33,9 @@ function getRandomCardByRank(rank) {
 function renderCityMap() {
     game.state = 'city';
     switchScene('city');
+    // [★핵심 수정] 전투/탐사 중 잠겼던 버튼들을 강제로 다시 풀어줍니다.
+    game.inputLocked = false; 
+    document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
     const grid = document.getElementById('district-grid');
     grid.innerHTML = "";
     
