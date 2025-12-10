@@ -3,7 +3,7 @@ const CARD_DATA = {
     "테스트용": { rank: 1, cost: 0, type: "attack", desc: "테스트용, 적 HP -50", dmg: 50, job: "common" },
     "타격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5", dmg: 5, job: "common" },
     "수비": { rank: 1, cost: 1, type: "skill", desc: "방어도 +4", block: 4, job: "common" },
-    "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 마음의 벽 +15 회복", heal: 15, target: "self", job: "common" },
+    "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 의지 +15 회복", heal: 15, target: "self", job: "common" },
     "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3, target: "enemy", job: "common" },
     "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: {name:"독", val:2}, block: 3, target: "enemy", job: "common" },   
     "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:2}, target:"self", job: "common", block: 3 },
@@ -17,15 +17,15 @@ const CARD_DATA = {
    "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, job: "common", isExhaust: true },
    
    // [탐정 전용] (Detective) - 논리, 이성적
-    "논리적 반박": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 마음의 벽 -10", dmg: 10, job: "detective" },
-    "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 마음의 벽 -25", dmg: 25, job: "detective" },
+    "논리적 반박": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 의지 -10", dmg: 10, job: "detective" },
+    "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 의지 -25", dmg: 25, job: "detective" },
     "관찰": { rank: 1, cost: 0, type: "skill", desc: "카드 2장 뽑기", draw: 2, job: "detective" },
     "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: {name:"강화", val:2}, target:"self", job: "detective", dmg: 8 },
     
    
     // [해결사 전용] (Fixer) - 물리, 전투적
     "강펀치": { rank: 1, cost: 2, type: "attack", desc: "적 HP -12", dmg: 12, job: "fixer" },
-    "위협": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 마음의 벽 -15 (공포)", dmg: 15, job: "fixer" },
+    "위협": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 의지 -15 (공포)", dmg: 15, job: "fixer" },
     "무기 손질": { rank: 2, cost: 1, type: "skill", desc: "나 강화(3턴)", buff: {name:"강화", val:3}, target:"self", job: "fixer" },
     "근육자랑": { rank: 2, cost: 2, type: "attack", desc: "나 강화(2턴), 적 HP -4", buff: {name:"강화", val:2}, target:"self",job: "fixer", dmg: 4 },
     "돌진" : { rank: 2, cost: 2, type: "attack", desc: "적 8 피해, 방어도 +8", job: "fixer", dmg: 8, block: 8},
@@ -115,23 +115,23 @@ const ENEMY_DATA = {
 // [data.js] SOCIAL_CARD_DATA 수정
 
 const SOCIAL_CARD_DATA = {
-    // [공격 계열] 적의 마음의 벽을 깎음 (dmg 사용)
-    "논리적 반박": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 마음의 벽 -10", dmg: 10 },
-    "비꼬기": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 마음의 벽 -15", dmg: 15 },
-    "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 마음의 벽 -25", dmg: 25 },
-    "호통치기": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 마음의 벽 -15, 적 취약(2턴)", dmg: 15, buff: {name:"취약", val:2} },
+    // [공격 계열] 적의 의지을 깎음 (dmg 사용)
+    "논리적 반박": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 의지 -10", dmg: 10 },
+    "비꼬기": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 의지 -15", dmg: 15 },
+    "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 의지 -25", dmg: 25 },
+    "호통치기": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 의지 -15, 적 취약(2턴)", dmg: 15, buff: {name:"취약", val:2} },
 
-    // [방어 계열] 내 마음의 벽 보호 (block 사용)
+    // [방어 계열] 내 의지 보호 (block 사용)
     "한귀로 흘리기": { rank: 1, cost: 1, type: "social", subtype: "defend", desc: "방어도 +10", block: 10 },
     "무시": { rank: 1, cost: 1, type: "social", subtype: "defend", desc: "방어도 +15", block: 15 },
     "침묵": { rank: 1, cost: 0, type: "social", subtype: "defend", desc: "방어도 +8", block: 8 },
 
-    // [회복/유틸 계열] 내 마음의 벽 회복 (heal 사용)
-    "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 마음의 벽 +15 회복", heal: 15, target: "self" },
-    "차 한잔": { rank: 2, cost: 1, type: "social", subtype: "skill", desc: "내 마음의 벽 +20 회복, 카드 1장 뽑기", heal: 20, target: "self", draw: 1 },
+    // [회복/유틸 계열] 내 의지 회복 (heal 사용)
+    "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 의지 +15 회복", heal: 15, target: "self" },
+    "차 한잔": { rank: 2, cost: 1, type: "social", subtype: "skill", desc: "내 의지 +20 회복, 카드 1장 뽑기", heal: 20, target: "self", draw: 1 },
     
     // [특수]
-    "매혹": { rank: 2, cost: 2, type: "social", subtype: "magic", desc: "적 공격력 감소(2턴), 마음의 벽 -10", dmg: 10, buff: {name:"약화", val:2} },
+    "매혹": { rank: 2, cost: 2, type: "social", subtype: "magic", desc: "적 공격력 감소(2턴), 의지 -10", dmg: 10, buff: {name:"약화", val:2} },
     "거짓말": { rank: 2, cost: 1, type: "social", subtype: "trick", desc: "성공 시 적 벽 -40, 실패 시 나 벽 -20", special: "gamble_lie" }
 };
 

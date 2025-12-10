@@ -194,14 +194,14 @@ let player = {
 // 기본 생명력/정신력 (현재값)
     maxHp: 30, hp: 30, 
     maxSp: 30, sp: 30, 
-    mental: 100, maxMental: 100, // 마음의 벽 (소셜용)
+    mental: 100, maxMental: 100, // 의지 (소셜용)
     
     // [NEW] 6대 스탯 도입
     // 근력(Str): 물리 공격력
     // 건강(Con): 물리 방어력 & 최대 HP
     // 민첩(Dex): 속도 (행동 순서)
     // 지능(Int): 논리 방어 (소셜 방어)
-    // 정신(Wil): 최대 SP & 마음의 벽 크기
+    // 정신(Wil): 최대 SP & 의지 크기
     // 매력(Cha): 소셜 공격력 (설득/기만)
     stats: {
         str: 1, // 근력
@@ -344,7 +344,7 @@ function createNpcEnemyData(npcKey, index = 0) {
         id: index,
         npcKey,
         name: data.name,
-        maxHp: 100, hp: 100, // 마음의 벽 게이지
+        maxHp: 100, hp: 100, // 의지 게이지
         baseAtk: data.baseAtk || 0, 
         baseDef: data.baseDef || 0, 
         baseSpd: data.baseSpd || 2,
@@ -371,7 +371,7 @@ function recalcStats() {
     player.maxSp = Math.max(10, 30 + (wilMod * 10));
     if (player.sp > player.maxSp) player.sp = player.maxSp;
     
-    // 소셜 HP (마음의 벽)
+    // 소셜 HP (의지)
     player.maxMental = Math.max(50, 100 + (wilMod * 10));
 }
 /* [NEW] 마우스/터치 좌표 통합 추출 함수 */
@@ -458,14 +458,15 @@ function autoSave() {
     }
 }
 
-// [수정] loadGame: showPopup -> showPopup
+/* [game.js] loadGame 함수 전면 수정 (상태 기반 복구 로직 강화) */
 function loadGame() {
     const saveString = localStorage.getItem('midnight_rpg_save');
     if (!saveString) return;
 
     try {
         const loadedData = JSON.parse(saveString);
-        // ... (데이터 로드 로직 기존 유지) ...
+
+        // 데이터 복구
         player = loadedData.player;
         game = loadedData.game;
         if (game.started === undefined) game.started = true;
@@ -482,31 +483,57 @@ function loadGame() {
         }
         recalcStats();
         
-        // 화면 복구 로직 (기존 유지)
-        if (game.state === 'battle' || game.state === 'social') {
-            // ... (전투 복구) ...
-            game.turnOwner = "none";
-            game.lastTurnOwner = "none";
-            createBattleCheckpoint();
-            switchScene('battle');
-            showBattleView();
-            renderEnemies();
-            renderHand();
-            updateUI();
-            processTimeline(); 
-        } 
-        else if (game.activeScenarioId && game.scenario) {
-            renderExploration();
-        } 
-        else {
-            if (game.state === 'city') renderCityMap();
-            else renderHub();
+        // [★수정] 화면 복구 로직: game.state를 최우선으로 확인합니다.
+        switch (game.state) {
+            case 'battle':
+            case 'social':
+                // 전투/소셜: 시작 시점으로 리셋하여 복구
+                game.turnOwner = "none";
+                game.lastTurnOwner = "none";
+                createBattleCheckpoint();
+                switchScene('battle');
+                showBattleView();
+                renderEnemies();
+                renderHand();
+                updateUI();
+                processTimeline(); 
+                break;
+
+            case 'city':
+                // 도시 지도: 지도 다시 그리기
+                renderCityMap();
+                break;
+
+            case 'exploration':
+                // 탐사: 시나리오 데이터가 유효할 때만 복구
+                if (game.activeScenarioId && game.scenario) {
+                    renderExploration();
+                } else {
+                    renderHub(); // 데이터가 꼬였으면 사무소로
+                }
+                break;
+
+            case 'storage':
+                // 창고 화면 복구
+                openStorage();
+                break;
+
+            case 'deck':
+                // 덱 관리 화면 복구
+                openDeckManager();
+                break;
+
+            case 'hub':
+            default:
+                // 그 외 모든 경우는 사무소로
+                renderHub();
+                break;
         }
+
         updateUI();
 
     } catch (e) {
         console.error(e);
-        // [수정] 에러 알림 교체
         showPopup("오류", "세이브 파일 오류입니다. 데이터를 초기화합니다.", [
             { txt: "확인", func: () => { closePopup(); resetGameData(); } }
         ]);
@@ -591,7 +618,7 @@ function recalcStats() {
     player.maxHp = 30 + (conMod * 10);
     player.maxSp = 30 + (wilMod * 10);
     
-    // 소셜 HP (마음의 벽)
+    // 소셜 HP (의지)
     player.maxMental = 100 + (wilMod * 10);
 }
 // 2. 스탯 조정 함수 (버튼 클릭 시 호출됨)
@@ -992,7 +1019,7 @@ function startSocialBattle(npcKey, preserveEnemies = false) {
     }
 
     let data = NPC_DATA[npcKey] || enemies[0];
-    if (data) log(`💬 [${data.name}]와(과) 설전을 벌입니다! (마음의 벽을 무너뜨리세요)`);
+    if (data) log(`💬 [${data.name}]와(과) 설전을 벌입니다! (의지을 무너뜨리세요)`);
 
     // 탐사 배경을 전투 배경과 동기화
     let explBg = document.getElementById('expl-bg');
@@ -1028,7 +1055,7 @@ function applySocialImpact(target, val) {
     let absVal = Math.abs(val);
     let effectiveVal = absVal;
 
-    // 1. 방어도(마음의 벽) 체크
+    // 1. 방어도(의지) 체크
     if (target.block > 0) {
         if (target.block >= absVal) {
             target.block -= absVal;
@@ -1933,6 +1960,11 @@ function startBossBattle() {
 function nextStepAfterWin() {
     closePopup();
 
+// [★추가] 전투 종료 시 상태이상 및 방어도 초기화
+    player.buffs = {};
+    player.block = 0;
+    enemies.forEach(e => { e.buffs = {}; e.block = 0; });
+
     if (game.isBossBattle) {
         // [수정] 보스전 승리 -> 결과 정산 화면으로 이동
         game.state = 'result';
@@ -2196,11 +2228,11 @@ function useCard(user, target, cardName) {
             let finalDmg = data.dmg + getStat(user, 'socialAtk'); 
             takeDamage(target, finalDmg);
         }
-        // 2. 회복 (heal) - 내 마음의 벽 회복
+        // 2. 회복 (heal) - 내 의지 회복
         if (data.heal) {
             if (user === player) {
                 user.mental = Math.min(100, user.mental + data.heal);
-                log(`🌿 마음의 벽 회복 +${data.heal}`);
+                log(`🌿 의지 회복 +${data.heal}`);
                 showDamageText(user, `💚+${data.heal}`);
             } else {
                 user.hp = Math.min(100, user.hp + data.heal);
@@ -2364,11 +2396,11 @@ if (dmg > 0) {
             // [변경] 소셜 모드: 'mental'(플레이어) 또는 'hp'(NPC)를 깎음
             if (target === player) {
                 target.mental -= dmg;
-                log(`💔 내 마음의 벽 손상 -${dmg}! (남은 벽: ${target.mental})`);
+                log(`💔 내 의지 손상 -${dmg}! (남은 벽: ${target.mental})`);
                 showDamageText(target, `💔-${dmg}`);
             } else {
-                target.hp -= dmg; // NPC는 hp를 마음의 벽으로 씀
-                log(`🗣️ 적 마음의 벽 타격! -${dmg} (남은 벽: ${target.hp})`);
+                target.hp -= dmg; // NPC는 hp를 의지으로 씀
+                log(`🗣️ 적 의지 타격! -${dmg} (남은 벽: ${target.hp})`);
                 showDamageText(target, `💢-${dmg}`);
             }
         } else {
@@ -2434,14 +2466,14 @@ function checkGameOver() {
 if (game.state === "social") {
         let npc = enemies[0];
 
-        // 1. [승리] NPC의 마음의 벽이 0이 됨 -> 정보 획득
+        // 1. [승리] NPC의 의지이 0이 됨 -> 정보 획득
         if (npc.hp <= 0) { 
-            game.winMsg = `<span style='color:#3498db'>🤝 설득 성공!</span><br>${npc.name}의 마음의 벽을 허물었습니다.`;
+            game.winMsg = `<span style='color:#3498db'>🤝 설득 성공!</span><br>${npc.name}의 의지을 허물었습니다.`;
             endSocialBattle(true);
             return true;
         } 
         
-        // 2. [패배] 내 마음의 벽이 0이 됨 -> 선택지 발생
+        // 2. [패배] 내 의지이 0이 됨 -> 선택지 발생
         if (player.mental <= 0) {
             // 게임 오버가 아님! 선택지 팝업 호출
             showSocialLossPopup(npc.name);
@@ -2508,7 +2540,7 @@ function showSocialLossPopup(npcName) {
         <div style="color:#e74c3c; font-size:1.2em; font-weight:bold;">😵 말문이 막혔습니다!</div>
         <br>
         상대의 논리에 압도당해 더 이상 대화를 이어갈 수 없습니다.<br>
-        (내 마음의 벽 0 도달)
+        (내 의지 0 도달)
     `;
 
     showPopup("💬 협상 실패", msg, [
@@ -3293,7 +3325,7 @@ function updateUI() {
                 <div class="hp-bar-fill" style="width:${mentalPct}%; background: linear-gradient(90deg, #3498db, #8e44ad);"></div>
             </div>
             <div style="font-size:0.9em;">
-                마음의 벽: <span id="p-hp">${player.mental}</span>/100 
+                의지: <span id="p-hp">${player.mental}</span>/100 
                 ${showBlock ? `<span class="block-icon">🛡️<span id="p-block">${player.block}</span></span>` : ""}
             </div>
         `;
@@ -3360,7 +3392,9 @@ function updateUI() {
             let intent = "💤";
             if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = isSocialEnemy ? "💬" : "⚔️";
             let buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
-    
+            
+            let statLabel = isSocialEnemy ? "의지" : "HP";
+            
             el.innerHTML = `
                 <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} <span class="intent-icon">${intent}</span></div>
                 <img src="${e.img}" alt="${e.name}" class="char-img">
@@ -3427,6 +3461,10 @@ function escapePhysicalBattle() {
         checkGameOver(); // 확실하게 게임 오버 처리
         return; 
     }
+// [★추가] 도주 성공 시 상태이상 및 방어도 초기화
+    player.buffs = {};
+    player.block = 0;
+    enemies.forEach(e => { e.buffs = {}; e.block = 0; });
 
     // 3. 살았다면 패널티 적용 후 복귀
     game.doom = Math.min(100, game.doom + 5); // 글로벌 위협도 증가
