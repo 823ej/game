@@ -90,9 +90,7 @@ body {
     gap: 8px; /* 요소 간 간격 */
     flex-wrap: wrap; /* 공간에 맞춰 줄바꿈 허용 */
 }
-.utility-dock .small-btn,
-.utility-pill,
-.scenario-pill {
+.utility-dock .small-btn {
     pointer-events: auto;
 }
 /* 1. 캐릭터 정보 (줄어들지 않음) */
@@ -113,6 +111,7 @@ body {
     min-width: 120px; /* 최소 폭 보장 */
     max-width: 400px; /* 너무 넓어지지 않게 */
     height: 36px;
+    pointer-events: auto;
     overflow: hidden;
 }
 /* 모바일 최적화 (글씨 크기 및 간격 조절) */
@@ -135,10 +134,6 @@ body {
         padding: 2px 4px;
     }
 }
-.utility-dock .small-btn,
-.utility-pill {
-    pointer-events: auto;
-}
 
 .utility-pill {
     background: rgba(34, 40, 48, 0.82);
@@ -150,6 +145,7 @@ body {
     font-size: 0.92em;
     box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     white-space: nowrap;
+    pointer-events: auto;
 }
 
 /* 3. 버튼 그룹 (줄어들지 않음) */
@@ -533,14 +529,16 @@ body {
 
       
 /* [수정] 플레이어/적 박스 크기 균형 */
-        .character { 
-            width: clamp(120px, 15vw, 170px); 
-            padding: clamp(8px, 1.5vw, 14px); 
-            border-radius: 10px; 
-            position: relative; 
-            transition: 0.2s; 
+        .character {
+            width: clamp(120px, 15vw, 170px);
+            padding: clamp(8px, 1.5vw, 14px);
+            border-radius: 10px;
+            position: relative;
+            z-index: 5;
+            transition: 0.2s;
             text-align: center;
             flex: 0 0 auto;
+            margin-bottom: 0;
         }
         /* ????뽮쉐???????あ?귐됱춸 揶쏅벡??*/
         .character.turn-active { 
@@ -924,19 +922,18 @@ body {
 }
 
 /* 揶쎛嚥≪뮄? ?蹂? ??띻펾?癒?퐣??餓λ쵐釉??類ｌ졊???얜?? ?醫? */
-#story-bg,
-#story-standing {
+#story-bg {
     left: 50%;
     transform: translateX(-50%);
     max-width: 1600px;
-}
-
-#story-bg {
     width: min(1600px, 100vw, var(--stage-max-width));
     max-height: var(--stage-max-height);
 }
 
 #story-standing {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 1600px;
     width: min(1400px, calc(100vw - clamp(24px, 6vw, 120px)), var(--stage-max-width));
     max-height: var(--stage-max-height);
 }
@@ -945,14 +942,12 @@ body {
 .story-char {
     height: 90%; /* ?遺얇늺 ?誘れ뵠??90% */
     max-width: 400px;
+    max-height: var(--stage-max-height);
     object-fit: contain;
     transition: 0.3s;
     filter: brightness(0.5); /* 筌?????????紐쇔칰?*/
     transform: scale(0.95);
     position: absolute; bottom: 0;
-}
-.story-char {
-    max-height: var(--stage-max-height);
 }
 .story-char.speaking {
     filter: brightness(1);
@@ -1158,7 +1153,7 @@ body {
     .scene { border-radius: 8px; overflow: hidden; }
     
     /* 상단 유틸리티 바 축소 */
-    .utility-dock { padding: 2px 10px; position: absolute; width: auto; right: 0; left: auto; top: 0; z-index: 500; }
+    .utility-dock { padding: 2px 10px; position: absolute; width: auto; right: 0; left: auto; top: 0; z-index: 500; display: none; }
     .utility-pill { padding: 2px 8px; font-size: 0.75em; background: rgba(0,0,0,0.6); }
     .utility-buttons { transform: scale(0.9); transform-origin: top right; }
 
@@ -1172,9 +1167,9 @@ body {
         grid-template-columns: 1fr; /* 전체 너비 사용 */
     }
     .hub-actions { width: 100%; }
-    .hub-grid { 
-        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); 
-        gap: 6px; 
+    .hub-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
     }
     .hub-card { padding: 6px; }
     .hub-card-title { font-size: 0.85em; margin-bottom: 2px; }
@@ -1249,19 +1244,20 @@ body {
     .btn-end-turn-side { width: 50px; font-size: 0.8em; padding: 0; }
     
     /* 카드 핸드 영역 */
-    .hand-area { 
-        height: 90px; /* 카드 보일 최소 높이 */
-        margin-top: 0; 
-        padding: 2px; 
-        flex-shrink: 0; 
+    .hand-area {
+        height: 80px; /* 카드 보일 최소 높이 */
+        margin-top: 0;
+        padding: 2px;
+        flex-shrink: 0;
         overflow: visible;
         align-items: flex-end; /* 바닥 정렬 */
     }
-    .card { 
-        width: 65px; 
-        height: 90px; 
-        padding: 4px; 
+    .card {
+        width: 65px;
+        height: 80px;
+        padding: 4px;
         border-width: 1px;
+        font-size: 0.55em;
     }
     .card-cost { width: 18px; height: 18px; line-height: 18px; font-size: 0.8em; top: -5px; left: -5px; }
     .card-name { font-size: 0.8em; margin-top: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1288,19 +1284,11 @@ body {
     .deck-column { overflow: hidden; display: flex; flex-direction: column; }
     .card-grid { overflow-y: auto; align-content: flex-start; }
     .builder-card { width: 70px; height: 90px; font-size: 0.7em; }
-    
+
     .shop-items { gap: 10px; margin-bottom: 10px; }
     .event-content { padding: 10px; max-height: 95vh; overflow-y: auto; }
-}
 
-/* [추가] 높이가 매우 낮은(420px 이하) 초소형 화면 안전장치 */
-@media (max-height: 420px) and (orientation: landscape) {
-    .utility-dock { display: none; }
-    .card { height: 80px; font-size: 0.55em; }
-    .hand-area { height: 80px; }
-    .hub-grid { grid-template-columns: repeat(3, 1fr); }
-
-    /* ???? ?? */
+    /* 초소형 화면 추가 보정 */
     .timeline-container {
         left: 6px;
         top: 32%;
@@ -1326,7 +1314,6 @@ body {
         margin: 0;
     }
 }
-
 .next-icon {
     position: absolute; bottom: 10px; right: 15px;
     color: #f1c40f; animation: blink 1s infinite;
@@ -1445,14 +1432,6 @@ body {
 
 /* 3. 전투 화면 요소 위치 보정 */
 /* 기존 battle-area 대신 stage-view를 쓰면서 내부 요소 정렬 */
-.character {
-    /* 플레이어 위치: 왼쪽 정렬 */
-    position: relative;
-    z-index: 5;
-    margin-bottom: 0; /* 바닥에 딱 붙게 */
-    /* 기존 스타일 유지하되 위치만 잡음 */
-}
-
 /* [기존 수정] 적 유닛 배치 정렬을 좀 더 안정적으로 고정 */
 .enemies-wrapper {
     flex: 1;
@@ -1738,4 +1717,149 @@ body {
 @media (max-width: 800px) {
     .shop-main-area { flex-direction: column; }
     .event-content.shop-mode { padding: 15px; }
+}
+
+
+/* [style.css] 맨 아래 수정: 모바일 세로 모드 전용 레이아웃 */
+
+@media (max-width: 600px) and (orientation: portrait) {
+    
+    /* 1. 하단 UI 높이 축소 (공통) */
+    .control-group {
+        height: 60px !important;
+        gap: 2px;
+        margin-bottom: 2px;
+    }
+    #ap-indicator { width: 45px; height: 45px; margin: 0 2px; }
+    .ap-inner { font-size: 1em; margin-top: 0; }
+    .ap-label { font-size: 0.5em; margin-top: -2px; }
+    .log-area { font-size: 0.75em; padding: 4px; line-height: 1.3; }
+    .btn-end-turn-side { width: 55px; font-size: 0.8em; padding: 0; line-height: 1.1; }
+
+    /* ============================================================
+       [A] 기본 모드 (1~3장) : 한 줄 배치 (큼직하게)
+       ============================================================ */
+    .hand-area {
+        height: 120px !important; /* 한 줄 높이 고정 */
+        min-height: 0;
+        flex-wrap: nowrap !important; /* 줄바꿈 금지 */
+        align-items: center; /* 중앙 정렬 */
+        justify-content: center;
+        padding-bottom: 5px;
+        overflow: visible;
+        margin-top: 5px;
+    }
+
+    .card {
+        /* 큰 카드 사이즈 */
+        width: 80px !important; 
+        height: 110px !important;
+        font-size: 0.65em;
+        margin: 0 5px !important;
+        padding: 5px !important;
+    }
+    
+    /* ============================================================
+       [B] 다중 행 모드 (4장 이상) : 두 줄 배치 (작게)
+       ============================================================ */
+    /* JS에서 4장 이상일 때만 이 클래스가 붙음 */
+    .hand-area.mobile-multi-row {
+        height: auto !important;
+        min-height: 170px; /* 두 줄 공간 확보 */
+        flex-wrap: wrap !important; /* ★ 줄바꿈 허용 */
+        align-items: flex-end; /* 아래부터 채움 */
+        justify-content: center;
+        align-content: flex-end; /* 줄 전체를 아래로 내림 */
+    }
+
+    .hand-area.mobile-multi-row .card {
+        /* 작은 카드 사이즈 (한 줄에 5장 들어감) */
+        width: 98px !important;  
+        height: 110px !important; 
+        font-size: 0.55em; /* 글씨 축소 */
+        padding: 3px !important;
+        margin: 2px !important; /* 간격 좁게 */
+    }
+
+    /* 다중 행 모드일 때만 텍스트/아이콘 위치 미세 조정 */
+    .hand-area.mobile-multi-row .card-cost {
+        width: 18px; height: 18px; line-height: 18px; font-size: 0.75em;
+        top: -6px; left: -6px;
+    }
+    .hand-area.mobile-multi-row .card-desc {
+        -webkit-line-clamp: 2; /* 설명 줄 수 제한 */
+    }
+
+    /* ============================================================
+       [C] 공통 인터랙션 (터치 시 확대)
+       ============================================================ */
+    .card:active, .card:hover {
+        transform: scale(1.1) translateY(-10px) !important;
+        z-index: 500;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.9);
+        background: #ecf0f1;
+    }
+}
+/* --- 스토리 모드 UI 컨트롤 --- */
+#story-ui-controls {
+    position: fixed; /* 절대 위치 고정 */
+    top: 20px;
+    right: 20px;
+    z-index: 9999; /* 최상단 */
+    display: flex;
+    gap: 10px;
+}
+
+.story-ui-btn {
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.5);
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.story-ui-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.story-ui-btn.active { background: #e74c3c; border-color: #e74c3c; font-weight: bold; }
+
+/* 로그 오버레이 */
+#story-log-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+#story-log-content {
+    width: 85%;
+    height: 75%;
+    background: #111;
+    border: 1px solid #555;
+    overflow-y: auto;
+    color: #ddd;
+    padding: 20px;
+    border-radius: 10px;
+    font-family: sans-serif;
+    text-align: left;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+#story-log-content p {
+    margin: 0 0 12px 0;
+    line-height: 1.5;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+    font-size: 0.95em;
+}
+
+.log-name {
+    color: #f1c40f;
+    font-weight: bold;
+    margin-right: 8px;
 }

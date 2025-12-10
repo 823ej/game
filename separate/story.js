@@ -1,172 +1,223 @@
-/* --------------------------------------------------------------------------
-   story.js - 비주얼 노벨 엔진 모듈
-   -------------------------------------------------------------------------- */
+/* story.js - 버그 수정판 (로그 창 표시 문제 및 스킵 차단 해결) */
 
 const StoryEngine = {
-    script: [],       // 현재 실행 중인 스크립트 데이터
-    index: 0,         // 현재 진행 중인 줄 번호
-    isTyping: false,  // 타이핑 효과 중인지 여부
-    timer: null,      // 타이핑 타이머
-    fullText: "",     // 현재 출력해야 할 전체 텍스트
-    callback: null,   // 스토리가 끝난 후 실행할 함수 (예: 전투 시작)
-    chars: {},        // 로드된 캐릭터 이미지 객체
+    script: [], index: 0, isTyping: false, timer: null, fullText: "", callback: null, chars: {},
+    
+    // [기능 변수]
+    logData: [], isSkipping: false, skipSpeed: 50, // 속도: 0.05초
 
-    // 스토리 시작 함수
     start: function(scriptData, onComplete) {
         this.script = scriptData;
         this.index = 0;
         this.callback = onComplete;
         this.chars = {};
+        this.logData = [];
+        this.isSkipping = false;
         
-        // UI 초기화
-        document.getElementById("story-standing").innerHTML = "";
-        document.getElementById("story-choice-overlay").style.display = "none";
-        
-        // 화면 전환 (game.js의 switchScene 사용)
-        switchScene('story');
-        
-        // 첫 번째 컷 실행
+        // 기존 UI 초기화
+        const standing = document.getElementById("story-standing");
+        if (standing) standing.innerHTML = "";
+        const overlay = document.getElementById("story-choice-overlay");
+        if (overlay) overlay.style.display = "none";
+
+        // [핵심] 기능 UI 생성
+        this.initControlUI();
+
+        // 화면 전환
+        if (typeof switchScene === 'function') switchScene('story');
         this.playNext();
     },
 
-    // 다음 컷 실행
     playNext: function() {
-        if (this.index >= this.script.length) {
-            this.end();
-            return;
-        }
-
+        if (this.index >= this.script.length) { this.end(); return; }
         let cmd = this.script[this.index];
 
-        // [배경 변경] { type: "bg", src: "url" }
         if (cmd.type === "bg") {
-            document.getElementById("story-bg").style.backgroundImage = `url('${cmd.src}')`;
-            this.index++;
-            this.playNext(); // 배경만 바꾸고 바로 다음 대사로
+            const bgEl = document.getElementById("story-bg");
+            if (bgEl) bgEl.style.backgroundImage = `url('${cmd.src}')`;
+            this.index++; this.playNext(); 
         }
-        // [캐릭터 등장] { type: "char", id: "a", name: "탐정", src: "url", pos: "left" }
         else if (cmd.type === "char") {
             this.showCharacter(cmd.id, cmd.src, cmd.pos);
-            this.index++;
-            this.playNext();
+            this.index++; this.playNext();
         }
-        // [캐릭터 퇴장] { type: "exit", id: "a" }
         else if (cmd.type === "exit") {
-            if (this.chars[cmd.id]) {
-                this.chars[cmd.id].remove();
-                delete this.chars[cmd.id];
-            }
-            this.index++;
-            this.playNext();
+            if (this.chars[cmd.id]) { this.chars[cmd.id].remove(); delete this.chars[cmd.id]; }
+            this.index++; this.playNext();
         }
-        // [대사 출력] { type: "talk", id: "a", name: "탐정", text: "안녕" }
         else if (cmd.type === "talk") {
+            this.addLog(cmd.name, cmd.text);
             this.showDialog(cmd.id, cmd.name, cmd.text);
             this.index++;
         }
-        // [선택지] { type: "choice", options: [{txt:"A", next: 5}, {txt:"B", next: 10}] }
         else if (cmd.type === "choice") {
+            if (this.isSkipping) this.toggleSkip(); // 선택지에서 스킵 멈춤
             this.showChoices(cmd.options);
         }
-        // [점프] { type: "jump", next: 10 }
         else if (cmd.type === "jump") {
-            this.index = cmd.next;
-            this.playNext();
+            this.index = cmd.next; this.playNext();
         }
-        // [종료] { type: "end" }
         else if (cmd.type === "end") {
             this.end();
         }
     },
 
-    // 캐릭터 표시
     showCharacter: function(id, src, pos) {
-        if (this.chars[id]) return; // 이미 있으면 패스
-
+        if (this.chars[id]) return;
         let img = document.createElement("img");
-        img.src = src;
-        img.className = `story-char pos-${pos}`; // css 클래스 적용
+        img.src = src; img.className = `story-char pos-${pos}`;
         document.getElementById("story-standing").appendChild(img);
         this.chars[id] = img;
     },
 
-    // 대사 출력 (타이핑 효과)
     showDialog: function(id, name, text) {
-        // 1. 이름표 설정
         let nameTag = document.getElementById("story-name");
-        if (name) {
-            nameTag.innerText = name;
-            nameTag.style.display = "block";
-        } else {
-            nameTag.style.display = "none";
-        }
+        if (name) { nameTag.innerText = name; nameTag.style.display = "block"; } 
+        else { nameTag.style.display = "none"; }
 
-        // 2. 말하는 캐릭터 강조 (Spotlight)
-        for (let key in this.chars) {
-            this.chars[key].classList.remove("speaking");
-        }
-        if (id && this.chars[id]) {
-            this.chars[id].classList.add("speaking");
-        }
+        for (let key in this.chars) this.chars[key].classList.remove("speaking");
+        if (id && this.chars[id]) this.chars[id].classList.add("speaking");
 
-        // 3. 텍스트 타이핑
         const textBox = document.getElementById("story-text");
         textBox.innerHTML = "";
         this.fullText = text;
         this.isTyping = true;
         
-        let i = 0;
         if (this.timer) clearInterval(this.timer);
-        
+
+        if (this.isSkipping) {
+            textBox.innerHTML = text;
+            this.finishTyping();
+            return;
+        }
+
+        let i = 0;
         this.timer = setInterval(() => {
-            textBox.innerHTML += text.charAt(i);
-            i++;
-            if (i >= text.length) {
-                this.finishTyping();
-            }
-        }, 30); // 속도 (ms)
+            textBox.innerHTML += text.charAt(i); i++;
+            if (i >= text.length) this.finishTyping();
+        }, 30);
     },
 
     finishTyping: function() {
         clearInterval(this.timer);
         document.getElementById("story-text").innerHTML = this.fullText;
         this.isTyping = false;
+        if (this.isSkipping) {
+            setTimeout(() => { if (this.isSkipping) nextDialog(); }, this.skipSpeed);
+        }
     },
 
-    // 선택지 표시
     showChoices: function(options) {
         const overlay = document.getElementById("story-choice-overlay");
-        overlay.innerHTML = ""; // 초기화
-        overlay.style.display = "flex";
-
+        overlay.innerHTML = ""; overlay.style.display = "flex";
         options.forEach(opt => {
             let btn = document.createElement("button");
             btn.className = "story-choice-btn";
             btn.innerText = opt.txt;
             btn.onclick = (e) => {
-                e.stopPropagation();
-                overlay.style.display = "none";
-                this.index = opt.next; // 선택한 인덱스로 점프
-                this.playNext();
+                e.stopPropagation(); overlay.style.display = "none";
+                this.index = opt.next; this.playNext();
             };
             overlay.appendChild(btn);
         });
     },
 
-    // 스토리 종료
     end: function() {
+        this.isSkipping = false;
+        
+        // 생성했던 버튼과 로그창 제거 (스토리 끝나면 깔끔하게 정리)
+        const uiControls = document.getElementById("story-ui-controls");
+        if (uiControls) uiControls.remove();
+        
+        const logOverlay = document.getElementById("story-log-overlay");
+        if (logOverlay) logOverlay.remove();
+
         if (this.callback) this.callback();
-        else {
-            // 콜백 없으면 기본적으로 허브로 복귀
-            renderHub();
+        else if (typeof renderHub === 'function') renderHub();
+    },
+
+    addLog: function(name, text) {
+        this.logData.push({ name: name || "", text: text });
+    },
+
+    toggleSkip: function() {
+        this.isSkipping = !this.isSkipping;
+        const btn = document.getElementById("btn-skip");
+        if (this.isSkipping) {
+            if(btn) { btn.innerText = "SKIP ON ▶▶"; btn.classList.add("active"); }
+            if (this.isTyping) this.finishTyping();
+            else nextDialog();
+        } else {
+            if(btn) { btn.innerText = "SKIP"; btn.classList.remove("active"); }
         }
+    },
+
+    toggleLog: function() {
+        let logOverlay = document.getElementById("story-log-overlay");
+        if (!logOverlay) return;
+        
+        // hidden 클래스가 혹시 남아있다면 제거
+        logOverlay.classList.remove('hidden');
+
+        if (logOverlay.style.display === "flex") {
+            logOverlay.style.display = "none";
+        } else {
+            const logContent = document.getElementById("story-log-content");
+            logContent.innerHTML = "";
+            this.logData.forEach(log => {
+                let p = document.createElement("p");
+                p.innerHTML = log.name ? `<span class="log-name">[${log.name}]</span> ${log.text}` : `${log.text}`;
+                logContent.appendChild(p);
+            });
+            logOverlay.style.display = "flex";
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+    },
+
+    initControlUI: function() {
+        // 기존 UI가 있다면 제거 후 재생성
+        if (document.getElementById("story-ui-controls")) document.getElementById("story-ui-controls").remove();
+        if (document.getElementById("story-log-overlay")) document.getElementById("story-log-overlay").remove();
+
+        // 1. 버튼 컨테이너
+        let uiContainer = document.createElement("div");
+        uiContainer.id = "story-ui-controls";
+        document.body.appendChild(uiContainer);
+
+        let btnLog = document.createElement("button");
+        btnLog.innerText = "LOG"; btnLog.className = "story-ui-btn";
+        btnLog.onclick = (e) => { e.stopPropagation(); this.toggleLog(); };
+        uiContainer.appendChild(btnLog);
+
+        let btnSkip = document.createElement("button");
+        btnSkip.id = "btn-skip"; btnSkip.innerText = "SKIP"; btnSkip.className = "story-ui-btn";
+        btnSkip.onclick = (e) => { e.stopPropagation(); this.toggleSkip(); };
+        uiContainer.appendChild(btnSkip);
+
+        // 2. 로그 오버레이 (★중요 수정: hidden 클래스 제거)
+        let logOverlay = document.createElement("div");
+        logOverlay.id = "story-log-overlay";
+        logOverlay.className = "story-overlay"; // 'hidden' 클래스를 뺐습니다!
+        logOverlay.style.display = "none";      // style로만 제어
+        logOverlay.onclick = (e) => { e.stopPropagation(); this.toggleLog(); };
+
+        let logBox = document.createElement("div");
+        logBox.id = "story-log-content";
+        logBox.onclick = (e) => e.stopPropagation();
+        
+        logOverlay.appendChild(logBox);
+        document.body.appendChild(logOverlay);
     }
 };
 
-// [전역 함수] 화면 클릭 시 다음 대사
+// [전역 함수] 다음 대사 진행
 function nextDialog() {
-    // 선택지 떠있으면 클릭 무시
-    if (document.getElementById("story-choice-overlay").style.display === "flex") return;
+    const choiceOverlay = document.getElementById("story-choice-overlay");
+    const logOverlay = document.getElementById("story-log-overlay");
+    
+    // 로그 창이 열려있으면 클릭 무시 (이제 로그 창이 눈에 보일 것이므로 정상 작동함)
+    if (choiceOverlay && choiceOverlay.style.display === "flex") return;
+    if (logOverlay && logOverlay.style.display === "flex") return;
 
     if (StoryEngine.isTyping) {
         StoryEngine.finishTyping();

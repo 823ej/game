@@ -3437,13 +3437,19 @@ function escapePhysicalBattle() {
     renderExploration();
 }
 
-/* [수정] renderHand: 터치 이벤트 지원 추가 */
+/* [game.js] renderHand 함수 수정 (PC/모바일 로직 분리) */
 function renderHand() {
     const container = document.getElementById('hand-container'); 
     container.innerHTML = "";
     
+    // [1] PC/가로 모드용 로직: 8장 이상이면 겹쳐서 보여줌 (기존 기능 복구)
     if (player.hand.length >= 8) container.classList.add('compact');
     else container.classList.remove('compact');
+
+    // [2] 모바일 세로 모드용 로직: 4장 이상이면 'mobile-multi-row' 클래스 붙임
+    // (이 클래스는 CSS 미디어 쿼리 안에서만 작동하므로 PC엔 영향 없음)
+    if (player.hand.length >= 4) container.classList.add('mobile-multi-row');
+    else container.classList.remove('mobile-multi-row');
 
     player.hand.forEach((cName, idx) => {
         let data = CARD_DATA[cName];
@@ -3462,7 +3468,6 @@ function renderHand() {
         `;
         
         if (game.turnOwner === "player" && player.ap >= data.cost) {
-            // [핵심 변경] 마우스와 터치 둘 다 연결
             el.onmousedown = (e) => startDrag(e, idx, cName);
             el.ontouchstart = (e) => startDrag(e, idx, cName);
         } else {
