@@ -1878,9 +1878,7 @@ body {
         width: 18px; height: 18px; line-height: 18px; font-size: 0.75em;
         top: -6px; left: -6px;
     }
-    .hand-area.mobile-multi-row .card-desc {
-        -webkit-line-clamp: 2; /* 설명 줄 수 제한 */
-    }
+  
 
     /* ============================================================
        [C] 공통 인터랙션 (터치 시 확대)
