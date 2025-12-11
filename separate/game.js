@@ -160,16 +160,21 @@ function beginMission() {
 function startPatrol(districtKey) {
     closePopup();
     
-    // 순찰 시나리오 데이터 생성
+    // 1. 활성 시나리오 ID 제거 (순찰이므로)
+    game.activeScenarioId = null;
+    
+    // 2. 새로운 맵 생성을 위해 플래그 초기화 ★중요★
+    game.dungeonMap = false; 
+
+    // 3. 순찰용 가짜 시나리오 데이터 생성
+    // (districtKey를 저장해두어야 나중에 던전 설정을 불러옵니다)
     game.scenario = {
         id: "patrol",
         title: `${DISTRICTS[districtKey].name} 순찰`,
-        location: DISTRICTS[districtKey].name,
+        districtKey: districtKey, // ★ 구역 키 저장
         clues: 0,
         isPatrol: true,
         isActive: true,
-        
-        // [NEW] 순찰은 언제든 복귀 가능
         canRetreat: true 
     };
     
@@ -441,11 +446,22 @@ function autoSave() {
         if (SCENARIOS[id].cleared) clearedList.push(id);
     }
 
-    const saveData = {
+   const saveData = {
         version: "2.3",
         player: targetPlayer,
         enemies: targetEnemies,
         game: targetGame,
+        
+        // ★ [추가] 던전 시스템의 상태도 함께 저장
+        dungeon: {
+            map: DungeonSystem.map,
+            width: DungeonSystem.width,
+            height: DungeonSystem.height,
+            currentPos: DungeonSystem.currentPos,
+            progress: DungeonSystem.progress,
+            isCity: DungeonSystem.isCity
+        },
+        
         clearedScenarios: clearedList,
         timestamp: new Date().toLocaleString()
     };
@@ -469,6 +485,7 @@ function loadGame() {
         // 데이터 복구
         player = loadedData.player;
         game = loadedData.game;
+        
         if (game.started === undefined) game.started = true;
         if (game.activeScenarioId === undefined) game.activeScenarioId = null;
         enemies = loadedData.enemies || [];
@@ -478,8 +495,19 @@ function loadGame() {
                 if (SCENARIOS[id]) SCENARIOS[id].cleared = true;
             });
         }
+        
         if (!player.img && player.job && JOB_DATA[player.job]) {
             player.img = JOB_DATA[player.job].img;
+        }
+        // ★ [수정] 저장된 던전 데이터 복구 로직 강화
+        if (loadedData.dungeon && loadedData.dungeon.map.length > 0) {
+            Object.assign(DungeonSystem, loadedData.dungeon);
+            game.dungeonMap = true; // [중요] 맵이 이미 있음을 표시 (재생성 방지)
+        } else {
+            // 저장된 던전이 없는데 탐사 중이라면 -> 강제로 맵 재생성 유도
+            if (game.state === 'exploration') {
+                game.dungeonMap = false; 
+            }
         }
         recalcStats();
         
@@ -493,6 +521,11 @@ function loadGame() {
                 createBattleCheckpoint();
                 switchScene('battle');
                 showBattleView();
+                // 플레이어 이미지 동기화 (HTML 기본 이미지를 덮어씀)
+                const loadedPlayerEl = document.getElementById('dungeon-player');
+                if (loadedPlayerEl) {
+                    loadedPlayerEl.src = player.img || loadedPlayerEl.src;
+                }
                 renderEnemies();
                 renderHand();
                 updateUI();
@@ -1035,7 +1068,7 @@ function startSocialBattle(npcKey, preserveEnemies = false) {
     showBattleView();
 
     // 적 영역 업데이트 (프리뷰 모드 해제)
-    const eArea = document.getElementById('enemies-area');
+    const eArea = document.getElementById('dungeon-enemies');
     if (eArea) {
         if (!preserveEnemies) renderEnemies();
         setTimeout(() => {
@@ -1619,54 +1652,51 @@ function toggleItemSelect(e, idx) {
         icon.classList.remove('selected');
     }
 }
-/* [game.js] renderExploration 함수 수정 (오류 수정판) */
 function renderExploration() {
     game.state = 'exploration';
     switchScene('exploration');
-    
-    game.inputLocked = false;
+// ★ [추가] 버튼/이동 잠금 해제
+    game.inputLocked = false; 
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
+    // 던전 생성 로직 (우선순위 적용)
+    if (!game.dungeonMap) {
+        let dungeonConfig = null;
 
-    const scData = game.scenario;
-    
-    // [삭제됨] 아래 코드들이 에러의 원인입니다. (index.html에서 사라진 요소들)
-    // document.getElementById('scenario-title').innerText = ... 
-    // document.getElementById('clue-bar').style.width = ...
-    // document.getElementById('doom-bar').style.width = ...
-    
-    // [NEW] 탐사 스테이지 설정 (배경 및 캐릭터)
-    let bgUrl = "https://placehold.co/600x300/111/444?text=Night+City"; 
-    // (시나리오별 배경 이미지가 있다면 scData.bg 등으로 연동 가능)
-    document.getElementById('expl-bg').style.backgroundImage = `url('${bgUrl}')`;
-    // 적 프리뷰 영역 초기화 (전투용 영역을 재사용)
-    const enemyStage = document.getElementById('enemies-area');
-    if (enemyStage) enemyStage.innerHTML = "";
-
-    // 복귀 버튼 처리
-    const retreatBtn = document.getElementById('btn-retreat');
-    if (retreatBtn) {
-        if (scData.canRetreat !== false) {
-            retreatBtn.style.display = "inline-block"; 
-            retreatBtn.disabled = false;
-        } else {
-            retreatBtn.style.display = "none";
+        // [1순위] 현재 활성화된 시나리오의 던전 설정
+        if (game.activeScenarioId && SCENARIOS[game.activeScenarioId]) {
+            dungeonConfig = SCENARIOS[game.activeScenarioId].dungeon;
         }
-    }
-    
-    // 보스전 체크
-    if (game.scenario.clues >= 100 && !game.scenario.bossReady) {
-        game.scenario.bossReady = true;
-        showPopup("❗ 단서 확보 완료", "사건의 전말이 드러났습니다.<br>보스의 위치를 특정했습니다.", [
-            {txt: "보스전 돌입", func: startBossBattle}
-        ]);
+        
+        // [2순위] 순찰(Patrol) 중이라면 해당 구역의 던전 설정
+        else if (game.scenario && game.scenario.isPatrol && game.scenario.districtKey) {
+            let dist = DISTRICTS[game.scenario.districtKey];
+            if (dist && dist.dungeon) {
+                dungeonConfig = dist.dungeon;
+            }
+        }
+
+        // [3순위] 설정이 없으면 기본값 (랜덤 생성)
+        if (!dungeonConfig) {
+            dungeonConfig = { 
+                width: 5, height: 5, roomCount: 10, 
+                data: { "battle": 4, "event": 2, "treasure": 1 } 
+            };
+        }
+        
+        // 던전 생성 실행
+        DungeonSystem.generateDungeon(dungeonConfig);
+        game.dungeonMap = true; // 생성 완료 플래그
     }
 
-    // 탐사 UI 보이고 배틀 UI 숨기기
-    showExplorationView();
+    // 플레이어 이미지 연결
+    const playerEl = document.getElementById('dungeon-player');
+    if (playerEl) {
+        playerEl.src = player.img || "https://placehold.co/150x150/3498db/ffffff?text=Hero";
+    }
 
-    // ★ 핵심: 상단 바(진척도 등) 갱신은 여기서 처리됨
-    updateUI(); 
-    autoSave(); 
+    showExplorationView(); 
+    updateUI();
+    autoSave();
 }
 
 // 탐사/배틀 UI 토글 헬퍼
@@ -1689,8 +1719,45 @@ function showBattleView() {
         el.classList.remove('hidden');
         el.style.display = '';
     });
+    const moveControls = document.querySelector('.move-controls');
+    if (moveControls) moveControls.style.display = 'none';
 }
+// 모드 전환 헬퍼 (true: 전투모드, false: 탐사모드)
+function toggleBattleUI(isBattle) {
+    const moveControls = document.querySelector('.move-controls');
+    const dungeonActions = document.getElementById('dungeon-actions');
+    const battleUI = document.querySelectorAll('.battle-ui');
+    const minimapBtn = document.getElementById('btn-minimap'); // 지도 버튼 (가정)
 
+    if (isBattle) {
+        // [전투 진입]
+        moveControls.style.display = 'none';   // 이동 키 숨김
+        if(dungeonActions) dungeonActions.style.display = 'none'; // 조사 버튼 등 숨김
+        if(minimapBtn) minimapBtn.style.display = 'none'; // 전투 중 지도 금지
+
+        // 전투 UI 보이기 (카드, 턴 순서 등)
+        battleUI.forEach(el => {
+            el.classList.remove('hidden');
+            el.style.display = ''; 
+        });
+
+       
+
+    } else {
+        // [탐사 복귀]
+        moveControls.style.display = 'flex';   // 이동 키 복구
+        if(dungeonActions) dungeonActions.style.display = 'grid';
+        if(minimapBtn) minimapBtn.style.display = 'block';
+
+        // 전투 UI 숨김
+        battleUI.forEach(el => {
+            el.classList.add('hidden');
+            el.style.display = 'none';
+        });
+
+      
+    }
+}
 /* [NEW] 복귀 확인 팝업 */
 function confirmRetreat() {
     let msg = "탐사를 중단하고 사무소로 복귀하시겠습니까?";
@@ -1748,7 +1815,7 @@ function exploreAction(action) {
             logBox.innerHTML = `<span style='color:#e74c3c; font-weight:bold;'>⚠️ 적 발견! 전투 태세!</span>`;
             
             // [핵심] 프리뷰 모드로 렌더링 (HP바 숨김)
-            const eArea = document.getElementById('enemies-area');
+            const eArea = document.getElementById('dungeon-enemies');
             eArea.classList.add('preview-mode'); // CSS로 HP바 숨김
             
             renderEnemies(); // 빈 div 생성
@@ -1784,7 +1851,7 @@ function exploreAction(action) {
             let npc = createNpcEnemyData(npcKey, 0);
             if (npc) enemies.push(npc);
 
-            const eArea = document.getElementById('enemies-area');
+            const eArea = document.getElementById('dungeon-enemies');
             if (eArea) {
                 eArea.classList.add('preview-mode'); 
                 renderEnemies(); 
@@ -1872,15 +1939,23 @@ function exploreAction(action) {
     }
 }
 /* [수정] 전투 시작 함수 (턴 기록 초기화 + 프리뷰 유지) */
-/* [수정] startBattle: Seamless 전환 지원 */
+/* [game.js] startBattle 함수 수정 (안정성 강화) */
 function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) {
+    // 1. 이동 정지 (던전 모드)
+    if (typeof stopMove === 'function') stopMove();
+    
+    // 2. 전투 상태 설정
     game.state = "battle"; 
     game.totalTurns = 0; 
     game.isBossBattle = isBoss;
     game.turnOwner = "none";     
     game.lastTurnOwner = "none"; 
 
-    // 플레이어 초기화
+    // 3. 플레이어 상태 초기화
+    // (덱이 비어있으면 기본 덱으로 복구하는 안전장치 추가)
+    if (!player.deck || player.deck.length === 0) {
+        player.deck = [...JOB_DATA[player.job].starterDeck];
+    }
     player.drawPile = [...player.deck]; 
     shuffle(player.drawPile);
     player.discardPile = []; 
@@ -1888,24 +1963,27 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     player.hand = []; 
     player.buffs = {}; 
     player.block = 0; 
-    player.ag = 0;
-    
-    renderHand();
+    player.ag = 0; // 행동 게이지 초기화
 
-    // [핵심] 이미 탐색 단계에서 적을 생성했다면 생략
+    // 4. UI 모드 전환 (이동 버튼 숨김, 전투 UI 표시)
+    toggleBattleUI(true);
+    switchScene('battle'); // 탐사 화면 재사용
+    showBattleView();      
+
+    // 5. 적 생성 로직
     if (!preserveEnemies) {
-        enemies = [];
+        enemies = []; // 적 목록 초기화
         
         if (isBoss) {
-            let scId = game.scenario.id;
-            let bossId = SCENARIOS[scId] ? SCENARIOS[scId].boss : "boss_gang_leader";
+            let scId = game.scenario ? game.scenario.id : null;
+            let bossId = (scId && SCENARIOS[scId]) ? SCENARIOS[scId].boss : "boss_gang_leader";
             let boss = createEnemyData(bossId, 0);
             if (boss) {
                 enemies.push(boss);
                 log(`⚠️ <b>${boss.name}</b> 출현! 목숨을 걸어라!`);
             }
         } else {
-            // enemyKeys: null -> 랜덤 / 문자열 -> 단일 / 배열 -> 지정된 목록
+            // 랜덤 적 생성
             let picked = [];
             if (Array.isArray(enemyKeys) && enemyKeys.length > 0) picked = enemyKeys;
             else if (typeof enemyKeys === 'string') picked = [enemyKeys];
@@ -1922,31 +2000,24 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
         }
     }
 
-    // 전투 배경을 현재 탐사 배경과 동기화
-    let explBg = document.getElementById('expl-bg');
-    let battleBg = document.getElementById('battle-bg');
-    if (explBg && battleBg) {
-        battleBg.style.backgroundImage = explBg.style.backgroundImage;
-    }
+    // 6. 적 화면 렌더링 (즉시 실행)
+    renderEnemies(); 
+    
+    // 프리뷰 모드 해제 (애니메이션 효과를 위해 약간 딜레이 줄 수 있으나, 안전을 위해 즉시 해제)
+    const eArea = document.getElementById('dungeon-enemies');
+    if (eArea) eArea.classList.remove('preview-mode');
 
+    // 7. UI 전체 갱신 (적 체력바, 플레이어 정보 등)
+    updateUI();
+    
+    // 8. 핸드 렌더링 (빈 상태로 시작)
+    renderHand();
+
+    // 9. 전투 체크포인트 저장 및 턴 시작
     createBattleCheckpoint(); 
     autoSave(); 
-    switchScene('battle'); 
-    showBattleView();      
-
-    // 적 영역 업데이트 (프리뷰 모드 해제)
-    const eArea = document.getElementById('enemies-area');
-    if (eArea) {
-        if (!preserveEnemies) renderEnemies();
-        setTimeout(() => {
-            eArea.classList.remove('preview-mode');
-            updateUI();
-        }, 50);
-    } else {
-        renderEnemies();
-        updateUI();
-    }
     
+    // [핵심] 턴 시뮬레이션 시작
     processTimeline();
 }
 
@@ -1971,16 +2042,28 @@ function nextStepAfterWin() {
         renderResultScreen();
     } 
     else if (game.scenario && game.scenario.isPatrol) {
-        game.state = 'city';
+       game.state = 'exploration';
         player.gold += 100; // 순찰 보상
-        renderCityMap();
+        // 적 유닛 제거
+   document.getElementById('dungeon-enemies').innerHTML = "";
+   
+   // UI 복구
+    toggleBattleUI(false); 
+    showExplorationView();
+    updateUI();
+    
+    // 자동 저장
+    autoSave();
     }
     else {
         // 일반 시나리오 전투 -> 탐사 화면 복귀
         let clueGain = 10;
         game.scenario.clues = Math.min(100, game.scenario.clues + clueGain);
         game.state = 'exploration';
+        toggleBattleUI(false);
         renderExploration();
+        showExplorationView();
+        updateUI();
         autoSave(); // [추가] 결과 저장
         // 탐사 화면 텍스트 업데이트
         const logBox = document.getElementById('loc-desc');
@@ -1993,6 +2076,8 @@ function nextStepAfterWin() {
 }
 
 async function processTimeline() {
+    // 전투/소셜이 아닐 때는 타임라인을 돌리지 않음 (승리/도망/복귀 등)
+    if (!["battle", "social"].includes(game.state)) return;
     if (checkGameOver()) return;
 
     // 1. 현재 턴을 잡을 수 있는 후보 찾기 (AG >= 1000)
@@ -2101,7 +2186,8 @@ async function startTurn(unit, type) {
 }
 // 적들의 HTML 뼈대를 만드는 함수
 function renderEnemies() {
-    const wrapper = document.getElementById('enemies-area');
+    const wrapper = document.getElementById('dungeon-enemies');
+    if (!wrapper) return; // 안전장치
     wrapper.innerHTML = ""; // 초기화
 
     enemies.forEach(e => {
@@ -2131,16 +2217,18 @@ function startPlayerTurnLogic() {
     player.ap = 3; 
     drawCards(5); 
 
-   document.getElementById('end-turn-btn').disabled = false;
-    
+   const endBtn = document.getElementById('end-turn-btn');
+    if(endBtn) endBtn.disabled = false;
     // [수정] turn-info 요소가 사라졌으므로, 에러가 안 나게 체크합니다.
     const turnInfo = document.getElementById('turn-info');
     if (turnInfo) {
         turnInfo.innerText = `나의 턴 (AP: ${player.ap})`;
     }
-    document.getElementById('player-char').classList.add('turn-active'); 
-    document.querySelectorAll('.enemy-unit').forEach(e => e.classList.remove('turn-active'));
+   // ★ [수정] player-char 대신 dungeon-player 사용
+    const pImg = document.getElementById('dungeon-player');
+    if(pImg) pImg.classList.add('turn-active'); 
     
+    document.querySelectorAll('.enemy-unit').forEach(e => e.classList.remove('turn-active'));
     updateTurnOrderList(); 
 }
 
@@ -2155,7 +2243,8 @@ function endPlayerTurn() {
     }
     renderHand(); 
 
-    document.getElementById('player-char').classList.remove('turn-active');
+    const pImg = document.getElementById('dungeon-player');
+    if(pImg) pImg.classList.remove('turn-active');
     
     // ★ 중요: 내 행동이 끝났으니 다시 타임라인을 돌립니다.
     // 만약 내 속도가 압도적이라 AG가 1000 이상 남았다면? processTimeline이 즉시 나를 다시 호출함 (연속 턴)
@@ -2350,7 +2439,7 @@ function summonMinion(enemyKey) {
     enemies.push(newEnemy);
 
     // 3. 화면에 추가 (깜빡임 없이)
-    const wrapper = document.getElementById('enemies-area');
+    const wrapper = document.getElementById('dungeon-enemies');
     let el = document.createElement('div');
     el.className = 'enemy-unit';
     el.id = `enemy-unit-${newId}`;
@@ -2426,11 +2515,17 @@ if (dmg > 0) {
             checkGameOver();
         }
     }
+    // 적 또는 NPC가 쓰러졌다면 즉시 승리/패배 판정
+    if (target !== player) {
+        checkGameOver();
+    }
 }
 /* [수정] 승패 판정 로직 (전체 코드) */
 function checkGameOver() {
 // 0. 이미 게임오버 상태라면 중복 실행 방지
     if (game.state === "gameover") return true;
+    // 승리 상태면 추가 진행 중단
+    if (game.state === "win") return true;
 
     // 1. [물리적 사망] HP 0
     if (player.hp <= 0) { 
@@ -2483,8 +2578,10 @@ if (game.state === "social") {
 
     // 3. [일반 전투] 승리 판정 (적 전멸)
     else if (game.state === "battle") {
-        // 모든 적의 HP가 0 이하인지 확인
-        if (enemies.every(e => e.hp <= 0)) {
+        // 모든 적의 HP가 0 이하인지 확인 (유효한 적만 판단)
+        const aliveEnemies = enemies.filter(e => e && e.hp > 0);
+        // 안전장치: enemies가 비어있거나 정의되지 않은 경우도 승리 처리
+        if (!enemies || enemies.length === 0 || aliveEnemies.length === 0) {
             // 중복 승리 처리 방지
             if(game.state === "win") return true; 
             
@@ -2671,7 +2768,7 @@ function renderRestScreen() {
         
         <div style="display:flex; justify-content:center; gap:20px;">
             ${restBtnHTML}
-            <button class="action-btn" style="background:#7f8c8d" onclick="startBattle()">👣 떠나기</button>
+            <button class="action-btn" style="background:#7f8c8d" onclick="exitRestArea()">👣 떠나기</button>
         </div>
         
         <div style="margin-top:20px; font-size:0.9em; color:#aaa;">
@@ -2705,6 +2802,16 @@ function restAction() {
             }
         }
     ]);
+}
+
+// 휴식처 종료 후 원래 방(탐사 화면)으로 복귀
+function exitRestArea() {
+    closePopup();
+    game.state = 'exploration';
+    toggleBattleUI(false);
+    showExplorationView();
+    renderExploration();
+    updateUI();
 }
 /* [game.js] renderShopScreen 함수 전체 교체 */
 function renderShopScreen(shopType = "shop_black_market") {
@@ -3262,6 +3369,9 @@ function drawCards(n) {
 
 /* [game.js] updateUI 함수 수정 (상단 시나리오 정보 갱신 추가) */
 function updateUI() {
+    // 공용 플래그: 현재 전투/소셜에서도 방어도를 표시할지 여부
+    const showBlock = true;
+
     // 1. 상단 플레이어 정보
     const infoEl = document.getElementById('game-info');
     if (infoEl) {
@@ -3313,63 +3423,42 @@ function updateUI() {
             apIndicator.style.transform = "scale(1)";
         }
     }
-    // 3. (이하 기존 플레이어/적 UI 업데이트 로직 유지...)
-    // 플레이어 바
-    let playerBarHTML = "";
-    const showBlock = (game.state === "battle" || game.state === "social");
-
-    if (game.state === "social") {
-        let mentalPct = Math.max(0, (player.mental / 100) * 100);
-        playerBarHTML = `
-            <div class="hp-bar-bg" style="background:#222; border-color:#3498db;">
-                <div class="hp-bar-fill" style="width:${mentalPct}%; background: linear-gradient(90deg, #3498db, #8e44ad);"></div>
-            </div>
-            <div style="font-size:0.9em;">
-                의지: <span id="p-hp">${player.mental}</span>/100 
-                ${showBlock ? `<span class="block-icon">🛡️<span id="p-block">${player.block}</span></span>` : ""}
-            </div>
-        `;
-    } else if (game.state === "battle") {
-        let hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
-        playerBarHTML = `
-            <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar" style="width:${hpPct}%"></div></div>
-            <div style="font-size:0.9em;">HP: <span id="p-hp">${player.hp}</span>/<span id="p-max-hp">${player.maxHp}</span> ${showBlock ? `<span class="block-icon">🛡️<span id="p-block">${player.block}</span></span>` : ""}</div>
-        `;
-    } else {
-        // 탐사 등 비전투 상태: 방어도 숨김
-        let hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
-        playerBarHTML = `
-            <div class="hp-bar-bg"><div class="hp-bar-fill" id="p-hp-bar" style="width:${hpPct}%"></div></div>
-            <div style="font-size:0.9em;">HP: <span id="p-hp">${player.hp}</span>/<span id="p-max-hp">${player.maxHp}</span></div>
-        `;
+   // 3. ★ [핵심 수정] 플레이어 전투 정보 (HUD) 업데이트
+    const pHud = document.getElementById('player-hud');
+    if (pHud) {
+        // 전투/소셜 모드일 때만 상세 정보 표시
+        if (game.state === 'battle' || game.state === 'social') {
+            let hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
+            
+            // 소셜 모드일 경우 (멘탈 바)
+            if (game.state === 'social') {
+                hpPct = Math.max(0, (player.mental / 100) * 100);
+                pHud.innerHTML = `
+                    <div class="hp-bar-bg" style="background:#222; border:1px solid #3498db; height:8px; margin:2px 0;">
+                        <div class="hp-bar-fill" style="width:${hpPct}%; background:#3498db;"></div>
+                    </div>
+                    <div style="font-size:0.8em; color:#fff;">의지: ${player.mental} <span style="color:#f1c40f">🛡️${player.block}</span></div>
+                `;
+            } 
+            // 일반 전투 모드 (체력 바)
+            else {
+                pHud.innerHTML = `
+                    <div class="hp-bar-bg" style="height:8px; margin:2px 0;">
+                        <div class="hp-bar-fill" style="width:${hpPct}%"></div>
+                    </div>
+                    <div style="font-size:0.8em; color:#fff;">HP: ${player.hp} <span style="color:#f1c40f">🛡️${player.block}</span></div>
+                `;
+            }
+            
+            // 버프 표시
+            let buffText = Object.entries(player.buffs).map(([k,v])=>`${k}(${v})`).join(', ');
+            if(buffText) pHud.innerHTML += `<div style="font-size:0.7em; color:#2ecc71;">${buffText}</div>`;
+            
+        } else {
+            // 탐사 모드일 때는 이름만 깔끔하게
+            pHud.innerHTML = `<div style="font-size:0.9em; color:#aaa;">탐색 중...</div>`;
+        }
     }
-    
-    // 스탯 표시는 무대에서 숨김 (팝업으로 확인)
-    let statsHTML = "";
-
-    // 플레이어 DOM 업데이트
-    const pChar = document.getElementById('player-char');
-    if (pChar) {
-        // 이미지 경로 처리 (오류 방지)
-        let imgSrc = player.img || "https://placehold.co/150x150/3498db/ffffff?text=Hero";
-        
-        pChar.innerHTML = `
-            <h3 style="margin:2px 0; font-size:1em;">👤 플레이어</h3>
-            <img id="p-img" src="${imgSrc}" alt="Player" class="char-img" style="width:100px; height:100px;"> 
-            ${playerBarHTML}
-            ${statsHTML}
-            <div class="buffs" id="p-buffs" style="min-height:20px;">${applyTooltip(Object.entries(player.buffs).map(([k,v])=>`${k}(${v})`).join(', '))}</div>
-        `;
-    }
-    updateInventoryUI();
-    // 더미 버튼 텍스트 갱신
-    const drawBtn = document.getElementById('btn-draw-pile-floating');
-    if (drawBtn) drawBtn.textContent = `덱(${player.drawPile.length})`;
-    const discardBtn = document.getElementById('btn-discard-pile-floating');
-    if (discardBtn) discardBtn.textContent = `버림(${player.discardPile.length})`;
-    const exhaustBtn = document.getElementById('btn-exhaust-pile-floating');
-    if (exhaustBtn) exhaustBtn.textContent = `소멸(${player.exhaustPile.length})`;
-
     // 4. 적 UI 업데이트 (기존 로직 유지)
     if (enemies && enemies.length > 0) {
         enemies.forEach(e => {
@@ -3461,17 +3550,30 @@ function escapePhysicalBattle() {
         checkGameOver(); // 확실하게 게임 오버 처리
         return; 
     }
-// [★추가] 도주 성공 시 상태이상 및 방어도 초기화
+    // [전투 종료 처리] 상태 전환 및 타임라인 관련 값 초기화
+    game.state = 'exploration';
+    game.isBossBattle = false;
+    game.turnOwner = 'none';
+    game.lastTurnOwner = 'none';
+    player.ag = 0;
+
+    // [★추가] 도주 성공 시 상태이상 및 방어도 초기화
     player.buffs = {};
     player.block = 0;
-    enemies.forEach(e => { e.buffs = {}; e.block = 0; });
+    enemies.forEach(e => { e.buffs = {}; e.block = 0; e.ag = 0; });
 
     // 3. 살았다면 패널티 적용 후 복귀
     game.doom = Math.min(100, game.doom + 5); // 글로벌 위협도 증가
     
-    // 탐사 화면으로 복귀
-    document.getElementById('loc-desc').innerHTML = 
-        "<span style='color:#e74c3c'>상처를 입고 간신히 도망쳐 나왔습니다.</span><br>(HP -5, 위협도 증가)";
+   // ★ [핵심] 탐사 화면으로 UI 복구
+    const wrapper = document.getElementById('dungeon-enemies');
+    if(wrapper) wrapper.innerHTML = ""; // 적 삭제
+    
+    enemies = []; // 남아있는 적 데이터 정리
+
+    toggleBattleUI(false); // 이동 버튼 다시 표시
+    
+    document.getElementById('loc-desc').innerHTML = "<span style='color:#e74c3c'>도망쳤습니다!</span>";
     renderExploration();
 }
 
@@ -3547,10 +3649,10 @@ function openPileView(type) {
     document.getElementById('popup-layer').style.display = 'flex';
 }
 
-function showPopup(title, desc, buttons, contentHTML = "") {
+function showPopup(title, desc, buttons = [], contentHTML = "") {
     const layer = document.getElementById('popup-layer'); document.getElementById('popup-title').innerText = title; document.getElementById('popup-desc').innerHTML = desc; document.getElementById('popup-content').innerHTML = contentHTML;
     const btnBox = document.getElementById('popup-buttons'); btnBox.innerHTML = "";
-    buttons.forEach(b => { let btn = document.createElement('button'); btn.className = 'action-btn'; btn.style.fontSize = "1em"; btn.style.padding = "5px 15px"; btn.innerText = b.txt; btn.onclick = b.func; btnBox.appendChild(btn); });
+    (buttons || []).forEach(b => { let btn = document.createElement('button'); btn.className = 'action-btn'; btn.style.fontSize = "1em"; btn.style.padding = "5px 15px"; btn.innerText = b.txt; btn.onclick = b.func; btnBox.appendChild(btn); });
     layer.style.display = "flex";
 }
 
@@ -3651,8 +3753,15 @@ function processLevelUp() {
 
 /* [추가] 애니메이션 실행 함수 */
 function playAnim(elementId, animClass) {
-    const el = document.getElementById(elementId);
-    
+    let el = document.getElementById(elementId);
+    // 탐험/전투 겸용으로 player-char가 없을 수 있으니 폴백
+    if (!el && elementId === 'player-char') {
+        el = document.getElementById('dungeon-player');
+    }
+    if (!el) {
+        console.warn(`Animation target not found: ${elementId}`);
+        return;
+    }
     // 기존 애니메이션 클래스가 있다면 제거 (연속 재생을 위해)
     el.classList.remove('anim-atk-p', 'anim-atk-e', 'anim-hit', 'anim-bounce');
     
@@ -3692,7 +3801,7 @@ function renderWinPopup() {
         // [중요] 아이템 줍기 버튼: 줍고 나서 'renderWinPopup'을 다시 호출함 (팝업 유지)
         btns.push({ 
             txt: "아이템 줍기", 
-            func: () => getLoot() 
+            func: () => { closePopup(); getLoot(); } 
         });
     }
 
@@ -3735,7 +3844,7 @@ function getLoot() {
 }
 /* --- [NEW] 드래그 타겟팅 & 미리보기 시스템 --- */
 
-let drag = { active: false, cardIdx: -1, cardName: "", startX: 0, startY: 0, originalDesc: "" };
+let drag = { active: false, cardIdx: -1, cardName: "", startX: 0, startY: 0, originalDesc: "", moved: false };
 
 /* [수정] 드래그 시작 함수 (텍스트 즉시 변환 제거) */
 function startDrag(e, idx, name, type = 'card') {
@@ -3747,6 +3856,7 @@ function startDrag(e, idx, name, type = 'card') {
     drag.type = type; 
     drag.idx = idx;   
     drag.name = name; 
+    drag.moved = false;
     
     let elId = (type === 'card') ? `card-el-${idx}` : `item-el-${idx}`;
     let dragEl = document.getElementById(elId);
@@ -3789,6 +3899,18 @@ function onDragMove(e) {
 
     const pos = getClientPos(e);
     let endX = pos.x; let endY = pos.y;
+    // 손패 영역을 벗어나는 순간부터 드래그로 인정
+    if (!drag.moved) {
+        const handArea = document.getElementById('hand-container');
+        if (handArea) {
+            const hr = handArea.getBoundingClientRect();
+            if (endX < hr.left || endX > hr.right || endY < hr.top || endY > hr.bottom) {
+                drag.moved = true;
+            }
+        } else {
+            drag.moved = true; // 안전장치
+        }
+    }
 
     const path = document.getElementById('drag-path');
     const head = document.getElementById('drag-head');
@@ -3801,30 +3923,42 @@ function onDragMove(e) {
     let dragEl = document.getElementById((drag.type==='card')?`card-el-${drag.idx}`:`item-el-${drag.idx}`);
     
     document.querySelectorAll('.enemy-unit').forEach(el => el.classList.remove('selected-target'));
-    document.getElementById('player-char').classList.remove('selected-target');
+    const playerEl = document.getElementById('player-char') || document.getElementById('dungeon-player');
+    if (playerEl) playerEl.classList.remove('selected-target');
 
     let validTarget = false;
     let aliveEnemies = enemies.filter(en => en.hp > 0);
 
     if (targetInfo) {
         if (data.targetType === 'all' || data.target === 'all') {
-            enemies.forEach(en => { if (en.hp > 0) document.getElementById(`enemy-unit-${en.id}`).classList.add('selected-target'); });
+            enemies.forEach(en => { 
+                if (en.hp > 0) {
+                    const el = document.getElementById(`enemy-unit-${en.id}`);
+                    if (el) el.classList.add('selected-target');
+                }
+            });
             validTarget = true;
         }
         // [핵심 수정] 공격(attack) 뿐만 아니라 소셜(social) 카드도 적을 타겟팅하게 변경
         else if ((data.type && (data.type.includes("attack") || data.type === "social")) || data.target === "enemy") {
             if (targetInfo.type === 'specific' && targetInfo.unit !== player) {
-                document.getElementById(`enemy-unit-${targetInfo.unit.id}`).classList.add('selected-target');
-                validTarget = true;
+                const el = document.getElementById(`enemy-unit-${targetInfo.unit.id}`);
+                if (el) {
+                    el.classList.add('selected-target');
+                    validTarget = true;
+                }
             }
             else if (targetInfo.type === 'general' && aliveEnemies.length === 1) {
-                document.getElementById(`enemy-unit-${aliveEnemies[0].id}`).classList.add('selected-target');
-                validTarget = true;
+                const el = document.getElementById(`enemy-unit-${aliveEnemies[0].id}`);
+                if (el) {
+                    el.classList.add('selected-target');
+                    validTarget = true;
+                }
             }
         }
         else if (data.target === "self" || (!data.type?.includes("attack") && data.target !== "enemy")) {
             if ((targetInfo.type === 'specific' && targetInfo.unit === player) || targetInfo.type === 'general') {
-                document.getElementById('player-char').classList.add('selected-target');
+                if (playerEl) playerEl.classList.add('selected-target');
                 validTarget = true;
             }
         }
@@ -3864,8 +3998,21 @@ function onDragEnd(e) {
         if (drag.type === 'card') dragEl.querySelector('.card-desc').innerHTML = drag.originalDesc;
     }
     
-    document.querySelectorAll('.enemy-unit').forEach(el => el.classList.remove('selected-target'));
-    document.getElementById('player-char').classList.remove('selected-target');
+        document.querySelectorAll('.enemy-unit').forEach(el => el.classList.remove('selected-target'));
+    const playerElEnd = document.getElementById('player-char') || document.getElementById('dungeon-player');
+    if (playerElEnd) playerElEnd.classList.remove('selected-target');
+
+    // 최종 드롭 위치가 손패 안이면 취소 (클릭 또는 되돌아온 경우)
+    const handArea = document.getElementById('hand-container');
+    if (!drag.moved || (handArea && (() => {
+        const hr = handArea.getBoundingClientRect();
+        const pos = getClientPos(e);
+        return pos.x >= hr.left && pos.x <= hr.right && pos.y >= hr.top && pos.y <= hr.bottom;
+    })())) {
+        drag.active = false;
+        drag.idx = -1;
+        return;
+    }
 
     let targetInfo = getTargetUnderMouse(e);
     let data = (drag.type === 'card') ? CARD_DATA[drag.name] : ITEM_DATA[drag.name];
@@ -3876,14 +4023,34 @@ function onDragEnd(e) {
         if (data.targetType === 'all' || data.target === 'all') {
             finalTargets = aliveEnemies;
         }
-        // [핵심 수정] 여기도 동일하게 social 타입 추가
+        // 공격/적 대상 (소셜 포함)
         else if ((data.type && (data.type.includes("attack") || data.type === "social")) || data.target === "enemy") {
-            if (targetInfo.type === 'specific' && targetInfo.unit !== player) finalTargets = [targetInfo.unit];
-            else if (aliveEnemies.length === 1 && targetInfo.type === 'general') finalTargets = [aliveEnemies[0]];
+            if (targetInfo.type === 'specific' && targetInfo.unit !== player) {
+                const tEl = document.getElementById(`enemy-unit-${targetInfo.unit.id}`);
+                if (tEl) tEl.classList.add('selected-target');
+                finalTargets = [targetInfo.unit];
+            }
+            else if (aliveEnemies.length === 1 && targetInfo.type === 'general') {
+                const tEl = document.getElementById(`enemy-unit-${aliveEnemies[0].id}`);
+                if (tEl) tEl.classList.add('selected-target');
+                finalTargets = [aliveEnemies[0]];
+            }
         }
+        // 자기 대상/버프
         else if (data.target === "self" || (!data.type?.includes("attack") && data.target !== "enemy")) {
             if (targetInfo.type === 'specific' && targetInfo.unit === player) finalTargets = [player];
             else if (targetInfo.type === 'general') finalTargets = [player];
+        }
+    }
+
+    // [자동 타겟팅] 적이 1명뿐이거나 광역기일 때는 빈 공간 드롭만으로 발동
+    if (finalTargets.length === 0) {
+        if (data.targetType === 'all' || data.target === 'all') {
+            finalTargets = aliveEnemies; // 광역
+        } else if ((data.type && (data.type.includes("attack") || data.type === "social")) || data.target === "enemy") {
+            if (aliveEnemies.length === 1) finalTargets = [aliveEnemies[0]]; // 단일 적
+        } else if (data.target === "self" || (!data.type?.includes("attack") && data.target !== "enemy")) {
+            finalTargets = [player]; // 자기 대상 버프
         }
     }
 
@@ -3922,23 +4089,31 @@ function getTargetUnderMouse(e) {
         return null; 
     }
 
-    // 2. 해당 좌표의 요소 확인
-    let el = document.elementFromPoint(x, y);
-    if (!el) return null;
-
-    // 3. 유닛 확인
-    let enemyUnit = el.closest('.enemy-unit');
-    if (enemyUnit) {
-        let id = parseInt(enemyUnit.id.split('-')[2]); 
-        let target = enemies.find(e => e.id === id);
-        if (target && target.hp > 0) return { type: 'specific', unit: target };
+    // 2. 박스 충돌 기반 우선 체크 (적/플레이어)
+    for (let en of enemies) {
+        if (en.hp <= 0) continue;
+        const enEl = document.getElementById(`enemy-unit-${en.id}`);
+        if (enEl) {
+            const r = enEl.getBoundingClientRect();
+            if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+                return { type: 'specific', unit: en };
+            }
+        }
+    }
+    const pEl = document.getElementById('player-char') || document.getElementById('dungeon-player') || document.getElementById('dungeon-player-wrapper');
+    if (pEl) {
+        const r = pEl.getBoundingClientRect();
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+            return { type: 'specific', unit: player };
+        }
     }
 
-    if (el.closest('#player-char')) return { type: 'specific', unit: player };
-
-    // 4. 전투 구역(허공) 확인
-     if (el.closest('.container') && !el.closest('.utility-dock')) {
-        return { type: 'general' };
+    // 3. 요소 기반 일반 판정 (허공 등)
+    let el = document.elementFromPoint(x, y);
+    if (el) {
+        if (el.closest('.container') && !el.closest('.utility-dock')) {
+            return { type: 'general' };
+        }
     }
 
     return null;
@@ -3985,14 +4160,16 @@ function calcPreview(cardName, user) {
     return desc;
 }
 
-/* [game.js] updateTurnOrderList 함수 수정 */
 function updateTurnOrderList() {
     let predictedOrder = []; 
     const MAX_PREDICT = 5;
 
+    // ★ [수정] p-img -> dungeon-player 로 변경 (이미지 소스 안전하게 가져오기)
+    const pEl = document.getElementById('dungeon-player');
+    let pImgSrc = pEl ? pEl.src : "";
+
     // 1. 현재 턴 주인 추가
     if (game.turnOwner === 'player') {
-        let pImgSrc = document.getElementById('p-img') ? document.getElementById('p-img').src : "";
         predictedOrder.push({ type: 'player', img: pImgSrc, isCurrent: true });
     } else if (game.turnOwner === 'enemy') {
         let currentEnemy = enemies.find(e => e.id === game.currentActorId);
@@ -4002,7 +4179,6 @@ function updateTurnOrderList() {
     }
 
     // 2. 미래 예측 시뮬레이션
-    let pImgSrc = document.getElementById('p-img') ? document.getElementById('p-img').src : "";
     let simPlayer = { type: 'player', ag: player.ag, spd: getStat(player, 'spd'), img: pImgSrc };
     let simEnemies = enemies.filter(e => e.hp > 0).map(e => ({
         type: 'enemy', id: e.id, ag: e.ag, spd: getStat(e, 'spd'), img: e.img
@@ -4035,15 +4211,11 @@ function updateTurnOrderList() {
         node.className = `timeline-node ${unit.type === 'player' ? 'node-player' : 'node-enemy'}`;
         node.innerHTML = `<img src="${unit.img}" class="timeline-img" alt="Unit">`;
         
-        // [수정됨] 애니메이션 충돌 방지를 위해 animation 속성으로 크기 제어
         if (index === 0 && unit.isCurrent) {
-            // ★ 현재 턴: 크기가 커진 상태(scale 1.2)로 등장하는 전용 애니메이션 사용
             node.style.animation = `fadeInScale 0.2s ease forwards`; 
             node.style.borderWidth = "3px";
             node.style.zIndex = "10";
-            // node.style.boxShadow = "0 0 15px #f1c40f"; // 발광 효과 (원하면 주석 해제)
         } else {
-            // ★ 대기열: 일반 등장 애니메이션
             node.style.animation = `fadeIn 0.2s ease forwards ${index * 0.1}s`;
         }
         node.style.opacity = "0"; 
