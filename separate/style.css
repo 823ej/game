@@ -165,6 +165,7 @@ body {
             justify-content: center;
             z-index: 250;
             padding: 16px;
+            overflow: auto; /* 미니맵 등 큰 콘텐츠가 잘리지 않도록 스크롤 허용 */
         }
 /* [style.css] 인벤토리 관련 스타일 전면 수정 */
 
@@ -871,9 +872,16 @@ body {
     .character { width: clamp(80px, 22vw, 110px); padding: 4px; flex: 0 0 auto; }
     .char-img { width: clamp(56px, 14vw, 80px); height: clamp(56px, 14vw, 80px); }
     .character.turn-active { border: 1px solid #f1c40f; box-shadow: 0 0 8px rgba(241,196,15,0.3); }
-    .enemies-wrapper { flex: 1 1 auto; justify-content: flex-start; gap: clamp(8px, 4vw, 22px); padding-left: 0; max-width: 70%; }
-    .enemy-unit { width: clamp(80px, 22vw, 110px); padding: 8px; box-sizing: border-box; }
-    .enemy-unit.selected-target { border-color: #e74c3c; box-shadow: 0 0 8px rgba(231,76,60,0.5); }
+.enemies-wrapper { flex: 1 1 auto; justify-content: flex-end; gap: clamp(8px, 4vw, 22px); padding-right: 40px; max-width: 70%; align-items: flex-end; }
+.enemy-unit { width: clamp(80px, 22vw, 110px); padding: 8px; box-sizing: border-box; border: 2px solid transparent; }
+.enemy-unit.selected-target { border-color: #e74c3c; box-shadow: 0 0 8px rgba(231,76,60,0.5); outline: 2px solid #e74c3c; }
+
+/* 타겟 하이라이트 강화 (전투 영역 한정) */
+#dungeon-enemies .enemy-unit.selected-target {
+    border-color: #e74c3c;
+    outline: 3px solid #e74c3c;
+    box-shadow: 0 0 14px rgba(231,76,60,0.7);
+}
     .control-group { height: 58px; gap: 2px; }
     .status-panel { width: 70px; padding: 2px; font-size: 0.7em; }
     .btn-end-turn-side { width: 48px; font-size: 0.72em; }
@@ -1220,6 +1228,7 @@ body {
     border-radius: 12px;
     border: 2px solid transparent; /* 평소엔 투명 테두리 (위치 고정) */
     transition: all 0.2s;
+    pointer-events: auto; /* 드래그 타겟팅 허용 */
 }
 /* 적 선택 시 효과 */
 .enemy-unit:hover,
@@ -1227,6 +1236,7 @@ body {
     background: rgba(255, 255, 255, 0.05);
     border-color: #e74c3c;
     box-shadow: 0 0 20px rgba(231, 76, 60, 0.4);
+    outline: 2px solid #e74c3c; /* 하이라이트 보강 */
     transform: scale(1.05); /* 살짝 커지는 효과 */
 }
     .hp-bar-bg { height: 8px; margin: 2px 0; }
@@ -1378,38 +1388,118 @@ body {
 
 /* [style.css] 통합 스테이지 스타일 (기존 exploration-stage 대체) */
 
-/* 1. 공통 무대 (탐사/전투 동일한 외관) */
+/* 1. 스테이지 뷰 (컨테이너) */
 .stage-view {
     position: relative;
     width: 100%;
-    height: 340px; /* 고정 높이 (캐릭터가 잘리지 않도록 여유 확보) */
-    background-color: #111;
-    overflow: hidden;
+    height: 340px;
+    background-color: #000;
+    overflow: hidden; /* 영역 밖 요소 숨김 */
     border-radius: 10px;
     border: 2px solid #555;
     margin-bottom: 20px;
-    display: flex;
-    align-items: flex-end; /* 바닥 정렬 */
-    justify-content: space-between; /* 양쪽 끝 배치 */
-    padding: 20px 60px; /* 내부 여백 */
-    box-sizing: border-box;
-    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
-    transition: all 0.3s;
-    position: relative;
+    /* 기존 flex 관련 속성 제거/초기화 */
+    display: block; 
 }
-
-/* 2. 배경 레이어 (공통) */
-.stage-bg-layer {
+/* 2. 레이어 공통 정의 */
+.parallax-layer {
     position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-size: cover;
-    background-position: center;
-    z-index: 0;
-    opacity: 0.5;
-    filter: blur(2px);
-    transition: all 0.5s ease;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-repeat: repeat-x; /* 가로 반복 */
+    background-size: auto 100%; /* 높이는 꽉 채움 */
+    transition: transform 0.1s linear; /* 부드러운 이동 */
+    pointer-events: none;
 }
+/* 3. 각 레이어 설정 */
+/* 뒷 배경 (원경) */
+#layer-bg {
+    z-index: 1;
+    opacity: 0.6;
+   background-image: url('https://placehold.co/3000x340/2c3e50/ffffff?text=Long+Background+Layer+(Scrolled)&font=roboto');
+}
+/* 캐릭터 레이어 (중경) */
+#layer-char {
+    z-index: 5;
+    display: flex;
+    align-items: flex-end; /* 캐릭터 바닥 정렬 */
+    justify-content: center; /* 가운데 정렬 */
+    padding-bottom: 20px;
+}
+/* 앞 배경 (전경 - 풀숲, 기둥 등) */
+#layer-fg {
+  z-index: 10;
+    /* 경로를 assets 폴더 안의 파일로 변경 */
+    background-image: url('assets/전경_풀숲.png'); 
+    
+    opacity: 1.0; /* 이미지가 잘 보이도록 투명도 조절 (필요시 0.8 등으로 유지) */
+    background-color: transparent; 
+    
+    /* 이미지 크기 설정 (중요) */
+    /* 가로로 긴 이미지라면 높이를 100%로 맞추고 가로는 비율 유지 */
+    background-size: auto 100%;
+}
+/* 4. 캐릭터 위치 보정 */
+/* 기존 .character 스타일이 flex width %로 되어 있어서 수정 필요 */
+#dungeon-player {
+    width: 150px;
+    transition: transform 0.2s;
+}
+#dungeon-player-wrapper {
+    margin-left: 30px; /* 플레이어만 살짝 오른쪽으로 이동 (적과 거리 좁힘) */
+}
+/* 걷는 모션 (좌우 반전 등) */
+.walking-right #dungeon-player { transform: scaleX(1); }
+.walking-left #dungeon-player { transform: scaleX(-1); }
 
+/* 5. 이동 컨트롤러 (하단) */
+.move-controls {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: -60px; /* 스테이지 위로 살짝 겹치게 */
+    position: relative;
+    z-index: 20;
+}
+.move-btn {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 193, 7, 0.9);
+    border: 3px solid #fff;
+    font-size: 2em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+.move-btn:active { transform: scale(0.95); background: #e67e22; }
+
+/* 6. 미니맵 팝업 */
+.minimap-grid {
+    display: grid;
+    gap: 5px;
+    justify-content: center;
+    padding: 20px;
+    background: #222;
+    min-width: fit-content; /* 시작 방이 왼쪽에서 잘리지 않도록 콘텐츠 너비 확보 */
+    margin: 0 auto;
+}
+.map-cell {
+    width: 40px; height: 40px;
+    background: #333;
+    border: 1px solid #444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2em;
+    color: #555;
+}
+.map-cell.visited { background: #555; color: #fff; }
+.map-cell.current { border: 2px solid #f1c40f; background: #666; }
+.map-cell.boss { color: #e74c3c; }
+.map-cell.path-u { border-top: 2px solid #aaa; }
+.map-cell.path-d { border-bottom: 2px solid #aaa; }
+.map-cell.path-l { border-left: 2px solid #aaa; }
+.map-cell.path-r { border-right: 2px solid #aaa; }
 /* 3-A. 전투 레이어 (탐사/전투 공용 무대 위에 얹힘) */
 #battle-layer {
     position: relative;
@@ -1433,14 +1523,16 @@ body {
 /* 3. 전투 화면 요소 위치 보정 */
 /* 기존 battle-area 대신 stage-view를 쓰면서 내부 요소 정렬 */
 /* [기존 수정] 적 유닛 배치 정렬을 좀 더 안정적으로 고정 */
-.enemies-wrapper {
+/* 2. 적 등장 구역 스타일 보정 (오른쪽 배치) */
+#dungeon-enemies {
+    /* 기존 .enemies-wrapper 스타일 덮어쓰기 */
     flex: 1;
     display: flex;
-    justify-content: flex-end; /* 오른쪽 정렬 */
-    gap: 15px;
-    align-items: flex-end; /* 바닥 정렬 */
-    padding-left: 20px;
-    min-height: 120px; /* 높이 확보로 점프 방지 */
+    justify-content: flex-end; /* 오른쪽 정렬로 플레이어와 마주보게 */
+    align-items: flex-end;
+    gap: 10px;
+    padding-right: 40px; /* 플레이어와의 간격 */
+    min-width: 200px; /* 최소 공간 확보 */
 }
 
 /* 모바일 대응 (화면이 좁을 때 패딩 조정) */
@@ -1862,4 +1954,107 @@ body {
     color: #f1c40f;
     font-weight: bold;
     margin-right: 8px;
+}
+/* [style.css] 미니맵 스타일 추가 */
+
+/* 지도 그리드 컨테이너 */
+.minimap-grid {
+    display: grid;
+    gap: 8px; /* 방 사이 간격 */
+    justify-content: center;
+    margin: 0 auto;
+}
+
+/* [style.css] 미니맵 스타일 수정/추가 */
+
+/* 1. 기본 방 스타일 (막힌 벽 테두리) */
+.map-cell {
+    width: 50px; 
+    height: 50px;
+    background-color: #222;
+    /* 기본 테두리는 '막힌 벽'을 상징하는 어두운 회색 */
+    border: 2px solid #444; 
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5em;
+    color: #555;
+    position: relative;
+    box-sizing: border-box; /* 테두리 포함 크기 계산 */
+}
+
+/* 2. 벽 구역 (Wall Cell) - 빗금 패턴 */
+.map-cell.wall-cell {
+    background-color: #111;
+    border-color: #222;
+    /* 빗금 패턴으로 '갈 수 없음' 표시 */
+    background-image: linear-gradient(45deg, #222 25%, transparent 25%, transparent 50%, #222 50%, #222 75%, transparent 75%, transparent);
+    background-size: 10px 10px;
+    opacity: 0.5;
+}
+
+/* 3. 뚫린 통로 (Path) - 밝은색으로 '문' 표시 */
+/* 기존 border-top 등을 덮어씌워 밝게 만듭니다 */
+.map-cell.path-n { border-top: 4px solid #3498db; margin-top: -2px; } /* 위쪽 문 */
+.map-cell.path-s { border-bottom: 4px solid #3498db; margin-bottom: -2px; } /* 아래쪽 문 */
+.map-cell.path-e { border-right: 4px solid #3498db; margin-right: -2px; } /* 오른쪽 문 */
+.map-cell.path-w { border-left: 4px solid #3498db; margin-left: -2px; } /* 왼쪽 문 */
+
+/* 4. 현재 위치 */
+.map-cell.current {
+    background-color: #444;
+    border-color: #f1c40f; /* 현재 위치는 노란색 강조 */
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.3);
+    z-index: 10;
+}
+.map-cell.current::after {
+    content: "🧍";
+    font-size: 1.2em;
+}
+
+/* [style.css] 추가 */
+
+/* 상호작용 오브젝트 컨테이너 */
+.room-object {
+    position: absolute; /* 캐릭터 레이어 내에서 절대 위치로 이동 */
+    bottom: 40px;       /* 바닥에서의 높이 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.1s linear; /* 부드러운 이동 */
+    z-index: 20; /* 플레이어/적 위로 */
+    pointer-events: auto;
+}
+
+/* 아이콘 (이모지 또는 이미지) */
+#dungeon-obj-icon {
+    font-size: 4em;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+    animation: none;
+}
+
+/* 라벨 (이름) */
+#dungeon-obj-label {
+    background: rgba(0, 0, 0, 0.7);
+    color: #f1c40f;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    margin-top: 5px;
+    border: 1px solid #555;
+    opacity: 0.8;
+}
+
+/* 둥둥 떠다니는 애니메이션 제거 */
+
+/* 마우스 올렸을 때 강조 */
+.room-object:hover #dungeon-obj-icon {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 15px #f1c40f);
+}
+.room-object:hover #dungeon-obj-label {
+    opacity: 1;
+    border-color: #f1c40f;
 }

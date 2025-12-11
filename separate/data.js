@@ -192,7 +192,19 @@ const DISTRICTS = {
         danger: 1, 
         color: "#c0392b", 
         scenarios: ["tutorial"], 
-        facilities: ["shop_black_market"]
+        facilities: ["shop_black_market"],
+        // ★ [추가] 슬럼가 순찰 시 생성될 던전 설정
+        dungeon: {
+            width: 4, 
+            height: 4, 
+            roomCount: 8, // 방 개수가 적고 좁음
+            data: { 
+                "battle": 5,      // 전투가 빈번함
+                "event": 1, 
+                "treasure": 1,    // 보물은 적음
+                "heal": 1 
+            }
+        }
     },
     "downtown": {
         name: "네온 다운타운",
@@ -208,7 +220,19 @@ const DISTRICTS = {
         danger: 3, 
         color: "#3498db", 
         scenarios: [], 
-        facilities: ["shop_high_end"]
+        facilities: ["shop_high_end"],
+        // ★ [추가] 플라자 순찰 설정
+        dungeon: {
+            width: 6, 
+            height: 6, 
+            roomCount: 15, // 넓고 방이 많음
+            data: { 
+                "battle": 3, 
+                "investigate": 5, // 조사가 많음
+                "shop": 2,        // 상점도 있음
+                "treasure": 3 
+            }
+        }
     },
     "cult_hideout": {
         name: "👁️ 교단 은신처",
@@ -273,6 +297,20 @@ const SCENARIOS = {
             { type: "talk", id: "client", name: "의뢰인", text: "마지막으로 연락된 곳이 '뒷골목' 근처였어요. 사례는 넉넉히 하겠습니다." },
             { type: "end" } // 스토리가 끝나면 자동으로 callback(의뢰 수락) 실행
         ],
+        // ★ [추가] 던전 생성 설정 (여기서 방 개수를 조절하세요)
+        dungeon: {
+            width: 5,        // 맵 가로 크기
+            height: 5,       // 맵 세로 크기
+            roomCount: 12,   // 생성할 총 방의 개수 (시작/보스방 제외)
+            data: {          // 방 종류별 개수 (합계가 roomCount보다 작으면 나머지는 empty/battle 랜덤)
+                "battle": 4,      // 전투방 4개
+                "investigate": 3, // 조사방 3개 (단서)
+                "event": 2,       // 이벤트방 2개
+                "shop": 1,        // 상점 1개
+                "treasure": 1,    // 보물방 1개
+                "heal": 1         // 회복방 1개
+            }
+        },
         unlocks: [], 
         clueEvents: [{ text: "찢어진 전표 발견.", gain: 15 }, { text: "파편 발견.", gain: 20 }],
         reward: { gold: 500, xp: 100, itemRank: 1 },

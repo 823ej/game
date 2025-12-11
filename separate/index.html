@@ -79,6 +79,23 @@
             </div>
         </div>
     </div>
+    <div id="minimap-overlay" class="inventory-overlay hidden" onclick="toggleMinimap()">
+    <div class="inventory-panel" style="height:auto; max-width:600px; padding:20px;" onclick="event.stopPropagation()">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0; color:#f1c40f;">🗺️ 지역 지도</h3>
+            <button class="small-btn" onclick="toggleMinimap()">✖</button>
+        </div>
+
+        <div style="background:#111; padding:20px; border-radius:10px; border:2px solid #444; overflow:auto;">
+            <div id="minimap-grid" class="minimap-grid"></div>
+        </div>
+
+        <div style="margin-top:10px; font-size:0.9em; color:#aaa;">
+            <span style="color:#f1c40f">■</span> 현재 위치 / <span style="color:#555">■</span> 미방문 / <span style="color:#ddd">■</span> 방문함
+        </div>
+    </div>
+</div>
     <div id="hub-scene" class="scene hidden hub-scene">
         <div class="hub-illustration"></div>
         <div class="hub-overlay-gradient"></div>
@@ -195,12 +212,43 @@
     <button class="action-btn" style="margin-top:20px; background:#7f8c8d;" onclick="renderHub()">🏠 사무소 복귀</button>
 </div>
 <div id="exploration-scene" class="scene hidden">
-    <div class="stage-view">
-        <div id="expl-bg" class="stage-bg-layer"></div> 
-        <div id="battle-layer">
-            <div class="character" id="player-char"></div>
-            <div id="enemies-area" class="enemies-wrapper"></div>
+   <div class="stage-view" id="dungeon-stage">
+        <div id="layer-bg" class="parallax-layer"></div>
+        
+       <div id="layer-char" class="parallax-layer" style="z-index:20; display:flex; align-items:flex-end; justify-content:center; height:100%;">
+    
+            <div id="dungeon-player-wrapper" style="transition:0.3s; display:flex; flex-direction:column; align-items:center;">
+                <img id="dungeon-player" src="assets/player.png" alt="Player" style="width:130px; object-fit: contain;">
+                <div id="player-hud" style="width:120px; margin-top:5px; text-shadow: 1px 1px 2px black;"></div>
+            </div>
+
+            <div id="dungeon-object" class="room-object hidden" onclick="DungeonSystem.interactWithObject()">
+                <div id="dungeon-obj-icon">📦</div>
+                <div id="dungeon-obj-label">조사하기</div>
+            </div>
+
+            <div id="dungeon-enemies" class="enemies-wrapper" style="display:flex; gap:10px;"></div>
+    
+            <div id="interaction-bubble" class="hidden" style="position:absolute; bottom:150px; background:#f1c40f; color:#000; padding:5px 10px; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="triggerInteraction()">! 조사하기</div>
         </div>
+    
+        <div id="layer-fg" class="parallax-layer"></div>
+        <button onclick="toggleMinimap()" style="position:absolute; top:10px; right:10px; z-index:100;" class="small-btn">🗺️ 지도</button>
+    </div>
+
+    <div class="move-controls" style="display:flex; justify-content:space-between; align-items:center; padding:0 20px; margin-top:-30px; position:relative; z-index:50;">
+        <button class="move-btn" onmousedown="startMove(-1)" onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(-1)" ontouchend="stopMove()">⬅</button>
+        
+        <div style="text-align:center; background:rgba(0,0,0,0.7); padding:5px 15px; border-radius:15px; border:1px solid #555;">
+            <div id="loc-name" style="color:#f1c40f; font-weight:bold;">던전 입구</div>
+            <div id="loc-coords" style="font-size:0.8em; color:#aaa;">1F (0,0)</div>
+        </div>
+
+        <button class="move-btn" onmousedown="startMove(1)" onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(1)" ontouchend="stopMove()">➡</button>
+    </div>
+    <div id="loc-desc" class="loc-text exploration-ui" style="position:relative; background:#222; border-radius:5px; margin-bottom:10px; border:1px solid #444;">
+        주변을 둘러봅니다.
+    </div>
          <div id="turn-timeline" class="timeline-container battle-ui hidden"></div>
              <div class="pile-buttons battle-ui hidden">
         <button id="btn-draw-pile-floating" class="small-btn pile-btn" onclick="openPileView('draw')">덱(0)</button>
@@ -209,22 +257,12 @@
             <button id="btn-discard-pile-floating" class="small-btn pile-btn" onclick="openPileView('discard')">버림(0)</button>
         </div>
     </div>
+    <div class="action-grid exploration-ui" id="dungeon-actions">
+       <button class="action-btn" onclick="DungeonSystem.checkRoomEvent()">조사</button>
+        <button class="action-btn" onclick="openInventory()">🎒 가방</button>
+        <button class="action-btn" onclick="confirmRetreat()">🏃 탈출</button>
     </div>
-
-    <div id="loc-desc" class="loc-text exploration-ui" style="position:relative; background:#222; border-radius:5px; margin-bottom:10px; border:1px solid #444;">
-        주변을 둘러봅니다.
-    </div>
-
-    <div class="action-grid exploration-ui">
-        <button class="action-btn" onclick="exploreAction('investigate')">🔍 조사하기</button>
-        <button class="action-btn" onclick="exploreAction('move')">👣 장소 이동</button>
-        <button class="action-btn" onclick="exploreAction('rest')">☕ 잠깐 쉬기</button>
-        <button id="btn-retreat" class="action-btn" style="background:#7f8c8d;" onclick="confirmRetreat()">🏠 복귀 (중단)</button>
-    </div>
-
-   
-
-    <div class="control-group battle-ui hidden">
+      <div class="control-group battle-ui hidden">
         
         <div id="ap-indicator">
             <div class="ap-inner">
@@ -241,10 +279,14 @@
     </div>
 
     <div class="hand-area battle-ui hidden" id="hand-container"></div>
+
 </div>
-<div id="event-scene" class="scene hidden">
-        <div class="event-content" id="event-content-box"></div>
-    </div>
+
+<!-- 이벤트/휴식/기타 전용 장면 (switchScene('event')) -->
+<div id="event-scene" class="scene hidden" style="background:#111; padding:20px;">
+    <div id="event-content-box" class="event-box"></div>
+</div>
+
 
     <div id="result-scene" class="scene hidden" style="background:#111; justify-content:center; align-items:center;">
         <div style="text-align:center; animation: fadeIn 1s;">
@@ -295,13 +337,19 @@
 </div>
 
     <script src="data.js"></script>
+    <script src="dungeon.js"></script>
     <script src="game.js"></script>
     <script src="story.js"></script>
     <script>
-        if ('serviceWorker' in navigator) {
+        // file://에서는 ServiceWorker/PWA가 막히므로 http/https에서만 등록
+        const proto = location.protocol;
+        const canUseSW = proto === 'https:' || proto === 'http:';
+        if (canUseSW && 'serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').catch(console.error);
             });
+        } else {
+            console.log('ServiceWorker skipped (requires http/https)');
         }
     </script>
 <svg id="drag-layer" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; display:none;">

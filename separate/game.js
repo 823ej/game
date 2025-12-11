@@ -32,6 +32,8 @@ function getRandomCardByRank(rank) {
 /* [수정] 도시 지도 렌더링 (수락한 의뢰 위치 강조) */
 function renderCityMap() {
     game.state = 'city';
+    // 던전을 벗어날 때는 다음 탐사 진입 시 새 맵을 생성하도록 플래그 설정
+    resetDungeonState();
     switchScene('city');
     // [★핵심 수정] 전투/탐사 중 잠겼던 버튼들을 강제로 다시 풀어줍니다.
     game.inputLocked = false; 
@@ -153,7 +155,7 @@ function beginMission() {
         isActive: true
     };
     
-    renderExploration();
+    renderExploration(true);
 }
 
 /* [수정] 순찰 시작 (복귀 가능 설정) */
@@ -179,7 +181,7 @@ function startPatrol(districtKey) {
     };
     
     // 바로 전투를 붙이지 않고 탐사 화면을 먼저 보여준다
-    renderExploration();
+    renderExploration(true);
 }
 
 function applyTooltip(text) {
@@ -259,7 +261,9 @@ let game = {
     // 현재 수락한 의뢰 id (없으면 null)
     activeScenarioId: null,
     // [NEW] 시나리오 진행 상태
-    scenario: null
+    scenario: null,
+    // 던전 재진입 시 맵을 재생성해야 하는지 여부
+    shouldResetDungeon: false
 };
 
 // 현재 전투에서 사용할 적 목록을 전역으로 보관
@@ -593,6 +597,17 @@ function resetGameData() {
     location.reload(); // 페이지 새로고침 -> initGame에서 데이터 없으므로 생성 화면으로
 }
 
+// 던전 상태 초기화 헬퍼 (맵/위치/플래그 리셋)
+function resetDungeonState() {
+    game.dungeonMap = false;
+    game.shouldResetDungeon = false;
+    DungeonSystem.map = [];
+    DungeonSystem.currentPos = { x: 0, y: 0 };
+    DungeonSystem.progress = 0;
+    DungeonSystem.objectAnchor = 0;
+    DungeonSystem.isCity = false;
+}
+
 function startCharacterCreation() {
     game.state = 'char_creation';
     game.started = false;
@@ -895,6 +910,8 @@ function finishCreation() {
 /* [NEW] 거점 화면 렌더링 */
 function renderHub() {
     game.state = 'hub';
+    // 사무소로 돌아올 때는 던전 진행을 리셋하여 다음 진입 시 시작방에서 시작
+    resetDungeonState();
     switchScene('hub');
     updateUI(); // 상단 바 갱신
     autoSave();
@@ -1652,12 +1669,16 @@ function toggleItemSelect(e, idx) {
         icon.classList.remove('selected');
     }
 }
-function renderExploration() {
+function renderExploration(forceReset = false) {
     game.state = 'exploration';
     switchScene('exploration');
 // ★ [추가] 버튼/이동 잠금 해제
     game.inputLocked = false; 
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
+    // 시나리오 진행도가 초기화된 경우나 강제 리셋 요청/대기 플래그 시 맵을 새로 생성
+    if (forceReset || game.shouldResetDungeon || (game.scenario && game.scenario.clues === 0)) {
+        resetDungeonState();
+    }
     // 던전 생성 로직 (우선순위 적용)
     if (!game.dungeonMap) {
         let dungeonConfig = null;
@@ -1687,6 +1708,12 @@ function renderExploration() {
         DungeonSystem.generateDungeon(dungeonConfig);
         game.dungeonMap = true; // 생성 완료 플래그
     }
+    // 기존 던전이 있다면 시야/패럴럭스 위치를 현재 진행도로 갱신
+    if (game.dungeonMap && typeof DungeonSystem.renderView === 'function') {
+        DungeonSystem.renderView();
+    }
+    // 이번 탐사 렌더링 이후에는 리셋 플래그 해제
+    game.shouldResetDungeon = false;
 
     // 플레이어 이미지 연결
     const playerEl = document.getElementById('dungeon-player');
@@ -2036,7 +2063,16 @@ function nextStepAfterWin() {
     player.block = 0;
     enemies.forEach(e => { e.buffs = {}; e.block = 0; });
 
-    if (game.isBossBattle) {
+    // 전투 종료 공통 처리: 적 초기화 및 전투 플래그 해제
+    const wasBoss = game.isBossBattle;
+    const enemyWrapper = document.getElementById('dungeon-enemies');
+    if (enemyWrapper) enemyWrapper.innerHTML = "";
+    enemies = [];
+    game.turnOwner = "none";
+    game.lastTurnOwner = "none";
+    player.ag = 0;
+
+    if (wasBoss) {
         // [수정] 보스전 승리 -> 결과 정산 화면으로 이동
         game.state = 'result';
         renderResultScreen();
@@ -2073,6 +2109,7 @@ function nextStepAfterWin() {
                 `<span style='color:#f1c40f'>단서를 일부 확보했습니다. (진척도 +${clueGain})</span>`;
         }
     }
+    game.isBossBattle = false;
 }
 
 async function processTimeline() {

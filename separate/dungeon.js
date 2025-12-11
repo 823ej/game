@@ -1,0 +1,628 @@
+/* [dungeon.js] 던전 시스템 모듈 */
+
+const DungeonSystem = {
+    map: [],        // 현재 층의 2D 맵 데이터
+    width: 5,       // 맵 너비
+    height: 5,      // 맵 높이
+    currentPos: { x: 0, y: 0 }, // 현재 방 좌표
+    progress: 0,    // 현재 방 안에서의 진행도 (0~100)
+    objectAnchor: 0, // 방 입장 시 오브젝트가 화면 중앙에 있는 기준 위치
+    bgOffset: 0,    // 배경 스크롤 위치 (시각적)
+    isCity: false,  // 도시 모드 여부
+    // [설정] 보스방 잠금 해제에 필요한 단서량
+    REQUIRED_CLUES: 100,
+    // 방 타입 정의
+    ROOM_TYPES: ["battle", "heal", "shop", "treasure", "event", "investigate", "empty"],
+
+    /* [dungeon.js] generateDungeon 함수 교체 */
+
+    // 1. 던전 생성 (설정 기반)
+    generateDungeon: function(config) {
+        // 새 던전을 시작하면 휴식/이벤트 재사용 가능하도록 초기화
+        if (typeof game !== 'undefined') {
+            game.hasRested = false;
+        }
+        // 다키스트 던전 스타일: 좌→우 직선(전진) + 상/하 분기, 뒤로 이동 가능
+        let targetCount = config.roomCount || 12;
+        // 중앙 라인으로 충분히 깔 수 있도록 폭 보정
+        this.width = Math.max(config.width || 8, targetCount + 1);
+        this.height = 3; // 위/중앙/아래 3줄
+        this.isCity = false;
+        
+        // [STEP 1] 방 덱 구성
+        let roomDeck = [];
+        if (config.data) {
+            for (let type in config.data) {
+                let count = config.data[type];
+                for(let i=0; i<count; i++) roomDeck.push(type);
+            }
+        }
+        while (roomDeck.length < targetCount) roomDeck.push(Math.random() < 0.7 ? "battle" : "empty");
+        // 섞기
+        for (let i = roomDeck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [roomDeck[i], roomDeck[j]] = [roomDeck[j], roomDeck[i]];
+        }
+        // 안전한 방 타입 추출 헬퍼 (덱이 비면 랜덤 생성)
+        const pickRoomType = () => {
+            if (roomDeck.length > 0) return roomDeck.pop();
+            // 덱이 모두 소비된 경우에도 분기 방을 만들 수 있도록 기본 분포 사용
+            const roll = Math.random();
+            if (roll < 0.5) return "battle";
+            if (roll < 0.7) return "event";
+            if (roll < 0.85) return "treasure";
+            return "empty";
+        };
+
+        // [STEP 2] 맵 초기화
+        this.map = Array.from({ length: this.height }, () => 
+            Array.from({ length: this.width }, () => ({
+                type: "wall", visited: false, exits: [], events: null
+            }))
+        );
+
+        // [STEP 3] 시작점 (좌측 중앙)
+        let startX = 0;
+        let startY = 1;
+        this.currentPos = { x: startX, y: startY };
+        this.map[startY][startX] = { type: "start", visited: true, exits: [], events: null };
+
+        // [STEP 4] 메인 경로(중앙 열) 생성: 좌→우 직선
+        let lastCol = startX;
+        for (let x = 1; x < this.width && roomDeck.length > 0; x++) {
+            let rType = pickRoomType() || "empty";
+            this.map[startY][x] = { type: rType, visited: false, exits: [], events: null };
+            this._connectRooms(x-1, startY, x, startY); // 좌우 연결
+            lastCol = x;
+        }
+
+        // [STEP 5] 분기(위/아래) 생성: 각 열마다 랜덤으로 추가
+        let hasNorthBranch = false;
+        let hasSouthBranch = false;
+        for (let x = 1; x <= lastCol; x++) {
+            [0,2].forEach(y => {
+                if (Math.random() < 0.6) { // 60% 확률로 분기 생성
+                    if (this.map[y][x].type === 'wall') {
+                        let rType = pickRoomType() || "empty";
+                        this.map[y][x] = { type: rType, visited: false, exits: [], events: null };
+                        // 같은 열의 중앙과 연결 (위/아래 이동)
+                        this._connectRooms(x, 1, x, y);
+                    }
+                }
+                if (this.map[y][x].type !== 'wall') {
+                    if (y === 0) hasNorthBranch = true;
+                    if (y === 2) hasSouthBranch = true;
+                }
+            });
+        }
+        // 분기가 하나도 없는 경우 강제로 위/아래에 최소 1개씩 생성 시도 (맵 겹침 없이)
+        const forceBranch = (y) => {
+            if (lastCol < 1) return;
+            let candidates = [];
+            for (let x = 1; x <= lastCol; x++) {
+                if (this.map[y][x].type === 'wall') candidates.push(x);
+            }
+            if (candidates.length === 0) return;
+            let pickX = candidates[Math.floor(Math.random() * candidates.length)];
+            let rType = pickRoomType() || "empty";
+            this.map[y][pickX] = { type: rType, visited: false, exits: [], events: null };
+            this._connectRooms(pickX, 1, pickX, y);
+        };
+        if (!hasNorthBranch) forceBranch(0);
+        if (!hasSouthBranch) forceBranch(2);
+        // 위/아래 분기끼리 좌우 연결 (앞뒤 이동 가능)
+        for (let x = 1; x < lastCol; x++) {
+            [0,2].forEach(y => {
+                if (this.map[y][x].type !== 'wall' && this.map[y][x+1].type !== 'wall') {
+                    this._connectRooms(x, y, x+1, y);
+                }
+            });
+        }
+
+        // [STEP 6] 보스방: 가장 오른쪽(거리 최대) 방을 보스로 지정
+        let furthest = this._findFurthestRoom(startX, startY);
+        if (furthest) {
+            this.map[furthest.y][furthest.x].type = "boss";
+            this.map[furthest.y][furthest.x].locked = true;
+        }
+
+        this.progress = 0;
+        this.renderView();
+    },
+
+    // (헬퍼 함수 추가) 가장 먼 방 찾기
+    _findFurthestRoom: function(startX, startY) {
+        let queue = [{x: startX, y: startY, dist: 0}];
+        let visited = new Set([`${startX},${startY}`]);
+        let maxDist = -1;
+        let furthestRoom = null;
+
+        while(queue.length > 0) {
+            let curr = queue.shift();
+            
+            // 벽이 아니고 시작점이 아닌 방 중에서 가장 먼 곳 갱신
+            if (this.map[curr.y][curr.x].type !== 'wall' && this.map[curr.y][curr.x].type !== 'start') {
+                if (curr.dist > maxDist) {
+                    maxDist = curr.dist;
+                    furthestRoom = {x: curr.x, y: curr.y};
+                }
+            }
+
+            // 연결된 방 탐색 (exits 정보 활용)
+            let exits = this.map[curr.y][curr.x].exits;
+            let neighbors = [];
+            if (exits.includes('n')) neighbors.push({x: curr.x, y: curr.y - 1});
+            if (exits.includes('s')) neighbors.push({x: curr.x, y: curr.y + 1});
+            if (exits.includes('e')) neighbors.push({x: curr.x + 1, y: curr.y});
+            if (exits.includes('w')) neighbors.push({x: curr.x - 1, y: curr.y});
+
+            for (let n of neighbors) {
+                if (!visited.has(`${n.x},${n.y}`)) {
+                    visited.add(`${n.x},${n.y}`);
+                    queue.push({x: n.x, y: n.y, dist: curr.dist + 1});
+                }
+            }
+        }
+        return furthestRoom;
+    },
+
+    // 도시 맵 생성 (고정 데이터)
+    loadCity: function(districtData) {
+        this.isCity = true;
+        this.width = 3; this.height = 3; // 예시
+        // 도시 데이터에 맞춰 this.map 수동 구성...
+        // 도시에서는 모든 방 visited: true
+    },
+
+    // 2. 이동 로직 (스크롤)
+    moveScroll: function(direction) {
+        // direction: -1 (Left), 1 (Right)
+        const speed = 2; // 이동 속도
+        
+        this.progress += direction * speed;
+        
+        // 범위 제한 및 방 이동 트리거
+        if (this.progress < 0) {
+            this.progress = 0;
+            this.checkRoomTransition("left");
+        } else if (this.progress > 100) {
+            this.progress = 100;
+            this.checkRoomTransition("right");
+        }
+        
+        // 중앙 이벤트 트리거 (50% 지점)
+        if (Math.abs(this.progress - 50) < speed) {
+            this.checkRoomEvent();
+        }
+
+        this.updateParallax();
+    },
+
+    // [수정] 3. 시각적 업데이트 (오브젝트 위치 동기화 추가)
+    updateParallax: function() {
+        const bgLayer = document.getElementById('layer-bg');
+        const fgLayer = document.getElementById('layer-fg');
+        const objLayer = document.getElementById('dungeon-object');
+
+        // 배경 스크롤 계산
+        let globalX = (this.currentPos.x * 100) + this.progress;
+        
+        if (bgLayer) bgLayer.style.backgroundPosition = `${-globalX * 2}px 0`;
+        if (fgLayer) fgLayer.style.backgroundPosition = `${-globalX * 6}px 0`;
+
+        // ★ 오브젝트 위치 계산: 방 중앙에서 시작해 전진할수록 왼쪽으로 이동, 플레이어를 지나치면 사라짐
+        if (objLayer && !objLayer.classList.contains('hidden')) {
+            // 앵커가 초기화되지 않은 경우 현재 진행도를 기준으로 설정
+            if (this.objectAnchor === undefined || this.objectAnchor === null) {
+                this.objectAnchor = this.progress;
+            }
+            const objPos = this.objectAnchor; // 입장 시점(중앙)을 기준으로 위치 계산
+            const dist = objPos - this.progress;
+            const objOffset = Math.max(-800, Math.min(800, dist * 12)); // 이동량/클램프
+            
+            // 플레이어가 충분히 지나치면 사라지고 클릭 불가
+            if (this.progress > objPos + 60) {
+                objLayer.style.transform = `translateX(-800px)`;
+                objLayer.style.opacity = 0;
+                objLayer.style.pointerEvents = "none";
+            } else {
+                objLayer.style.transform = `translateX(${objOffset}px)`;
+                objLayer.style.opacity = 1;
+                // 근접 구간(입장 기준 ±15)에서만 클릭 가능
+                if (this.progress >= objPos - 5 && this.progress <= objPos + 15) objLayer.style.pointerEvents = "auto";
+                else objLayer.style.pointerEvents = "none";
+            }
+        }
+        
+        // ★ [추가] 방 진입/이동 시 오브젝트 표시 여부 실시간 체크
+        this.checkObjectVisibility();
+    },
+    // [신규] 방 타입에 따라 오브젝트 표시/숨김 결정
+    checkObjectVisibility: function() {
+        let room = this.map[this.currentPos.y][this.currentPos.x];
+        const objEl = document.getElementById('dungeon-object');
+        const iconEl = document.getElementById('dungeon-obj-icon');
+        const labelEl = document.getElementById('dungeon-obj-label');
+
+        if (!objEl) return;
+
+        // 1. 전투/시작/빈방/벽은 숨김 (클리어 여부 무관)
+        if (room.type === 'battle' || room.type === 'start' || room.type === 'empty' || room.type === 'wall') {
+            objEl.classList.add('hidden');
+            return;
+        }
+
+        // 2. 오브젝트 아이콘 및 라벨 설정
+        let icon = "❓";
+        let label = "조사하기";
+
+        switch (room.type) {
+            case 'treasure': icon = "🎁"; label = "보물상자"; break;
+            case 'heal': icon = "🔥"; label = "모닥불"; break;
+            case 'shop': icon = "⛺"; label = "상점"; break;
+            case 'event': icon = "❔"; label = "무언가 있다"; break;
+            case 'investigate': icon = "🔍"; label = "수상한 흔적"; break;
+            case 'boss': 
+                // 보스방은 잠겨있으면 자물쇠, 열렸으면 문 (전투 전 상호작용)
+                icon = room.locked ? "🔒" : "👹"; 
+                label = room.locked ? "잠긴 문" : "보스";
+                break;
+        }
+
+        // 클리어된 방이면 표시만 하고 상호작용 비활성화
+        if (room.cleared) {
+            objEl.classList.remove('hidden');
+            objEl.style.pointerEvents = 'none';
+            objEl.style.opacity = 0.5;
+            iconEl.innerText = "✔";
+            labelEl.innerText = "비어 있음";
+            return;
+        }
+
+        iconEl.innerText = icon;
+        labelEl.innerText = label;
+        
+        // 3. 표시 + 활성화
+        objEl.classList.remove('hidden');
+        objEl.style.pointerEvents = 'auto';
+        objEl.style.opacity = 1;
+    },
+    // 4. 방 전환 및 갈림길 처리
+    checkRoomTransition: function(side) {
+        let currentRoom = this.map[this.currentPos.y][this.currentPos.x];
+        let exits = currentRoom.exits; // 연결된 방향들 ['n', 's', 'e', 'w']
+        
+        // 오른쪽 끝(100%)에 도달했고, 동쪽(e)이나 다른 층(u, d)으로 가는 길이 있다면?
+        if (side === "right") {
+            // 갈림길 팝업 표시
+            let options = [];
+            if (exits.includes('e')) options.push({txt: "동쪽 방으로 (➡)", func: () => this.enterRoom(1, 0)});
+            if (exits.includes('n')) options.push({txt: "위쪽 방으로 (⬆)", func: () => this.enterRoom(0, -1)});
+            if (exits.includes('s')) options.push({txt: "아래쪽 방으로 (⬇)", func: () => this.enterRoom(0, 1)});
+            
+            if (options.length > 0) {
+                showPopup("이동 방향 선택", "어디로 가시겠습니까?", options);
+            } else {
+                showPopup("막다른 길", "더 이상 나아갈 수 없습니다.", [{txt:"돌아가기", func:closePopup}]);
+            }
+        }
+        // 왼쪽 끝(0%)은 보통 왔던 길 (서쪽 w)
+        else if (side === "left") {
+            // 시작방이면 던전 탈출 선택지 표시
+            if (currentRoom.type === 'start') {
+                showPopup("나가기", "던전을 벗어납니다.", [
+                    { txt: "떠나기", func: () => { closePopup(); renderHub(); } },
+                    { txt: "취소", func: closePopup }
+                ]);
+                return;
+            }
+            if (exits.includes('w')) {
+                showPopup("이전 방으로 이동", "왔던 길로 돌아갑니다.", [
+                    { txt: "돌아가기", func: () => { closePopup(); this.enterRoom(-1, 0, true); } },
+                    { txt: "취소", func: closePopup }
+                ]);
+            }
+        }
+    },
+
+    enterRoom: function(dx, dy, fromBack = false) {
+        closePopup();
+        this.currentPos.x += dx;
+        this.currentPos.y += dy;
+        
+        // 방 진입 처리
+        let room = this.map[this.currentPos.y][this.currentPos.x];
+        room.visited = true;
+        
+        // 위치 초기화 (앞문 진입: 0%, 뒷문 진입: 100%)
+        this.progress = fromBack ? 100 : 0;
+        this.objectAnchor = this.progress; // 입장 위치를 오브젝트 기준점으로 설정 (중앙에서 시작)
+        this.updateParallax();
+        
+        // 미니맵 갱신
+        this.renderMinimap();
+        
+        log(`[${room.type}] 방에 진입했습니다.`);
+    },
+
+    checkRoomEvent: function() {
+        if (Math.abs(this.progress - 50) < 2) {
+            let room = this.map[this.currentPos.y][this.currentPos.x];
+            if (!room.cleared && room.type === 'battle') {
+                if (typeof stopMove === 'function') stopMove();
+                room.cleared = true; 
+                // [수정] 팝업을 닫고 전투를 시작하도록 변경
+                showPopup("적 출현!", "전방에 적들이 있습니다!", [{
+                    txt: "전투 개시", 
+                    func: () => {
+                        closePopup(); // ★ 팝업 닫기 추가
+                        startBattle();
+                    }
+                }]);
+            }
+        }
+    },
+    // [신규] 오브젝트 클릭 시 실행되는 함수
+    interactWithObject: function() {
+        let room = this.map[this.currentPos.y][this.currentPos.x];
+        if (room.cleared) return;
+
+        // 플레이어와 오브젝트 거리 체크 (너무 멀면 상호작용 불가)
+        // 진입/퇴출 직전(5% 이내 또는 90% 이상)일 때는 상호작용 불가
+        if (this.progress < 5 || this.progress > 90) {
+            log("🚫 너무 멉니다. 더 가까이 가세요.");
+            return;
+        }
+
+        // 이벤트 실행 분기
+        if (room.type === 'treasure') {
+            room.cleared = true;
+            let gold = Math.floor(Math.random() * 200) + 100;
+            player.gold += gold;
+            updateUI();
+            showPopup("상자 열기", `상자를 열었습니다!<br><span style="color:#f1c40f">${gold} 골드</span>를 획득했습니다.`, [{txt:"확인", func:closePopup}]);
+        }
+        else if (room.type === 'heal') {
+            // 휴식은 반복 가능하게 할지, 1회성일지 결정 (여기선 1회성)
+            // room.cleared = true; 
+            renderRestScreen(); // 기존 game.js의 휴식 화면 호출 (팝업 형태가 아니라면 수정 필요)
+            // 만약 팝업 형태라면:
+            // showPopup("휴식", "쉬시겠습니까?", [{txt:"휴식", func:() => { restAction(); closePopup(); }}]);
+        }
+        else if (room.type === 'shop') {
+            renderShopScreen(); // 상점 열기
+        }
+        else if (room.type === 'investigate') {
+            this.resolveInvestigate(room); // 기존 조사 함수 호출
+        }
+        else if (room.type === 'event') {
+            room.cleared = true;
+            triggerRandomEvent(); // 랜덤 이벤트 실행
+        }
+        else if (room.type === 'boss') {
+            if (room.locked) {
+                // 잠김 체크 (단서 부족)
+                if (game.scenario.clues >= this.REQUIRED_CLUES) {
+                    room.locked = false; // 해금
+                    this.checkObjectVisibility(); // 아이콘 갱신(자물쇠->도깨비)
+                    showPopup("해금", "단서를 맞춰보니 보스의 위치가 확실해졌습니다.<br>문이 열립니다.", [{txt:"확인", func:closePopup}]);
+                } else {
+                    showPopup("잠김", `단서가 부족하여 진입할 수 없습니다.<br>(${game.scenario.clues}/${this.REQUIRED_CLUES})`, [{txt:"돌아가기", func:closePopup}]);
+                }
+            } else {
+                // 보스전 시작
+                startBossBattle();
+            }
+        }
+        
+        // 상호작용 후 UI 갱신 (클리어 표시만 갱신)
+        if (room.cleared && room.type !== 'shop' && room.type !== 'heal') {
+            this.checkObjectVisibility();
+        }
+    },
+    // 3. 조사 결과 처리
+    resolveInvestigate: function(room) {
+        room.cleared = true; // 중복 조사 방지
+        
+        // 단서 획득 (20~30 랜덤)
+        let gain = Math.floor(Math.random() * 10) + 20;
+        game.scenario.clues = Math.min(100, game.scenario.clues + gain);
+        
+        // UI 갱신 (game.js의 updateUI 호출)
+        updateUI(); 
+
+        let msg = `단서를 확보했습니다! (+${gain})<br>현재 진척도: ${game.scenario.clues}%`;
+        
+        // 보스 해금 알림
+        if (game.scenario.clues >= this.REQUIRED_CLUES) {
+            msg += `<br><br><b style="color:#f1c40f">★ 보스 방의 위치가 파악되었습니다!</b>`;
+            // (선택 사항) 미니맵에 보스방 아이콘 강조 표시 로직 추가 가능
+        }
+
+        showPopup("조사 완료", msg, [{txt:"확인", func:closePopup}]);
+    },
+
+    // 헬퍼: 방 연결
+    _connectRooms: function(x1, y1, x2, y2) {
+        let r1 = this.map[y1][x1];
+        let r2 = this.map[y2][x2];
+        
+        if (x2 > x1) { r1.exits.push('e'); r2.exits.push('w'); }
+        if (x2 < x1) { r1.exits.push('w'); r2.exits.push('e'); }
+        if (y2 > y1) { r1.exits.push('s'); r2.exits.push('n'); }
+        if (y2 < y1) { r1.exits.push('n'); r2.exits.push('s'); }
+    },
+    // [★추가] renderView 함수 정의 (초기 화면 그리기)
+    renderView: function() {
+        this.updateParallax(); // 배경 및 캐릭터 위치 초기화
+        
+        // 만약 미니맵이 켜져 있다면 갱신
+        const minimap = document.getElementById('minimap-overlay'); // (혹시 ID가 다르다면 확인 필요)
+        if (minimap && !minimap.classList.contains('hidden')) {
+            this.renderMinimap();
+        }
+    },
+    // --- 지도 시스템 ---
+
+    // 지도 켜기/끄기 (전역 함수 toggleMinimap에서 호출됨)
+    toggleMinimap: function() {
+        const el = document.getElementById('minimap-overlay');
+        if (el.classList.contains('hidden')) {
+            el.classList.remove('hidden');
+            this.renderMinimap(); // 열 때마다 갱신
+        } else {
+            el.classList.add('hidden');
+        }
+    },
+
+    /* [dungeon.js] renderMinimap 함수 전체 교체 */
+
+renderMinimap: function() {
+    const grid = document.getElementById('minimap-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = "";
+    grid.style.gridTemplateColumns = `repeat(${this.width}, 50px)`;
+
+    for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+            let cellData = this.map[y][x];
+            let el = document.createElement('div');
+            el.className = 'map-cell';
+            
+            // [1] 가시성 체크
+            let isRoom = cellData.type !== 'wall';
+            let isVisited = cellData.visited;
+            let isKnownWall = false;
+
+            // 던전 모드일 때: 방문한 방 주변의 벽을 '아는 벽'으로 처리
+            if (!this.isCity && !isVisited && !isRoom) {
+                const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+                for (let d of dirs) {
+                    let ny = y + d[1], nx = x + d[0];
+                    if (ny >= 0 && ny < this.height && nx >= 0 && nx < this.width) {
+                        if (this.map[ny][nx].visited && this.map[ny][nx].type !== 'wall') {
+                            isKnownWall = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            let isVisible = this.isCity || (isRoom && isVisited) || isKnownWall;
+
+            if (isVisible) {
+                // [2] 벽(Wall) 구역 표시
+                if (!isRoom) {
+                    el.classList.add('wall-cell');
+                    el.innerText = "";
+                } 
+                // [3] 방(Room) 구역 표시
+                else {
+                    el.classList.add('visited');
+                    
+                    // 아이콘 설정
+                    let icon = "";
+                    switch(cellData.type) {
+                        case 'start': icon = "🏠"; el.classList.add('start'); break;
+                        case 'battle': icon = "⚔️"; break;
+                        case 'boss': icon = "💀"; el.classList.add('boss'); break;
+                        case 'shop': icon = "💰"; el.classList.add('shop'); break;
+                        case 'heal': icon = "❤️"; break;
+                        case 'treasure': icon = "📦"; break;
+                        case 'event': icon = "❔"; break;
+                        case 'investigate': icon = "🔍"; break;
+                    }
+                    el.innerText = icon;
+
+                    // 현재 위치 표시
+                    if (this.currentPos.x === x && this.currentPos.y === y) {
+                        el.classList.add('current');
+                        el.innerText = ""; 
+                    }
+
+                    // [4] 통로(Path) 연결 표시 (뚫린 길)
+                    // CSS에서 border 색상을 다르게 하여 '문'처럼 보이게 함
+                    if (cellData.exits.includes('n')) el.classList.add('path-n');
+                    if (cellData.exits.includes('s')) el.classList.add('path-s');
+                    if (cellData.exits.includes('e')) el.classList.add('path-e');
+                    if (cellData.exits.includes('w')) el.classList.add('path-w');
+
+                    if (this.isCity) {
+                        el.classList.add('teleport-target');
+                        el.onclick = () => this.teleport(x, y);
+                    }
+                }
+            } else {
+                // 완전히 모르는 구역 (안개)
+                el.style.opacity = "0"; 
+                el.style.pointerEvents = "none";
+            }
+            
+            grid.appendChild(el);
+        }
+    }
+},
+
+    // 도시 모드 전용: 클릭한 방으로 즉시 이동
+    teleport: function(x, y) {
+        if (this.currentPos.x === x && this.currentPos.y === y) return; // 제자리 클릭 무시
+        
+        this.currentPos = { x, y };
+        this.progress = 0; // 방 입구로 초기화
+        
+        this.renderView();    // 화면 갱신 (배경 등)
+        this.renderMinimap(); // 지도 갱신 (내 위치 마커 이동)
+        
+        // 이동 메시지
+        let roomType = this.map[y][x].type;
+        log(`🚀 [${roomType}] 구역으로 신속 이동했습니다.`);
+    }
+    
+};
+
+// 이동 버튼 홀드 처리용 변수
+let moveInterval = null;
+
+function startMove(direction) {
+    if (moveInterval) clearInterval(moveInterval);
+    const playerChar = document.getElementById('dungeon-player');
+    
+  // 1. 요소 가져오기
+    const playerWrapper = document.getElementById('dungeon-player-wrapper'); // 래퍼 (방향 담당)
+    const playerImg = document.getElementById('dungeon-player');       // 이미지 (모션 담당)
+    
+    // 2. 방향 전환 (래퍼를 뒤집음)
+    // 전투 시 위치 이동(translateX)과 겹치지 않게 탐사 중에는 scaleX만 사용
+    if (playerWrapper) {
+        if (direction === 1) {
+            playerWrapper.style.transform = "scaleX(1)"; // 오른쪽
+        } else {
+            playerWrapper.style.transform = "scaleX(-1)"; // 왼쪽
+        }
+    }
+
+    // 3. 걷기 애니메이션 적용 (이미지에 클래스 추가)
+    if (playerImg) {
+        playerImg.classList.add('anim-walk');
+    }
+
+    // 4. 실제 이동 로직 실행
+    moveInterval = setInterval(() => {
+        DungeonSystem.moveScroll(direction);
+    }, 20);
+}
+
+function stopMove() {
+    if (moveInterval) clearInterval(moveInterval);
+    moveInterval = null;
+
+    // 멈추면 걷기 애니메이션 제거
+    const playerImg = document.getElementById('dungeon-player');
+    if (playerImg) {
+        playerImg.classList.remove('anim-walk');
+    }
+}
+function toggleMinimap() {
+    DungeonSystem.toggleMinimap();
+}
