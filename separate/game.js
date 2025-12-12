@@ -291,7 +291,18 @@ function triggerRandomEvent() {
 /* --- 유틸리티 --- */
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 function shuffle(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } }
-function log(msg) { const box = document.getElementById('log-box'); box.innerHTML += `<div>${msg}</div>`; box.scrollTop = box.scrollHeight; }
+/* [game.js] log 함수 수정 (통합 로그창 사용) */
+function log(msg) {
+    const box = document.getElementById('shared-log');
+    if (box) {
+        // 새 메시지 추가
+        // (가독성을 위해 전투/탐사 구분이 필요하다면 msg 앞에 아이콘을 붙여도 좋습니다)
+        box.innerHTML += `<div>${msg}</div>`;
+        
+        // 자동 스크롤 (맨 아래로)
+        box.scrollTop = box.scrollHeight;
+    }
+}
 /* [NEW] 대미지 텍스트 표시 효과 (누락된 함수) */
 function showDamageText(target, msg) {
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
@@ -1403,7 +1414,7 @@ function moveItemFromWarehouse(idx) {
     autoSave();
 }
 
-/* [NEW] 교체 팝업 표시 함수 */
+/* [game.js] showSwapPopup 함수 수정 (취소 시 복귀 로직 추가) */
 function showSwapPopup(newItemName, onSuccess) {
     // 1. 현재 가방의 아이템들을 버튼으로 나열
     let content = `<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; padding:10px;">`;
@@ -1420,7 +1431,7 @@ function showSwapPopup(newItemName, onSuccess) {
     });
     content += `</div>`;
 
-    // 2. 콜백 저장 (교체 성공 시 실행하기 위해)
+    // 2. 콜백 저장
     tempSwapCallback = onSuccess;
 
     // 3. 팝업 띄우기
@@ -1428,7 +1439,16 @@ function showSwapPopup(newItemName, onSuccess) {
         "🎒 가방 정리", 
         `<span style='color:#2ecc71'>[${newItemName}]</span>을(를) 넣을 공간이 없습니다.<br>대신 버릴 아이템을 선택하세요.`, 
         [
-            { txt: "포기하기 (획득 취소)", func: closePopup }
+            { 
+                txt: "포기하기 (획득 취소)", 
+                func: () => { 
+                    closePopup();
+                    // ★ 핵심 수정: 전투 승리 상태라면 결과 화면을 다시 띄워줌 (닫힘 방지)
+                    if (game.state === "win") {
+                        setTimeout(() => renderWinPopup(), 100);
+                    }
+                } 
+            }
         ],
         content
     );
@@ -1721,6 +1741,7 @@ function renderExploration(forceReset = false) {
     showExplorationView(); 
     updateUI();
     autoSave();
+    log(`<span style="color:#aaa">--- [${game.scenario.location}] ---</span>`);
 }
 
 // 탐사/배틀 UI 토글 헬퍼
@@ -1810,7 +1831,7 @@ function confirmRetreat() {
 /* [game.js] exploreAction 수정 (애니메이션 및 심리스 전투 연출) */
 function exploreAction(action) {
     if (game.inputLocked) return;
-    const logBox = document.getElementById('loc-desc');
+    const logBox = document.getElementById('shared-log');
     const pArea = document.getElementById('player-char'); // 통합 무대의 플레이어 카드
     const bg = document.getElementById('expl-bg');
     let scData = SCENARIOS[game.scenario.id];
@@ -2099,7 +2120,7 @@ function nextStepAfterWin() {
         updateUI();
         autoSave(); // [추가] 결과 저장
         // 탐사 화면 텍스트 업데이트
-        const logBox = document.getElementById('loc-desc');
+        const logBox = document.getElementById('shared-log');
         if(logBox) {
             logBox.innerHTML = 
                 `<span style='color:#2ecc71'>적들을 제압하고 무사히 복귀했습니다.</span><br>` +
@@ -3531,9 +3552,9 @@ function updateUI() {
     if (typeof updateTurnOrderList === "function") updateTurnOrderList();
 
     // 5. 추가 버튼 (무력행사/도망치기) 로직
-    let controlGroup = document.querySelector('.control-group');
-    let extraBtn = document.getElementById('extra-action-btn');
-    if (extraBtn) extraBtn.remove();
+    let btnGroup = document.getElementById('btn-group-right'); 
+let extraBtn = document.getElementById('extra-action-btn');
+if (extraBtn) extraBtn.remove();
 
     if (game.turnOwner === "player") {
         let btnHTML = "";
@@ -3558,7 +3579,9 @@ function updateUI() {
             extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
             extraBtn.innerHTML = btnHTML;
             extraBtn.onclick = btnFunc;
-            if(controlGroup) controlGroup.insertBefore(extraBtn, document.getElementById('end-turn-btn'));
+           // ★ [핵심] 턴 종료 버튼(end-turn-btn) 앞에 삽입
+        let endBtn = document.getElementById('end-turn-btn');
+        btnGroup.insertBefore(extraBtn, endBtn);
         }
     }
 }
@@ -3607,7 +3630,7 @@ function escapePhysicalBattle() {
 
     toggleBattleUI(false); // 이동 버튼 다시 표시
     
-    document.getElementById('loc-desc').innerHTML = "<span style='color:#e74c3c'>도망쳤습니다!</span>";
+   log("<span style='color:#e74c3c; font-weight:bold;'>🏃 허겁지겁 도망쳤습니다!</span>");
     renderExploration();
 }
 
@@ -3811,69 +3834,104 @@ function playAnim(elementId, animClass) {
     }, 600); // 가장 긴 애니메이션 시간(0.6s)에 맞춤
 }
 
-/* [NEW] 승리 팝업을 상황에 맞춰 그려주는 함수 */
+/* [game.js] renderWinPopup 함수 (안전성 보완) */
 function renderWinPopup() {
+    // 팝업이 닫혀버리는 문제 방지를 위해 상태 재확인
+    game.state = "win"; 
+
     let btns = [];
     let contentHTML = "";
 
-    // 1. [아이템 줍기 버튼] - 아직 줍지 않은 아이템이 있다면
+    // 1. [아이템 줍기 버튼]
     if (game.pendingLoot) {
         let loot = game.pendingLoot;
         let lData = ITEM_DATA[loot];
         
-        // 아이템 정보 표시
-        contentHTML = `
-            <div style="display:flex; justify-content:center; margin-top:15px;">
-                <div class="item-icon item-${lData.type} item-rank-${lData.rank}">
-                    ${lData.icon}
-                    <span class="tooltip"><b>${loot}</b><br>${lData.desc}</span>
+        if (lData) {
+            contentHTML = `
+                <div style="display:flex; justify-content:center; margin-top:15px;">
+                    <div class="item-icon item-rank-${lData.rank}">
+                        ${lData.icon}
+                        <span class="tooltip"><b>${loot}</b><br>${lData.desc}</span>
+                    </div>
                 </div>
-            </div>
-            <div style="margin-top:5px; font-size:0.9em; color:#aaa;">${loot}</div>
-        `;
-        
-        // [중요] 아이템 줍기 버튼: 줍고 나서 'renderWinPopup'을 다시 호출함 (팝업 유지)
-        btns.push({ 
-            txt: "아이템 줍기", 
-            func: () => { closePopup(); getLoot(); } 
-        });
+                <div style="margin-top:5px; font-size:0.9em; color:#aaa;">${loot}</div>
+            `;
+            
+            btns.push({ 
+                txt: "🖐️ 아이템 줍기", 
+                func: () => getLoot() 
+            });
+        } else {
+            // 데이터 에러 시 전리품 삭제
+            game.pendingLoot = null;
+        }
     }
 
-    // 2. [레벨업 버튼] - 경험치가 꽉 찼다면
+    // 2. [레벨업 버튼]
     if (player.xp >= player.maxXp) {
         btns.push({ 
             txt: "🆙 레벨업!", 
-            func: processLevelUp 
+            func: () => processLevelUp() 
         });
     }
 
-    // 3. [떠나기 버튼] - 언제나 존재 (선택지 제공)
-    // 레벨업이 가능해도, 지금 안 하고 나중에 하거나 그냥 떠날 수도 있게 함
+    // 3. [떠나기 버튼]
     btns.push({ 
         txt: "떠나기", 
-        func: nextStepAfterWin 
+        func: () => nextStepAfterWin() 
     });
 
-    // 팝업 표시
-    // (레벨업 가능하면 메시지에 강조 표시)
-    let finalMsg = game.winMsg;
-    if (player.xp >= player.maxXp) finalMsg += `<br><b style="color:#f1c40f">🆙 레벨 업 가능!</b>`;
+    // 메시지에 레벨업 알림 추가
+    let finalMsg = game.winMsg || "전투 승리!";
+    if (player.xp >= player.maxXp) {
+        finalMsg += `<br><br><b style="color:#f1c40f; animation:blink 1s infinite;">✨ 레벨 업 가능! ✨</b>`;
+    }
 
-    showPopup("전투 승리!", finalMsg, btns, contentHTML);
+    showPopup("🎉 전투 승리!", finalMsg, btns, contentHTML);
 }
 
-/* [game.js] getLoot 수정 */
 function getLoot() {
     if (game.pendingLoot) {
-        // 성공 시 실행할 함수
+        // [성공 콜백] 아이템 획득에 성공했을 때 실행
         const onLootSuccess = () => {
-            game.winMsg = game.winMsg.replace("전리품이 바닥에 떨어져 있습니다.", "");
+            // 메시지 갱신 (기존 텍스트에서 '떨어져 있습니다' 제거 후 획득 메시지 추가)
+            if (game.winMsg) {
+                game.winMsg = game.winMsg.replace("전리품이 바닥에 떨어져 있습니다.", "");
+                game.winMsg = game.winMsg.replace("<br>✨", ""); // 아이콘 잔여물 제거
+            }
             game.winMsg += `<br><span style="color:#2ecc71">✔ [${game.pendingLoot}] 획득함.</span>`;
+            
             game.pendingLoot = null; // 바닥에서 삭제
-            renderWinPopup(); // 팝업 갱신 (줍기 버튼 제거)
+            
+            // ★ 핵심: 획득 후 즉시 결과 화면을 다시 그려서 '레벨업' 버튼 등이 유지되게 함
+            setTimeout(() => {
+                renderWinPopup(); 
+            }, 50);
         };
 
-        addItem(game.pendingLoot, onLootSuccess);
+        // 아이템 획득 시도
+        let result = addItem(game.pendingLoot, onLootSuccess);
+
+        // [실패 예외 처리] addItem이 false를 반환했을 때 (중복 유물 등)
+        // 가방이 꽉 찬 경우는 addItem 내부에서 showSwapPopup을 호출하므로 제외
+        if (result === false) {
+            let itemData = ITEM_DATA[game.pendingLoot];
+            
+            // 소모품이 꽉 찬 게 아니라, '중복 불가 유물'이라서 실패한 경우
+            if (itemData.usage === 'passive') {
+                showPopup("획득 불가", `이미 보유하고 있는 유물([${game.pendingLoot}])입니다.<br>전리품을 포기합니다.`, [
+                    { 
+                        txt: "확인", 
+                        func: () => {
+                            game.pendingLoot = null; // 포기 처리
+                            renderWinPopup(); // 결과 화면 복귀
+                        }
+                    }
+                ]);
+            }
+            // 가방이 꽉 찬 경우는 showSwapPopup이 떴을 것이므로 여기서 처리 안 함
+        }
     }
 }
 /* --- [NEW] 드래그 타겟팅 & 미리보기 시스템 --- */

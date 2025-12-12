@@ -193,18 +193,19 @@ const DISTRICTS = {
         color: "#c0392b", 
         scenarios: ["tutorial"], 
         facilities: ["shop_black_market"],
-        // ★ [추가] 슬럼가 순찰 시 생성될 던전 설정
         dungeon: {
-            width: 4, 
-            height: 4, 
-            roomCount: 8, // 방 개수가 적고 좁음
-            data: { 
-                "battle": 5,      // 전투가 빈번함
-                "event": 1, 
-                "treasure": 1,    // 보물은 적음
-                "heal": 1 
-            }
+        width: 6,        // 맵 길이
+        height: 3,       // 맵 높이
+        roomCount: 12,   // 총 방 개수
+        data: {          
+            "battle": 3,      // 전투방 3개
+            "box": 2,         // 📦 상자방 2개 (NEW)
+            "note": 2,        // 📄 쪽지방 2개 (NEW)
+            "bush": 2,        // 🌿 덤불방 2개 (NEW)
+            "shop": 1,        // 상점 1개
+            "heal": 1         // 회복 1개
         }
+    },
     },
     "downtown": {
         name: "네온 다운타운",

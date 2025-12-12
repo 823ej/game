@@ -238,13 +238,13 @@ const DungeonSystem = {
         this.checkObjectVisibility();
     },
     // [신규] 방 타입에 따라 오브젝트 표시/숨김 결정
-    checkObjectVisibility: function() {
-        let room = this.map[this.currentPos.y][this.currentPos.x];
-        const objEl = document.getElementById('dungeon-object');
-        const iconEl = document.getElementById('dungeon-obj-icon');
-        const labelEl = document.getElementById('dungeon-obj-label');
+  checkObjectVisibility: function() {
+    let room = this.map[this.currentPos.y][this.currentPos.x];
+    const objEl = document.getElementById('dungeon-object');
+    const iconEl = document.getElementById('dungeon-obj-icon');
+    const labelEl = document.getElementById('dungeon-obj-label');
 
-        if (!objEl) return;
+    if (!objEl) return;
 
         // 1. 전투/시작/빈방/벽은 숨김 (클리어 여부 무관)
         if (room.type === 'battle' || room.type === 'start' || room.type === 'empty' || room.type === 'wall') {
@@ -252,23 +252,23 @@ const DungeonSystem = {
             return;
         }
 
-        // 2. 오브젝트 아이콘 및 라벨 설정
-        let icon = "❓";
-        let label = "조사하기";
+        // [수정] 아이콘 및 라벨 설정
+    let icon = "❓";
+    let label = "조사하기";
 
-        switch (room.type) {
-            case 'treasure': icon = "🎁"; label = "보물상자"; break;
-            case 'heal': icon = "🔥"; label = "모닥불"; break;
-            case 'shop': icon = "⛺"; label = "상점"; break;
-            case 'event': icon = "❔"; label = "무언가 있다"; break;
-            case 'investigate': icon = "🔍"; label = "수상한 흔적"; break;
-            case 'boss': 
-                // 보스방은 잠겨있으면 자물쇠, 열렸으면 문 (전투 전 상호작용)
-                icon = room.locked ? "🔒" : "👹"; 
-                label = room.locked ? "잠긴 문" : "보스";
-                break;
-        }
-
+    switch (room.type) {
+        case 'treasure': icon = "🎁"; label = "보물상자"; break;
+        case 'heal': icon = "🔥"; label = "모닥불"; break;
+        case 'shop': icon = "⛺"; label = "상점"; break;
+        case 'event': icon = "❔"; label = "무언가 있다"; break;
+        case 'investigate': icon = "🔍"; label = "수상한 흔적"; break;
+        case 'boss': icon = room.locked ? "🔒" : "👹"; label = room.locked ? "잠긴 문" : "보스"; break;
+        
+        // ★ [추가된 부분] 새로운 타입 정의
+        case 'box': icon = "📦"; label = "낡은 상자"; break;
+        case 'note': icon = "📄"; label = "떨어진 쪽지"; break;
+        case 'bush': icon = "🌿"; label = "수상한 덤불"; break;
+    }
         // 클리어된 방이면 표시만 하고 상호작용 비활성화
         if (room.cleared) {
             objEl.classList.remove('hidden');
@@ -412,6 +412,52 @@ const DungeonSystem = {
             room.cleared = true;
             triggerRandomEvent(); // 랜덤 이벤트 실행
         }
+        // 1. [상자] 아이템 획득 (회복약 등)
+    else if (room.type === 'box') {
+        room.cleared = true;
+        let item = "회복약"; // 혹은 getRandomItem("consumable") 사용 가능
+        
+        // 아이템 획득 시도
+        addItem(item, () => {
+            updateUI();
+            showPopup("상자 개봉", `상자 안에서 <span style="color:#2ecc71">[${item}]</span>을(를) 발견했습니다!`, [{txt:"확인", func:closePopup}]);
+        });
+        this.checkObjectVisibility(); // 아이콘 갱신 (빈 상자 처리)
+    }
+
+    // 2. [쪽지] 단서 획득 & 텍스트 출력
+    else if (room.type === 'note') {
+        room.cleared = true;
+        let gain = 15; // 단서 획득량
+        game.scenario.clues = Math.min(100, game.scenario.clues + gain);
+        updateUI();
+
+        let noteText = room.text || "'배달부는 폐기물 처리장으로 갔다'라고 적혀있습니다.";
+        showPopup("쪽지 읽기", `<i>"${noteText}"</i><br><br><span style="color:#f1c40f">🔍 단서 획득 (+${gain})</span>`, [{txt:"확인", func:closePopup}]);
+        this.checkObjectVisibility();
+    }
+
+    // 3. [덤불] 기습 전투 (경고 후 전투)
+    else if (room.type === 'bush') {
+        showPopup("⚠️ 경고", "덤불 속에서 부스럭거리는 소리가 들립니다.<br>(전투가 발생할 수 있습니다)", [
+            {
+                txt: "살펴본다",
+                func: () => {
+                    closePopup();
+                    room.cleared = true;
+                    // 적이 튀어나오는 연출 후 전투
+                    showPopup("기습!", "덤불 속에 숨어있던 적이 튀어나왔습니다!", [{
+                        txt: "전투 개시",
+                        func: () => {
+                            closePopup();
+                            startBattle(); // 일반 전투 시작
+                        }
+                    }]);
+                }
+            },
+            { txt: "건드리지 않는다", func: closePopup }
+        ]);
+    }
         else if (room.type === 'boss') {
             if (room.locked) {
                 // 잠김 체크 (단서 부족)

@@ -165,7 +165,7 @@ body {
             justify-content: center;
             z-index: 250;
             padding: 16px;
-            overflow: auto; /* 미니맵 등 큰 콘텐츠가 잘리지 않도록 스크롤 허용 */
+            overflow: auto; /* 큰 콘텐츠가 잘리지 않도록 스크롤 허용 */
         }
 /* [style.css] 인벤토리 관련 스타일 전면 수정 */
 
@@ -653,14 +653,7 @@ body {
             border-radius: 5px; 
             margin: 0;          /* 筌띾뜆彛???볤탢 */
         }
-        /* [??륁젟] ?뚢뫂?껅에?域밸챶竊? 3???브쑵釉?(?怨밴묶 | 嚥≪뮄??| 甕곌쑵?? */
-        .control-group {
-            display: flex;          
-            gap: 5px;              /* 揶쏄쑨爰??リ낫苡?*/
-            height: 100px;         /* ?袁⑷퍥 ?誘れ뵠 120px -> 100px嚥??곕벡??*/
-            margin-bottom: 5px;    
-            align-items: stretch;   
-        }
+
         /* [?곕떽?] ?怨밴묶 ??ㅺ섯 (??긱걹: ??AP ?類ｋ궖) */
         .status-panel {
             width: 110px;          /* ?⑥쥙????덊돩 */
@@ -678,19 +671,7 @@ body {
             font-size: 0.9em;
             flex-shrink: 0;        /* ??由?餓κ쑴堉??? ??놁벉 */
         }
-        /* [??륁젟] ???ル굝利?甕곌쑵?? ??삘뀲筌?獄쏄퀣??*/
-        .btn-end-turn-side {
-            width: 80px;        /* ??덊돩 ??꾩퍢 餓κ쑴??*/
-            font-size: 1.1em;
-            font-weight: bold;
-            word-break: keep-all;
-            line-height: 1.2;
-            padding: 0;         /* ??ㅻ뎃 ??볤탢 */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
+
         
         /* 燁삳?諭??????*/
         .card { 
@@ -820,7 +801,7 @@ body {
      .character { width: 36%; padding: 8px; }
     .control-group { height: 90px; gap: 4px; }
     .status-panel { width: 96px; padding: 4px; font-size: 0.86em; }
-    .btn-end-turn-side { width: 70px; }
+
     .hand-area { height: 130px; margin-top: 8px; }
     .event-content { padding: 28px; }
 }
@@ -849,7 +830,7 @@ body {
     .character { width: auto; min-width: 120px; max-width: 180px; padding: 6px; flex: 0 0 auto; }
     .control-group { height: 82px; gap: 4px; }
     .status-panel { width: 90px; padding: 4px; font-size: 0.8em; }
-    .btn-end-turn-side { width: 64px; font-size: 0.85em; }
+
     .hand-area { height: 110px; margin-top: 6px; padding: 6px; }
     .event-content { padding: 22px; }
     .dialog-container { width: 92vw; padding: 12px; bottom: 12px; }
@@ -884,8 +865,8 @@ body {
 }
     .control-group { height: 58px; gap: 2px; }
     .status-panel { width: 70px; padding: 2px; font-size: 0.7em; }
-    .btn-end-turn-side { width: 48px; font-size: 0.72em; }
-    .log-area { font-size: 0.72em; padding: 2px; }
+
+   
     .hand-area { height: 74px; margin-top: 2px; padding: 3px; }
     .card { width: 68px; height: 96px; font-size: 0.66em; line-height: 1.18; padding: 5px; }
     .action-btn { padding: 5px 8px; font-size: 0.82rem; box-shadow: 0 2px 0 #d35400; }
@@ -1057,28 +1038,14 @@ body {
 }
 
 .timeline-container {
-    /* [위치] 무대 내부 왼쪽 상단에 고정 */
-    position: absolute;
-    top: 10px;
+position: absolute !important;
     left: 10px;
-    bottom: auto; /* 하단 고정 해제 */
-    transform: none; /* 중앙 정렬 해제 */
-    
-    /* [배치] 세로(Vertical)로 나열 */
-    display: flex;
-    flex-direction: column; 
-    align-items: center;
-    gap: clamp(2px, 1vh, 5px); /* 화면 높이에 따라 간격도 조절 */
-    
-    z-index: 100; /* 배경보다 위에 */
-    pointer-events: none; /* 클릭 통과 */
-    
-    /* [크기 제한] 내용물만큼만 차지 */
+    top: 50%;
+    transform: translateY(-50%); /* 수직 중앙 정렬 */
     width: auto;
     height: auto;
-    padding: 0;
-    background: none;
-    border: none;
+    gap: 5px;
+    z-index: 10;
 }
 
 .timeline-node {
@@ -1251,7 +1218,7 @@ body {
     }
     .status-panel { width: 80px; padding: 2px; font-size: 0.75em; line-height: 1.1; }
     .log-area { font-size: 0.75em; padding: 3px; line-height: 1.2; }
-    .btn-end-turn-side { width: 50px; font-size: 0.8em; padding: 0; }
+    
     
     /* 카드 핸드 영역 */
     .hand-area {
@@ -1420,11 +1387,23 @@ body {
 }
 /* 캐릭터 레이어 (중경) */
 #layer-char {
-    z-index: 5;
-    display: flex;
-    align-items: flex-end; /* 캐릭터 바닥 정렬 */
-    justify-content: center; /* 가운데 정렬 */
+   display: flex;
+    align-items: flex-end;
+    /* 기존 justify-content: center 제거 -> 요소들을 중앙으로 모으되 gap으로 제어 */
+ justify-content: space-between;
+    width: 100%;
+    height: 100%;
+   /* [핵심 2] 좌우 UI(타임라인, 덱 버튼)와 겹치지 않게 안쪽으로 밀어넣기 */
+    /* 15% 정도 주면 적절히 중앙 쪽으로 오면서 서로 멀어집니다. */
+    padding-left: 15%;  
+    padding-right: 15%;
     padding-bottom: 20px;
+    
+    /* 패딩이 너비에 포함되도록 설정 (레이아웃 깨짐 방지) */
+    box-sizing: border-box; 
+    
+    /* 요소 간 최소 간격 유지 */
+    gap: 20px;
 }
 /* 앞 배경 (전경 - 풀숲, 기둥 등) */
 #layer-fg {
@@ -1446,7 +1425,12 @@ body {
     transition: transform 0.2s;
 }
 #dungeon-player-wrapper {
-    margin-left: 30px; /* 플레이어만 살짝 오른쪽으로 이동 (적과 거리 좁힘) */
+margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 5;
 }
 /* 걷는 모션 (좌우 반전 등) */
 .walking-right #dungeon-player { transform: scaleX(1); }
@@ -1476,26 +1460,70 @@ body {
 /* 6. 미니맵 팝업 */
 .minimap-grid {
     display: grid;
-    gap: 5px;
+    gap: 0px;
     justify-content: center;
     padding: 20px;
     background: #222;
     min-width: fit-content; /* 시작 방이 왼쪽에서 잘리지 않도록 콘텐츠 너비 확보 */
     margin: 0 auto;
 }
+
 .map-cell {
-    width: 40px; height: 40px;
-    background: #333;
-    border: 1px solid #444;
+    width: 50px; 
+    height: 50px;
+    background-color: #333; /* 방 내부 색 */
+    /* border-radius: 4px; */
+    /* 기본적으로 4면 모두 벽(선)이 있음 */
+    border: 2px solid #888; 
+    
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2em;
-    color: #555;
+    color: #bbb;
+    position: relative;
+    box-sizing: border-box; /* 테두리 포함 크기 계산 (중요) */
+}
+/* 2. 벽 구역 (Wall Cell) - 빗금 패턴 */
+.map-cell.wall-cell {
+    background-color: #111;
+    border-color: #222;
+    /* 빗금 패턴으로 '갈 수 없음' 표시 */
+    background-image: linear-gradient(45deg, #222 25%, transparent 25%, transparent 50%, #222 50%, #222 75%, transparent 75%, transparent);
+    background-size: 10px 10px;
+    opacity: 0.5;
+}
+/* 3. 뚫린 통로 (Path) - 테두리 색을 방 배경색과 동일하게 변경하여 '지움' */
+/* z-index를 높여서 옆방의 벽을 덮을 수도 있지만, grid gap 0이므로 색상만 맞춰도 연결되어 보임 */
+
+.map-cell.path-n { border-top-color: #333; }    /* 위쪽 뚫림 */
+.map-cell.path-s { border-bottom-color: #333; } /* 아래쪽 뚫림 */
+.map-cell.path-e { border-right-color: #333; }  /* 오른쪽 뚫림 */
+.map-cell.path-w { border-left-color: #333; }   /* 왼쪽 뚫림 */
+
+/* 4. 현재 위치 */
+.map-cell.current {
+    background-color: #555;
+    color: #fff;
+    /* box-shadow: 0 0 15px rgba(241, 196, 15, 0.3); */
+
+}
+
+
+.map-cell.current::after {
+    content: "🧍";
+    font-size: 1.2em;
+
+    inset: 0;
+    /* box-shadow: inset 0 0 15px rgba(241, 196, 15, 0.5); 노란 광원 효과 */
+    pointer-events: none;
 }
 .map-cell.visited { background: #555; color: #fff; }
-.map-cell.current { border: 2px solid #f1c40f; background: #666; }
-.map-cell.boss { color: #e74c3c; }
+
+.map-cell.boss { color: #e74c3c; font-weight: bold; }
+.map-cell.start { color: #2ecc71; }
+.map-cell.shop { color: #f1c40f; }
+
 .map-cell.path-u { border-top: 2px solid #aaa; }
 .map-cell.path-d { border-bottom: 2px solid #aaa; }
 .map-cell.path-l { border-left: 2px solid #aaa; }
@@ -1525,14 +1553,13 @@ body {
 /* [기존 수정] 적 유닛 배치 정렬을 좀 더 안정적으로 고정 */
 /* 2. 적 등장 구역 스타일 보정 (오른쪽 배치) */
 #dungeon-enemies {
-    /* 기존 .enemies-wrapper 스타일 덮어쓰기 */
-    flex: 1;
+flex: 0 0 auto; /* ★ flex: 1 제거 (너무 벌어지지 않게) */
     display: flex;
-    justify-content: flex-end; /* 오른쪽 정렬로 플레이어와 마주보게 */
+    justify-content: flex-start; /* 왼쪽(주인공 쪽)으로 붙임 */
     align-items: flex-end;
     gap: 10px;
-    padding-right: 40px; /* 플레이어와의 간격 */
-    min-width: 200px; /* 최소 공간 확보 */
+    padding: 0; /* 패딩 제거 */
+    min-width: 0;
 }
 
 /* 모바일 대응 (화면이 좁을 때 패딩 조정) */
@@ -1544,20 +1571,15 @@ body {
 }
 
 .pile-buttons {
-    /* [위치] 무대 내부 오른쪽 상단 고정 */
-    position: absolute;
-    top: 10px;
+position: absolute !important;
     right: 10px;
-    
-    /* [배치] 세로(Vertical)로 쌓기 */
+    top: 50%;
+    transform: translateY(-50%); /* 수직 중앙 정렬 */
     display: flex;
-    flex-direction: column; 
-    align-items: flex-end; /* 오른쪽 정렬 */
+    flex-direction: column;
     gap: 5px;
-    
-    margin: 0;
-    pointer-events: none; /* 컨테이너는 클릭 통과 */
-    z-index: 100; /* 배경/캐릭터보다 위에 */
+    z-index: 10;
+    align-items: flex-end;
 }
 
 /* 개별 버튼 스타일 */
@@ -1818,16 +1840,27 @@ body {
     
     /* 1. 하단 UI 높이 축소 (공통) */
     .control-group {
-        height: 60px !important;
-        gap: 2px;
-        margin-bottom: 2px;
+      height: 70px;
+    width: 100%;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between; /* 양쪽 끝으로 벌림 */
+    align-items: center;
+    padding: 0 10px; /* 좌우 여백 */
+    box-sizing: border-box;
+    background: transparent;
     }
     #ap-indicator { width: 45px; height: 45px; margin: 0 2px; }
     .ap-inner { font-size: 1em; margin-top: 0; }
     .ap-label { font-size: 0.5em; margin-top: -2px; }
     .log-area { font-size: 0.75em; padding: 4px; line-height: 1.3; }
-    .btn-end-turn-side { width: 55px; font-size: 0.8em; padding: 0; line-height: 1.1; }
-
+  
+#layer-char {
+        padding-left: 5%;
+        padding-right: 5%;
+        justify-content: center; /* 좁은 화면에선 다시 중앙 정렬이 나을 수 있음 */
+        gap: 20px;
+    }
     /* ============================================================
        [A] 기본 모드 (1~3장) : 한 줄 배치 (큼직하게)
        ============================================================ */
@@ -1953,77 +1986,32 @@ body {
     font-weight: bold;
     margin-right: 8px;
 }
-/* [style.css] 미니맵 스타일 추가 */
 
-/* 지도 그리드 컨테이너 */
-.minimap-grid {
-    display: grid;
-    gap: 8px; /* 방 사이 간격 */
-    justify-content: center;
-    margin: 0 auto;
-}
 
-/* [style.css] 미니맵 스타일 수정/추가 */
 
-/* 1. 기본 방 스타일 (막힌 벽 테두리) */
-.map-cell {
-    width: 50px; 
-    height: 50px;
-    background-color: #222;
-    /* 기본 테두리는 '막힌 벽'을 상징하는 어두운 회색 */
-    border: 2px solid #444; 
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5em;
-    color: #555;
-    position: relative;
-    box-sizing: border-box; /* 테두리 포함 크기 계산 */
-}
 
-/* 2. 벽 구역 (Wall Cell) - 빗금 패턴 */
-.map-cell.wall-cell {
-    background-color: #111;
-    border-color: #222;
-    /* 빗금 패턴으로 '갈 수 없음' 표시 */
-    background-image: linear-gradient(45deg, #222 25%, transparent 25%, transparent 50%, #222 50%, #222 75%, transparent 75%, transparent);
-    background-size: 10px 10px;
-    opacity: 0.5;
-}
 
-/* 3. 뚫린 통로 (Path) - 밝은색으로 '문' 표시 */
-/* 기존 border-top 등을 덮어씌워 밝게 만듭니다 */
-.map-cell.path-n { border-top: 4px solid #3498db; margin-top: -2px; } /* 위쪽 문 */
-.map-cell.path-s { border-bottom: 4px solid #3498db; margin-bottom: -2px; } /* 아래쪽 문 */
-.map-cell.path-e { border-right: 4px solid #3498db; margin-right: -2px; } /* 오른쪽 문 */
-.map-cell.path-w { border-left: 4px solid #3498db; margin-left: -2px; } /* 왼쪽 문 */
-
-/* 4. 현재 위치 */
-.map-cell.current {
-    background-color: #444;
-    border-color: #f1c40f; /* 현재 위치는 노란색 강조 */
-    box-shadow: 0 0 15px rgba(241, 196, 15, 0.3);
-    z-index: 10;
-}
-.map-cell.current::after {
-    content: "🧍";
-    font-size: 1.2em;
-}
 
 /* [style.css] 추가 */
 
-/* 상호작용 오브젝트 컨테이너 */
+/* [style.css] .room-object 수정 */
 .room-object {
-    position: absolute; /* 캐릭터 레이어 내에서 절대 위치로 이동 */
-    bottom: 40px;       /* 바닥에서의 높이 */
+    position: absolute;
+    bottom: 40px;       
+    
+    /* ★ 수정: 화면 가로 중앙을 기준으로 잡음 */
+    left: 50%;
+    transform: translateX(-50%); /* 정확한 중앙 정렬 */
+    
     display: flex;
     flex-direction: column;
     align-items: center;
     cursor: pointer;
-    transition: transform 0.1s linear; /* 부드러운 이동 */
-    z-index: 20; /* 플레이어/적 위로 */
+    z-index: 20;
     pointer-events: auto;
+    
+    /* 부드러운 이동 (JS에서 transform을 덮어쓸 때도 부드럽게) */
+    transition: transform 0.1s linear, opacity 0.2s;
 }
 
 /* 아이콘 (이모지 또는 이미지) */
@@ -2055,4 +2043,100 @@ body {
 .room-object:hover #dungeon-obj-label {
     opacity: 1;
     border-color: #f1c40f;
+}
+/* [style.css] 통합 로그창 스타일 추가 */
+
+.shared-log-area {
+    /* 위치 및 크기 */
+    width: 100%;
+    height: 100px; /* 높이 고정 (필요 시 조절) */
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    
+    /* 디자인 */
+    background: #111;
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 8px 12px;
+    
+    /* 텍스트 */
+    text-align: left;
+    font-size: 0.9em;
+    line-height: 1.5;
+    color: #ddd;
+    
+    /* 스크롤 */
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 로그 개별 줄 스타일 */
+.shared-log-area div {
+    border-bottom: 1px solid #222;
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+    word-break: keep-all; /* 단어 단위 줄바꿈 */
+}
+
+/* 스크롤바 커스텀 */
+.shared-log-area::-webkit-scrollbar { width: 6px; }
+.shared-log-area::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+.shared-log-area::-webkit-scrollbar-track { background: #111; }
+
+/* [수정] 전투 하단 컨트롤 그룹 (로그창이 빠졌으므로 높이/정렬 조정) */
+.control-group {
+height: 70px;
+    width: 100%;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between; /* 양쪽 끝으로 벌림 */
+    align-items: center;
+    padding: 0 10px; /* 좌우 여백 */
+    box-sizing: border-box;
+    background: transparent;
+}
+
+/* AP 인디케이터 위치 미세 조정 */
+#ap-indicator {
+    margin-left: 0px;
+}
+/* 7. 오른쪽 버튼 그룹 (도망치기 + 턴종료) */
+.btn-group-right {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* 버튼 사이 간격 */
+}
+     
+        .btn-end-turn-side {
+            height: 50px;
+            width: 60px;        
+            font-size: 0.9em;
+           border-radius: 8px;
+    box-shadow: 0 4px 0 #8e44ad; /* 입체감 */
+    background: #9b59b6; 
+    border: none;
+    color: white;
+    /* ★ 텍스트 정렬 및 스타일 추가 (도망 버튼과 통일) */
+    display: flex;
+    align-items: center;     /* 수직 중앙 정렬 */
+    justify-content: center; /* 수평 중앙 정렬 */
+    font-weight: bold;       /* 굵게 */
+    line-height: 1.2;        /* 줄 간격 */
+    padding: 0;              /* 패딩 초기화 */
+}
+    .btn-end-turn-side:active {
+    box-shadow: none;
+    transform: translateY(4px);
+}
+/* 도망치기/특수행동 버튼 (JS로 생성됨) */
+#extra-action-btn {
+    height: 50px !important;
+    width: 60px !important;
+    font-size: 0.85em !important;
+    border-radius: 8px !important;
+    /* 턴 종료 버튼과 높이 맞춤 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
