@@ -135,6 +135,37 @@ function enterDistrict(key) {
         {txt: "뒤로가기", func: closePopup}
     ], content);
 }
+/* [game.js] 상점 나가기 핸들러 (상황별 복귀) */
+function exitShop(shopType) {
+    // 인터넷 쇼핑이면 무조건 허브로
+    if (shopType === 'shop_internet') {
+        renderHub();
+        return;
+    }
+
+    // [핵심] 현재 게임 상태가 '탐사(exploration)' 중이었다면 던전으로 복귀
+    // (상점 진입 시 switchScene('event')를 했지만 game.state는 유지했거나, 여기서 확인 가능)
+    // 보통 던전에서 상점을 열면 game.state가 'exploration'인 상태에서 화면만 바뀝니다.
+    // 하지만 안전하게 '던전 맵이 생성되어 있는지'로 판단합니다.
+    if (game.dungeonMap) {
+        closePopup();
+        game.state = 'exploration';
+        
+        // 탐사 화면 UI 복구
+        switchScene('exploration');
+        toggleBattleUI(false);
+        showExplorationView();
+        
+        // 던전 뷰 갱신 (오브젝트 위치 등)
+        if (DungeonSystem && DungeonSystem.updateParallax) {
+            DungeonSystem.updateParallax();
+        }
+        updateUI();
+    } else {
+        // 그 외에는 도시 지도로
+        renderCityMap();
+    }
+}
 /* [필수] 미션 시작 함수 */
 function beginMission() {
     closePopup();
@@ -2943,9 +2974,8 @@ function renderShopScreen(shopType = "shop_black_market") {
                 </div>
             </div>
         </div>
-
-        <div class="shop-footer-area">
-            <button class="action-btn" onclick="${shopType === 'shop_internet' ? 'renderHub()' : 'renderCityMap()'}" style="background:#7f8c8d; padding: 10px 30px; font-size:1.1em;">
+<div class="shop-footer-area">
+            <button class="action-btn" onclick="exitShop('${shopType}')" style="background:#7f8c8d; padding: 10px 30px; font-size:1.1em;">
                 🚪 나가기
             </button>
         </div>

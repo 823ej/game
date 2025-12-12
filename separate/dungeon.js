@@ -289,55 +289,103 @@ const DungeonSystem = {
     },
     // 4. 방 전환 및 갈림길 처리
     checkRoomTransition: function(side) {
-        let currentRoom = this.map[this.currentPos.y][this.currentPos.x];
-        let exits = currentRoom.exits; // 연결된 방향들 ['n', 's', 'e', 'w']
+    let currentRoom = this.map[this.currentPos.y][this.currentPos.x];
+    let exits = currentRoom.exits; // 연결된 방향들 ['n', 's', 'e', 'w']
+    
+    // -------------------------------------------------------
+    // [1] 오른쪽 끝 (100%): 다음 방으로 전진 (동쪽/북쪽/남쪽)
+    // -------------------------------------------------------
+    if (side === "right") {
+        const options = [];
         
-        // 오른쪽 끝(100%)에 도달했고, 동쪽(e)이나 다른 층(u, d)으로 가는 길이 있다면?
-        if (side === "right") {
-            // 갈림길 팝업 표시
-            const options = [];
-            if (exits.includes('e')) options.push({txt: "➡ 동쪽 방으로", func: () => this.enterRoom(1, 0)});
+        // 1. 동쪽(e)으로 계속 전진
+        if (exits.includes('e')) {
+            options.push({txt: "➡ 동쪽 방으로", func: () => this.enterRoom(1, 0)});
+        }
+        
+        // 2. 메인 경로(y=1)에서 위/아래 분기로 이동
+        // (현재 방이 메인 통로이고, 위/아래와 연결되어 있다면)
+        if (this.currentPos.y === 1) {
             if (exits.includes('n')) options.push({txt: "⬆ 위쪽 방으로", func: () => this.enterRoom(0, -1)});
             if (exits.includes('s')) options.push({txt: "⬇ 아래쪽 방으로", func: () => this.enterRoom(0, 1)});
+        }
 
-            const canReturn = exits.includes('w');
-            if (options.length === 0) {
-                // 막다른 길: 돌아가기만 제시
-                const btns = [];
-                if (canReturn) btns.push({txt: "↩ 돌아가기", func: () => { closePopup(); this.enterRoom(-1, 0, true); }});
-                showPopup("막다른 길", "더 이상 나아갈 수 없습니다.", btns.length ? btns : [{txt:"닫기", func:closePopup}]);
-            } else {
-                // 선택지 + 돌아가기 + 취소(왼쪽 한 걸음)
-                if (canReturn) options.push({txt: "↩ 돌아가기", func: () => { closePopup(); this.enterRoom(-1, 0, true); }});
-                options.push({
-                    txt: "취소",
-                    func: () => {
-                        closePopup();
-                        if (canReturn) this.enterRoom(-1, 0, true);
+        // 갈 곳이 없는 경우 (막다른 길)
+        if (options.length === 0) {
+            showPopup("막다른 길", "더 이상 앞으로 나아갈 수 없습니다.<br>(왼쪽으로 돌아가세요)", [
+                {
+                    txt: "확인", 
+                    func: () => { 
+                        closePopup(); 
+                        this.progress = 95; // 살짝 뒤로 밀어줌
+                        this.updateParallax(); 
                     }
-                });
-                showPopup("이동 방향 선택", "어디로 가시겠습니까?", options);
-            }
+                }
+            ]);
+        } 
+        // 갈 곳이 있는 경우 (선택지 표시)
+        else {
+            options.push({
+                txt: "취소",
+                func: () => {
+                    closePopup();
+                    this.progress = 95; // 살짝 뒤로
+                    this.updateParallax();
+                }
+            });
+            showPopup("갈림길", "어디로 가시겠습니까?", options);
         }
-        // 왼쪽 끝(0%)은 보통 왔던 길 (서쪽 w)
-        else if (side === "left") {
-            // 시작방이면 던전 탈출 선택지 표시
-            if (currentRoom.type === 'start') {
-                showPopup("나가기", "던전을 벗어납니다.", [
-                    { txt: "떠나기", func: () => { closePopup(); renderHub(); } },
-                    { txt: "취소", func: closePopup }
-                ]);
-                return;
-            }
-            if (exits.includes('w')) {
-                showPopup("이전 방으로 이동", "왔던 길로 돌아갑니다.", [
-                    { txt: "돌아가기", func: () => { closePopup(); this.enterRoom(-1, 0, true); } },
-                    { txt: "취소", func: closePopup }
-                ]);
-            }
+    }
+    
+    // -------------------------------------------------------
+    // [2] 왼쪽 끝 (0%): 이전 방으로 복귀 (뒤로 가기)
+    // -------------------------------------------------------
+    else if (side === "left") {
+        // 시작방이면 던전 탈출
+        if (currentRoom.type === 'start') {
+            showPopup("나가기", "던전을 벗어납니다.", [
+                { txt: "떠나기", func: () => { closePopup(); renderHub(); } },
+                { txt: "취소", func: () => { closePopup(); this.progress = 5; this.updateParallax(); } }
+            ]);
+            return;
         }
-    },
 
+        // 그 외 모든 방에서는 '이전 방'으로 이동
+        // (어떤 방향에서 왔든, 왼쪽 끝은 돌아가는 문으로 통일)
+        showPopup("이전 방으로 이동", "왔던 길로 돌아갑니다.", [
+            { 
+                txt: "돌아가기", 
+                func: () => { 
+                    closePopup(); 
+                    this.returnToPreviousRoom(); // 지난번에 만든 복귀 헬퍼 사용
+                } 
+            },
+            { 
+                txt: "취소", 
+                func: () => { 
+                    closePopup(); 
+                    this.progress = 5; // 살짝 앞으로
+                    this.updateParallax(); 
+                } 
+            }
+        ]);
+    }
+},
+// [신규 헬퍼] 현재 위치에 맞춰 알맞은 '이전 방'으로 이동
+returnToPreviousRoom: function() {
+    // 1. 위쪽 방(y=0) -> 아래(남쪽, y+1)로 복귀
+    if (this.currentPos.y === 0) {
+        this.enterRoom(0, 1, true); // fromBack=true (문 앞에서 나옴)
+    } 
+    // 2. 아래쪽 방(y=2) -> 위(북쪽, y-1)로 복귀
+    else if (this.currentPos.y === 2) {
+        this.enterRoom(0, -1, true);
+    } 
+    // 3. 메인 통로(y=1) -> 서쪽(x-1)으로 복귀
+    else {
+        this.enterRoom(-1, 0, true);
+    }
+},
     enterRoom: function(dx, dy, fromBack = false) {
         closePopup();
         this.currentPos.x += dx;
