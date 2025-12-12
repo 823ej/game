@@ -551,12 +551,12 @@ body {
         /* [?곕떽?] 筌?Ŧ??????筌왖 ?????*/
 .char-img {
     width: clamp(80px, 10vw, 110px);
-    height: clamp(80px, 10vw, 110px);
-            object-fit: cover; /* ??쑴???醫???렽???筌?쑴? */
-            border-radius: 10px;
-            border: 2px solid #555;
-            background: #000;
-            margin-bottom: 5px;
+    height: auto; /* 정사각형 강제 해제 (길쭉하게 나옴) */
+    
+    /* [추가] 너무 길어져서 UI를 뚫는 것 방지 (최대 높이 제한) */
+    max-height: 200px;
+            object-fit: contain; /* ??쑴???醫???렽???筌?쑴? */
+        margin-bottom: 5px;
         }
 
         /* [?곕떽?] ?醫딅빍筌롫뗄?????쎈늄??됱뿫 ?類ㅼ벥 */
@@ -1421,8 +1421,12 @@ position: absolute !important;
 /* 4. 캐릭터 위치 보정 */
 /* 기존 .character 스타일이 flex width %로 되어 있어서 수정 필요 */
 #dungeon-player {
-    width: 150px;
+   /* [수정] 너비를 조금 줄이거나, 높이를 기준으로 맞춤 */
+    height: 220px; /* 스테이지 높이(340px)에 맞춰 적당한 높이 고정 */
+    width: auto;   /* 높이에 맞춰 너비 자동 조절 (비율 유지) */
+    
     transition: transform 0.2s;
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5)); /* 그림자 추가로 선명함 강조 */
 }
 #dungeon-player-wrapper {
 margin: 0;
@@ -2007,7 +2011,7 @@ position: absolute !important;
     flex-direction: column;
     align-items: center;
     cursor: pointer;
-    z-index: 20;
+    z-index: 4;
     pointer-events: auto;
     
     /* 부드러운 이동 (JS에서 transform을 덮어쓸 때도 부드럽게) */
@@ -2166,4 +2170,45 @@ height: 70px;
     
     /* 테두리 강조는 유지 */
     border-color: #f1c40f;
+}
+/* [style.css] 맨 아래에 추가 */
+
+/* 치명타 텍스트 효과 */
+.damage-number.crit-text {
+    color: #f1c40f !important; /* 금색 */
+    font-size: 3.5em !important; /* 훨씬 크게 */
+    text-shadow: 
+        3px 3px 0 #c0392b, 
+        -1px -1px 0 #fff,
+        0 0 20px rgba(241, 196, 15, 0.8); /* 발광 효과 */
+    z-index: 1005;
+    animation: crit-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* 치명타 팝업 애니메이션 */
+@keyframes crit-pop {
+    0% { transform: translate(-50%, 0) scale(0.5) rotate(-10deg); opacity: 0; }
+    40% { transform: translate(-50%, -40px) scale(1.5) rotate(5deg); opacity: 1; }
+    80% { transform: translate(-50%, -60px) scale(1.2) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+}
+/* [style.css] 맨 아래에 추가 */
+
+/* 왼쪽을 보는 상태 (정지 시) */
+.facing-left {
+    transform: scaleX(-1);
+}
+
+/* 왼쪽 걷기 애니메이션 (이동 시) */
+@keyframes walkBobLeft {
+    0% { transform: translateY(0) scaleX(-1); }
+    25% { transform: translateY(-5px) scaleX(-1); }
+    50% { transform: translateY(0) scaleX(-1); }
+    75% { transform: translateY(-3px) scaleX(-1); }
+    100% { transform: translateY(0) scaleX(-1); }
+}
+
+/* 왼쪽을 보고 있을 때는 왼쪽 걷기 애니메이션 적용 */
+.anim-walk.facing-left {
+    animation-name: walkBobLeft;
 }

@@ -334,21 +334,27 @@ function log(msg) {
         box.scrollTop = box.scrollHeight;
     }
 }
-/* [NEW] 대미지 텍스트 표시 효과 (누락된 함수) */
-function showDamageText(target, msg) {
+// 대미지 폰트
+function showDamageText(target, msg, isCrit = false) {
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
     let targetEl = document.getElementById(targetId);
     
     if (targetEl) {
         let el = document.createElement("div");
         el.className = "damage-number";
-        el.innerText = msg;
+        
+        // [추가] 치명타일 경우 클래스 추가
+        if (isCrit) {
+            el.classList.add("crit-text");
+            // 텍스트 내용도 조금 더 강조
+            el.innerHTML = `<span style="font-size:0.6em">CRITICAL!</span><br>${msg.replace('⚡CRIT! ', '')}`;
+        } else {
+            el.innerText = msg;
+        }
+        
         targetEl.appendChild(el);
         
-        // 애니메이션(0.8초) 후 HTML에서 삭제
-        setTimeout(() => {
-            el.remove();
-        }, 800);
+        setTimeout(() => { el.remove(); }, 800);
     }
 }
 function createBattleCheckpoint() {
@@ -2017,9 +2023,13 @@ function exploreAction(action) {
 /* [수정] 전투 시작 함수 (턴 기록 초기화 + 프리뷰 유지) */
 /* [game.js] startBattle 함수 수정 (안정성 강화) */
 function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) {
-    // 1. 이동 정지 (던전 모드)
     if (typeof stopMove === 'function') stopMove();
-    
+    // [★수정] 전투 시작 시 왼쪽 보기 클래스 제거 (정면 보기)
+    const pImg = document.getElementById('dungeon-player');
+    if (pImg) {
+        pImg.classList.remove('facing-left');
+        pImg.style.transform = ""; // 혹시 남아있을 인라인 스타일 제거
+    }
     // 2. 전투 상태 설정
     game.state = "battle"; 
     game.totalTurns = 0; 
@@ -2385,7 +2395,7 @@ async function startEnemyTurnLogic(actor) {
 
 /* [수정] useCard: 방어/버프/드로우 로직을 공통으로 분리 */
 function useCard(user, target, cardName) {
-    let data = CARD_DATA[cardName];
+let data = CARD_DATA[cardName];
     let userId = (user === player) ? "player-char" : `enemy-unit-${user.id}`;
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
 
@@ -2445,8 +2455,28 @@ function useCard(user, target, cardName) {
             if (data.special === "break_block") { target.block = 0; log(`🔨 방어 파괴!`); }
             
             let finalDmg = (data.dmg || 0) + getStat(user, 'atk');
-            takeDamage(target, finalDmg); 
-        } 
+            // [★핵심 추가] 치명타(Critical) 계산 로직
+            // 기본 확률 5% + 민첩(SPD) 1당 1% 추가
+            let dexVal = getStat(user, 'spd'); 
+            let critChance = 0.05 + (dexVal * 0.01); 
+            
+            // 보정: 운(Lucky) 상태라면 확률 20% 증가
+            if (user.lucky) critChance += 0.2;
+
+            let isCrit = Math.random() < critChance;
+
+            if (isCrit) {
+                finalDmg = Math.floor(finalDmg * 1.5); // 데미지 1.5배
+                // 화면 흔들림 효과 (선택사항)
+                let tEl = document.getElementById(targetId);
+                if(tEl) {
+                    tEl.classList.add('anim-hit'); 
+                    setTimeout(()=>tEl.classList.remove('anim-hit'), 400);
+                }
+            }
+ // takeDamage에 isCrit 플래그 전달
+            takeDamage(target, finalDmg, isCrit); 
+        }
         else {
             playAnim(userId, 'anim-bounce');
         }
@@ -2547,7 +2577,7 @@ function summonMinion(enemyKey) {
 }
 
 /* [수정] 데미지 처리 함수 (소셜 모드 완벽 지원) */
-function takeDamage(target, dmg) {
+function takeDamage(target, dmg, isCrit = false) {
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
     
     // 1. 방어(멘탈 방어) 계산
@@ -2579,10 +2609,16 @@ if (dmg > 0) {
                 showDamageText(target, `💢-${dmg}`);
             }
         } else {
-            // 일반 전투: HP 피해
+          // [수정] 전투 데미지: 치명타 시 로그 및 텍스트 변경
             target.hp -= dmg;
-            log(`💥 체력 피해 -${dmg}! (HP: ${target.hp})`);
-            showDamageText(target, `💥-${dmg}`);
+            
+            if (isCrit) {
+                log(`⚡ <b>치명타 적중!</b> 💥${dmg} 피해! (HP: ${target.hp})`);
+                showDamageText(target, `⚡CRIT! -${dmg}`, true); // true = 치명타 스타일 적용
+            } else {
+                log(`💥 체력 피해 -${dmg}! (HP: ${target.hp})`);
+                showDamageText(target, `💥-${dmg}`, false);
+            }
         }
     }
     

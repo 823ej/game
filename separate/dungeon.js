@@ -310,19 +310,20 @@ const DungeonSystem = {
             if (exits.includes('s')) options.push({txt: "⬇ 아래쪽 방으로", func: () => this.enterRoom(0, 1)});
         }
 
-        // 갈 곳이 없는 경우 (막다른 길)
-        if (options.length === 0) {
-            showPopup("막다른 길", "더 이상 앞으로 나아갈 수 없습니다.<br>(왼쪽으로 돌아가세요)", [
-                {
-                    txt: "확인", 
-                    func: () => { 
-                        closePopup(); 
-                        this.progress = 95; // 살짝 뒤로 밀어줌
-                        this.updateParallax(); 
+        // [★수정] 갈 곳이 없는 막다른 길일 때
+            if (options.length === 0) {
+                showPopup("막다른 길", "더 이상 나아갈 수 없습니다.", [
+                    { 
+                        txt: "확인", 
+                        func: () => { 
+                            closePopup(); 
+                            // 방을 이동하지 않고, 위치만 살짝 뒤(90%)로 물러납니다.
+                            this.progress = 90; 
+                            this.updateParallax(); 
+                        } 
                     }
-                }
-            ]);
-        } 
+                ]);
+            }
         // 갈 곳이 있는 경우 (선택지 표시)
         else {
             options.push({
@@ -398,7 +399,23 @@ returnToPreviousRoom: function() {
         // 위치 초기화 (앞문 진입: 0%, 뒷문 진입: 100%)
         this.progress = fromBack ? 100 : 0;
         this.objectAnchor = this.progress; // 입장 위치를 오브젝트 기준점으로 설정 (중앙에서 시작)
-        this.updateParallax();
+        // [★수정] 방 전환 시 슬라이딩 애니메이션 제거 (순간 이동)
+        const objEl = document.getElementById('dungeon-object');
+        if (objEl) {
+            // 1. 애니메이션 끄기
+            objEl.style.transition = 'none'; 
+            
+            // 2. 위치 강제 이동 (Parallax 계산)
+            this.updateParallax(); 
+            
+            // 3. 강제 리플로우 (브라우저가 변경된 위치를 즉시 적용하게 함)
+            void objEl.offsetWidth; 
+            
+            // 4. 애니메이션 복구 (CSS 파일의 원래 설정으로 되돌림)
+            objEl.style.transition = ''; 
+        } else {
+            this.updateParallax();
+        }
         
         // 미니맵 갱신
         this.renderMinimap();
@@ -698,28 +715,22 @@ let moveInterval = null;
 
 function startMove(direction) {
     if (moveInterval) clearInterval(moveInterval);
-    const playerChar = document.getElementById('dungeon-player');
     
-  // 1. 요소 가져오기
-    const playerWrapper = document.getElementById('dungeon-player-wrapper'); // 래퍼 (방향 담당)
-    const playerImg = document.getElementById('dungeon-player');       // 이미지 (모션 담당)
+    const playerImg = document.getElementById('dungeon-player');
     
-    // 2. 방향 전환 (래퍼를 뒤집음)
-    // 전투 시 위치 이동(translateX)과 겹치지 않게 탐사 중에는 scaleX만 사용
-    if (playerWrapper) {
-        if (direction === 1) {
-            playerWrapper.style.transform = "scaleX(1)"; // 오른쪽
-        } else {
-            playerWrapper.style.transform = "scaleX(-1)"; // 왼쪽
-        }
-    }
-
-    // 3. 걷기 애니메이션 적용 (이미지에 클래스 추가)
     if (playerImg) {
+        if (direction === 1) {
+            // 오른쪽: 클래스 제거 (정면)
+            playerImg.classList.remove('facing-left'); 
+        } else {
+            // 왼쪽: 클래스 추가 (반전)
+            playerImg.classList.add('facing-left'); 
+        }
+        
+        // 걷기 애니메이션 시작
         playerImg.classList.add('anim-walk');
     }
 
-    // 4. 실제 이동 로직 실행
     moveInterval = setInterval(() => {
         DungeonSystem.moveScroll(direction);
     }, 20);
