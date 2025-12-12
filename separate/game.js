@@ -1675,10 +1675,7 @@ function renderExploration(forceReset = false) {
 // ★ [추가] 버튼/이동 잠금 해제
     game.inputLocked = false; 
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
-    // 시나리오 진행도가 초기화된 경우나 강제 리셋 요청/대기 플래그 시 맵을 새로 생성
-    if (forceReset || game.shouldResetDungeon || (game.scenario && game.scenario.clues === 0)) {
-        resetDungeonState();
-    }
+    
     // 던전 생성 로직 (우선순위 적용)
     if (!game.dungeonMap) {
         let dungeonConfig = null;

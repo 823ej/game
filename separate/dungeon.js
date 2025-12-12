@@ -295,15 +295,28 @@ const DungeonSystem = {
         // 오른쪽 끝(100%)에 도달했고, 동쪽(e)이나 다른 층(u, d)으로 가는 길이 있다면?
         if (side === "right") {
             // 갈림길 팝업 표시
-            let options = [];
-            if (exits.includes('e')) options.push({txt: "동쪽 방으로 (➡)", func: () => this.enterRoom(1, 0)});
-            if (exits.includes('n')) options.push({txt: "위쪽 방으로 (⬆)", func: () => this.enterRoom(0, -1)});
-            if (exits.includes('s')) options.push({txt: "아래쪽 방으로 (⬇)", func: () => this.enterRoom(0, 1)});
-            
-            if (options.length > 0) {
-                showPopup("이동 방향 선택", "어디로 가시겠습니까?", options);
+            const options = [];
+            if (exits.includes('e')) options.push({txt: "➡ 동쪽 방으로", func: () => this.enterRoom(1, 0)});
+            if (exits.includes('n')) options.push({txt: "⬆ 위쪽 방으로", func: () => this.enterRoom(0, -1)});
+            if (exits.includes('s')) options.push({txt: "⬇ 아래쪽 방으로", func: () => this.enterRoom(0, 1)});
+
+            const canReturn = exits.includes('w');
+            if (options.length === 0) {
+                // 막다른 길: 돌아가기만 제시
+                const btns = [];
+                if (canReturn) btns.push({txt: "↩ 돌아가기", func: () => { closePopup(); this.enterRoom(-1, 0, true); }});
+                showPopup("막다른 길", "더 이상 나아갈 수 없습니다.", btns.length ? btns : [{txt:"닫기", func:closePopup}]);
             } else {
-                showPopup("막다른 길", "더 이상 나아갈 수 없습니다.", [{txt:"돌아가기", func:closePopup}]);
+                // 선택지 + 돌아가기 + 취소(왼쪽 한 걸음)
+                if (canReturn) options.push({txt: "↩ 돌아가기", func: () => { closePopup(); this.enterRoom(-1, 0, true); }});
+                options.push({
+                    txt: "취소",
+                    func: () => {
+                        closePopup();
+                        if (canReturn) this.enterRoom(-1, 0, true);
+                    }
+                });
+                showPopup("이동 방향 선택", "어디로 가시겠습니까?", options);
             }
         }
         // 왼쪽 끝(0%)은 보통 왔던 길 (서쪽 w)
