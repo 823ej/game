@@ -506,21 +506,26 @@ returnToPreviousRoom: function() {
             { txt: "건드리지 않는다", func: closePopup }
         ]);
     }
-        else if (room.type === 'boss') {
-            if (room.locked) {
-                // 잠김 체크 (단서 부족)
-                if (game.scenario.clues >= this.REQUIRED_CLUES) {
-                    room.locked = false; // 해금
-                    this.checkObjectVisibility(); // 아이콘 갱신(자물쇠->도깨비)
-                    showPopup("해금", "단서를 맞춰보니 보스의 위치가 확실해졌습니다.<br>문이 열립니다.", [{txt:"확인", func:closePopup}]);
-                } else {
-                    showPopup("잠김", `단서가 부족하여 진입할 수 없습니다.<br>(${game.scenario.clues}/${this.REQUIRED_CLUES})`, [{txt:"돌아가기", func:closePopup}]);
-                }
-            } else {
-                // 보스전 시작
-                startBossBattle();
-            }
+       else if (room.type === 'boss') {
+    if (room.locked) {
+        // [1] 잠겨 있을 때
+        if (game.scenario.clues >= this.REQUIRED_CLUES) {
+            room.locked = false; 
+            this.checkObjectVisibility(); 
+            showPopup("해금", "단서를 맞춰보니 보스의 위치가 확실해졌습니다.<br>문이 열립니다.", [{txt:"확인", func:closePopup}]);
+        } else {
+            showPopup("잠김", `단서가 부족하여 진입할 수 없습니다.<br>(${game.scenario.clues}/${this.REQUIRED_CLUES})`, [{txt:"돌아가기", func:closePopup}]);
         }
+    } else {
+        // [2] 열려 있을 때 (전투 진입)
+        
+        // ★ [수정] 보스전 시작 시 오브젝트(아이콘)를 즉시 숨깁니다.
+        const objEl = document.getElementById('dungeon-object');
+        if (objEl) objEl.classList.add('hidden');
+
+        startBossBattle();
+    }
+}
         
         // 상호작용 후 UI 갱신 (클리어 표시만 갱신)
         if (room.cleared && room.type !== 'shop' && room.type !== 'heal') {

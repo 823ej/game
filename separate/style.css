@@ -406,7 +406,7 @@ body {
             display: flex; flex-direction: column; justify-content: space-between;
             border: 2px solid #bdc3c7; transition: 0.1s; position: relative;
         }
-        .builder-card:hover { transform: scale(1.05); border-color: #f1c40f; z-index: 10; }
+        .builder-card:hover { transform: scale(1.01); border-color: #f1c40f; z-index: 10; }
         .builder-card b { font-size: 1.1em; display: block; margin-top: 5px; }
         .builder-card .cost { 
             background: #3498db; color: white; width: 20px; height: 20px; 
@@ -703,7 +703,7 @@ body {
         }
         /* [??륁젟] 筌띾뜆?????議????(Hover) */
         .card:hover { 
-            transform: translateY(-5px) scale(1.1) !important; 
+            transform: translateY(-5px) scale(1.01) !important; 
             z-index: 100;           
             border-color: #f1c40f; 
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
@@ -752,7 +752,7 @@ body {
         
         .shop-items { display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; }
         .shop-item { cursor: pointer; transition: 0.2s; position: relative; }
-        .shop-item:hover { transform: scale(1.05); }
+        .shop-item:hover { transform: scale(1.01); }
         .shop-item.sold-out { opacity: 0.4; pointer-events: none; filter: grayscale(100%); }
         .shop-item.sold-out::after { content: "SOLD OUT"; position: absolute; top: 40%; left: 10%; color: red; font-weight: bold; font-size: 1.5em; transform: rotate(-15deg); border: 2px solid red; padding: 5px; }
         .shop-price { background: #111; color: #f1c40f; padding: 5px; border-radius: 4px; margin-top: 5px; font-weight: bold; }
@@ -1813,7 +1813,7 @@ position: absolute !important;
     width: 100%;
     box-sizing: border-box;
 }
-.shop-service-box:hover { transform: scale(1.02); border-color: #f1c40f; }
+.shop-service-box:hover { transform: scale(1.01); border-color: #f1c40f; }
 .service-icon { font-size: 2em; }
 .service-info { display: flex; flex-direction: column; align-items: flex-start; color: white; }
 .shop-price-tag { background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; margin-top: 3px; color:#f1c40f; font-weight:bold; }
@@ -2139,4 +2139,31 @@ height: 70px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+/* [style.css] 맨 아래에 추가: 상점 카드 호버 효과 개선 */
+
+/* 1. 상점 아이템 컨테이너: 자체 확대 제거 */
+/* 기존의 .shop-item:hover { transform: scale(1.05); }를 덮어씁니다. */
+.shop-item:hover {
+    transform: none; /* 상자 전체가 커지면서 주변을 미는 현상 방지 */
+    z-index: 10;     /* 대신 가려지지 않도록 맨 앞으로 가져옴 */
+}
+
+/* 2. 상점 내부의 카드: 호버 시 얌전하게 만들기 */
+.shop-item .card:hover {
+    /* [핵심] 레이아웃 흔들림의 주범인 마진 변경을 무력화 */
+    margin: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+
+    /* [핵심] 과한 확대 효과 축소 */
+    /* 기존: scale(1.1) + translateY(-5px) -> 수정: scale(0.9) */
+    /* (참고: 상점 카드는 기본 크기가 0.85이므로, 0.9면 살짝만 커지는 정도입니다) */
+    transform: scale(0.9) !important;
+
+    /* 그림자도 너무 과하지 않게 조절 */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    
+    /* 테두리 강조는 유지 */
+    border-color: #f1c40f;
 }
