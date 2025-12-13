@@ -11,6 +11,16 @@ const CARD_DATA = {
     "넘어뜨리기": { rank: 2, cost: 2, type: "attack", desc: "적 취약(2턴), 적 HP -4", buff: {name:"취약", val:2}, job: "common", dmg: 4 },
     "전기 충격": { rank: 2, cost: 2, type: "attack", desc: "적 마비(2턴), 적 HP -4", buff: {name:"마비", val:2}, job: "common", dmg: 4 },
     "달리기": { rank: 2, cost: 2, type: "attack", desc: "나 쾌속(2턴), 적 HP -4", buff: {name:"쾌속", val:2}, target:"self", job: "common", dmg: 4 },
+    "화염병 투척": { 
+        rank: 2, cost: 1, type: "attack", 
+        desc: "적에게 [화염] 피해 10", 
+        dmg: 10, attr: "fire", job: "common" 
+    },
+    "급소 찌르기": { 
+        rank: 2, cost: 2, type: "attack", 
+        desc: "적에게 [관통] 피해 8, 약점 시 3배", 
+        dmg: 8, attr: "pierce", job: "common" 
+    },
    // 특수 기능 (special 태그 사용)
     "방패 부수기": { rank: 2, cost: 2, type: "attack", desc: "적 방어도 제거, 적 HP -2", special: "break_block", job: "common", dmg: 2 },
     "주머니 뒤지기": { rank: 2, cost: 1, type: "skill", desc: "방어도 +2, 카드 2장 뽑기", job: "common", block: 2, draw: 2 },
@@ -62,6 +72,7 @@ const ENEMY_DATA = {
         name: "불량배",
         baseHp: 20,
         stats: { atk: 1, def: 0, spd: 3 }, // 기본 스탯
+        weakness : "strike", // 타격에 약함 (주먹)
         growth: { hp: 4, atk: 0.5, def: 0, spd: 0.1 }, // 레벨당 성장 수치
         deckType: "basic", // 사용하는 덱 타입
         img: "https://placehold.co/100x100/c0392b/ffffff?text=Bully"
@@ -70,6 +81,7 @@ const ENEMY_DATA = {
         name: "허수아비",
         baseHp: 30, // 조금 더 튼튼하게
         stats: { atk: 1, def: 1, spd: 2 }, // 
+        weakness : "fire",  // 불에 약함
         growth: { hp: 5, atk: 0.5, def: 0.5, spd: 0.1 }, // 골고루 성장
         deckType: "player_like", // 타격5+수비4+2성1
         img: "https://placehold.co/100x100/f39c12/ffffff?text=Scarecrow"
@@ -79,6 +91,7 @@ const ENEMY_DATA = {
         name: "💀 개조된 불량배 대장",
         baseHp: 150, // 높은 체력
         stats: { atk: 3, def: 2, spd: 2 }, // 묵직한 스탯
+        weakness : "electric",
         growth: { hp: 0, atk: 0, def: 0, spd: 0 }, // 보스는 레벨 스케일링을 따로 안 하거나 고정
         deckType: "custom", // 덱 생성 함수 안 쓰고 직접 지정
         deck: ["강철 분쇄", "강철 분쇄", "부하 호출", "타격", "수비"], // 전용 덱
@@ -88,6 +101,7 @@ const ENEMY_DATA = {
         name: "💀 광신도 교주",
         baseHp: 100,
         stats: { atk: 2, def: 1, spd: 4 }, // 빠른 속도
+        weakness : "holy",
         growth: { hp: 0, atk: 0, def: 0, spd: 0 },
         deckType: "custom",
         deck: ["광신의 춤", "독 뿌리기", "비명", "사격"], // 하이브리드 패턴
@@ -97,6 +111,7 @@ const ENEMY_DATA = {
         name: "💀 저주받은 인형",
         baseHp: 120,
         stats: { atk: 4, def: 0, spd: 1 }, // 공격력은 세지만 방어/속도가 낮음
+        weakness : "slash",
         growth: { hp: 0, atk: 0, def: 0, spd: 0 },
         deckType: "custom",
         // 독을 걸거나 멘탈 공격(비명)을 섞어 쓰는 까다로운 패턴
@@ -259,19 +274,57 @@ const DISTRICTS = {
 /* [수정] 아이템 데이터 (통합 시스템) */
 const ITEM_DATA = {
     // --- 패시브 아이템 (구 유물) ---
-    "쿠보탄": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (보유 효과)", tags: ["weapon", "tool"]},
+    "쿠보탄": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (보유 효과) 공격에 [관통] 속성을 부여합니다.", attr: "pierce", tags: ["weapon", "tool"]},
     "강인함의 부적": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (보유 효과)", tags: ["charm", "accessory"]},
     "좋은 운동화": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (보유 효과)", tags: ["clothes", "brand"]},
     "울끈불끈 패딩": {type: "item", usage: "passive", rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 (보유 효과)", tags: ["clothes", "warm"]},
     "황금 대타": {type: "item", usage: "passive", rank: 3, price: 4000, icon: "🏺", desc: "부활 1회 (보유 효과)", tags: ["magic", "valuable"]},
+    "은 단검": {
+        type: "item", usage: "passive", rank: 2, price: 3500, icon: "⚔️", 
+        desc: "공격에 [신성] 속성을 부여합니다.", 
+        attr: "holy", tags: ["weapon", "holy"]
+    },
+    "스파이크 너클": {
+        type: "item", usage: "passive", rank: 1, price: 1500, icon: "🔨", 
+        desc: "공격에 [타격] 속성을 부여합니다.", 
+        attr: "strike", tags: ["weapon", "physical"]
+    },
+    
 
     // --- 소모성 아이템 ---
     "회복약": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복 (사용 시 소모)", effect: "heal", val: 25, target: "self", tags: ["drink", "alcohol"]},
     "호신용 스프레이": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🧴", desc: "적 10 피해 (사용 시 소모)", effect: "damage", val: 10, target: "enemy", tags: ["weapon", "chemical"]},
-    "피리": {type: "item", usage: "consume", rank: 2, price: 1000, icon: "🎼", desc: "NPC 호감도 상승", effect: "none", target: "enemy", tags: ["instrument", "noise"]},
+    "해결사의 연락처": {
+    type: "item", 
+    usage: "consume", 
+    rank: 2, 
+    price: 1500, 
+    icon: "📱", 
+    desc: "즉시 던전을 탈출합니다. (전문 해결사 호출)", 
+    effect: "escape", // ★ 새로운 효과 정의
+    target: "self", 
+    tags: ["tool", "phone"]
+},
     "뇌물 봉투": {type: "item", usage: "consume", rank: 2, price: 1500, icon: "✉️", desc: "NPC 호감도 대폭 상승", effect: "none", target: "enemy", tags: ["money", "paper"]},
     "공포 영화 포스터": {type: "item", usage: "consume", rank: 1, price: 500, icon: "👻", desc: "NPC 멘탈 감소", effect: "none", target: "enemy", tags: ["horror", "paper"]},
-    
+    "라이터": {
+        type: "item", usage: "consume", rank: 1, price: 2000, icon: "🔥", 
+        desc: "공격에 [화염] 속성을 부여합니다.", 
+        attr: "fire", tags: ["tool", "fire"]
+    },
+    "성수": {
+      type: "item", usage: "consume", rank: 1, price: 500, icon: "💧", 
+        desc: "3턴 동안 공격에 [물]과 [신성] 속성을 부여합니다.", 
+        effect: "buff_attr", 
+        val: ["water", "holy"], // ★ 핵심: 배열로 정의
+        duration: 3, target: "self",
+        tags: ["holy", "water"]
+    },
+    "숫돌": {
+        type: "item", usage: "consume", rank: 1, price: 300, icon: "🪨", 
+        desc: "3턴 동안 공격에 [참격] 속성을 부여합니다.", 
+        effect: "buff_attr", val: "slash", duration: 3, target: "self"
+    },
     // --- 특수 (패시브지만 소모품처럼 취급되었던 것들) ---
     // 대타 인형은 가지고 있으면 효과가 발동하고 사라지므로 'passive'에 가깝지만 로직상 특수 처리
     "대타 인형": {type: "item", usage: "passive", rank: 3, price: 3000, icon: "🧸", desc: "사망 시 자동 소모하여 부활", effect: "revive", target: "passive", tags: ["doll", "toy"]}
@@ -598,4 +651,12 @@ const TRAIT_DATA = {
         cost: -3,
         stats: { con: -4 }
     }
+};
+
+/* 1. 속성 정의 (아이콘 매핑) */
+const ATTR_ICONS = {
+    none: "⚪", // 무속성
+    fire: "🔥", water: "💧", grass: "🌿", electric: "⚡", ice: "❄️", // 원소
+    slash: "⚔️", pierce: "🏹", strike: "🔨", // 물리
+    holy: "✨", profane: "😈" // 특수
 };

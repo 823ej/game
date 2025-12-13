@@ -634,6 +634,7 @@ body {
             
             overflow: visible;      /* 燁삳?諭뜹첎? ?袁⑥쨮 ???????????롡봺筌왖 ??꾩쓺 */
             pointer-events: none;   /* ???⑤벀而?????獄쎻뫗? (燁삳?諭띰쭕??????띿쓺) */
+            z-index: 50;
         }
 
         .hand-area::-webkit-scrollbar {
@@ -1387,6 +1388,7 @@ position: absolute !important;
 }
 /* 캐릭터 레이어 (중경) */
 #layer-char {
+    position: relative;
    display: flex;
     align-items: flex-end;
     /* 기존 justify-content: center 제거 -> 요소들을 중앙으로 모으되 gap으로 제어 */
@@ -1428,13 +1430,17 @@ position: absolute !important;
     transition: transform 0.2s;
     filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5)); /* 그림자 추가로 선명함 강조 */
 }
+/* [style.css] 플레이어 배치 영역 수정 (자신에게 버프 걸 때 필요) */
 #dungeon-player-wrapper {
-margin: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
+    
+    /* ★ 핵심 수정 */
     position: relative;
-    z-index: 5;
+    z-index: 20; 
+    pointer-events: auto; /* 플레이어 타겟팅 허용 */
 }
 /* 걷는 모션 (좌우 반전 등) */
 .walking-right #dungeon-player { transform: scaleX(1); }
@@ -1461,17 +1467,24 @@ margin: 0;
 }
 .move-btn:active { transform: scale(0.95); background: #e67e22; }
 
-/* 6. 미니맵 팝업 */
+/* [style.css] 미니맵 높이 대응 */
 .minimap-grid {
+    /* 기존 gap: 0px 유지 */
     display: grid;
     gap: 0px;
     justify-content: center;
     padding: 20px;
     background: #222;
-    min-width: fit-content; /* 시작 방이 왼쪽에서 잘리지 않도록 콘텐츠 너비 확보 */
+    /* 내용물에 맞게 크기 자동 조절 */
+    width: fit-content; 
     margin: 0 auto;
 }
-
+/* 미니맵 팝업 창 크기 유동적으로 */
+#minimap-overlay .inventory-panel {
+    height: auto !important; 
+    max-height: 80vh; /* 화면 넘어가지 않게 */
+    overflow-y: auto;
+}
 .map-cell {
     width: 50px; 
     height: 50px;
@@ -1557,13 +1570,20 @@ margin: 0;
 /* [기존 수정] 적 유닛 배치 정렬을 좀 더 안정적으로 고정 */
 /* 2. 적 등장 구역 스타일 보정 (오른쪽 배치) */
 #dungeon-enemies {
-flex: 0 0 auto; /* ★ flex: 1 제거 (너무 벌어지지 않게) */
+    flex: 0 0 auto;
     display: flex;
-    justify-content: flex-start; /* 왼쪽(주인공 쪽)으로 붙임 */
+    justify-content: flex-start;
     align-items: flex-end;
     gap: 10px;
-    padding: 0; /* 패딩 제거 */
+    padding: 0;
     min-width: 0;
+    
+    /* ★ 핵심 수정: position이 있어야 z-index가 먹힙니다 */
+    position: relative; 
+    z-index: 20; /* 오브젝트(z:4)보다 확실히 앞으로 */
+    
+    /* ★ 핵심 수정: 부모(layer-char)가 none이라도 자식은 클릭 가능해야 함 */
+    pointer-events: auto; 
 }
 
 /* 모바일 대응 (화면이 좁을 때 패딩 조정) */
@@ -1743,20 +1763,30 @@ position: absolute !important;
 }
 /* [style.css] 맨 아래에 추가 */
 
-/* --- 상점 와이드 모드 (가로 레이아웃) --- */
 .event-content.shop-mode {
-    max-width: 1100px; /* 너비 대폭 확장 */
+    /* [핵심 1] 레이아웃 크기 고정 */
+    max-width: 1100px;
     width: 95%;
-    padding: 25px;
+    
+    /* 높이를 화면의 85%로 잡되, 패딩을 포함하여 계산 */
+    height: 85dvh;  /* vh 대신 dvh 사용 (모바일 주소창 대응) */
+    max-height: 800px; 
+    
+    padding: 20px;
+    box-sizing: border-box; /* ★ 필수: 패딩이 높이를 늘리지 않게 함 */
+    
+    /* [핵심 2] 플렉스 컬럼 구조 (헤더-본문-푸터 분리) */
     display: flex;
     flex-direction: column;
-    /* 높이가 모자르면 스크롤 */
-    max-height: 90vh;
-    overflow-y: auto;
+    
+    /* [핵심 3] 모달 전체 스크롤 방지 (본문만 스크롤 되게) */
+    overflow: hidden !important; /* 다른 미디어 쿼리의 overflow 설정을 덮어씀 */
 }
 
+/* 상단 헤더 (고정) */
 .shop-header-area {
-    margin-bottom: 20px;
+    flex: 0 0 auto; /* 크기 고정 (줄어들지 않음) */
+    margin-bottom: 15px;
     border-bottom: 1px solid #444;
     padding-bottom: 10px;
     text-align: left;
@@ -1765,12 +1795,28 @@ position: absolute !important;
     align-items: flex-end;
 }
 
-/* 3단 레이아웃 (카드 / 아이템 / 서비스) */
+/* 중앙 물품 영역 (여기가 스크롤됨) */
 .shop-main-area {
+    flex: 1; /* 남은 공간을 모두 차지 */
     display: flex;
-    gap: 20px;
-    flex: 1;
+    gap: 15px;
     align-items: flex-start;
+    
+    /* ★ 핵심 4: 내용이 넘치면 이 구역만 스크롤 */
+    overflow-y: auto; 
+    min-height: 0; /* 플렉스 내부 스크롤 필수 속성 */
+    padding-right: 5px; /* 스크롤바 공간 확보 */
+}
+
+/* 하단 버튼 영역 (고정) */
+.shop-footer-area {
+    flex: 0 0 auto; /* 크기 고정 */
+    margin-top: 15px;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid #444;
+    padding-top: 10px;
+    background: transparent; /* 배경 투명하게 */
 }
 
 /* 개별 컬럼 스타일 */
@@ -1780,7 +1826,8 @@ position: absolute !important;
     padding: 15px;
     border-radius: 10px;
     border: 1px solid #3a4b5d;
-    min-height: 300px;
+    /* min-height를 제거하거나 줄여서 모바일에서 너무 길어지지 않게 조정 */
+    min-height: 200px; 
     display: flex;
     flex-direction: column;
 }
@@ -1822,19 +1869,10 @@ position: absolute !important;
 .service-info { display: flex; flex-direction: column; align-items: flex-start; color: white; }
 .shop-price-tag { background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; margin-top: 3px; color:#f1c40f; font-weight:bold; }
 
-/* 나가기 버튼 영역 (우하단 배치) */
-.shop-footer-area {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end; /* 오른쪽 정렬 */
-    border-top: 1px solid #444;
-    padding-top: 15px;
-}
-
-/* 모바일 대응 (좁을 땐 세로로) */
+/* 모바일 대응: 세로 배치 시에도 중앙만 스크롤 */
 @media (max-width: 800px) {
     .shop-main-area { flex-direction: column; }
-    .event-content.shop-mode { padding: 15px; }
+    .shop-col { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
 }
 
 
@@ -1877,6 +1915,7 @@ position: absolute !important;
         padding-bottom: 5px;
         overflow: visible;
         margin-top: 5px;
+        z-index: 6;
     }
 
     .card {
@@ -2211,4 +2250,102 @@ height: 70px;
 /* 왼쪽을 보고 있을 때는 왼쪽 걷기 애니메이션 적용 */
 .anim-walk.facing-left {
     animation-name: walkBobLeft;
+}
+
+/* [style.css] 문 관련 스타일 수정 */
+
+/* 1. 문 컨테이너 (레이아웃 방해 금지) */
+#dungeon-doors {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; /* 컨테이너는 클릭 통과 */
+    z-index: 4;
+}
+
+/* 2. 문(이동 포인트) 공통 스타일 */
+.dungeon-door {
+    position: absolute;
+    bottom: 40px; 
+    
+    /* [★핵심 수정] 중앙 정렬 기준점 설정 */
+    left: 50%; 
+    /* translateX는 JS에서 계속 덮어쓰므로 여기선 안 써도 되지만, 초기값을 위해 둠 */
+    transform: translateX(-50%); 
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    z-index: 15; 
+    transition: transform 0.1s linear; 
+    pointer-events: auto; /* 문 자체는 클릭 가능해야 함 */
+}
+
+/* (이하 아이콘/라벨 스타일은 기존 유지) */
+.door-icon {
+    font-size: 3.5em;
+    filter: drop-shadow(0 5px 5px rgba(0,0,0,0.8));
+    transition: 0.2s;
+}
+.door-label {
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    margin-top: 2px;
+    border: 1px solid #777;
+    white-space: nowrap;
+}
+/* 마우스 올렸을 때 강조 */
+.dungeon-door:hover .door-icon { transform: scale(1.1) translateY(-5px); }
+.dungeon-door:hover .door-label { border-color: #f1c40f; color: #f1c40f; }
+
+/* 방향별 색상 구분 (선택사항) */
+.door-n .door-label { border-color: #3498db; } /* 북: 파랑 */
+.door-s .door-label { border-color: #e74c3c; } /* 남: 빨강 */
+.door-e .door-label { border-color: #f1c40f; } /* 동: 노랑 */
+.door-w .door-label { border-color: #9b59b6; } /* 서: 보라 */
+
+/* [style.css] 추가 */
+
+/* 브레이크 상태: 노란 테두리 + 흔들림 */
+.enemy-unit.broken {
+    border-color: #f1c40f !important;
+    animation: shake 0.5s infinite; /* 계속 흔들려서 위기감 조성 */
+}
+
+/* 기절 상태: 회색조 + 기울임 */
+.enemy-unit.stunned {
+    filter: grayscale(100%) brightness(0.7);
+    transform: rotate(-5deg) scale(0.95);
+    border-color: #e74c3c !important;
+    opacity: 0.8;
+}
+
+/* 회복 모션 */
+.enemy-unit.recovering {
+    animation: bounce-double 0.5s;
+    filter: brightness(1.5); /* 잠깐 밝아짐 */
+}
+
+@keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+    100% { transform: translateX(0); }
+}
+
+/* 플레이어 HUD에 속성 아이콘 표시용 */
+.player-attr-icon {
+    display: inline-block;
+    width: 24px; height: 24px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 24px;
+    font-size: 16px;
+    margin-left: 5px;
+    border: 1px solid #777;
 }

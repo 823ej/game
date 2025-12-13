@@ -16,120 +16,118 @@ const DungeonSystem = {
 
     /* [dungeon.js] generateDungeon 함수 교체 */
 
-    // 1. 던전 생성 (설정 기반)
-    generateDungeon: function(config) {
-        // 새 던전을 시작하면 휴식/이벤트 재사용 가능하도록 초기화
-        if (typeof game !== 'undefined') {
-            game.hasRested = false;
+   /* [dungeon.js] generateDungeon 수정 (다키스트 던전 스타일 + config.data 반영) */
+generateDungeon: function(config) {
+    if (typeof game !== 'undefined') game.hasRested = false;
+
+    // 1. 방 덱(Deck) 구성하기
+    // config.data에 정의된 방들을 리스트에 모두 담습니다.
+    let roomDeck = [];
+    if (config.data) {
+        for (let type in config.data) {
+            let count = config.data[type];
+            for (let i = 0; i < count; i++) roomDeck.push(type);
         }
-        // 다키스트 던전 스타일: 좌→우 직선(전진) + 상/하 분기, 뒤로 이동 가능
-        let targetCount = config.roomCount || 12;
-        // 중앙 라인으로 충분히 깔 수 있도록 폭 보정
-        this.width = Math.max(config.width || 8, targetCount + 1);
-        this.height = 3; // 위/중앙/아래 3줄
-        this.isCity = false;
-        
-        // [STEP 1] 방 덱 구성
-        let roomDeck = [];
-        if (config.data) {
-            for (let type in config.data) {
-                let count = config.data[type];
-                for(let i=0; i<count; i++) roomDeck.push(type);
+    }
+
+    // 목표 방 개수보다 설정된 방이 적다면, 나머지는 'battle'이나 'empty'로 채웁니다.
+    let targetCount = config.roomCount || 12;
+    while (roomDeck.length < targetCount) {
+        roomDeck.push(Math.random() < 0.6 ? "battle" : "empty");
+    }
+
+    // 덱 섞기 (Fisher-Yates Shuffle)
+    for (let i = roomDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [roomDeck[i], roomDeck[j]] = [roomDeck[j], roomDeck[i]];
+    }
+
+    // 덱에서 방을 하나씩 꺼내는 헬퍼 함수
+    const popRoom = () => {
+        if (roomDeck.length > 0) return roomDeck.pop();
+        return Math.random() < 0.5 ? "battle" : "empty"; // 덱이 동나면 랜덤
+    };
+
+    // 2. 맵 크기 설정
+    // 방을 다 배치할 수 있을 만큼 충분히 길게 잡습니다.
+    // (메인 경로에 절반, 곁가지에 절반 정도 들어간다고 가정)
+    this.width = Math.max(config.width || 8, Math.ceil(targetCount * 0.7) + 2);
+    this.height = 3; // 위/중앙/아래 고정
+    
+    // 맵 배열 초기화
+    this.map = Array.from({ length: this.height }, () => 
+        Array.from({ length: this.width }, () => ({
+            type: "wall", visited: false, exits: [], events: null
+        }))
+    );
+
+    // ---------------------------------------------------------
+    // [STEP 1] 척추 생성 (중앙 경로)
+    // ---------------------------------------------------------
+    let startY = 1; 
+    let placedCount = 0;
+
+    for (let x = 0; x < this.width; x++) {
+        let type;
+
+        if (x === 0) type = "start";
+        else if (x === this.width - 1) type = "boss";
+        else {
+            // ★ 여기서 덱에서 뽑습니다.
+            // 단, 너무 중요한 방(상점, 회복)이 메인 경로에만 몰리면 재미 없으므로
+            // 50% 확률로 메인 경로에 배치하고, 아니면 곁가지 배치를 위해 아껴둡니다.
+            // (덱이 많이 남았으면 배치, 얼마 안 남았으면 무조건 배치)
+            
+            if (roomDeck.length > (this.width - x) && Math.random() < 0.5) {
+                // 아껴두기 (빈 복도로 만듦) -> 곁가지에서 쓰임
+                type = "empty"; 
+            } else {
+                type = popRoom();
             }
         }
-        while (roomDeck.length < targetCount) roomDeck.push(Math.random() < 0.7 ? "battle" : "empty");
-        // 섞기
-        for (let i = roomDeck.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [roomDeck[i], roomDeck[j]] = [roomDeck[j], roomDeck[i]];
+
+        this.map[startY][x] = { type: type, visited: false, exits: [], events: null };
+        if (type === "boss") this.map[startY][x].locked = true;
+
+        if (x === 0) {
+            this.currentPos = { x: 0, y: startY };
+            this.map[startY][x].visited = true;
+        } else {
+            this._connectRooms(x - 1, startY, x, startY);
         }
-        // 안전한 방 타입 추출 헬퍼 (덱이 비면 랜덤 생성)
-        const pickRoomType = () => {
-            if (roomDeck.length > 0) return roomDeck.pop();
-            // 덱이 모두 소비된 경우에도 분기 방을 만들 수 있도록 기본 분포 사용
-            const roll = Math.random();
-            if (roll < 0.5) return "battle";
-            if (roll < 0.7) return "event";
-            if (roll < 0.85) return "treasure";
-            return "empty";
-        };
+    }
 
-        // [STEP 2] 맵 초기화
-        this.map = Array.from({ length: this.height }, () => 
-            Array.from({ length: this.width }, () => ({
-                type: "wall", visited: false, exits: [], events: null
-            }))
-        );
+    // ---------------------------------------------------------
+    // [STEP 2] 갈비뼈 생성 (곁가지 방) - 남은 덱 털기
+    // ---------------------------------------------------------
+    // 메인 경로의 각 방(x)에서 위/아래로 방을 뚫어 남은 roomDeck을 배치합니다.
+    
+    for (let x = 1; x < this.width - 1; x++) {
+        // 덱이 비었으면 더 이상 무리해서 만들지 않음 (확률적 중단)
+        if (roomDeck.length === 0 && Math.random() < 0.8) continue;
 
-        // [STEP 3] 시작점 (좌측 중앙)
-        let startX = 0;
-        let startY = 1;
-        this.currentPos = { x: startX, y: startY };
-        this.map[startY][startX] = { type: "start", visited: true, exits: [], events: null };
-
-        // [STEP 4] 메인 경로(중앙 열) 생성: 좌→우 직선
-        let lastCol = startX;
-        for (let x = 1; x < this.width && roomDeck.length > 0; x++) {
-            let rType = pickRoomType() || "empty";
-            this.map[startY][x] = { type: rType, visited: false, exits: [], events: null };
-            this._connectRooms(x-1, startY, x, startY); // 좌우 연결
-            lastCol = x;
+        // 위쪽 방 (0, x)
+        if (Math.random() < 0.4 || (roomDeck.length > 0 && Math.random() < 0.6)) {
+            let type = popRoom();
+            this.map[0][x] = { type: type, visited: false, exits: [], events: null };
+            this._connectRooms(x, 1, x, 0);
         }
 
-        // [STEP 5] 분기(위/아래) 생성: 각 열마다 랜덤으로 추가
-        let hasNorthBranch = false;
-        let hasSouthBranch = false;
-        for (let x = 1; x <= lastCol; x++) {
-            [0,2].forEach(y => {
-                if (Math.random() < 0.6) { // 60% 확률로 분기 생성
-                    if (this.map[y][x].type === 'wall') {
-                        let rType = pickRoomType() || "empty";
-                        this.map[y][x] = { type: rType, visited: false, exits: [], events: null };
-                        // 같은 열의 중앙과 연결 (위/아래 이동)
-                        this._connectRooms(x, 1, x, y);
-                    }
-                }
-                if (this.map[y][x].type !== 'wall') {
-                    if (y === 0) hasNorthBranch = true;
-                    if (y === 2) hasSouthBranch = true;
-                }
-            });
-        }
-        // 분기가 하나도 없는 경우 강제로 위/아래에 최소 1개씩 생성 시도 (맵 겹침 없이)
-        const forceBranch = (y) => {
-            if (lastCol < 1) return;
-            let candidates = [];
-            for (let x = 1; x <= lastCol; x++) {
-                if (this.map[y][x].type === 'wall') candidates.push(x);
-            }
-            if (candidates.length === 0) return;
-            let pickX = candidates[Math.floor(Math.random() * candidates.length)];
-            let rType = pickRoomType() || "empty";
-            this.map[y][pickX] = { type: rType, visited: false, exits: [], events: null };
-            this._connectRooms(pickX, 1, pickX, y);
-        };
-        if (!hasNorthBranch) forceBranch(0);
-        if (!hasSouthBranch) forceBranch(2);
-        // 위/아래 분기끼리 좌우 연결 (앞뒤 이동 가능)
-        for (let x = 1; x < lastCol; x++) {
-            [0,2].forEach(y => {
-                if (this.map[y][x].type !== 'wall' && this.map[y][x+1].type !== 'wall') {
-                    this._connectRooms(x, y, x+1, y);
-                }
-            });
-        }
+        // 아래쪽 방 (2, x)
+        // 위쪽을 안 만들었으면 아래쪽은 만들 확률을 높임
+        if (Math.random() < 0.4 || (roomDeck.length > 0 && Math.random() < 0.7)) {
+            // 이미 위쪽을 만들었고 덱도 비었으면 패스
+            if (this.map[0][x].type !== 'wall' && roomDeck.length === 0) continue;
 
-        // [STEP 6] 보스방: 가장 오른쪽(거리 최대) 방을 보스로 지정
-        let furthest = this._findFurthestRoom(startX, startY);
-        if (furthest) {
-            this.map[furthest.y][furthest.x].type = "boss";
-            this.map[furthest.y][furthest.x].locked = true;
+            let type = popRoom();
+            this.map[2][x] = { type: type, visited: false, exits: [], events: null };
+            this._connectRooms(x, 1, x, 2);
         }
+    }
 
-        this.progress = 0;
-        this.renderView();
-    },
-
+    this.progress = 0;
+    this.renderView();
+},
     // (헬퍼 함수 추가) 가장 먼 방 찾기
     _findFurthestRoom: function(startX, startY) {
         let queue = [{x: startX, y: startY, dist: 0}];
@@ -198,45 +196,78 @@ const DungeonSystem = {
         this.updateParallax();
     },
 
-    // [수정] 3. 시각적 업데이트 (오브젝트 위치 동기화 추가)
-    updateParallax: function() {
-        const bgLayer = document.getElementById('layer-bg');
-        const fgLayer = document.getElementById('layer-fg');
-        const objLayer = document.getElementById('dungeon-object');
+// [dungeon.js] updateParallax 함수 교체 (자동 좌표 동기화)
+updateParallax: function() {
+    const bgLayer = document.getElementById('layer-bg');
+    const fgLayer = document.getElementById('layer-fg');
+    const objLayer = document.getElementById('dungeon-object');
+    
+    // [핵심] 플레이어와 스테이지 요소를 가져옵니다.
+    const playerEl = document.getElementById('dungeon-player');
+    const stageEl = document.getElementById('dungeon-stage');
 
-        // 배경 스크롤 계산
-        let globalX = (this.currentPos.x * 100) + this.progress;
-        
-        if (bgLayer) bgLayer.style.backgroundPosition = `${-globalX * 2}px 0`;
-        if (fgLayer) fgLayer.style.backgroundPosition = `${-globalX * 6}px 0`;
+    // [핵심 1] 동적 기준점 계산: "지금 플레이어가 스테이지 어디에 있는가?"
+    // 이 계산 덕분에 수동으로 -400 같은 값을 넣을 필요가 사라집니다.
+    // 플레이어가 왼쪽에 있든 중앙에 있든, 그 위치가 곧 '0'이 됩니다.
+    let playerCenterX = 0;
+    if (playerEl && stageEl) {
+        const pRect = playerEl.getBoundingClientRect();
+        const sRect = stageEl.getBoundingClientRect();
+        // (플레이어 왼쪽 좌표 - 스테이지 왼쪽 좌표) + (플레이어 절반 너비) = 스테이지 내 플레이어 중심 X
+        playerCenterX = (pRect.left - sRect.left) + (pRect.width / 2);
+    }
 
-        // ★ 오브젝트 위치 계산: 방 중앙에서 시작해 전진할수록 왼쪽으로 이동, 플레이어를 지나치면 사라짐
-        if (objLayer && !objLayer.classList.contains('hidden')) {
-            // 앵커가 초기화되지 않은 경우 현재 진행도를 기준으로 설정
-            if (this.objectAnchor === undefined || this.objectAnchor === null) {
-                this.objectAnchor = this.progress;
-            }
-            const objPos = this.objectAnchor; // 입장 시점(중앙)을 기준으로 위치 계산
-            const dist = objPos - this.progress;
-            const objOffset = Math.max(-800, Math.min(800, dist * 12)); // 이동량/클램프
-            
-            // 플레이어가 충분히 지나치면 사라지고 클릭 불가
-            if (this.progress > objPos + 60) {
-                objLayer.style.transform = `translateX(-800px)`;
-                objLayer.style.opacity = 0;
-                objLayer.style.pointerEvents = "none";
-            } else {
-                objLayer.style.transform = `translateX(${objOffset}px)`;
-                objLayer.style.opacity = 1;
-                // 근접 구간(입장 기준 ±15)에서만 클릭 가능
-                if (this.progress >= objPos - 5 && this.progress <= objPos + 15) objLayer.style.pointerEvents = "auto";
-                else objLayer.style.pointerEvents = "none";
-            }
+    // [설정] 화면 배율 (방의 길이감)
+    // 6.0 정도면 0~100 이동 시 적절한 거리가 나옵니다.
+    const PIXEL_SCALE = 12; 
+
+    // 배경 스크롤 (기존 유지)
+    let globalX = (this.currentPos.x * 100) + this.progress;
+    if (bgLayer) bgLayer.style.backgroundPosition = `${-globalX * 1.5}px 0`;
+    if (fgLayer) fgLayer.style.backgroundPosition = `${-globalX * 4}px 0`;
+
+    // 1. 오브젝트(상자 등) 위치 동기화
+    if (objLayer && !objLayer.classList.contains('hidden')) {
+        if (this.objectAnchor === undefined || this.objectAnchor === null) {
+            this.objectAnchor = this.progress;
         }
+        const objPos = this.objectAnchor;
+        const dist = objPos - this.progress;
+        const objOffset = dist * PIXEL_SCALE; 
         
-        // ★ [추가] 방 진입/이동 시 오브젝트 표시 여부 실시간 체크
-        this.checkObjectVisibility();
-    },
+        let absDist = Math.abs(dist);
+        if (absDist > 70) {
+            objLayer.style.opacity = 0;
+            objLayer.style.pointerEvents = "none";
+        } else {
+            // ★ [변경점] left를 플레이어 위치로 고정하고, transform으로 거리만큼 이동
+            // CSS의 left: 50% 등을 무시하고 JS가 계산한 좌표를 직접 꽂습니다.
+            objLayer.style.left = `${playerCenterX}px`;
+            objLayer.style.transform = `translateX(calc(-50% + ${objOffset}px))`;
+            
+            objLayer.style.opacity = 1;
+            if (dist >= -15 && dist <= 15) objLayer.style.pointerEvents = "auto";
+            else objLayer.style.pointerEvents = "none";
+        }
+    }
+
+    // 2. 문(Door) 위치 동기화
+    const doors = document.querySelectorAll('.dungeon-door');
+    doors.forEach(door => {
+        let doorPos = parseFloat(door.dataset.pos); // 0(시작) 또는 100(끝)
+        let dist = doorPos - this.progress;         // 플레이어와의 거리 차이
+        let doorOffset = dist * PIXEL_SCALE;        // 화면상 픽셀 거리
+        
+        // ★ [변경점] 문의 기준점(left)을 '현재 플레이어의 중심(playerCenterX)'으로 설정
+        door.style.left = `${playerCenterX}px`;
+        
+        // ★ [변경점] 그 기준점에서 거리만큼만 이동 (자체 중심 정렬 포함)
+        // progress가 0이고 doorPos가 0이면 offset은 0이 되어 플레이어와 정확히 겹칩니다.
+        door.style.transform = `translateX(calc(-50% + ${doorOffset}px))`;
+    });
+
+    this.checkObjectVisibility();
+},
     // [신규] 방 타입에 따라 오브젝트 표시/숨김 결정
   checkObjectVisibility: function() {
     let room = this.map[this.currentPos.y][this.currentPos.x];
@@ -287,142 +318,130 @@ const DungeonSystem = {
         objEl.style.pointerEvents = 'auto';
         objEl.style.opacity = 1;
     },
-    // 4. 방 전환 및 갈림길 처리
+    // [수정] 방 전환 팝업 제거 (이동 제한만 함)
     checkRoomTransition: function(side) {
-    let currentRoom = this.map[this.currentPos.y][this.currentPos.x];
-    let exits = currentRoom.exits; // 연결된 방향들 ['n', 's', 'e', 'w']
-    
-    // -------------------------------------------------------
-    // [1] 오른쪽 끝 (100%): 다음 방으로 전진 (동쪽/북쪽/남쪽)
-    // -------------------------------------------------------
-    if (side === "right") {
-        const options = [];
+        // 더 이상 팝업을 띄우지 않고, 그냥 진행도가 0이나 100을 넘어가지 않게만 막습니다.
+        // 문이 그 위치에 있으니 클릭하면 됩니다.
+        if (this.progress < 0) this.progress = 0;
+        if (this.progress > 100) this.progress = 100;
         
-        // 1. 동쪽(e)으로 계속 전진
-        if (exits.includes('e')) {
-            options.push({txt: "➡ 동쪽 방으로", func: () => this.enterRoom(1, 0)});
-        }
-        
-        // 2. 메인 경로(y=1)에서 위/아래 분기로 이동
-        // (현재 방이 메인 통로이고, 위/아래와 연결되어 있다면)
-        if (this.currentPos.y === 1) {
-            if (exits.includes('n')) options.push({txt: "⬆ 위쪽 방으로", func: () => this.enterRoom(0, -1)});
-            if (exits.includes('s')) options.push({txt: "⬇ 아래쪽 방으로", func: () => this.enterRoom(0, 1)});
-        }
-
-        // [★수정] 갈 곳이 없는 막다른 길일 때
-            if (options.length === 0) {
-                showPopup("막다른 길", "더 이상 나아갈 수 없습니다.", [
-                    { 
-                        txt: "확인", 
-                        func: () => { 
-                            closePopup(); 
-                            // 방을 이동하지 않고, 위치만 살짝 뒤(90%)로 물러납니다.
-                            this.progress = 90; 
-                            this.updateParallax(); 
-                        } 
-                    }
-                ]);
-            }
-        // 갈 곳이 있는 경우 (선택지 표시)
-        else {
-            options.push({
-                txt: "취소",
-                func: () => {
-                    closePopup();
-                    this.progress = 95; // 살짝 뒤로
-                    this.updateParallax();
-                }
-            });
-            showPopup("갈림길", "어디로 가시겠습니까?", options);
-        }
-    }
-    
-    // -------------------------------------------------------
-    // [2] 왼쪽 끝 (0%): 이전 방으로 복귀 (뒤로 가기)
-    // -------------------------------------------------------
-    else if (side === "left") {
-        // 시작방이면 던전 탈출
-        if (currentRoom.type === 'start') {
-            showPopup("나가기", "던전을 벗어납니다.", [
-                { txt: "떠나기", func: () => { closePopup(); renderHub(); } },
-                { txt: "취소", func: () => { closePopup(); this.progress = 5; this.updateParallax(); } }
-            ]);
-            return;
-        }
-
-        // 그 외 모든 방에서는 '이전 방'으로 이동
-        // (어떤 방향에서 왔든, 왼쪽 끝은 돌아가는 문으로 통일)
-        showPopup("이전 방으로 이동", "왔던 길로 돌아갑니다.", [
-            { 
-                txt: "돌아가기", 
-                func: () => { 
-                    closePopup(); 
-                    this.returnToPreviousRoom(); // 지난번에 만든 복귀 헬퍼 사용
-                } 
-            },
-            { 
-                txt: "취소", 
-                func: () => { 
-                    closePopup(); 
-                    this.progress = 5; // 살짝 앞으로
-                    this.updateParallax(); 
-                } 
-            }
-        ]);
-    }
-},
-// [신규 헬퍼] 현재 위치에 맞춰 알맞은 '이전 방'으로 이동
-returnToPreviousRoom: function() {
-    // 1. 위쪽 방(y=0) -> 아래(남쪽, y+1)로 복귀
-    if (this.currentPos.y === 0) {
-        this.enterRoom(0, 1, true); // fromBack=true (문 앞에서 나옴)
-    } 
-    // 2. 아래쪽 방(y=2) -> 위(북쪽, y-1)로 복귀
-    else if (this.currentPos.y === 2) {
-        this.enterRoom(0, -1, true);
-    } 
-    // 3. 메인 통로(y=1) -> 서쪽(x-1)으로 복귀
-    else {
-        this.enterRoom(-1, 0, true);
-    }
-},
-    enterRoom: function(dx, dy, fromBack = false) {
-        closePopup();
-        this.currentPos.x += dx;
-        this.currentPos.y += dy;
-        
-        // 방 진입 처리
-        let room = this.map[this.currentPos.y][this.currentPos.x];
-        room.visited = true;
-        
-        // 위치 초기화 (앞문 진입: 0%, 뒷문 진입: 100%)
-        this.progress = fromBack ? 100 : 0;
-        this.objectAnchor = this.progress; // 입장 위치를 오브젝트 기준점으로 설정 (중앙에서 시작)
-        // [★수정] 방 전환 시 슬라이딩 애니메이션 제거 (순간 이동)
-        const objEl = document.getElementById('dungeon-object');
-        if (objEl) {
-            // 1. 애니메이션 끄기
-            objEl.style.transition = 'none'; 
-            
-            // 2. 위치 강제 이동 (Parallax 계산)
-            this.updateParallax(); 
-            
-            // 3. 강제 리플로우 (브라우저가 변경된 위치를 즉시 적용하게 함)
-            void objEl.offsetWidth; 
-            
-            // 4. 애니메이션 복구 (CSS 파일의 원래 설정으로 되돌림)
-            objEl.style.transition = ''; 
-        } else {
-            this.updateParallax();
-        }
-        
-        // 미니맵 갱신
-        this.renderMinimap();
-        
-        log(`[${room.type}] 방에 진입했습니다.`);
+        this.updateParallax(); // 위치 고정
     },
+    // [dungeon.js] enterRoom 함수 교체
+/* [dungeon.js] enterRoom 함수 수정 (슬라이딩 현상 완벽 제거) */
+enterRoom: function(dx, dy, fromBack = false) {
+    closePopup();
+    this.currentPos.x += dx;
+    this.currentPos.y += dy;
+    
+    let room = this.map[this.currentPos.y][this.currentPos.x];
+    room.visited = true;
+    
+    // 위치 데이터 초기화
+    this.progress = fromBack ? 100 : 0;
+    this.objectAnchor = 50; 
 
+    // 1. DOM 요소 생성 (문, 오브젝트 등)
+    this.renderDoors(room);
+    this.checkObjectVisibility();
+
+    // 2. [핵심] 화면에 배치된 움직이는 요소들을 모두 선택
+    const targets = document.querySelectorAll('.dungeon-door, #dungeon-object');
+
+    // 3. 트랜지션 '강제' 차단 (CSS 우선순위 최상위 !important 적용)
+    // 위치를 잡는 동안에는 절대 애니메이션이 작동하지 않게 합니다.
+    targets.forEach(el => {
+        el.style.setProperty('transition', 'none', 'important');
+        // 위치 잡는 찰나의 깜빡임도 방지하기 위해 투명하게 시작
+        el.style.opacity = '0';
+    });
+
+    // 4. 위치 계산 즉시 실행 (여기서 transform/left 값이 텔레포트하듯 바뀜)
+    this.updateParallax();
+
+    // 5. 강제 리플로우 (브라우저가 변경된 위치를 즉시 계산하도록 강요)
+    targets.forEach(el => void el.offsetWidth);
+
+    // 6. 위치가 확정되었으므로 투명도 복구 (트랜지션은 여전히 꺼진 상태)
+    targets.forEach(el => {
+        el.style.opacity = '1';
+    });
+
+    // 7. [더블 rAF 패턴] 다음 프레임에 트랜지션 복구
+    // setTimeout 대신 requestAnimationFrame을 두 번 중첩하면,
+    // 브라우저가 "화면을 그리기(Paint)" 완료한 직후 시점을 정확히 잡아낼 수 있습니다.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            targets.forEach(el => {
+                // 강제로 적용했던 transition: none 스타일 제거 -> CSS 파일의 설정으로 복귀
+                el.style.removeProperty('transition');
+            });
+            // 혹시 모를 위치 어긋남 방지를 위해 한 번 더 갱신
+            this.updateParallax();
+        });
+    });
+    
+    this.renderMinimap();
+    log(`[${room.type}] 방에 진입했습니다.`);
+},
+/* [dungeon.js] renderDoors 함수 수정 (위치 논리 재정립) */
+renderDoors: function(room) {
+    const container = document.getElementById('dungeon-doors');
+    if (!container) return;
+    container.innerHTML = ""; // 초기화
+
+    let exits = room.exits || [];
+
+    // 1. [서쪽/West] = "뒤로 가기" (무조건 왼쪽 끝 0)
+    // 시작 방이거나 서쪽 출구가 있을 때
+    if (room.type === 'start' || exits.includes('w')) {
+        let isStart = (room.type === 'start');
+        let label = isStart ? "🚪 나가기" : "⬅ 이전 구역";
+        let func = isStart 
+            ? () => showPopup("나가기", "던전을 벗어납니다.", [{txt:"떠나기", func:()=>{closePopup(); renderHub();}}, {txt:"취소", func:closePopup}])
+            : () => this.enterRoom(-1, 0, true); // 뒤로 들어가기(fromBack=true)
+
+        this._createDoor(container, 0, "w", "🔙", label, func);
+    }
+
+    // 2. [동쪽/East] = "앞으로 가기" (무조건 오른쪽 끝 100)
+    if (exits.includes('e')) {
+        this._createDoor(container, 100, "e", "➡", "다음 구역", () => this.enterRoom(1, 0));
+    }
+
+    // 3. [북쪽/North] = "배경의 윗 문" (화면 중간 40 지점)
+    if (exits.includes('n')) {
+        // 아이콘을 문 모양으로 변경하여 '들어간다'는 느낌 주기
+        this._createDoor(container, 40, "n", "🚪", "윗방 진입", () => this.enterRoom(0, -1));
+    }
+
+    // 4. [남쪽/South] = "배경의 아랫 문/지하실" (화면 중간 70 지점)
+    if (exits.includes('s')) {
+        this._createDoor(container, 70, "s", "🕳️", "아랫방 진입", () => this.enterRoom(0, 1));
+    }
+},
+
+// [스타일 보정] 남/북 문은 배경에 박힌 느낌을 주기 위해 스타일을 조금 다르게 줄 수 있습니다.
+_createDoor: function(container, pos, type, icon, label, onClick) {
+    let el = document.createElement('div');
+    el.className = `dungeon-door door-${type}`;
+    el.dataset.pos = pos; 
+    el.onclick = onClick;
+    
+    // 남/북 문은 조금 더 작게, 배경처럼 보이게 연출 (CSS 클래스 활용 가능)
+    let extraStyle = "";
+    if (type === 'n' || type === 's') {
+        // 배경에 있는 문처럼 보이게 위로 살짝 올리고 색상 조정
+        extraStyle = "filter: brightness(0.8); transform: scale(0.8) translateX(-50%); bottom: 60px;"; 
+    }
+
+    el.innerHTML = `
+        <div class="door-icon" style="${extraStyle}">${icon}</div>
+        <div class="door-label">${label}</div>
+    `;
+    
+    container.appendChild(el);
+},
     checkRoomEvent: function() {
         if (Math.abs(this.progress - 50) < 2) {
             let room = this.map[this.currentPos.y][this.currentPos.x];
@@ -581,16 +600,45 @@ returnToPreviousRoom: function() {
         if (y2 > y1) { r1.exits.push('s'); r2.exits.push('n'); }
         if (y2 < y1) { r1.exits.push('n'); r2.exits.push('s'); }
     },
-    // [★추가] renderView 함수 정의 (초기 화면 그리기)
-    renderView: function() {
-        this.updateParallax(); // 배경 및 캐릭터 위치 초기화
-        
-        // 만약 미니맵이 켜져 있다면 갱신
-        const minimap = document.getElementById('minimap-overlay'); // (혹시 ID가 다르다면 확인 필요)
-        if (minimap && !minimap.classList.contains('hidden')) {
-            this.renderMinimap();
-        }
-    },
+    /* [dungeon.js] renderView 함수 수정 (초기 진입/텔레포트 시 슬라이딩 방지) */
+renderView: function() {
+    // 1. 현재 방 데이터 가져오기 및 문 생성
+    let room = this.map[this.currentPos.y][this.currentPos.x];
+    this.renderDoors(room);
+
+    // 2. [핵심] 화면 요소 선택 (문, 오브젝트)
+    const targets = document.querySelectorAll('.dungeon-door, #dungeon-object');
+
+    // 3. 트랜지션 강제 차단 & 숨김 (위치 잡기 전)
+    targets.forEach(el => {
+        el.style.setProperty('transition', 'none', 'important');
+        el.style.opacity = '0';
+    });
+
+    // 4. 위치 계산 (즉시 이동)
+    this.updateParallax(); 
+
+    // 5. 강제 리플로우 (브라우저가 이동한 위치를 즉시 인식하게 함)
+    targets.forEach(el => void el.offsetWidth);
+
+    // 6. 투명도 복구 (트랜지션은 아직 꺼진 상태)
+    targets.forEach(el => el.style.opacity = '1');
+
+    // 7. 다음 프레임에 트랜지션 복구 (애니메이션 기능 되살리기)
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            targets.forEach(el => el.style.removeProperty('transition'));
+            // 위치 재보정 (혹시 모를 오차 방지)
+            this.updateParallax();
+        });
+    });
+    
+    // 미니맵 갱신
+    const minimap = document.getElementById('minimap-overlay'); 
+    if (minimap && !minimap.classList.contains('hidden')) {
+        this.renderMinimap();
+    }
+},
     // --- 지도 시스템 ---
 
     // 지도 켜기/끄기 (전역 함수 toggleMinimap에서 호출됨)

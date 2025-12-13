@@ -250,6 +250,8 @@ let player = {
         cha: 1  // 매력
     },
     gold: 0, ap: 3, maxAp: 3, xp: 0, maxXp: 100,
+    // [NEW] 발견한 약점 도감 { "불량배": "strike", ... }
+    discoveredWeaknesses: {},
     
     // 덱 관련
     deck: [],       // 전투 덱 (Active)
@@ -263,9 +265,40 @@ let player = {
     maxInventory: 6,
     // 상태
     jumadeung: false, lucky: false,
-    drawPile: [], discardPile: [], exhaustPile: [], buffs: {}
+    drawPile: [], discardPile: [], exhaustPile: [], buffs: {},
+    currentAttrs: [],                 // 현재 플레이어의 공격 속성 목록 (배열)
+    attrBuff: { types: [], turns: 0 },
+    // [NEW] 플레이어도 약점과 상태이상을 가짐
+    // 기본 약점은 'none'이지만, 특정 갑옷을 입거나 저주에 걸리면 바뀔 수 있음
+    weakness: "none", 
+    isBroken: false, 
+    isStunned: false
+     // 일시적 속성 버프 상태
     
 };
+/* [game.js] updatePlayerAttribute 함수 전면 수정 */
+function updatePlayerAttribute() {
+    // 중복 제거를 위해 Set 사용
+    let attrSet = new Set(); 
+    
+    // 1. 버프 속성 합치기
+    if (player.attrBuff.turns > 0 && player.attrBuff.types.length > 0) {
+        player.attrBuff.types.forEach(t => attrSet.add(t));
+    }
+
+    // 2. 유물(Passive) 속성 합치기
+    player.relics.forEach(rName => {
+        let item = ITEM_DATA[rName];
+        if (item) {
+            // 단일 속성(attr)과 복수 속성(attrs) 모두 처리
+            if (item.attr) attrSet.add(item.attr);
+            if (item.attrs) item.attrs.forEach(a => attrSet.add(a));
+        }
+    });
+
+    // 3. 배열로 변환하여 저장
+    player.currentAttrs = Array.from(attrSet);
+}
 // 2. 현재 보고 있는 탭 상태 변수
 let currentInvTab = 'consume'; // 'consume' or 'relic'
 
@@ -381,6 +414,7 @@ function createEnemyData(key, index) {
 
     return {
        id: index,
+       enemyKey: key, // ★ [핵심 추가] 적의 원본 종류 키 저장 (도감 등록용)
         name: `${data.name}${index > 0 ? ' ' + String.fromCharCode(65 + index) : ''}`,
         maxHp: maxHp, hp: maxHp,
         baseAtk: atk, baseDef: def, baseSpd: spd,
@@ -388,7 +422,10 @@ function createEnemyData(key, index) {
         deck: (data.deckType === "custom") ? data.deck : getEnemyDeck(data.deckType),
         img: data.img,
         // 적에게만 선행 게이지를 주지 않도록 0에서 시작 (플레이어와 동일 조건)
-        ag: 0
+        ag: 0,
+        weakness: data.weakness || "none",
+        isBroken: false,
+        isStunned: false
     };
 }
 
@@ -409,7 +446,7 @@ function createNpcEnemyData(npcKey, index = 0) {
         deck: data.deck || ["횡설수설"], 
         img: data.img,
         ag: 0,
-        isNpc: true
+        isNpc: true,
     };
 }
 /* [NEW] 스탯 기반 파생 능력치 재계산 */
@@ -590,14 +627,16 @@ function loadGame() {
                 break;
 
             case 'exploration':
-                // 탐사: 시나리오 데이터가 유효할 때만 복구
-                if (game.activeScenarioId && game.scenario) {
-                    renderExploration();
-                } else {
-                    renderHub(); // 데이터가 꼬였으면 사무소로
-                }
-                break;
-
+        // ★ [수정] 복구 조건 완화
+        // 기존: if (game.activeScenarioId && game.scenario) 
+        // 변경: 의뢰 ID가 있거나, 또는 시나리오 데이터가 있고 그것이 '순찰(Patrol)'인 경우
+        if ((game.activeScenarioId || (game.scenario && game.scenario.isPatrol)) && game.scenario) {
+            renderExploration();
+        } else {
+            // 데이터가 깨졌거나 비정상 종료된 경우 안전하게 사무소로
+            renderHub(); 
+        }
+        break;
             case 'storage':
                 // 창고 화면 복구
                 openStorage();
@@ -1592,6 +1631,20 @@ function useItem(index, target) {
     // --- 2. 일반 사용 ---
     else if (data.usage === "consume") {
         switch (data.effect) {
+           case "buff_attr":
+        // val이 배열이면 그대로, 문자열이면 배열로 감싸서 저장
+        let types = Array.isArray(data.val) ? data.val : [data.val];
+        
+        player.attrBuff = { types: types, turns: data.duration };
+        updatePlayerAttribute(); // 갱신
+        
+        // 로그 메시지 생성
+        let attrNames = types.map(t => ATTR_ICONS[t]).join(", ");
+        log(`✨ ${data.duration}턴 동안 [${attrNames}] 속성이 부여됩니다.`);
+        
+        playAnim("player-char", "anim-bounce");
+        used = true;
+        break;
             case "heal":
                 let healAmt = Math.min(target.maxHp - target.hp, data.val);
                 target.hp += healAmt;
@@ -1604,6 +1657,24 @@ function useItem(index, target) {
                 takeDamage(target, data.val);
                 used = true;
                 break;
+                // ★ [추가] 탈출 아이템 효과 처리
+            case "escape":
+                log(`📱 [${name}] 사용! 해결사가 도착하여 당신을 호위합니다.`);
+                used = true;
+                
+                // 잠시 후 복귀 처리
+                setTimeout(() => {
+                    showPopup("🚁 탈출 성공", "해결사의 도움으로 안전하게 복귀했습니다.", [
+                        {
+                            txt: "사무소로",
+                            func: () => {
+                                closePopup();
+                                renderHub();
+                            }
+                        }
+                    ]);
+                }, 800);
+                break;
             case "event_rest":
                 game.forceRest = true;
                 log(`🎼 [${name}] 사용. 다음은 휴식입니다.`);
@@ -1611,6 +1682,7 @@ function useItem(index, target) {
                 used = true;
                 break;
         }
+        
     }
    // 3. 소모 및 갱신
    if (used) {
@@ -1840,31 +1912,50 @@ function toggleBattleUI(isBattle) {
       
     }
 }
-/* [NEW] 복귀 확인 팝업 */
+/* [game.js] confirmRetreat 함수 수정 (탈출 제약 적용) */
 function confirmRetreat() {
-    let msg = "탐사를 중단하고 사무소로 복귀하시겠습니까?";
-    
-    if (!game.scenario.isPatrol) {
-        msg += "<br><span style='color:#e74c3c; font-size:0.8em;'>※ 현재 진행 중인 조사는 초기화됩니다.</span>";
-    } else {
-        msg += "<br><span style='color:#aaa; font-size:0.8em;'>(순찰 종료)</span>";
+    // 현재 방 정보 확인
+    let currentRoom = DungeonSystem.map[DungeonSystem.currentPos.y][DungeonSystem.currentPos.x];
+    let isStartRoom = (currentRoom.type === 'start');
+
+    // [CASE 1] 시작 방(입구)에 있을 때 -> 자유롭게 탈출 가능
+    if (isStartRoom) {
+        showPopup("🏠 복귀 확인", "사무소로 복귀하시겠습니까?<br>(입구에서는 안전하게 나갈 수 있습니다)", [
+            { 
+                txt: "돌아가기", 
+                func: () => { 
+                    closePopup();
+                    renderHub(); 
+                }
+            },
+            { txt: "취소", func: closePopup }
+        ]);
+        return;
     }
 
-    showPopup("🏠 복귀 확인", msg, [
-        { 
-            txt: "돌아가기", 
-            func: () => { 
-                closePopup();
-                // 의뢰 중이었다면 중단 처리 (activeScenarioId는 유지하되, 진행도는 날아감)
-                // 만약 '포기' 처리하고 싶으면 activeScenarioId = null로 하면 됨.
-                // 여기서는 단순히 사무소로 복귀만 시킵니다.
-                renderHub(); 
-            }
-        },
-        { txt: "취소", func: closePopup }
-    ]);
+    // [CASE 2] 던전 깊은 곳일 때 -> 아이템 체크
+    let itemIdx = player.inventory.indexOf("해결사의 연락처");
+    
+    if (itemIdx !== -1) {
+        // 아이템이 있다면 사용 권유
+        showPopup("📞 긴급 탈출", "이곳에서 나가려면 해결사를 불러야 합니다.<br><b>[해결사의 연락처]</b>를 사용하시겠습니까?", [
+            { 
+                txt: "사용하기 (탈출)", 
+                func: () => { 
+                    closePopup();
+                    // 아이템 사용 함수 호출 (여기서 소모 및 탈출 처리)
+                    useItem(itemIdx, player);
+                }
+            },
+            { txt: "취소", func: closePopup }
+        ]);
+    } else {
+        // 아이템도 없다면 탈출 불가
+        showPopup("🚫 탈출 불가", "이곳에서는 나갈 수 없습니다.<br><br><b>던전 입구</b>로 돌아가거나,<br><b>[해결사의 연락처]</b> 아이템이 필요합니다.", [
+            { txt: "확인", func: closePopup }
+        ]);
+    }
 }
-
 /* [game.js] exploreAction 수정 (애니메이션 및 심리스 전투 연출) */
 function exploreAction(action) {
     if (game.inputLocked) return;
@@ -2121,7 +2212,9 @@ function nextStepAfterWin() {
     player.buffs = {};
     player.block = 0;
     enemies.forEach(e => { e.buffs = {}; e.block = 0; });
-
+// ★ [추가] 속성 부여 버프도 즉시 초기화
+    player.attrBuff = { types: [], turns: 0 };
+    updatePlayerAttribute(); // 속성 상태 갱신 (UI 반영)
     // 전투 종료 공통 처리: 적 초기화 및 전투 플래그 해제
     const wasBoss = game.isBossBattle;
     const enemyWrapper = document.getElementById('dungeon-enemies');
@@ -2280,20 +2373,32 @@ async function startTurn(unit, type) {
         await startEnemyTurnLogic(unit);
     }
 }
-// 적들의 HTML 뼈대를 만드는 함수
+/* [game.js] renderEnemies 함수 수정 (최종) */
 function renderEnemies() {
     const wrapper = document.getElementById('dungeon-enemies');
-    if (!wrapper) return; // 안전장치
+    if (!wrapper) return; 
+    
     wrapper.innerHTML = ""; // 초기화
 
     enemies.forEach(e => {
         let el = document.createElement('div');
         el.className = 'enemy-unit';
-        el.id = `enemy-unit-${e.id}`; // 예: enemy-unit-0
+        el.id = `enemy-unit-${e.id}`; 
         
-        // 내부는 updateUI에서 수치와 함께 채워집니다.
-        // 여기서는 이미지 태그 등 기본 구조만 잡아도 되지만, 
-        // 편의상 updateUI가 내용을 다 덮어쓰도록 비워둡니다.
+        // 이미지 주소 안전장치
+        let imgSrc = e.img;
+        if (!imgSrc || imgSrc === "") {
+            imgSrc = "https://placehold.co/100x100/555/fff?text=Enemy";
+        }
+        
+        // [핵심] 뼈대를 만들 때 이미지 태그를 반드시 포함 (타겟팅 인식용)
+        el.innerHTML = `
+            <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name}</div>
+            <img src="${imgSrc}" alt="${e.name}" class="char-img"
+                 onerror="this.src='https://placehold.co/100x100/555/fff?text=No+Img';">
+            <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%"></div></div>
+            <div style="font-size:0.8em;">HP: ${e.hp}/${e.maxHp}</div>
+        `;
         
         wrapper.appendChild(el);
     });
@@ -2301,6 +2406,29 @@ function renderEnemies() {
 
 /* [수정] 플레이어 행동 개시 (연속 턴 방어도 유지) */
 function startPlayerTurnLogic() {
+    // [NEW] 기절 체크
+    if (player.isStunned) {
+        log("😵 <b>기절 상태입니다! 아무것도 할 수 없습니다.</b>");
+        showDamageText(player, "STUNNED...");
+        
+        // 상태 회복
+        player.isStunned = false;
+        player.isBroken = false; // 기절 풀리면 브레이크도 해제
+        
+        // 턴 강제 종료 (약간의 딜레이 후)
+        setTimeout(() => {
+            endPlayerTurn(); 
+        }, 1000);
+        
+        updateUI();
+        return; // 아래 로직(카드 뽑기 등) 실행 안 함
+    }
+
+    // [NEW] 브레이크 회복 (한 턴 무사히 넘기면 회복)
+    if (player.isBroken) {
+        log("🛡️ 자세를 바로잡았습니다.");
+        player.isBroken = false;
+    }
     // [핵심 변경] 직전 턴이 플레이어가 아니었을 때만 방어도 초기화
     // 즉, 적이 행동하고 내 차례가 되면 방어도가 사라지지만,
     // 내가 행동하고 또 바로 내 차례가 오면(속도 차이) 방어도가 유지됨.
@@ -2326,6 +2454,18 @@ function startPlayerTurnLogic() {
     
     document.querySelectorAll('.enemy-unit').forEach(e => e.classList.remove('turn-active'));
     updateTurnOrderList(); 
+    // 1. 속성 버프 턴 차감
+    if (player.attrBuff.turns > 0) {
+        player.attrBuff.turns--;
+        if (player.attrBuff.turns === 0) {
+            player.attrBuff.type = "none";
+            log("💨 속성 부여 효과가 사라졌습니다.");
+        }
+        updatePlayerAttribute(); // 갱신
+    }
+    
+    // UI 업데이트 (내 속성 아이콘 표시)
+    updateUI();
 }
 
 /* [수정] 플레이어 턴 종료 버튼 클릭 시 */
@@ -2353,6 +2493,34 @@ async function startEnemyTurnLogic(actor) {
     actor.ap = 2; 
     
     let el = document.getElementById(`enemy-unit-${actor.id}`);
+    // 1. 기절(Stun) 체크
+    if (actor.isStunned) {
+        log(`😵 <b>${actor.name}</b>은(는) 기절하여 움직일 수 없습니다!`);
+        
+        let el = document.getElementById(`enemy-unit-${actor.id}`);
+        if(el) {
+            el.classList.remove('stunned'); // 기절 표시 제거
+            el.classList.add('recovering'); // 회복 모션
+            setTimeout(() => el.classList.remove('recovering'), 500);
+        }
+
+        // 상태 회복
+        actor.isStunned = false; 
+        actor.isBroken = false; 
+        
+        await sleep(1000);
+        updateUI();
+        processTimeline(); // 턴 패스
+        return;
+    }
+
+    // 2. 브레이크 회복 (한 턴 동안 추가타 안 맞으면 회복)
+    if (actor.isBroken) {
+        log(`🛡️ <b>${actor.name}</b>이(가) 자세를 바로잡습니다.`);
+        actor.isBroken = false;
+        let el = document.getElementById(`enemy-unit-${actor.id}`);
+        if(el) el.classList.remove('broken');
+    }
     if(el) el.classList.add('turn-active');
     
     try {
@@ -2393,27 +2561,20 @@ async function startEnemyTurnLogic(actor) {
     }
 }
 
-/* [수정] useCard: 방어/버프/드로우 로직을 공통으로 분리 */
+/* [game.js] useCard 함수 수정 (변수명 오류 수정) */
 function useCard(user, target, cardName) {
-let data = CARD_DATA[cardName];
+    let data = CARD_DATA[cardName];
     let userId = (user === player) ? "player-char" : `enemy-unit-${user.id}`;
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
 
     log(`🃏 [${cardName}] 사용!`);
 
-    // --- [1] 모드별 특수 효과 처리 ---
-    
-    // [A] 소셜 카드 (공격/회복/특수)
     if (data.type === "social") {
         playAnim(userId, 'anim-bounce');
-
-        // 1. 공격 (dmg)
-      if (data.dmg) {
-            // [수정] 소셜 공격력(매력) 적용
+        if (data.dmg) {
             let finalDmg = data.dmg + getStat(user, 'socialAtk'); 
             takeDamage(target, finalDmg);
         }
-        // 2. 회복 (heal) - 내 의지 회복
         if (data.heal) {
             if (user === player) {
                 user.mental = Math.min(100, user.mental + data.heal);
@@ -2422,10 +2583,8 @@ let data = CARD_DATA[cardName];
             } else {
                 user.hp = Math.min(100, user.hp + data.heal);
             }
-            updateUI(); // 회복 즉시 반영
+            updateUI(); 
         }
-
-        // 3. 도박 (거짓말)
         if (data.special === "gamble_lie") {
             if (Math.random() < 0.5) {
                 log("🎲 거짓말 성공! 상대가 크게 동요합니다.");
@@ -2436,7 +2595,6 @@ let data = CARD_DATA[cardName];
             }
         }
     }
-    // [B] 일반/전투 카드 (소환/공격)
     else {
         if (data.special === "summon") {
             if (user === player) {
@@ -2448,58 +2606,118 @@ let data = CARD_DATA[cardName];
             }
         }
 
-        if (data.type.includes("attack")) {
-            if (user === player) playAnim(userId, 'anim-atk-p');
-            else playAnim(userId, 'anim-atk-e');
+       if (data.type && data.type.includes("attack")) {
+    // 1. 공격 속성 결정
+    let attackAttrs = [];
+    if (data.attr) attackAttrs.push(data.attr);
+    
+    // 유저가 플레이어면 버프 속성 추가
+    if (user === player) {
+        attackAttrs.push(...player.currentAttrs);
+    }
+    else if (user.currentAttrs) {
+            attackAttrs.push(...user.currentAttrs);
+    }
+    
+    // 2. 약점 공략 판정
+    let isWeaknessHit = false;
+    if (target.weakness && target.weakness !== "none") {
+        if (attackAttrs.includes(target.weakness)) {
+            isWeaknessHit = true;
+        }
+    }
 
-            if (data.special === "break_block") { target.block = 0; log(`🔨 방어 파괴!`); }
+    // 3. 브레이크/다운 시스템 로직
+    if (isWeaknessHit) {
+        // ★ [NEW] 약점 발견 및 등록 로직
+    // 적이 플레이어가 아니고, 아직 약점을 모르는 상태라면?
+    if (target !== player && target.enemyKey) {
+        if (!player.discoveredWeaknesses[target.enemyKey]) {
+            player.discoveredWeaknesses[target.enemyKey] = target.weakness;
             
-            let finalDmg = (data.dmg || 0) + getStat(user, 'atk');
-            // [★핵심 추가] 치명타(Critical) 계산 로직
-            // 기본 확률 5% + 민첩(SPD) 1당 1% 추가
-            let dexVal = getStat(user, 'spd'); 
-            let critChance = 0.05 + (dexVal * 0.01); 
+            // 알림 메시지 (전구 아이콘 등 활용)
+            log(`💡 <b>[${target.name}]</b>의 약점(${ATTR_ICONS[target.weakness]})을 파악했습니다!`);
             
-            // 보정: 운(Lucky) 상태라면 확률 20% 증가
-            if (user.lucky) critChance += 0.2;
-
-            let isCrit = Math.random() < critChance;
-
-            if (isCrit) {
-                finalDmg = Math.floor(finalDmg * 1.5); // 데미지 1.5배
-                // 화면 흔들림 효과 (선택사항)
-                let tEl = document.getElementById(targetId);
-                if(tEl) {
-                    tEl.classList.add('anim-hit'); 
-                    setTimeout(()=>tEl.classList.remove('anim-hit'), 400);
-                }
+            // 발견 즉시 UI 갱신 (아이콘 뜨게)
+            updateUI();
+        }
+    }
+        if (target.isStunned) {
+            log(`😵 기절한 대상을 가격합니다!`);
+            showDamageText(target, "CRITICAL!", true);
+        }
+        else if (target.isBroken) {
+            target.isStunned = true;
+            target.block = 0; 
+            target.ag = 0;    
+            
+            log(`😵 <b>${target.name}</b> 기절! (약점 공략 성공)`);
+            
+            let targetId = (target === player) ? "dungeon-player" : `enemy-unit-${target.id}`;
+            playAnim(targetId, 'anim-hit');
+            showDamageText(target, "😵DOWN!", true);
+            
+            if (target !== player) {
+                let el = document.getElementById(targetId);
+                if(el) el.classList.add('stunned');
+            } else {
+                log("🚫 <b>당신은 기절했습니다! 다음 턴 행동 불가!</b>");
             }
- // takeDamage에 isCrit 플래그 전달
-            takeDamage(target, finalDmg, isCrit); 
+        }
+        else {
+            target.isBroken = true;
+            log(`⚡ <b>${target.name}</b>의 자세가 무너졌습니다! (WEAK)`);
+            showDamageText(target, "⚡BREAK!");
+            
+            if (target !== player) {
+                let el = document.getElementById(`enemy-unit-${target.id}`);
+                if(el) el.classList.add('broken');
+            } else {
+                log("⚠️ <b>당신의 자세가 무너졌습니다! (피해량 증가)</b>");
+            }
+        }
+    }
+
+    // 4. 데미지 계산 (기존 로직 + 치명타 복구)
+    let baseAtk = getStat(user, 'atk');
+    let finalDmg = (data.dmg || 0) + baseAtk;
+    
+    // 약점/브레이크 시 1.5배
+    if (isWeaknessHit || target.isBroken || target.isStunned) {
+        finalDmg = Math.floor(finalDmg * 1.5);
+    }
+
+    // ★ [복구된 부분] 치명타(Crit) 계산 로직
+    let dexVal = getStat(user, 'spd'); 
+    let critChance = 0.05 + (dexVal * 0.01); // 기본 5% + 민첩 보정
+    if (user.lucky) critChance += 0.2;       // 행운 특성
+    
+    let isCrit = Math.random() < critChance; // 여기서 isCrit 변수 정의됨
+    
+    if (isCrit) {
+        finalDmg = Math.floor(finalDmg * 1.5);
+    }
+
+    // 공격 실행
+    takeDamage(target, finalDmg, isCrit);
         }
         else {
             playAnim(userId, 'anim-bounce');
         }
         
-        // 상태이상 해제
         if (data.special === "cure_anger") {
             if (target.buffs["분노"]) { delete target.buffs["분노"]; log("😌 상대가 분노를 가라앉혔습니다."); }
             if (target.buffs["우울"]) { delete target.buffs["우울"]; log("😐 상대가 평정심을 찾았습니다."); }
         }
     }
 
-    // --- [2] 공통 처리 (방어/버프/드로우) ---
-    // ★ 이제 소셜 카드도 방어도(block) 속성이 있으면 여기서 적용됩니다!
-    
     if (data.block) {
       let statType = (game.state === "social") ? 'socialDef' : 'def';
         let finalBlock = data.block + getStat(user, statType);
-        
         user.block += finalBlock;
-        
         let defenseText = (game.state === "social") ? "논리 방어" : "방어도";
         log(`🛡️ ${defenseText} +${finalBlock}`);
-        updateUI(); // 방어도 즉시 반영
+        updateUI(); 
     }
 
     if (data.buff) {
@@ -3579,41 +3797,94 @@ function updateUI() {
             // 탐사 모드일 때는 이름만 깔끔하게
             pHud.innerHTML = `<div style="font-size:0.9em; color:#aaa;">탐색 중...</div>`;
         }
-    }
-    // 4. 적 UI 업데이트 (기존 로직 유지)
-    if (enemies && enemies.length > 0) {
-        enemies.forEach(e => {
-            let el = document.getElementById(`enemy-unit-${e.id}`);
-            if (!el) return; 
-            
-            if (e.hp <= 0 && game.state !== "social") { 
-                el.classList.add('dead');
-                el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
-                return;
-            } else {
-                 el.classList.remove('dead');
-            }
-            el.classList.add('enemy-unit');
-            
-            let isSocialEnemy = (game.state === "social"); 
-            let hpPct = isSocialEnemy ? Math.min(100, Math.max(0, e.hp)) : Math.max(0, (e.hp / e.maxHp) * 100);
-            let barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
+    // 내 현재 속성 아이콘들 표시
+    let iconsHtml = player.currentAttrs.map(attr => {
+        return `<div class="player-attr-icon" title="${attr}">${ATTR_ICONS[attr] || attr}</div>`;
+    }).join("");
 
-            let intent = "💤";
-            if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = isSocialEnemy ? "💬" : "⚔️";
-            let buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
-            
-            let statLabel = isSocialEnemy ? "의지" : "HP";
-            
-            el.innerHTML = `
-                <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name} <span class="intent-icon">${intent}</span></div>
-                <img src="${e.img}" alt="${e.name}" class="char-img">
-                ${barHTML} 
-                <div style="font-size:0.8em;">HP: ${e.hp}${isSocialEnemy ? "" : `/${e.maxHp}`} ${showBlock ? `<span class="block-icon">🛡️${e.block}</span>` : ""}</div>
-                <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
-            `;
-        });
+    if (iconsHtml) {
+        pHud.innerHTML += `<div style="margin-top:2px;">${iconsHtml}</div>`;
     }
+    }
+    /* [game.js] updateUI 함수 내 적 렌더링 부분 수정 */
+
+// 4. 적 UI 업데이트
+if (enemies && enemies.length > 0) {
+    
+    enemies.forEach(e => {
+      
+        let el = document.getElementById(`enemy-unit-${e.id}`);
+        
+        // 요소가 없으면 renderEnemies를 통해 다시 생성 시도 (안전장치)
+        if (!el) {
+            renderEnemies();
+            el = document.getElementById(`enemy-unit-${e.id}`);
+            if (!el) return; 
+        }
+        
+        if (e.hp <= 0 && game.state !== "social") { 
+            el.classList.add('dead');
+            el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
+            return;
+        } else {
+                el.classList.remove('dead');
+        }
+        el.classList.add('enemy-unit');
+        
+        let isSocialEnemy = (game.state === "social"); 
+        let hpPct = isSocialEnemy ? Math.min(100, Math.max(0, e.hp)) : Math.max(0, (e.hp / e.maxHp) * 100);
+        let barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
+
+        let intent = "💤";
+        if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = isSocialEnemy ? "💬" : "⚔️";
+        
+        // 버프 텍스트 툴팁 적용
+        let buffText = "";
+        if (typeof applyTooltip === 'function') {
+            buffText = applyTooltip(Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', '));
+        } else {
+            buffText = Object.entries(e.buffs).map(([k,v])=>`${k}(${v})`).join(', ');
+        }
+        
+        // ★ [핵심 수정] 이미지 소스 안전 처리 (기본값 + 에러 핸들러)
+        let imgSrc = e.img;
+        if (!imgSrc || imgSrc === "") imgSrc = "https://placehold.co/100x100/555/fff?text=Enemy";
+
+        // 약점/상태 아이콘 처리
+        let weakIcon = "";
+        let statusIcon = "";
+        if (e.isStunned) statusIcon = "😵";
+        else if (e.isBroken) statusIcon = "💔";
+        // 1. 적의 종류(Key)를 확인
+        if (e.enemyKey) {
+            // 2. 플레이어가 이 적의 약점을 이미 발견했는지 확인
+            let knownWeakness = player.discoveredWeaknesses[e.enemyKey];
+            
+            // 3. 발견했다면 아이콘 표시, 아니면 빈 문자열(물음표 등으로 대체 가능)
+            if (knownWeakness && typeof ATTR_ICONS !== 'undefined') {
+                weakIcon = ATTR_ICONS[knownWeakness] || "";
+            } else {
+                // (선택사항) 아직 모를 때 '?'로 표시하고 싶다면 아래 주석 해제
+                weakIcon = "❓"; 
+            }
+        }
+        // HTML 덮어쓰기 (onerror 추가)
+        el.innerHTML = `
+            <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">
+                ${statusIcon} ${e.name} <span class="intent-icon">${intent}</span>
+            </div>
+            <img src="${imgSrc}" alt="${e.name}" class="char-img"
+                 onerror="this.src='https://placehold.co/100x100/555/fff?text=No+Img';">
+            ${barHTML} 
+            <div style="font-size:0.8em;">
+                ${isSocialEnemy ? "의지" : "HP"}: ${e.hp}${isSocialEnemy ? "" : `/${e.maxHp}`} 
+                ${typeof showBlock !== 'undefined' && showBlock && e.block > 0 ? `<span class="block-icon">🛡️${e.block}</span>` : ""}
+                ${weakIcon ? `<span title="약점: ${e.weakness}" style="margin-left:5px; cursor:help;">${weakIcon}</span>` : ""}
+            </div>
+            <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
+        `;
+    });
+}
 
     if (typeof updateTurnOrderList === "function") updateTurnOrderList();
 
@@ -4229,35 +4500,26 @@ function onDragEnd(e) {
     drag.active = false;
     drag.idx = -1;
 }
-/* [수정] 마우스 아래 타겟 판정 (좌표 기반 핸드 영역 감지) */
-/* [수정] getTargetUnderMouse: 모바일 좌표 지원 */
+/* [game.js] getTargetUnderMouse 함수 수정 (타겟 우선순위 변경) */
 function getTargetUnderMouse(e) {
-    // 1. 핸드 영역 감지 (좌표 계산)
-    const handArea = document.getElementById('hand-container');
-    const handRect = handArea.getBoundingClientRect();
-    
-    // [핵심] 좌표 추출
     const pos = getClientPos(e); // {x: ..., y: ...}
     const x = pos.x;
     const y = pos.y;
 
-    // 마우스/터치가 핸드 영역 사각형 안에 있다면 -> 타겟팅 중단
-    if (x >= handRect.left && x <= handRect.right &&
-        y >= handRect.top && y <= handRect.bottom) {
-        return null; 
-    }
-
-    // 2. 박스 충돌 기반 우선 체크 (적/플레이어)
+    // [1순위] 적(Enemy) 충돌 체크 (가장 중요)
     for (let en of enemies) {
         if (en.hp <= 0) continue;
         const enEl = document.getElementById(`enemy-unit-${en.id}`);
         if (enEl) {
             const r = enEl.getBoundingClientRect();
+            // 좌표가 적 박스 안에 있는지 확인
             if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
                 return { type: 'specific', unit: en };
             }
         }
     }
+
+    // [2순위] 플레이어(Self) 충돌 체크 (버프용)
     const pEl = document.getElementById('player-char') || document.getElementById('dungeon-player') || document.getElementById('dungeon-player-wrapper');
     if (pEl) {
         const r = pEl.getBoundingClientRect();
@@ -4266,7 +4528,18 @@ function getTargetUnderMouse(e) {
         }
     }
 
-    // 3. 요소 기반 일반 판정 (허공 등)
+    // [3순위] 핸드 영역 체크 (취소 판정)
+    // 적이나 플레이어 위가 아닌데, 핸드 영역 안이라면? -> 타겟팅 취소
+    const handArea = document.getElementById('hand-container');
+    if (handArea) {
+        const handRect = handArea.getBoundingClientRect();
+        if (x >= handRect.left && x <= handRect.right &&
+            y >= handRect.top && y <= handRect.bottom) {
+            return null; 
+        }
+    }
+
+    // [4순위] 허공 (광역기 등)
     let el = document.elementFromPoint(x, y);
     if (el) {
         if (el.closest('.container') && !el.closest('.utility-dock')) {
