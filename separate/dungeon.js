@@ -9,6 +9,8 @@ const DungeonSystem = {
     objectAnchor: 0, // 방 입장 시 오브젝트가 화면 중앙에 있는 기준 위치
     bgOffset: 0,    // 배경 스크롤 위치 (시각적)
     isCity: false,  // 도시 모드 여부
+    minimapOverlayWasOpen: false, // 전투 진입 전 지도 상태 기억용
+    minimapInlineWasOpen: false,  // 전투 진입 전 미니맵 상태 기억용
     // [설정] 보스방 잠금 해제에 필요한 단서량
     REQUIRED_CLUES: 100,
     // 방 타입 정의
@@ -17,7 +19,8 @@ const DungeonSystem = {
     /* [dungeon.js] generateDungeon 함수 교체 */
 
    /* [dungeon.js] generateDungeon 수정 (다키스트 던전 스타일 + config.data 반영) */
-generateDungeon: function(config) {
+    generateDungeon: function(config) {
+        this.isCity = false;
     if (typeof game !== 'undefined') game.hasRested = false;
 
     // 1. 방 덱(Deck) 구성하기
@@ -329,11 +332,11 @@ updateParallax: function() {
     },
     // [dungeon.js] enterRoom 함수 교체
 /* [dungeon.js] enterRoom 함수 수정 (슬라이딩 현상 완벽 제거) */
-enterRoom: function(dx, dy, fromBack = false) {
-    closePopup();
-    this.currentPos.x += dx;
-    this.currentPos.y += dy;
-    
+    enterRoom: function(dx, dy, fromBack = false) {
+        closePopup();
+        this.currentPos.x += dx;
+        this.currentPos.y += dy;
+
     let room = this.map[this.currentPos.y][this.currentPos.x];
     room.visited = true;
     
@@ -380,9 +383,22 @@ enterRoom: function(dx, dy, fromBack = false) {
             this.updateParallax();
         });
     });
-    
+
     this.renderMinimap();
     log(`[${room.type}] 방에 진입했습니다.`);
+    if (typeof autoSave === 'function') {
+        autoSave();
+    }
+
+    // 방 진입 시 열려 있는 미니맵들 갱신
+    const minimap = document.getElementById('minimap-overlay');
+    if (minimap && !minimap.classList.contains('hidden')) {
+        this.renderMinimap();
+    }
+    const miniInline = document.getElementById('minimap-inline');
+    if (miniInline && !miniInline.classList.contains('hidden')) {
+        this.renderMinimap('minimap-inline-grid', 22);
+    }
 },
 /* [dungeon.js] renderDoors 함수 수정 (위치 논리 재정립) */
 renderDoors: function(room) {
@@ -634,9 +650,13 @@ renderView: function() {
     });
     
     // 미니맵 갱신
-    const minimap = document.getElementById('minimap-overlay'); 
+    const minimap = document.getElementById('minimap-overlay');
     if (minimap && !minimap.classList.contains('hidden')) {
         this.renderMinimap();
+    }
+    const miniMapPanel = document.getElementById('minimap-inline');
+    if (miniMapPanel && !miniMapPanel.classList.contains('hidden')) {
+        this.renderMinimap('minimap-inline-grid', 22);
     }
 },
     // --- 지도 시스템 ---
@@ -652,25 +672,43 @@ renderView: function() {
         }
     },
 
+    // 상시 미니맵 토글 (우상단)
+    toggleMiniMapInline: function() {
+        const panel = document.getElementById('minimap-inline');
+        const btn = document.getElementById('btn-minimap');
+        if (!panel || !btn) return;
+        const show = panel.classList.contains('hidden');
+        if (show) {
+            panel.classList.remove('hidden');
+            btn.classList.add('hidden');
+            this.renderMinimap('minimap-inline-grid', 22);
+        } else {
+            panel.classList.add('hidden');
+            btn.classList.remove('hidden');
+        }
+    },
+
     /* [dungeon.js] renderMinimap 함수 전체 교체 */
 
-renderMinimap: function() {
-    const grid = document.getElementById('minimap-grid');
+renderMinimap: function(gridId = 'minimap-grid', cellSize = 50) {
+    const grid = document.getElementById(gridId);
     if (!grid) return;
-    
+
     grid.innerHTML = "";
-    grid.style.gridTemplateColumns = `repeat(${this.width}, 50px)`;
+    grid.style.gridTemplateColumns = `repeat(${this.width}, ${cellSize}px)`;
+    grid.style.gridAutoRows = `${cellSize}px`;
 
     for (let y = 0; y < this.height; y++) {
         for (let x = 0; x < this.width; x++) {
             let cellData = this.map[y][x];
             let el = document.createElement('div');
             el.className = 'map-cell';
-            
+
             // [1] 가시성 체크
             let isRoom = cellData.type !== 'wall';
             let isVisited = cellData.visited;
             let isKnownWall = false;
+            let isCurrent = (this.currentPos.x === x && this.currentPos.y === y);
 
             // 던전 모드일 때: 방문한 방 주변의 벽을 '아는 벽'으로 처리
             if (!this.isCity && !isVisited && !isRoom) {
@@ -686,7 +724,7 @@ renderMinimap: function() {
                 }
             }
 
-            let isVisible = this.isCity || (isRoom && isVisited) || isKnownWall;
+            let isVisible = this.isCity || isCurrent || (isRoom && isVisited) || isKnownWall;
 
             if (isVisible) {
                 // [2] 벽(Wall) 구역 표시
@@ -713,9 +751,9 @@ renderMinimap: function() {
                     el.innerText = icon;
 
                     // 현재 위치 표시
-                    if (this.currentPos.x === x && this.currentPos.y === y) {
+                    if (isCurrent) {
                         el.classList.add('current');
-                        el.innerText = ""; 
+                        el.innerText = "";
                     }
 
                     // [4] 통로(Path) 연결 표시 (뚫린 길)
@@ -732,10 +770,9 @@ renderMinimap: function() {
                 }
             } else {
                 // 완전히 모르는 구역 (안개)
-                el.style.opacity = "0"; 
-                el.style.pointerEvents = "none";
+                el.classList.add('fog');
             }
-            
+
             grid.appendChild(el);
         }
     }

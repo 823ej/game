@@ -1436,11 +1436,11 @@ position: absolute !important;
     display: flex;
     flex-direction: column;
     align-items: center;
-    
+
     /* ★ 핵심 수정 */
     position: relative;
-    z-index: 20; 
-    pointer-events: auto; /* 플레이어 타겟팅 허용 */
+    z-index: 20; /* 시각적으로 오브젝트 위에 있지만 */
+    pointer-events: none; /* 클릭은 뒤의 상호작용 오브젝트가 받도록 */
 }
 /* 걷는 모션 (좌우 반전 등) */
 .walking-right #dungeon-player { transform: scaleX(1); }
@@ -1485,8 +1485,55 @@ position: absolute !important;
     max-height: 80vh; /* 화면 넘어가지 않게 */
     overflow-y: auto;
 }
+
+/* 상시 미니맵 (우상단) */
+#minimap-toggle-wrapper {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 120;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    pointer-events: none; /* 내부 버튼/패널만 이벤트 받음 */
+}
+#btn-minimap {
+    pointer-events: auto;
+}
+.mini-map {
+    background: rgba(12, 14, 18, 0.9);
+    border: 1px solid #444;
+    border-radius: 10px;
+    padding: 8px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.5);
+    min-width: 200px;
+    pointer-events: auto;
+}
+.mini-map-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    color: #f1c40f;
+    font-weight: bold;
+}
+.minimap-grid.mini {
+    grid-auto-rows: 22px;
+    gap: 4px;
+}
+.minimap-grid.mini .map-cell {
+    width: 22px;
+    height: 22px;
+    border-width: 1px;
+    font-size: 0.85em;
+}
+.minimap-grid.mini .map-cell.current::after {
+    font-size: 0.9em;
+}
 .map-cell {
-    width: 50px; 
+    width: 50px;
     height: 50px;
     background-color: #333; /* 방 내부 색 */
     /* border-radius: 4px; */
@@ -1545,6 +1592,12 @@ position: absolute !important;
 .map-cell.path-d { border-bottom: 2px solid #aaa; }
 .map-cell.path-l { border-left: 2px solid #aaa; }
 .map-cell.path-r { border-right: 2px solid #aaa; }
+.map-cell.fog {
+    background: transparent;
+    border-color: transparent;
+    opacity: 0;
+    pointer-events: none;
+}
 /* 3-A. 전투 레이어 (탐사/전투 공용 무대 위에 얹힘) */
 #battle-layer {
     position: relative;
@@ -1763,40 +1816,51 @@ position: absolute !important;
 }
 /* [style.css] 맨 아래에 추가 */
 
-.event-content.shop-mode {
+.event-content.shop-mode,
+.event-box.shop-mode,
+#event-content-box.shop-mode {
     /* [핵심 1] 레이아웃 크기 고정 */
-    max-width: 1100px;
-    width: 95%;
+    max-width: 1100px !important;
+    width: 95% !important;
     
     /* 높이를 화면의 85%로 잡되, 패딩을 포함하여 계산 */
-    height: 85dvh;  /* vh 대신 dvh 사용 (모바일 주소창 대응) */
-    max-height: 800px; 
+    height: 85dvh !important;  /* vh 대신 dvh 사용 (모바일 주소창 대응) */
+    max-height: 800px !important;
     
-    padding: 20px;
-    box-sizing: border-box; /* ★ 필수: 패딩이 높이를 늘리지 않게 함 */
-    
+    padding: 20px !important;
+    box-sizing: border-box !important; /* ★ 필수: 패딩이 높이를 늘리지 않게 함 */
+
     /* [핵심 2] 플렉스 컬럼 구조 (헤더-본문-푸터 분리) */
     display: flex;
     flex-direction: column;
-    
+    min-height: 0; /* 자식 스크롤 영역이 줄어들 수 있도록 */
+    position: relative;
+
     /* [핵심 3] 모달 전체 스크롤 방지 (본문만 스크롤 되게) */
-    overflow: hidden !important; /* 다른 미디어 쿼리의 overflow 설정을 덮어씀 */
+    overflow: hidden !important; /* 헤더/푸터 고정, 중앙만 스크롤 */
+    margin: 0 auto;
 }
 
 /* 상단 헤더 (고정) */
-.shop-header-area {
+.event-box.shop-mode .shop-header-area,
+.event-content.shop-mode .shop-header-area {
     flex: 0 0 auto; /* 크기 고정 (줄어들지 않음) */
-    margin-bottom: 15px;
+    margin-bottom: 12px;
     border-bottom: 1px solid #444;
     padding-bottom: 10px;
     text-align: left;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    position: sticky;
+    top: 0;
+    background: rgba(18, 20, 24, 0.9);
+    z-index: 6;
 }
 
 /* 중앙 물품 영역 (여기가 스크롤됨) */
-.shop-main-area {
+.event-box.shop-mode .shop-main-area,
+.event-content.shop-mode .shop-main-area {
     flex: 1; /* 남은 공간을 모두 차지 */
     display: flex;
     gap: 15px;
@@ -1806,17 +1870,23 @@ position: absolute !important;
     overflow-y: auto; 
     min-height: 0; /* 플렉스 내부 스크롤 필수 속성 */
     padding-right: 5px; /* 스크롤바 공간 확보 */
+    padding-bottom: 12px; /* 하단 나가기 버튼 가리지 않도록 여유 */
+    width: 100%;
 }
 
 /* 하단 버튼 영역 (고정) */
-.shop-footer-area {
+.event-box.shop-mode .shop-footer-area,
+.event-content.shop-mode .shop-footer-area {
     flex: 0 0 auto; /* 크기 고정 */
-    margin-top: 15px;
+    margin-top: 10px;
     display: flex;
     justify-content: flex-end;
     border-top: 1px solid #444;
     padding-top: 10px;
-    background: transparent; /* 배경 투명하게 */
+    background: rgba(18, 20, 24, 0.8); /* 버튼 가독성 확보 */
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
 }
 
 /* 개별 컬럼 스타일 */
@@ -1843,11 +1913,17 @@ position: absolute !important;
 
 /* 아이템 그리드 */
 .shop-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    align-items: stretch;
+    width: 100%;
+}
+.shop-item {
+    width: 100%;
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-    align-content: flex-start;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* 서비스(기술 망각) 박스 스타일 */

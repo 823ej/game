@@ -1882,17 +1882,26 @@ function toggleBattleUI(isBattle) {
     const dungeonActions = document.getElementById('dungeon-actions');
     const battleUI = document.querySelectorAll('.battle-ui');
     const minimapBtn = document.getElementById('btn-minimap'); // 지도 버튼 (가정)
+    const minimapOverlay = document.getElementById('minimap-overlay');
+    const minimapInline = document.getElementById('minimap-inline');
+    const DS = typeof DungeonSystem !== 'undefined' ? DungeonSystem : null;
 
     if (isBattle) {
         // [전투 진입]
+        if (DS) {
+            DS.minimapOverlayWasOpen = minimapOverlay ? !minimapOverlay.classList.contains('hidden') : false;
+            DS.minimapInlineWasOpen = minimapInline ? !minimapInline.classList.contains('hidden') : false;
+        }
         moveControls.style.display = 'none';   // 이동 키 숨김
         if(dungeonActions) dungeonActions.style.display = 'none'; // 조사 버튼 등 숨김
         if(minimapBtn) minimapBtn.style.display = 'none'; // 전투 중 지도 금지
+        if (minimapOverlay) minimapOverlay.classList.add('hidden'); // 큰 지도 자동 닫기
+        if (minimapInline) minimapInline.classList.add('hidden');   // 상시 미니맵 닫기
 
         // 전투 UI 보이기 (카드, 턴 순서 등)
         battleUI.forEach(el => {
             el.classList.remove('hidden');
-            el.style.display = ''; 
+            el.style.display = '';
         });
 
        
@@ -1901,7 +1910,23 @@ function toggleBattleUI(isBattle) {
         // [탐사 복귀]
         moveControls.style.display = 'flex';   // 이동 키 복구
         if(dungeonActions) dungeonActions.style.display = 'grid';
-        if(minimapBtn) minimapBtn.style.display = 'block';
+        if(minimapBtn) {
+            minimapBtn.style.display = 'block'; // 버튼만 복구 (지도는 닫힌 상태 유지)
+            minimapBtn.classList.remove('hidden'); // 상시 미니맵이 숨겼던 클래스도 제거
+        }
+        if (DS) {
+            if (DS.minimapOverlayWasOpen && minimapOverlay) {
+                minimapOverlay.classList.remove('hidden');
+                DS.renderMinimap();
+            }
+            if (DS.minimapInlineWasOpen && minimapInline) {
+                minimapInline.classList.remove('hidden');
+                DS.renderMinimap('minimap-inline-grid', 22);
+                if (minimapBtn) minimapBtn.classList.add('hidden');
+            }
+            DS.minimapOverlayWasOpen = false;
+            DS.minimapInlineWasOpen = false;
+        }
 
         // 전투 UI 숨김
         battleUI.forEach(el => {
@@ -4781,4 +4806,3 @@ function renderCardCollection() {
 }
 
 window.onload = initGame;
-
