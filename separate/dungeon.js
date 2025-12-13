@@ -339,6 +339,9 @@ updateParallax: function() {
 
     let room = this.map[this.currentPos.y][this.currentPos.x];
     room.visited = true;
+    if (room.type === 'battle') {
+        room.battleTriggered = false; // 재방문 시 다시 전투 가능
+    }
     
     // 위치 데이터 초기화
     this.progress = fromBack ? 100 : 0;
@@ -461,12 +464,12 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
     checkRoomEvent: function() {
         if (Math.abs(this.progress - 50) < 2) {
             let room = this.map[this.currentPos.y][this.currentPos.x];
-            if (!room.cleared && room.type === 'battle') {
+            if (room.type === 'battle' && !room.battleTriggered) {
                 if (typeof stopMove === 'function') stopMove();
-                room.cleared = true; 
+                room.battleTriggered = true; // 이번 진입에서 한 번만 발생
                 // [수정] 팝업을 닫고 전투를 시작하도록 변경
                 showPopup("적 출현!", "전방에 적들이 있습니다!", [{
-                    txt: "전투 개시", 
+                    txt: "전투 개시",
                     func: () => {
                         closePopup(); // ★ 팝업 닫기 추가
                         startBattle();

@@ -2175,7 +2175,7 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     // 5. 적 생성 로직
     if (!preserveEnemies) {
         enemies = []; // 적 목록 초기화
-        
+
         if (isBoss) {
             let scId = game.scenario ? game.scenario.id : null;
             let bossId = (scId && SCENARIOS[scId]) ? SCENARIOS[scId].boss : "boss_gang_leader";
@@ -2203,11 +2203,20 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     }
 
     // 6. 적 화면 렌더링 (즉시 실행)
-    renderEnemies(); 
-    
+    renderEnemies();
+
     // 프리뷰 모드 해제 (애니메이션 효과를 위해 약간 딜레이 줄 수 있으나, 안전을 위해 즉시 해제)
     const eArea = document.getElementById('dungeon-enemies');
     if (eArea) eArea.classList.remove('preview-mode');
+
+    // 탐사 -> 전투 전환 시 등장 애니메이션 (솟구침)
+    setTimeout(() => {
+        document.querySelectorAll('.enemy-unit').forEach(el => {
+            el.classList.remove('anim-popup'); // 리셋
+            void el.offsetWidth;               // 강제 리플로우
+            el.classList.add('anim-popup');
+        });
+    }, 10);
 
     // 7. UI 전체 갱신 (적 체력바, 플레이어 정보 등)
     updateUI();
