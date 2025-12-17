@@ -11,6 +11,7 @@ const CARD_DATA = {
     "넘어뜨리기": { rank: 2, cost: 2, type: "attack", desc: "적 취약(2턴), 적 HP -4", buff: {name:"취약", val:2}, job: "common", dmg: 4 },
     "전기 충격": { rank: 2, cost: 2, type: "attack", desc: "적 마비(2턴), 적 HP -4", buff: {name:"마비", val:2}, job: "common", dmg: 4 },
     "달리기": { rank: 2, cost: 2, type: "attack", desc: "나 쾌속(2턴), 적 HP -4", buff: {name:"쾌속", val:2}, target:"self", job: "common", dmg: 4 },
+     "마구 뽑기": { rank: 3, cost: 0, type: "skill", desc: "카드 5장 뽑기 (소멸)", job: "common",draw: 5, isExhaust: true },
     "화염병 투척": { 
         rank: 2, cost: 1, type: "attack", 
         desc: "적에게 [화염] 피해 10", 
@@ -39,17 +40,30 @@ const CARD_DATA = {
     "무기 손질": { rank: 2, cost: 1, type: "skill", desc: "나 강화(3턴)", buff: {name:"강화", val:3}, target:"self", job: "fixer" },
     "근육자랑": { rank: 2, cost: 2, type: "attack", desc: "나 강화(2턴), 적 HP -4", buff: {name:"강화", val:2}, target:"self",job: "fixer", dmg: 4 },
     "돌진" : { rank: 2, cost: 2, type: "attack", desc: "적 8 피해, 방어도 +8", job: "fixer", dmg: 8, block: 8},
-     "마구 뽑기": { rank: 3, cost: 0, type: "skill", desc: "카드 5장 뽑기 (소멸)", job: "common",draw: 5, isExhaust: true },
+    
     
 
      "비명": { 
         rank: 2, cost: 1, type: "social", subtype: "attack", 
         desc: "날카로운 비명! (SP -10)", 
         dmg: 10, 
-        job: "enemy"
+        job: "enemy",
+        // (보스 전용 상태이상은 별도 카드로 분리해서 사용)
     },
     // --- 보스 전용 기술 ---
-    "강철 분쇄": { rank: 3, cost: 2, type: "attack", desc: "치명적인 일격! (피해 15)",job: "common", dmg: 15 },
+    "강철 분쇄": { rank: 3, cost: 2, type: "attack", desc: "치명적인 일격! (피해 15) [상태이상: 상처]",job: "common", dmg: 15, statusAdd: { card: "상처", count: 2, destination: "discard" } },
+    "철제 몽둥이 난타": { rank: 2, cost: 1, type: "attack", desc: "거친 몽둥이질! (피해 9) [상태이상: 고통]", job: "enemy", dmg: 9, statusAdd: { card: "고통", count: 1, destination: "discard" } },
+    "사냥꾼의 발차기": { rank: 2, cost: 1, type: "attack", desc: "무릎을 걷어찬다! (피해 6) + 취약(1턴) [상태이상: 혼란]", job: "enemy", dmg: 6, buff: {name:"취약", val:1}, statusAdd: { card: "혼란", count: 1, destination: "discard" } },
+    "광신의 비명": { rank: 3, cost: 2, type: "social", subtype: "attack", desc: "광기의 비명! (SP -12) [상태이상: 공포]", job: "enemy", dmg: 12, statusAdd: { card: "공포", count: 1, destination: "discard" } },
+    "광신의 채찍": { rank: 2, cost: 1, type: "attack", desc: "피부가 찢어진다! (피해 8) [상태이상: 상처]", job: "enemy", dmg: 8, statusAdd: { card: "상처", count: 1, destination: "discard" } },
+    "저주의 할퀴기": { rank: 3, cost: 2, type: "attack", desc: "저주가 스민 손톱! (피해 9) [상태이상: 고통]", job: "enemy", dmg: 9, statusAdd: { card: "고통", count: 1, destination: "discard" } },
+    "핏빛 실": { rank: 2, cost: 1, type: "attack", desc: "실이 살을 파고든다! (피해 6) [상태이상: 혼란]", job: "enemy", dmg: 6, statusAdd: { card: "혼란", count: 1, destination: "discard" } },
+
+    // --- 장비 전용 카드 (장비 장착 시 덱에 추가, 해제 시 제거) ---
+    "사격(관통)": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
+    "쿠보탄 급소": { rank: 1, cost: 1, type: "attack", desc: "쿠보탄으로 급소를 찌른다! 적 HP -6 [관통]", dmg: 6, attr: "pierce", job: "equipment", noReward: true },
+    "은빛 찌르기": { rank: 2, cost: 1, type: "attack", desc: "은 단검의 찌르기! 적 HP -7 [신성]", dmg: 7, attr: "holy", job: "equipment", noReward: true },
+    "너클 강타": { rank: 1, cost: 1, type: "attack", desc: "스파이크 너클로 강타! 적 HP -6 [타격]", dmg: 6, attr: "strike", job: "equipment", noReward: true },
     
     "광신의 춤": { rank: 3, cost: 2, type: "skill", desc: "체력 회복 +20, 방어도 +10",job: "common", buff: {name:"활력", val:5}, block: 10 },
     "정신 붕괴 파동": { rank: 3, cost: 2, type: "attack", desc: "전체 멘탈 공격 (SP 데미지)",job: "common", dmg: 10, type: "social", val: -20 }, // 소셜/배틀 하이브리드
@@ -63,7 +77,20 @@ const CARD_DATA = {
         special: "summon",      // 특수 기능 태그
         summonTarget: "불량배",   // 소환할 적의 ENEMY_DATA 키
         playerDesc: "(사용 불가) 적 전용 스킬입니다." // 나중에 플레이어용 효과 구현 시 대체될 텍스트
-    }
+    },
+
+    // --- 패널티 카드 (Slay the Spire 스타일) ---
+    // group: 'status'는 전투 중 일시적으로만 추가되는 카드군 (전투 종료 시 제거)
+    // group: 'curse'는 덱에 영구적으로 남는 카드군
+    "상처": { rank: 0, cost: 0, type: "skill", group: "status", unplayable: true, desc: "[상태이상] 사용할 수 없습니다. (전투 종료 시 사라짐)", job: "penalty" },
+    "멍해짐": { rank: 0, cost: 0, type: "skill", group: "status", unplayable: true, desc: "[상태이상] 사용할 수 없습니다. (전투 종료 시 사라짐)", job: "penalty" },
+    "끈적한 점액": { rank: 0, cost: 1, type: "skill", group: "status", desc: "[상태이상] 소멸. (아무 일도 일어나지 않음)", job: "penalty", isExhaust: true },
+    "공포": { rank: 0, cost: 0, type: "skill", group: "status", unplayable: true, desc: "[상태이상] 뽑는 순간 손이 떨립니다. (뽑을 때 AP -1, 전투 종료 시 사라짐)", job: "penalty", drawEffect: { type: "lose_ap", val: 1 } },
+    "고통": { rank: 0, cost: 0, type: "skill", group: "status", unplayable: true, desc: "[상태이상] 몸이 찢어질 듯 아픕니다. (뽑을 때 HP -2, 전투 종료 시 사라짐)", job: "penalty", drawEffect: { type: "damage_self", val: 2 } },
+    "혼란": { rank: 0, cost: 0, type: "skill", group: "status", unplayable: true, desc: "[상태이상] 머리가 하얘집니다. (뽑을 때 무작위 카드 1장 버림, 전투 종료 시 사라짐)", job: "penalty", drawEffect: { type: "discard_random", val: 1 } },
+
+    "저주: 불운": { rank: 0, cost: 0, type: "skill", group: "curse", unplayable: true, desc: "[저주] 사용할 수 없습니다. (덱에 영구적으로 남음)", job: "penalty" },
+    "저주: 족쇄": { rank: 0, cost: 0, type: "skill", group: "curse", unplayable: true, desc: "[저주] 사용할 수 없습니다. (덱에 영구적으로 남음)", job: "penalty" }
 };
 
 /* [NEW] 적 데이터 정의 */
@@ -94,7 +121,7 @@ const ENEMY_DATA = {
         weakness : "electric",
         growth: { hp: 0, atk: 0, def: 0, spd: 0 }, // 보스는 레벨 스케일링을 따로 안 하거나 고정
         deckType: "custom", // 덱 생성 함수 안 쓰고 직접 지정
-        deck: ["강철 분쇄", "강철 분쇄", "부하 호출", "타격", "수비"], // 전용 덱
+        deck: ["강철 분쇄", "철제 몽둥이 난타", "사냥꾼의 발차기", "부하 호출", "수비"], // 전용 덱
         img: "https://placehold.co/120x120/000/fff?text=BOSS+1"
     },
     "boss_cult_leader": {
@@ -104,7 +131,7 @@ const ENEMY_DATA = {
         weakness : "holy",
         growth: { hp: 0, atk: 0, def: 0, spd: 0 },
         deckType: "custom",
-        deck: ["광신의 춤", "독 뿌리기", "비명", "사격"], // 하이브리드 패턴
+        deck: ["광신의 춤", "독 뿌리기", "광신의 비명", "광신의 채찍", "사격"], // 하이브리드 패턴
         img: "https://placehold.co/120x120/4b0082/fff?text=BOSS+2"
     },
     "boss_cursed_doll": {
@@ -115,7 +142,7 @@ const ENEMY_DATA = {
         growth: { hp: 0, atk: 0, def: 0, spd: 0 },
         deckType: "custom",
         // 독을 걸거나 멘탈 공격(비명)을 섞어 쓰는 까다로운 패턴
-        deck: ["독 뿌리기", "독 뿌리기", "비명", "타격"], 
+        deck: ["독 뿌리기", "독 뿌리기", "비명", "저주의 할퀴기", "핏빛 실"], 
         img: "https://placehold.co/120x120/5e2a84/fff?text=DOLL",
         // [추가 데이터] 패시브/태그/전리품 힌트
         passive: {
@@ -187,16 +214,16 @@ const TOOLTIPS = {
     "취약": "방어 스탯이 절반으로 감소합니다.",
     "마비": "속도 스탯이 절반으로 감소합니다.",
     "독": "턴 시작 시 중첩된 수치만큼 피해를 입고, 1 줄어듭니다.",
-    "강화": "공격 스탯이 2배로 증가합니다.",
-    "건강": "방어 스탯이 2배로 증가합니다.",
-    "쾌속": "속도 스탯이 2배로 증가합니다.",
+    "강화": "공격 스탯이 2배 증가합니다.",
+    "건강": "방어 스탯이 2배 증가합니다.",
+    "쾌속": "속도 스탯이 2배 증가합니다.",
     "활력": "턴 시작 시 중첩된 수치만큼 체력을 회복하고, 1 줄어듭니다.",
     // [추가된 부분] 소멸 설명 추가
     "소멸": "카드를 사용하면 덱에서 제거되어, 이번 전투 동안 다시 나오지 않습니다.",
     // [NEW] 소셜 모드 전용 상태이상
     "헤롱헤롱": "정신을 못 차립니다. 멘탈 방어 스탯이 절반으로 감소합니다.",
     "분노": "화가 나서 참을성이 없어집니다. 턴마다 인내심이 2배로 감소합니다.",
-    "우울": "감정이 격해집니다. 멘탈 공격 스탯이 50% 증가합니다."
+    "우울": "감정이 격해집니다. 멘탈 공격 스탯이 2배 증가합니다."
     
 };
 
@@ -213,7 +240,7 @@ const DISTRICTS = {
         height: 3,       // 맵 높이
         roomCount: 12,   // 총 방 개수
         data: {          
-            "battle": 3,      // 전투방 3개
+            "battle": 4,      // 전투방 3개
             "box": 2,         // 📦 상자방 2개 (NEW)
             "note": 2,        // 📄 쪽지방 2개 (NEW)
             "bush": 2,        // 🌿 덤불방 2개 (NEW)
@@ -275,19 +302,20 @@ const DISTRICTS = {
 const ITEM_DATA = {
     // --- 장비 아이템 (유물에서 분리) ---
     // bonusStats는 '원본 스탯'에 더해지는 값입니다. (예: +2 => 보정치(mod) +1)
-    "쿠보탄": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (장착 효과) 공격에 [관통] 속성을 부여합니다.", bonusStats: { str: 2 }, attr: "pierce", tags: ["weapon", "tool"]},
+    "권총": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 0, icon: "🔫", desc: "탐정의 기본 무기. 장착 시 덱에 [사격(관통)] 카드가 추가됩니다.", grantCards: ["사격(관통)"], tags: ["weapon", "gun"]},
+    "쿠보탄": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (장착 효과) 장착 시 덱에 [쿠보탄 급소] 카드가 추가됩니다.", bonusStats: { str: 2 }, grantCards: ["쿠보탄 급소"], tags: ["weapon", "tool"]},
     "강인함의 부적": {type: "item", usage: "equip", equipSlots: ["accessory1", "accessory2"], rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (장착 효과)", bonusStats: { con: 2 }, tags: ["charm", "accessory"]},
     "좋은 운동화": {type: "item", usage: "equip", equipSlots: ["legs"], rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (장착 효과)", bonusStats: { dex: 2 }, tags: ["clothes", "brand"]},
     "울끈불끈 패딩": {type: "item", usage: "equip", equipSlots: ["body"], rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 (장착 효과)", bonusHp: 50, tags: ["clothes", "warm"]},
     "은 단검": {
         type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3500, icon: "⚔️", 
-        desc: "공격에 [신성] 속성을 부여합니다.", 
-        attr: "holy", tags: ["weapon", "holy"]
+        desc: "장착 시 덱에 [은빛 찌르기] 카드가 추가됩니다.", 
+        grantCards: ["은빛 찌르기"], tags: ["weapon", "holy"]
     },
     "스파이크 너클": {
         type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 1500, icon: "🔨", 
-        desc: "공격에 [타격] 속성을 부여합니다.", 
-        attr: "strike", tags: ["weapon", "physical"]
+        desc: "장착 시 덱에 [너클 강타] 카드가 추가됩니다.", 
+        grantCards: ["너클 강타"], tags: ["weapon", "physical"]
     },
 
     // --- 유물 아이템 (수집/지속효과) ---
@@ -564,8 +592,9 @@ const JOB_DATA = {
         desc: "논리와 이성으로 사건을 해결합니다.",
         baseStats: { str: 10, con: 10, dex: 12, int: 16, wil: 14, cha: 12 }, 
         defaultTraits: ["sharp_eye"], 
-        starterDeck: ["테스트용", "타격", "수비", "수비", "사격", "달리기", "관찰"],
+        starterDeck: ["테스트용", "타격", "수비", "수비", "달리기", "관찰"],
         starterSocialDeck: ["논리적 반박", "논리적 반박", "비꼬기", "심호흡", "무시"],
+        starterEquipment: { rightHand: "권총" },
         // [NEW] 탐정 이미지
        img: "assets/my_detective.png"
     },

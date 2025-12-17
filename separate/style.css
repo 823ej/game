@@ -798,6 +798,13 @@ body {
         .card.disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); transform: none; }
         .card-cost { background: #3498db; color: white; width: 25px; height: 25px; border-radius: 50%; text-align: center; line-height: 25px; font-weight: bold; position: absolute; top: -10px; left: -10px; }
         .card-name { font-weight: bold; margin-top: 10px; font-size: 1.1em; }
+        .card-group-badge {
+            font-size: 0.75em;
+            color: #7f8c8d;
+            font-weight: bold;
+            text-align: center;
+            margin-top: -2px;
+        }
         .card-desc { font-size: 0.8em; color: #555; line-height: 1.3; }
       
         /* [?곕떽?] 燁삳?諭??源껎닋(癰? ?????*/
