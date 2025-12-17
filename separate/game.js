@@ -1974,11 +1974,15 @@ function renderEquipmentPanel() {
     order.forEach(slotKey => {
         const meta = EQUIP_SLOT_META[slotKey];
         const equippedName = player.equipment[slotKey];
+        const equippedData = equippedName ? ITEM_DATA[equippedName] : null;
         const el = document.createElement('div');
         el.className = `equip-slot ${equippedName ? "filled" : "empty"}`;
 
         let itemIcon = "—";
-        if (equippedName && ITEM_DATA[equippedName]) itemIcon = ITEM_DATA[equippedName].icon;
+        if (equippedData) itemIcon = equippedData.icon;
+
+        const desc = (equippedData && equippedData.desc) ? equippedData.desc : "";
+        const titleText = equippedName ? `${equippedName}\n${desc}` : `${meta.label} 슬롯`;
 
         el.innerHTML = `
             <div class="equip-slot-head">
@@ -1989,7 +1993,9 @@ function renderEquipmentPanel() {
                 <span class="equip-slot-item-icon">${itemIcon}</span>
                 <span class="equip-slot-item-name">${equippedName || "(비어있음)"}</span>
             </div>
+            ${equippedName ? `<div class="equip-slot-desc">${desc}</div>` : ""}
         `;
+        el.title = titleText;
 
         el.onclick = () => openEquipSlotPicker(slotKey);
 
@@ -2030,6 +2036,7 @@ function openEquipSlotPicker(slotKey) {
 
     const meta = EQUIP_SLOT_META[slotKey] || { label: slotKey, icon: "🧰" };
     const current = player.equipment[slotKey];
+    const currentData = current ? ITEM_DATA[current] : null;
 
     const candidates = (player.equipmentBag || []).filter(name => {
         const data = ITEM_DATA[name];
@@ -2072,9 +2079,10 @@ function openEquipSlotPicker(slotKey) {
     btns.push({ txt: "닫기", func: closePopup });
 
     const currentText = current ? `<span style="color:#f1c40f">${escapeAttr(current)}</span>` : `<span style="color:#777">(비어있음)</span>`;
+    const currentDesc = (currentData && currentData.desc) ? `<div style="margin-top:6px; font-size:0.9em; color:#cbd5e1;">${currentData.desc}</div>` : "";
     showPopup(
         `${meta.icon} ${meta.label}`,
-        `현재 장착: ${currentText}<br>장착할 장비를 선택하세요.`,
+        `현재 장착: ${currentText}${currentDesc}<br><br>장착할 장비를 선택하세요.`,
         btns,
         contentHTML
     );
