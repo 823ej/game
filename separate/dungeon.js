@@ -467,14 +467,9 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
             if (room.type === 'battle' && !room.battleTriggered) {
                 if (typeof stopMove === 'function') stopMove();
                 room.battleTriggered = true; // 이번 진입에서 한 번만 발생
-                // [수정] 팝업을 닫고 전투를 시작하도록 변경
-                showPopup("적 출현!", "전방에 적들이 있습니다!", [{
-                    txt: "전투 개시",
-                    func: () => {
-                        closePopup(); // ★ 팝업 닫기 추가
-                        startBattle();
-                    }
-                }]);
+                // 팝업 없이 로그에만 알림 후 바로 전투 시작
+                log("⚠️ 적이 나타났습니다! 전투를 시작합니다.");
+                startBattle();
             }
         }
     },

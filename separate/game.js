@@ -261,6 +261,16 @@ let player = {
     // 인벤토리 관련
    inventory: [],      // 소모품
     relics: [],         // 유물 (활성화됨)
+    equipmentBag: [],   // 장비 (미장착 보관)
+    equipment: {        // 장착 슬롯
+        head: null,
+        body: null,
+        legs: null,
+        leftHand: null,
+        rightHand: null,
+        accessory1: null,
+        accessory2: null
+    },
     warehouse: [],      // [NEW] 창고 (비활성화됨)
     maxInventory: 6,
     // 상태
@@ -276,6 +286,125 @@ let player = {
      // 일시적 속성 버프 상태
     
 };
+
+const EQUIP_SLOT_META = {
+    head: { label: "머리", icon: "🪖" },
+    body: { label: "상체", icon: "🧥" },
+    legs: { label: "하체", icon: "👖" },
+    leftHand: { label: "왼손", icon: "✋" },
+    rightHand: { label: "오른손", icon: "🤚" },
+    accessory1: { label: "장신구1", icon: "💍" },
+    accessory2: { label: "장신구2", icon: "💍" }
+};
+
+function ensureEquipmentFields(p) {
+    if (!p.equipmentBag) p.equipmentBag = [];
+    if (!p.equipment) {
+        p.equipment = {
+            head: null,
+            body: null,
+            legs: null,
+            leftHand: null,
+            rightHand: null,
+            accessory1: null,
+            accessory2: null
+        };
+    }
+    for (let k in EQUIP_SLOT_META) {
+        if (!(k in p.equipment)) p.equipment[k] = null;
+    }
+}
+
+function getEquippedItemNames(p) {
+    ensureEquipmentFields(p);
+    return Object.values(p.equipment).filter(Boolean);
+}
+
+function getActivePassiveItemNames() {
+    ensureEquipmentFields(player);
+    return [
+        ...(player.relics || []),
+        ...getEquippedItemNames(player)
+    ].filter(Boolean);
+}
+
+function getTotalBonusStats(itemNames) {
+    const total = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
+    (itemNames || []).forEach(name => {
+        const data = ITEM_DATA[name];
+        if (!data || !data.bonusStats) return;
+        for (let k in data.bonusStats) {
+            if (k in total) total[k] += (data.bonusStats[k] || 0);
+        }
+    });
+    return total;
+}
+
+function getTotalBonusDerived(itemNames) {
+    const total = { hp: 0, sp: 0, mental: 0 };
+    (itemNames || []).forEach(name => {
+        const data = ITEM_DATA[name];
+        if (!data) return;
+        if (data.bonusHp) total.hp += data.bonusHp;
+        if (data.bonusSp) total.sp += data.bonusSp;
+        if (data.bonusMental) total.mental += data.bonusMental;
+    });
+    return total;
+}
+
+function hasItemAnywhere(name) {
+    ensureEquipmentFields(player);
+    if (player.inventory && player.inventory.includes(name)) return true;
+    if (player.relics && player.relics.includes(name)) return true;
+    if (player.warehouse && player.warehouse.includes(name)) return true;
+    if (player.equipmentBag && player.equipmentBag.includes(name)) return true;
+    return getEquippedItemNames(player).includes(name);
+}
+
+function migrateLegacyEquipment(p) {
+    ensureEquipmentFields(p);
+    if (!Array.isArray(p.relics)) p.relics = [];
+    if (!Array.isArray(p.inventory)) p.inventory = [];
+    if (!Array.isArray(p.warehouse)) p.warehouse = [];
+
+    // 1) 예전 세이브에서 "유물(relics)"로 들어있던 장비를 장착 슬롯로 이동 (효과 유지)
+    const prefer = ["rightHand", "leftHand", "accessory1", "accessory2", "head", "body", "legs"];
+    const relicCopy = [...p.relics];
+    relicCopy.forEach(name => {
+        const data = ITEM_DATA[name];
+        if (!data || data.usage !== "equip") return;
+
+        // relics에서 제거
+        const idx = p.relics.indexOf(name);
+        if (idx >= 0) p.relics.splice(idx, 1);
+
+        const slots = data.equipSlots || [];
+        const candidates = prefer.filter(k => slots.includes(k));
+        const targetOrder = (candidates.length > 0) ? candidates : slots;
+
+        let equipped = false;
+        for (let slotKey of targetOrder) {
+            if (!p.equipment[slotKey]) {
+                p.equipment[slotKey] = name;
+                equipped = true;
+                break;
+            }
+        }
+        if (!equipped) p.equipmentBag.push(name);
+    });
+
+    // 2) 혹시 inventory에 남아있는 장비(구버전 혼입)도 장비 가방으로 이동
+    const invCopy = [...p.inventory];
+    invCopy.forEach(name => {
+        const data = ITEM_DATA[name];
+        if (!data || data.usage !== "equip") return;
+        const idx = p.inventory.indexOf(name);
+        if (idx >= 0) {
+            p.inventory.splice(idx, 1);
+            p.equipmentBag.push(name);
+        }
+    });
+}
 /* [game.js] updatePlayerAttribute 함수 전면 수정 */
 function updatePlayerAttribute() {
     // 중복 제거를 위해 Set 사용
@@ -286,21 +415,19 @@ function updatePlayerAttribute() {
         player.attrBuff.types.forEach(t => attrSet.add(t));
     }
 
-    // 2. 유물(Passive) 속성 합치기
-    player.relics.forEach(rName => {
-        let item = ITEM_DATA[rName];
-        if (item) {
-            // 단일 속성(attr)과 복수 속성(attrs) 모두 처리
-            if (item.attr) attrSet.add(item.attr);
-            if (item.attrs) item.attrs.forEach(a => attrSet.add(a));
-        }
+    // 2. 유물(Passive) + 장비(Equip) 속성 합치기
+    getActivePassiveItemNames().forEach(itemName => {
+        let item = ITEM_DATA[itemName];
+        if (!item) return;
+        if (item.attr) attrSet.add(item.attr);
+        if (item.attrs) item.attrs.forEach(a => attrSet.add(a));
     });
 
     // 3. 배열로 변환하여 저장
     player.currentAttrs = Array.from(attrSet);
 }
 // 2. 현재 보고 있는 탭 상태 변수
-let currentInvTab = 'consume'; // 'consume' or 'relic'
+let currentInvTab = 'consume'; // 'consume' | 'equip' | 'relic'
 
 let tempBonusStats = {};   // 스탯 분배로 추가된 보너스 스탯
 let currentStatPoints = 0; // 남은 스탯 포인트
@@ -536,7 +663,7 @@ function autoSave() {
     }
 
    const saveData = {
-        version: "2.3",
+        version: "2.4",
         player: targetPlayer,
         enemies: targetEnemies,
         game: targetGame,
@@ -574,6 +701,9 @@ function loadGame() {
         // 데이터 복구
         player = loadedData.player;
         game = loadedData.game;
+
+        ensureEquipmentFields(player);
+        migrateLegacyEquipment(player);
         
         if (game.started === undefined) game.started = true;
         if (game.activeScenarioId === undefined) game.activeScenarioId = null;
@@ -599,6 +729,7 @@ function loadGame() {
             }
         }
         recalcStats();
+        updatePlayerAttribute();
         
         // [★수정] 화면 복구 로직: game.state를 최우선으로 확인합니다.
         switch (game.state) {
@@ -748,13 +879,20 @@ function recalcStats() {
     let conMod = Math.floor((player.stats.con - 10) / 2);
     let wilMod = Math.floor((player.stats.wil - 10) / 2);
 
+    const activeItems = getActivePassiveItemNames();
+    const bonusDerived = getTotalBonusDerived(activeItems);
+
     // [수정] 0 이하가 될 수 있도록 Math.max 제거 (생성 제한 확인을 위해)
     // 기본 공식: 30 + (보정치 * 10)
-    player.maxHp = 30 + (conMod * 10);
-    player.maxSp = 30 + (wilMod * 10);
+    player.maxHp = 30 + (conMod * 10) + (bonusDerived.hp || 0);
+    player.maxSp = 30 + (wilMod * 10) + (bonusDerived.sp || 0);
     
     // 소셜 HP (의지)
-    player.maxMental = 100 + (wilMod * 10);
+    player.maxMental = 100 + (wilMod * 10) + (bonusDerived.mental || 0);
+
+    if (player.hp > player.maxHp) player.hp = player.maxHp;
+    if (player.sp > player.maxSp) player.sp = player.maxSp;
+    if (player.mental > player.maxMental) player.mental = player.maxMental;
 }
 // 2. 스탯 조정 함수 (버튼 클릭 시 호출됨)
 function adjustStat(type, delta) {
@@ -1329,20 +1467,33 @@ function addItem(name, onAcquireCallback = null) {
     // [CASE A] 유물 (Passive)
     if (data.usage === "passive") {
         // [★핵심] 보유 중이거나 '창고'에 있어도 중복 획득 불가
-        if (player.relics.includes(name) || player.warehouse.includes(name)) {
-            return false; // 중복 실패
-        }
-        
+        if (hasItemAnywhere(name)) return false;
+
         player.relics.push(name);
         log(`💍 유물 획득! [${name}]`);
-        
-        // 획득 시 즉시 효과 (스탯 재계산으로 반영)
-        recalcStats(); 
-        
+
+        recalcStats();
+        updatePlayerAttribute();
         updateInventoryUI();
         if (onAcquireCallback) onAcquireCallback();
         return true;
-    } 
+    }
+
+    // [CASE B] 장비 (Equip)
+    if (data.usage === "equip") {
+        // 장비도 기본은 중복 획득 불가 (유물과 동일 정책)
+        if (hasItemAnywhere(name)) return false;
+
+        ensureEquipmentFields(player);
+        player.equipmentBag.push(name);
+        log(`🧰 장비 획득! [${name}]`);
+
+        recalcStats();
+        updatePlayerAttribute();
+        updateInventoryUI();
+        if (onAcquireCallback) onAcquireCallback();
+        return true;
+    }
     
     // [CASE B] 소모품 (기존과 동일)
     else {
@@ -1359,7 +1510,7 @@ function addItem(name, onAcquireCallback = null) {
         }
     }
 }
-// 현재 창고 탭 상태 ('consume' 또는 'relic')
+// 현재 창고 탭 상태 ('consume' | 'equip' | 'relic')
 let currentStorageMode = 'consume';
 /* [수정] 창고 열기 (초기화) */
 function openStorage() {
@@ -1374,10 +1525,12 @@ function switchStorageMode(mode) {
     
     // 버튼 스타일 업데이트 (선택된 탭 밝게, 아니면 흐리게)
     document.getElementById('tab-storage-consume').style.opacity = (mode === 'consume') ? 1 : 0.5;
+    document.getElementById('tab-storage-equip').style.opacity = (mode === 'equip') ? 1 : 0.5;
     document.getElementById('tab-storage-relic').style.opacity = (mode === 'relic') ? 1 : 0.5;
     
     // 제목 업데이트
-    document.getElementById('storage-bag-title').innerText = (mode === 'consume') ? "🎒 소모품" : "💍 유물";
+    document.getElementById('storage-bag-title').innerText =
+        (mode === 'consume') ? "🎒 소모품" : (mode === 'equip' ? "🧰 장비" : "💍 유물");
     
     renderStorage();
 }
@@ -1397,6 +1550,13 @@ function renderStorage() {
             let el = createStorageItemEl(name, () => moveItemToWarehouse('consume', idx));
             bagList.appendChild(el);
         });
+    } else if (currentStorageMode === 'equip') {
+        ensureEquipmentFields(player);
+        player.equipmentBag.forEach((name, idx) => {
+            let el = createStorageItemEl(name, () => moveItemToWarehouse('equip', idx));
+            el.style.borderColor = "#3498db"; // 장비 강조
+            bagList.appendChild(el);
+        });
     } else {
         // 유물 표시
         player.relics.forEach((name, idx) => {
@@ -1410,16 +1570,18 @@ function renderStorage() {
     player.warehouse.forEach((name, originalIdx) => {
         let data = ITEM_DATA[name];
         let isRelic = (data.usage === 'passive');
+        let isEquip = (data.usage === 'equip');
         
         // 필터링: 현재 탭과 타입이 맞지 않으면 건너뜀
-        if (currentStorageMode === 'consume' && isRelic) return;
+        if (currentStorageMode === 'consume' && (isRelic || isEquip)) return;
+        if (currentStorageMode === 'equip' && !isEquip) return;
         if (currentStorageMode === 'relic' && !isRelic) return;
 
         // 아이템 생성 (클릭 시 originalIdx를 사용해 정확한 아이템을 가져옴)
         let el = createStorageItemEl(name, () => moveItemFromWarehouse(originalIdx));
         
-        // 창고에 있는 유물은 효과 꺼짐 표시 (흐리게 + 회색 테두리)
-        if (isRelic) {
+        // 창고에 있는 유물/장비는 효과 꺼짐 표시 (흐리게 + 회색 테두리)
+        if (isRelic || isEquip) {
             el.style.opacity = "0.7";
             el.style.borderColor = "#7f8c8d";
         }
@@ -1451,9 +1613,13 @@ function moveItemToWarehouse(type, idx) {
     let item;
     if (type === 'consume') {
         item = player.inventory.splice(idx, 1)[0];
+    } else if (type === 'equip') {
+        ensureEquipmentFields(player);
+        item = player.equipmentBag.splice(idx, 1)[0];
     } else {
         item = player.relics.splice(idx, 1)[0];
-        recalcStats(); // 유물 해제 효과
+        recalcStats();
+        updatePlayerAttribute();
     }
     
     player.warehouse.push(item);
@@ -1480,7 +1646,11 @@ function moveItemFromWarehouse(idx) {
     // 가방으로 이동
     if (data.usage === 'passive') {
         player.relics.push(item);
-        recalcStats(); // 유물 장착 효과
+        recalcStats();
+        updatePlayerAttribute();
+    } else if (data.usage === 'equip') {
+        ensureEquipmentFields(player);
+        player.equipmentBag.push(item);
     } else {
         player.inventory.push(item);
     }
@@ -1555,14 +1725,15 @@ function switchInvTab(tab) {
     
     // 버튼 스타일 갱신
     document.getElementById('tab-consume').className = (tab === 'consume' ? 'inv-tab active' : 'inv-tab');
+    document.getElementById('tab-equip').className = (tab === 'equip' ? 'inv-tab active' : 'inv-tab');
     document.getElementById('tab-relic').className = (tab === 'relic' ? 'inv-tab active' : 'inv-tab');
     
     updateInventoryUI();
 }
 // [수정] 아이템 사용 함수 (배열 인덱스 참조 문제 해결)
 function useItem(index, target) {
-    // 유물 탭에서는 사용 불가 (안전장치)
-    if (currentInvTab === 'relic') return;
+    // 소모품 탭에서만 사용 가능 (안전장치)
+    if (currentInvTab !== 'consume') return;
 
     const name = player.inventory[index]; // 소모품 배열에서 찾음
     const data = ITEM_DATA[name];
@@ -1695,13 +1866,25 @@ function useItem(index, target) {
 function updateInventoryUI() {
     const list = document.getElementById('inventory-list');
     list.innerHTML = "";
+    ensureEquipmentFields(player);
 
     // 카운트 갱신
     document.getElementById('cnt-consume').innerText = `(${player.inventory.length}/${player.maxInventory})`;
+    document.getElementById('cnt-equip').innerText = `(${player.equipmentBag.length})`;
     document.getElementById('cnt-relic').innerText = `(${player.relics.length})`;
 
     // 보여줄 배열 선택
-    let targetArray = (currentInvTab === 'consume') ? player.inventory : player.relics;
+    let targetArray =
+        (currentInvTab === 'consume') ? player.inventory :
+        (currentInvTab === 'equip') ? player.equipmentBag :
+        player.relics;
+
+    // 장비 탭일 때만 장착 슬롯 패널 표시
+    const equipPanel = document.getElementById('inventory-equipment-panel');
+    if (equipPanel) {
+        equipPanel.style.display = (currentInvTab === 'equip') ? 'block' : 'none';
+        if (currentInvTab === 'equip') renderEquipmentPanel();
+    }
 
     if (targetArray.length === 0) {
         list.innerHTML = `<div style="grid-column: 1/-1; color:#777; margin-top:50px;">(비어있음)</div>`;
@@ -1719,17 +1902,30 @@ function updateInventoryUI() {
             el.style.borderColor = "#f39c12";
             el.style.boxShadow = "0 0 5px rgba(243, 156, 18, 0.5)";
         }
+        // 장비는 파란 테두리
+        if (data.usage === "equip") {
+            el.style.borderColor = "#3498db";
+            el.style.boxShadow = "0 0 5px rgba(52, 152, 219, 0.35)";
+        }
 
         el.innerHTML = `
             ${data.icon}
             <span class="tooltip">
                 <b>${name}</b><br>
-                <span style="font-size:0.8em; color:#aaa;">${data.usage==="passive"?"[유물/지속효과]":"[소모품]"}</span><br>
+                <span style="font-size:0.8em; color:#aaa;">${
+                    data.usage==="passive" ? "[유물/지속효과]" :
+                    data.usage==="equip" ? "[장비]" :
+                    "[소모품]"
+                }</span><br>
                 ${data.desc}
             </span>
             ${data.usage === "consume" ? `
             <div class="item-actions" id="item-actions-${idx}" style="display:none;">
                 <button class="item-btn btn-confirm" onclick="confirmItemUse(event, ${idx})">사용</button>
+            </div>` : ""}
+            ${data.usage === "equip" ? `
+            <div class="item-actions" id="item-actions-${idx}" style="display:none;">
+                <button class="item-btn btn-confirm" onclick="confirmEquipItem(event, ${idx})">장착</button>
             </div>` : ""}
         `;
 
@@ -1737,12 +1933,11 @@ function updateInventoryUI() {
         // 소모품: 사용 및 드래그 가능
         if (currentInvTab === 'consume') {
             el.onclick = (e) => toggleItemSelect(e, idx);
-            // 전투/소셜 중일 때만 드래그 가능
-            if (game.state === "battle" || game.state === "social") {
-                el.onmousedown = (e) => startDrag(e, idx, name, 'item');
-                el.ontouchstart = (e) => startDrag(e, idx, name, 'item');
-            }
-        } 
+        }
+        // 장비: 클릭 시 장착 메뉴
+        else if (currentInvTab === 'equip') {
+            el.onclick = (e) => toggleItemSelect(e, idx);
+        }
         // 유물: 클릭 시 정보만 (사용 불가)
         else {
             el.onclick = () => log(`[${name}] 보유 중인 유물입니다.`);
@@ -1761,6 +1956,379 @@ function closeInventory() {
     document.getElementById('inventory-overlay').classList.add('hidden');
 }
 
+function renderEquipmentPanel() {
+    const panel = document.getElementById('inventory-equipment-panel');
+    if (!panel) return;
+
+    ensureEquipmentFields(player);
+
+    panel.innerHTML = `
+        <div class="equipment-title">🧰 장착 슬롯</div>
+        <div class="equipment-grid" id="equipment-grid"></div>
+        <div class="equipment-hint">슬롯을 클릭하면 장착을 해제합니다.</div>
+    `;
+
+    const grid = document.getElementById('equipment-grid');
+    const order = ["head", "body", "legs", "leftHand", "rightHand", "accessory1", "accessory2"];
+
+    order.forEach(slotKey => {
+        const meta = EQUIP_SLOT_META[slotKey];
+        const equippedName = player.equipment[slotKey];
+        const el = document.createElement('div');
+        el.className = `equip-slot ${equippedName ? "filled" : "empty"}`;
+
+        let itemIcon = "—";
+        if (equippedName && ITEM_DATA[equippedName]) itemIcon = ITEM_DATA[equippedName].icon;
+
+        el.innerHTML = `
+            <div class="equip-slot-head">
+                <span class="equip-slot-icon">${meta.icon}</span>
+                <span class="equip-slot-label">${meta.label}</span>
+            </div>
+            <div class="equip-slot-item">
+                <span class="equip-slot-item-icon">${itemIcon}</span>
+                <span class="equip-slot-item-name">${equippedName || "(비어있음)"}</span>
+            </div>
+        `;
+
+        el.onclick = () => openEquipSlotPicker(slotKey);
+
+        grid.appendChild(el);
+    });
+}
+
+function equipItemToSlot(slotKey, name) {
+    ensureEquipmentFields(player);
+    const data = ITEM_DATA[name];
+    if (!data || data.usage !== "equip") return;
+
+    const slots = data.equipSlots || [];
+    if (!slots.includes(slotKey)) {
+        showPopup("장착 불가", `[${name}]은(는) ${EQUIP_SLOT_META[slotKey]?.label || slotKey} 슬롯에 장착할 수 없습니다.`, [{ txt: "확인", func: closePopup }]);
+        return;
+    }
+
+    const removeIdx = player.equipmentBag.indexOf(name);
+    if (removeIdx < 0) return;
+
+    player.equipmentBag.splice(removeIdx, 1);
+
+    const old = player.equipment[slotKey];
+    if (old) player.equipmentBag.push(old);
+    player.equipment[slotKey] = name;
+
+    recalcStats();
+    updatePlayerAttribute();
+    updateInventoryUI();
+    updateUI();
+    autoSave();
+    closePopup();
+}
+
+function openEquipSlotPicker(slotKey) {
+    ensureEquipmentFields(player);
+
+    const meta = EQUIP_SLOT_META[slotKey] || { label: slotKey, icon: "🧰" };
+    const current = player.equipment[slotKey];
+
+    const candidates = (player.equipmentBag || []).filter(name => {
+        const data = ITEM_DATA[name];
+        if (!data || data.usage !== "equip") return false;
+        const slots = data.equipSlots || [];
+        return slots.includes(slotKey);
+    });
+
+    const escapeAttr = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const escapeJs = (s) => String(s).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+
+    let contentHTML = "";
+    if (candidates.length === 0) {
+        contentHTML = `<div style="color:#777; padding:10px;">(장착 가능한 장비가 없습니다)</div>`;
+    } else {
+        contentHTML = `<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; padding:10px;">`;
+        candidates.forEach(name => {
+            const data = ITEM_DATA[name];
+            contentHTML += `
+                <button class="hub-card" onclick="equipItemToSlot('${escapeJs(slotKey)}','${escapeJs(name)}')" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px; border:1px solid #555;">
+                    <div class="item-icon item-rank-${data.rank}" style="pointer-events:none;">${escapeAttr(data.icon)}</div>
+                    <div style="font-size:0.85em; font-weight:bold; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;">${escapeAttr(name)}</div>
+                    <div style="font-size:0.7em; color:#3498db;">장착</div>
+                </button>
+            `;
+        });
+        contentHTML += `</div>`;
+    }
+
+    const btns = [];
+    if (current) {
+        btns.push({
+            txt: `해제 (${current})`,
+            func: () => {
+                unequipSlot(slotKey);
+                closePopup();
+            }
+        });
+    }
+    btns.push({ txt: "닫기", func: closePopup });
+
+    const currentText = current ? `<span style="color:#f1c40f">${escapeAttr(current)}</span>` : `<span style="color:#777">(비어있음)</span>`;
+    showPopup(
+        `${meta.icon} ${meta.label}`,
+        `현재 장착: ${currentText}<br>장착할 장비를 선택하세요.`,
+        btns,
+        contentHTML
+    );
+}
+
+function confirmEquipItem(e, idx) {
+    e.stopPropagation();
+    if (currentInvTab !== 'equip') return;
+    equipItemFromBag(idx);
+    document.querySelectorAll('.item-actions').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.item-icon').forEach(el => el.classList.remove('selected'));
+}
+
+function equipItemFromBag(idx) {
+    ensureEquipmentFields(player);
+
+    const name = player.equipmentBag[idx];
+    const data = ITEM_DATA[name];
+    if (!data || data.usage !== "equip") return;
+
+    const slots = data.equipSlots || [];
+    if (slots.length === 0) {
+        showPopup("장착 불가", `[${name}]은(는) 장착 슬롯 정보가 없습니다.`, [{ txt: "확인", func: closePopup }]);
+        return;
+    }
+
+    const equipTo = (slotKey) => {
+        // idx가 stale일 수 있으므로 이름으로도 탐색
+        let removeIdx = player.equipmentBag.indexOf(name);
+        if (removeIdx >= 0) player.equipmentBag.splice(removeIdx, 1);
+
+        const old = player.equipment[slotKey];
+        if (old) player.equipmentBag.push(old);
+        player.equipment[slotKey] = name;
+
+        recalcStats();
+        updatePlayerAttribute();
+        updateInventoryUI();
+        updateUI();
+        autoSave();
+        closePopup();
+    };
+
+    if (slots.length === 1) {
+        equipTo(slots[0]);
+        return;
+    }
+
+    const buttons = slots.map(slotKey => {
+        const meta = EQUIP_SLOT_META[slotKey];
+        const cur = player.equipment[slotKey];
+        const curText = cur ? ` (현재: ${cur})` : "";
+        return { txt: `${meta.icon} ${meta.label}${curText}`, func: () => equipTo(slotKey) };
+    });
+    buttons.push({ txt: "취소", func: closePopup });
+
+    showPopup(
+        "장착 위치 선택",
+        `<b>[${name}]</b>을(를) 장착할 슬롯을 선택하세요.`,
+        buttons
+    );
+}
+
+function unequipSlot(slotKey) {
+    ensureEquipmentFields(player);
+    const old = player.equipment[slotKey];
+    if (!old) return;
+
+    player.equipment[slotKey] = null;
+    player.equipmentBag.push(old);
+
+    recalcStats();
+    updatePlayerAttribute();
+    updateInventoryUI();
+    updateUI();
+    autoSave();
+}
+
+let pendingItemTargeting = null;
+let pendingItemTargetingListenersAttached = false;
+
+function ensureItemTargetingOverlay() {
+    let overlay = document.getElementById('item-targeting-overlay');
+    if (overlay) return overlay;
+
+    overlay = document.createElement('div');
+    overlay.id = 'item-targeting-overlay';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.25)';
+    overlay.style.backdropFilter = 'blur(2px)';
+    overlay.style.display = 'none';
+    overlay.style.zIndex = '1100';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.flexDirection = 'column';
+    overlay.style.gap = '10px';
+    // 대상 클릭은 아래 전투 화면(유닛)을 그대로 클릭하게 두고,
+    // 클릭 이벤트는 문서 레벨에서 가로채서 처리합니다.
+    overlay.style.pointerEvents = 'none';
+
+    overlay.innerHTML = `
+        <div style="background:#111a24; border:1px solid #3a4b5d; border-radius:12px; padding:12px 14px; text-align:center; color:#ddd; width:min(420px, 90%); pointer-events:none;">
+            <div style="color:#f1c40f; font-weight:bold; margin-bottom:6px;">🎯 대상 지정</div>
+            <div style="font-size:0.95em; color:#cbd5e1;">
+                사용할 대상을 <b>클릭</b>하세요.
+                <div style="margin-top:6px; font-size:0.85em; color:#94a3b8;">(적/플레이어)</div>
+            </div>
+        </div>
+        <button class="small-btn" id="btn-cancel-item-targeting" style="background:#7f8c8d; pointer-events:auto;">취소</button>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const cancelBtn = overlay.querySelector('#btn-cancel-item-targeting');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cancelItemTargeting();
+        });
+    }
+
+    return overlay;
+}
+
+function cancelItemTargeting() {
+    pendingItemTargeting = null;
+    detachItemTargetingListeners();
+    const overlay = document.getElementById('item-targeting-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function beginItemTargeting(itemIdx) {
+    if (game.state !== 'battle') return false;
+    if (game.turnOwner !== 'player') {
+        showPopup("불가", "전투 중 내 턴에만 사용할 수 있습니다.", [{ txt: "확인", func: closePopup }]);
+        return false;
+    }
+
+    const name = player.inventory[itemIdx];
+    const data = ITEM_DATA[name];
+    if (!data || data.usage !== "consume") return false;
+
+    pendingItemTargeting = { idx: itemIdx, name };
+
+    const overlay = ensureItemTargetingOverlay();
+    overlay.style.display = 'flex';
+    attachItemTargetingListeners();
+    return true;
+}
+
+function attachItemTargetingListeners() {
+    if (pendingItemTargetingListenersAttached) return;
+    pendingItemTargetingListenersAttached = true;
+
+    document.addEventListener('click', onItemTargetingClickCapture, true);
+    // 모바일: 클릭 대신 touchstart만 발생하는 경우가 있어 보조
+    document.addEventListener('touchstart', onItemTargetingTouchCapture, { capture: true, passive: false });
+}
+
+function detachItemTargetingListeners() {
+    if (!pendingItemTargetingListenersAttached) return;
+    pendingItemTargetingListenersAttached = false;
+    document.removeEventListener('click', onItemTargetingClickCapture, true);
+    document.removeEventListener('touchstart', onItemTargetingTouchCapture, true);
+}
+
+function getFinalTargetsFromPointer(data, targetInfo) {
+    const aliveEnemies = enemies.filter(en => en.hp > 0);
+
+    let finalTargets = [];
+    if (targetInfo) {
+        if (data.targetType === 'all' || data.target === 'all') {
+            finalTargets = aliveEnemies;
+        }
+        else if ((data.type && (data.type.includes("attack") || data.type === "social")) || data.target === "enemy") {
+            if (targetInfo.type === 'specific' && targetInfo.unit !== player) {
+                finalTargets = [targetInfo.unit];
+            }
+            else if (aliveEnemies.length === 1 && targetInfo.type === 'general') {
+                finalTargets = [aliveEnemies[0]];
+            }
+        }
+        else if (data.target === "self" || (!data.type?.includes("attack") && data.target !== "enemy")) {
+            if (targetInfo.type === 'specific' && targetInfo.unit === player) finalTargets = [player];
+            else if (targetInfo.type === 'general') finalTargets = [player];
+        }
+    }
+
+    // 자동 타겟팅 (빈 공간 클릭 포함)
+    if (finalTargets.length === 0) {
+        if (data.targetType === 'all' || data.target === 'all') {
+            finalTargets = aliveEnemies;
+        } else if ((data.type && (data.type.includes("attack") || data.type === "social")) || data.target === "enemy") {
+            if (aliveEnemies.length === 1) finalTargets = [aliveEnemies[0]];
+        } else if (data.target === "self" || (!data.type?.includes("attack") && data.target !== "enemy")) {
+            finalTargets = [player];
+        }
+    }
+
+    return finalTargets;
+}
+
+function onItemTargetingClickCapture(e) {
+    if (!pendingItemTargeting) return;
+    if (e.target && e.target.id === 'btn-cancel-item-targeting') return;
+
+    // 다른 UI가 같이 눌리지 않도록 캡처 단계에서 차단
+    e.preventDefault();
+    e.stopPropagation();
+
+    const name = pendingItemTargeting.name;
+    const data = ITEM_DATA[name];
+    if (!data) {
+        cancelItemTargeting();
+        return;
+    }
+
+    const targetInfo = getTargetUnderMouse(e);
+    const targets = getFinalTargetsFromPointer(data, targetInfo);
+    if (targets.length === 0) return;
+
+    const idx = pendingItemTargeting.idx;
+    cancelItemTargeting();
+    useItem(idx, targets[0]);
+    updateUI();
+    checkGameOver();
+}
+
+function onItemTargetingTouchCapture(e) {
+    if (!pendingItemTargeting) return;
+    if (e.target && e.target.id === 'btn-cancel-item-targeting') return;
+
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+
+    const name = pendingItemTargeting.name;
+    const data = ITEM_DATA[name];
+    if (!data) {
+        cancelItemTargeting();
+        return;
+    }
+
+    const targetInfo = getTargetUnderMouse(e);
+    const targets = getFinalTargetsFromPointer(data, targetInfo);
+    if (targets.length === 0) return;
+
+    const idx = pendingItemTargeting.idx;
+    cancelItemTargeting();
+    useItem(idx, targets[0]);
+    updateUI();
+    checkGameOver();
+}
+
 // [수정] confirmItemUse (인자 전달 방식 수정)
 function confirmItemUse(e, idx) {
     e.stopPropagation();
@@ -1769,11 +2337,19 @@ function confirmItemUse(e, idx) {
 
     let name = player.inventory[idx];
     let data = ITEM_DATA[name];
-    
-    // 타겟팅 로직
+
+    // 전투 중이면: 인벤토리를 닫고, 드래그로 타겟 지정
+    if (game.state === 'battle') {
+        closeInventory();
+        beginItemTargeting(idx);
+        document.querySelectorAll('.item-actions').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.item-icon').forEach(el => el.classList.remove('selected'));
+        return;
+    }
+
+    // 그 외 상태: 기존 즉시 사용
     let target = player;
     if (data.target === "enemy" && enemies.length > 0) target = enemies[0];
-
     useItem(idx, target);
     
     // 메뉴 닫기
@@ -3354,8 +3930,12 @@ function buyShopItem(el, type, name, cost) {
         if (result === false) {
             let data = ITEM_DATA[name];
             // [수정] 중복 알림
-            if (data.usage === 'passive' && (player.relics.includes(name) || player.warehouse.includes(name))) {
-                showPopup("중복 불가", "이미 보유하고 있는 유물입니다.", [{txt: "확인", func: closePopup}]);
+            if (data.usage === 'passive' || data.usage === 'equip') {
+                showPopup(
+                    "중복 불가",
+                    data.usage === 'equip' ? "이미 보유하고 있는 장비입니다." : "이미 보유하고 있는 유물입니다.",
+                    [{txt: "확인", func: closePopup}]
+                );
             }
         }
     }
@@ -3537,6 +4117,8 @@ function getStat(entity, type) {
     // [1] 플레이어: 스탯 기반 보정치 계산
     if (entity === player) {
         let rawVal = 0;
+        const activeItems = getActivePassiveItemNames();
+        const bonusStats = getTotalBonusStats(activeItems);
         
         switch (type) {
             case 'atk': rawVal = player.stats.str; break; // 물리공격 <- 근력
@@ -3547,17 +4129,15 @@ function getStat(entity, type) {
             default: rawVal = player.stats[type] || 10; break;
         }
 
-        // 아이템 보정 (보유 시 스탯 직접 증가)
-        if ((type === 'atk' || type === 'str') && player.inventory.includes("쿠보탄")) rawVal += 2;
-        if ((type === 'def' || type === 'con') && player.inventory.includes("강인함의 부적")) rawVal += 2;
-        if ((type === 'spd' || type === 'dex') && player.inventory.includes("좋은 운동화")) rawVal += 2;
-        
-        // ★ 창고가 아닌 '유물(relics)' 목록도 체크 (상태창 등에서 호출 시)
-        if (player.relics) {
-            if ((type === 'atk' || type === 'str') && player.relics.includes("쿠보탄")) rawVal += 2;
-            if ((type === 'def' || type === 'con') && player.relics.includes("강인함의 부적")) rawVal += 2;
-            if ((type === 'spd' || type === 'dex') && player.relics.includes("좋은 운동화")) rawVal += 2;
-        }
+        // 장비/유물 보정 (스탯 포인트 직접 증가)
+        const applyBonus = (statKey) => { rawVal += (bonusStats[statKey] || 0); };
+
+        if (type === 'atk' || type === 'str') applyBonus('str');
+        else if (type === 'def' || type === 'con') applyBonus('con');
+        else if (type === 'spd' || type === 'dex') applyBonus('dex');
+        else if (type === 'socialAtk' || type === 'cha') applyBonus('cha');
+        else if (type === 'socialDef' || type === 'int') applyBonus('int');
+        else if (type in bonusStats) applyBonus(type);
 
         // 보정치(Mod) 계산 공식: (스탯 - 10) / 2
         let mod = Math.floor((rawVal - 10) / 2);
@@ -3853,10 +4433,10 @@ if (enemies && enemies.length > 0) {
         if (!el) {
             renderEnemies();
             el = document.getElementById(`enemy-unit-${e.id}`);
-            if (!el) return; 
+            if (!el) return;
         }
-        
-        if (e.hp <= 0 && game.state !== "social") { 
+
+        if (e.hp <= 0 && game.state !== "social") {
             el.classList.add('dead');
             el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
             return;
@@ -4289,9 +4869,10 @@ function getLoot() {
         if (result === false) {
             let itemData = ITEM_DATA[game.pendingLoot];
             
-            // 소모품이 꽉 찬 게 아니라, '중복 불가 유물'이라서 실패한 경우
-            if (itemData.usage === 'passive') {
-                showPopup("획득 불가", `이미 보유하고 있는 유물([${game.pendingLoot}])입니다.<br>전리품을 포기합니다.`, [
+            // 소모품이 꽉 찬 게 아니라, '중복 불가 유물/장비'라서 실패한 경우
+            if (itemData.usage === 'passive' || itemData.usage === 'equip') {
+                const label = (itemData.usage === 'equip') ? "장비" : "유물";
+                showPopup("획득 불가", `이미 보유하고 있는 ${label}([${game.pendingLoot}])입니다.<br>전리품을 포기합니다.`, [
                     { 
                         txt: "확인", 
                         func: () => {
@@ -4437,8 +5018,10 @@ function onDragMove(e) {
             if (descEl.innerHTML !== drag.originalDesc) descEl.innerHTML = drag.originalDesc;
         }
     }
-    if (validTarget) { dragEl.style.transform = "scale(1.1)"; dragEl.style.zIndex = "1000"; } 
-    else { dragEl.style.transform = "scale(1.0)"; dragEl.style.zIndex = "auto"; }
+    if (dragEl) {
+        if (validTarget) { dragEl.style.transform = "scale(1.1)"; dragEl.style.zIndex = "1000"; } 
+        else { dragEl.style.transform = "scale(1.0)"; dragEl.style.zIndex = "auto"; }
+    }
 }
 
 /* [수정] onDragEnd: 소셜 카드 타겟팅 로직 반영 */

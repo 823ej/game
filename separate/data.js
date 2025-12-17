@@ -273,22 +273,25 @@ const DISTRICTS = {
 
 /* [수정] 아이템 데이터 (통합 시스템) */
 const ITEM_DATA = {
-    // --- 패시브 아이템 (구 유물) ---
-    "쿠보탄": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (보유 효과) 공격에 [관통] 속성을 부여합니다.", attr: "pierce", tags: ["weapon", "tool"]},
-    "강인함의 부적": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (보유 효과)", tags: ["charm", "accessory"]},
-    "좋은 운동화": {type: "item", usage: "passive", rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (보유 효과)", tags: ["clothes", "brand"]},
-    "울끈불끈 패딩": {type: "item", usage: "passive", rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 (보유 효과)", tags: ["clothes", "warm"]},
-    "황금 대타": {type: "item", usage: "passive", rank: 3, price: 4000, icon: "🏺", desc: "부활 1회 (보유 효과)", tags: ["magic", "valuable"]},
+    // --- 장비 아이템 (유물에서 분리) ---
+    // bonusStats는 '원본 스탯'에 더해지는 값입니다. (예: +2 => 보정치(mod) +1)
+    "쿠보탄": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (장착 효과) 공격에 [관통] 속성을 부여합니다.", bonusStats: { str: 2 }, attr: "pierce", tags: ["weapon", "tool"]},
+    "강인함의 부적": {type: "item", usage: "equip", equipSlots: ["accessory1", "accessory2"], rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (장착 효과)", bonusStats: { con: 2 }, tags: ["charm", "accessory"]},
+    "좋은 운동화": {type: "item", usage: "equip", equipSlots: ["legs"], rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (장착 효과)", bonusStats: { dex: 2 }, tags: ["clothes", "brand"]},
+    "울끈불끈 패딩": {type: "item", usage: "equip", equipSlots: ["body"], rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 (장착 효과)", bonusHp: 50, tags: ["clothes", "warm"]},
     "은 단검": {
-        type: "item", usage: "passive", rank: 2, price: 3500, icon: "⚔️", 
+        type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3500, icon: "⚔️", 
         desc: "공격에 [신성] 속성을 부여합니다.", 
         attr: "holy", tags: ["weapon", "holy"]
     },
     "스파이크 너클": {
-        type: "item", usage: "passive", rank: 1, price: 1500, icon: "🔨", 
+        type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 1500, icon: "🔨", 
         desc: "공격에 [타격] 속성을 부여합니다.", 
         attr: "strike", tags: ["weapon", "physical"]
     },
+
+    // --- 유물 아이템 (수집/지속효과) ---
+    "황금 대타": {type: "item", usage: "passive", rank: 3, price: 4000, icon: "🏺", desc: "부활 1회 (보유 효과)", tags: ["magic", "valuable"]},
     
 
     // --- 소모성 아이템 ---
@@ -309,8 +312,9 @@ const ITEM_DATA = {
     "공포 영화 포스터": {type: "item", usage: "consume", rank: 1, price: 500, icon: "👻", desc: "NPC 멘탈 감소", effect: "none", target: "enemy", tags: ["horror", "paper"]},
     "라이터": {
         type: "item", usage: "consume", rank: 1, price: 2000, icon: "🔥", 
-        desc: "공격에 [화염] 속성을 부여합니다.", 
-        attr: "fire", tags: ["tool", "fire"]
+        desc: "3턴 동안 공격에 [화염] 속성을 부여합니다.", 
+        effect: "buff_attr", val: "fire", duration: 3, target: "self",
+        tags: ["tool", "fire"]
     },
     "성수": {
       type: "item", usage: "consume", rank: 1, price: 500, icon: "💧", 

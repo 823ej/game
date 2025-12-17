@@ -46,6 +46,9 @@
                 <button id="tab-consume" class="inv-tab active" onclick="switchInvTab('consume')">
                     🎒 소모품 <span id="cnt-consume" style="font-size:0.8em">(0/6)</span>
                 </button>
+                <button id="tab-equip" class="inv-tab" onclick="switchInvTab('equip')">
+                    🧰 장비 <span id="cnt-equip" style="font-size:0.8em">(0)</span>
+                </button>
                 <button id="tab-relic" class="inv-tab" onclick="switchInvTab('relic')">
                     💍 유물 <span id="cnt-relic" style="font-size:0.8em">(0)</span>
                 </button>
@@ -53,6 +56,7 @@
             </div>
 
             <div class="inventory-body">
+                <div id="inventory-equipment-panel" class="equipment-panel" style="display:none;"></div>
                 <div class="item-list" id="inventory-list">
                     </div>
             </div>
@@ -175,6 +179,7 @@
         
         <div>
             <button id="tab-storage-consume" class="small-btn" style="background:#27ae60; font-weight:bold;" onclick="switchStorageMode('consume')">🎒 소모품</button>
+            <button id="tab-storage-equip" class="small-btn" style="background:#3498db; font-weight:bold; opacity:0.5;" onclick="switchStorageMode('equip')">🧰 장비</button>
             <button id="tab-storage-relic" class="small-btn" style="background:#e67e22; font-weight:bold; opacity:0.5;" onclick="switchStorageMode('relic')">💍 유물</button>
         </div>
 
