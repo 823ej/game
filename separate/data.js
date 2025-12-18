@@ -4,6 +4,58 @@ const CARD_DATA = {
     "타격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5", dmg: 5, job: "common" },
     "수비": { rank: 1, cost: 1, type: "skill", desc: "방어도 +4", block: 4, job: "common" },
     "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 의지 +15 회복", heal: 15, target: "self", job: "common" },
+
+    // --- [신규] 카드군 확장: 공격/스킬/파워 ---
+    // [공격] 전체 공격
+    "휩쓸기": { rank: 1, cost: 1, type: "attack", targetType: "all", desc: "전체 공격! 적 HP -3", dmg: 3, job: "common" },
+    "전면 공격": { rank: 2, cost: 2, type: "attack", targetType: "all", desc: "전체 공격! 적 HP -6", dmg: 6, job: "common" },
+
+    // [공격] 다중 타격 / 랜덤 타격
+    "연속 베기": { rank: 2, cost: 1, type: "attack", desc: "두 번 공격! (4 x 2)", dmg: 4, multiHit: 2, job: "common" },
+    "난사": { rank: 2, cost: 2, type: "attack", desc: "랜덤한 적을 총 세 번 공격! (3 x 3)", dmg: 3, randomHits: 3, job: "common" },
+
+    // [공격] 흡혈
+    "흡혈": { rank: 2, cost: 2, type: "attack", desc: "막히지 않은 피해만큼 내 체력 회복 (흡혈)", dmg: 7, lifesteal: 1, job: "common" },
+
+    // [공격] 성장(전투 중 / 영구)
+    "단련의 일격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -4 (사용할 때마다 이번 전투에서 피해 +1)", dmg: 4, growOnUse: { scope: "combat", dmg: 1 }, job: "common" },
+    "숙련의 일격": { rank: 3, cost: 2, type: "attack", desc: "적 HP -6 (사용할 때마다 영구적으로 피해 +1)", dmg: 6, growOnUse: { scope: "permanent", dmg: 1 }, job: "common" },
+
+    // [공격] 휘발성(턴 종료 시 소멸)
+    "불안정한 폭발": { rank: 2, cost: 1, type: "attack", desc: "강력하지만 불안정합니다. (피해 12) [휘발성]", dmg: 12, volatile: true, job: "common" },
+
+    // [스킬] AP 추가
+    "전술적 보충": { rank: 2, cost: 0, type: "skill", desc: "AP +1, 카드 1장 뽑기", gainAp: 1, draw: 1, job: "common" },
+
+    // [스킬] 사용 시 자기 복제(버린 카드에 추가)
+    "복제 훈련": { rank: 1, cost: 1, type: "skill", desc: "방어도 +3 (사용 시 자신을 1장 복제하여 버린 카드에 추가)", block: 3, selfDuplicateToDiscard: 1, job: "common" },
+
+    // [스킬] 상태이상 카드 섞기 (뽑을 카드/버린 카드)
+    "오염 주입": { rank: 1, cost: 1, type: "skill", desc: "내 뽑을 카드에 [상처] 1장 추가", statusAdd: { card: "상처", count: 1, destination: "draw" }, job: "common" },
+    "불길한 예감": { rank: 2, cost: 1, type: "skill", desc: "내 뽑을 카드에 [혼란] 1장 추가", statusAdd: { card: "혼란", count: 1, destination: "draw" }, job: "common" },
+
+    // [스킬] 원하는 카드/랜덤 카드 가져오기
+    "재활용": { rank: 1, cost: 1, type: "skill", desc: "버린 카드에서 원하는 카드 1장 가져오기", fetch: { from: "discard", mode: "choose", count: 1, to: "hand" }, job: "common" },
+    "주워담기": { rank: 1, cost: 0, type: "skill", desc: "버린 카드에서 랜덤 카드 1장 가져오기", fetch: { from: "discard", mode: "random", count: 1, to: "hand" }, job: "common" },
+    "탐색": { rank: 2, cost: 1, type: "skill", desc: "뽑을 카드에서 원하는 카드 1장 가져오기", fetch: { from: "draw", mode: "choose", count: 1, to: "hand" }, job: "common" },
+    "즉흥": { rank: 1, cost: 0, type: "skill", desc: "뽑을 카드에서 랜덤 카드 1장 가져오기", fetch: { from: "draw", mode: "random", count: 1, to: "hand" }, job: "common" },
+
+    // [스킬] 원하는 카드 복사
+    "복제 주문": { rank: 2, cost: 1, type: "skill", desc: "버린 카드에서 원하는 카드 1장 복사하여 손으로 가져오기", copy: { from: "discard", mode: "choose", count: 1, to: "hand" }, job: "common" },
+
+    // [스킬] 적 능력치 낮추기(디버프)
+    "약점 노출": { rank: 2, cost: 1, type: "skill", target: "enemy", desc: "적 약화(2턴) + 취약(2턴) + 마비(1턴)", buffs: [{ name: "약화", val: 2 }, { name: "취약", val: 2 }, { name: "마비", val: 1 }], job: "common" },
+
+    // [스킬] 가시
+    "가시 갑옷": { rank: 2, cost: 1, type: "skill", target: "self", desc: "나에게 [가시] 3 적용 (전투 종료까지, 공격받을 때마다 고정 피해 반격)", buff: { name: "가시", val: 3 }, job: "common" },
+    "반사 방패": { rank: 2, cost: 1, type: "skill", target: "self", desc: "나에게 [반사] 2 적용 (반사: 막히지 않은 피해를 그대로 반격)", buff: { name: "반사", val: 2 }, job: "common" },
+
+    // [스킬] 선천성
+    "선천성: 준비 태세": { rank: 2, cost: 0, type: "skill", innate: true, isExhaust: true, desc: "선천성. AP +1, 카드 1장 뽑기 (소멸)", gainAp: 1, draw: 1, job: "common" },
+
+    // [파워] 전투 중 지속 효과
+    "전투 준비": { rank: 1, cost: 1, type: "power", isExhaust: true, desc: "이번 전투 동안 매 턴 시작 시 AP +1 (소멸)", power: { apBonus: 1 }, job: "common" },
+    "절약의 달인": { rank: 2, cost: 1, type: "power", isExhaust: true, desc: "이번 전투 동안 매 턴 시작 시 손패 랜덤 1장의 비용이 0이 됩니다. (소멸)", power: { freeCostEachTurn: 1 }, job: "common" },
     "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3, target: "enemy", job: "common" },
     "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: {name:"독", val:2}, block: 3, target: "enemy", job: "common" },   
     "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:2}, target:"self", job: "common", block: 3 },
@@ -174,7 +226,11 @@ const SOCIAL_CARD_DATA = {
     
     // [특수]
     "매혹": { rank: 2, cost: 2, type: "social", subtype: "magic", desc: "적 공격력 감소(2턴), 의지 -10", dmg: 10, buff: {name:"약화", val:2} },
-    "거짓말": { rank: 2, cost: 1, type: "social", subtype: "trick", desc: "성공 시 적 벽 -40, 실패 시 나 벽 -20", special: "gamble_lie" }
+    "거짓말": { rank: 2, cost: 1, type: "social", subtype: "trick", desc: "성공 시 적 벽 -40, 실패 시 나 벽 -20", special: "gamble_lie" },
+
+    // [파워 계열] 소셜 전투 동안 지속 효과
+    "담화의 기세": { rank: 2, cost: 1, type: "social", subtype: "power", desc: "이번 소셜 전투 동안 매 턴 시작 시 AP +1 (소멸)", power: { apBonus: 1 }, isExhaust: true },
+    "말빨 예열": { rank: 1, cost: 1, type: "social", subtype: "power", desc: "이번 소셜 전투 동안 매 턴 시작 시 손패 랜덤 1장의 비용이 0이 됩니다. (소멸)", power: { freeCostEachTurn: 1 }, isExhaust: true }
 };
 
 // 기존 카드 데이터에 합치기
@@ -218,6 +274,8 @@ const TOOLTIPS = {
     "건강": "방어 스탯이 2배 증가합니다.",
     "쾌속": "속도 스탯이 2배 증가합니다.",
     "활력": "턴 시작 시 중첩된 수치만큼 체력을 회복하고, 1 줄어듭니다.",
+    "가시": "전투 종료까지 유지됩니다. 공격받을 때마다 공격자에게 가시 수치만큼 고정 피해로 반격합니다. (방어도에 막혀도 발동)",
+    "반사": "반사 상태가 붙어있는 동안, 막히지 않은 피해(실제 받은 피해)를 공격자에게 그대로 되돌려줍니다.",
     // [추가된 부분] 소멸 설명 추가
     "소멸": "카드를 사용하면 덱에서 제거되어, 이번 전투 동안 다시 나오지 않습니다.",
     // [NEW] 소셜 모드 전용 상태이상
