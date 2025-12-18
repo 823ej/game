@@ -1530,7 +1530,7 @@ position: absolute !important;
     /* ★ 핵심 수정 */
     position: relative;
     z-index: 20; /* 시각적으로 오브젝트 위에 있지만 */
-    pointer-events: auto; /* 상태 텍스트/툴팁 호버가 가능하도록 허용 */
+    pointer-events: none; /* 탐색 시 캐릭터 뒤 오브젝트 클릭 가능하도록 클릭 통과 */
 }
 /* 걷는 모션 (좌우 반전 등) */
 .walking-right #dungeon-player { transform: scaleX(1); }
