@@ -714,6 +714,21 @@ function addStatusCardToCombat(cardName, count = 1, destination = 'discard') {
     return true;
 }
 
+// 적 덱에 상태이상 카드를 섞어 넣기 (플레이어 전용 효과)
+function addStatusCardToEnemyDeck(enemy, cardName, count = 1) {
+    if (game.state !== 'battle') return false;
+    if (!enemy || enemy === player) return false;
+    if (!CARD_DATA[cardName] || !isPenaltyCard(cardName)) return false;
+    if (!Array.isArray(enemy.deck)) enemy.deck = [];
+
+    const num = Math.max(1, Number(count || 1));
+    for (let i = 0; i < num; i++) {
+        enemy.deck.push(cardName);
+    }
+    log(`🩸 ${enemy.name} 덱에 [${cardName}] ${num}장 섞였습니다!`);
+    return true;
+}
+
 function addCurseCardToDeck(cardName, count = 1) {
     if (!CARD_DATA[cardName] || !isPenaltyCard(cardName, 'curse')) return false;
     if (!player.deck) player.deck = [];
@@ -3955,6 +3970,13 @@ function useCard(user, target, cardName) {
             addStatusCardToCombat(statusAdd.card, statusAdd.count || 1, statusAdd.destination || 'discard');
         };
 
+        const addStatusToEnemyIfNeeded = (targetUnit, statusEnemyAdd) => {
+            if (!statusEnemyAdd) return;
+            if (game.state !== 'battle') return;
+            if (!targetUnit || targetUnit === player) return;
+            addStatusCardToEnemyDeck(targetUnit, statusEnemyAdd.card, statusEnemyAdd.count || 1);
+        };
+
         const doAttackOnce = (atkTarget) => {
             if (!atkTarget) return 0;
 
@@ -4052,6 +4074,12 @@ function useCard(user, target, cardName) {
                 addStatusCardToCombat(data.statusAdd.card, data.statusAdd.count || 1, data.statusAdd.destination || 'discard');
             }
 
+            // 플레이어가 적 덱에 상태이상을 섞는 카드
+            if (user === player && atkTarget !== player) {
+                addStatusToEnemyIfNeeded(atkTarget, data.statusEnemyAdd);
+                addStatusToEnemyIfNeeded(atkTarget, data.statusEnemyAdd2);
+            }
+
             return res?.dealt || 0;
         };
 
@@ -4086,9 +4114,18 @@ function useCard(user, target, cardName) {
 
             // 플레이어가 자기 덱에 상태이상 섞는 카드
             addStatusIfNeeded(user, data.statusAdd);
+            // 플레이어가 적 덱에 상태이상 섞는 카드
+            if (target !== player) {
+                addStatusToEnemyIfNeeded(target, data.statusEnemyAdd);
+                addStatusToEnemyIfNeeded(target, data.statusEnemyAdd2);
+            }
         } else {
             playAnim(userId, 'anim-bounce');
             addStatusIfNeeded(user, data.statusAdd);
+            if (target !== player) {
+                addStatusToEnemyIfNeeded(target, data.statusEnemyAdd);
+                addStatusToEnemyIfNeeded(target, data.statusEnemyAdd2);
+            }
         }
         
         if (data.special === "cure_anger") {

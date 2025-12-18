@@ -15,7 +15,7 @@ const CARD_DATA = {
     "난사": { rank: 2, cost: 2, type: "attack", desc: "랜덤한 적을 총 세 번 공격! (3 x 3)", dmg: 3, randomHits: 3, job: "common" },
 
     // [공격] 흡혈
-    "흡혈": { rank: 2, cost: 2, type: "attack", desc: "막히지 않은 피해만큼 내 체력 회복 (흡혈)", dmg: 7, lifesteal: 1, job: "common" },
+    "흡혈": { rank: 2, cost: 2, type: "attack", desc: "막히지 않은 피해만큼 내 체력 회복", dmg: 7, lifesteal: 1, job: "common" },
 
     // [공격] 성장(전투 중 / 영구)
     "단련의 일격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -4 (사용할 때마다 이번 전투에서 피해 +1)", dmg: 4, growOnUse: { scope: "combat", dmg: 1 }, job: "common" },
@@ -31,8 +31,8 @@ const CARD_DATA = {
     "복제 훈련": { rank: 1, cost: 1, type: "skill", desc: "방어도 +3 (사용 시 자신을 1장 복제하여 버린 카드에 추가)", block: 3, selfDuplicateToDiscard: 1, job: "common" },
 
     // [스킬] 상태이상 카드 섞기 (뽑을 카드/버린 카드)
-    "오염 주입": { rank: 1, cost: 1, type: "skill", desc: "내 뽑을 카드에 [상처] 1장 추가", statusAdd: { card: "상처", count: 1, destination: "draw" }, job: "common" },
-    "불길한 예감": { rank: 2, cost: 1, type: "skill", desc: "내 뽑을 카드에 [혼란] 1장 추가", statusAdd: { card: "혼란", count: 1, destination: "draw" }, job: "common" },
+    "이판사판 돌격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -10, 내 뽑을 카드에 [상처] 1장 추가", dmg: 10, statusAdd: { card: "상처", count: 1, destination: "draw" }, job: "common" },
+    "불길한 예감": { rank: 2, cost: 0, type: "skill", desc: "뽑을 카드에서 원하는 카드 1장 가져오기, 내 뽑을 카드에 [혼란] 1장 추가", statusAdd: { card: "혼란", count: 1, destination: "draw" }, job: "common" },
 
     // [스킬] 원하는 카드/랜덤 카드 가져오기
     "재활용": { rank: 1, cost: 1, type: "skill", desc: "버린 카드에서 원하는 카드 1장 가져오기", fetch: { from: "discard", mode: "choose", count: 1, to: "hand" }, job: "common" },
@@ -45,6 +45,10 @@ const CARD_DATA = {
 
     // [스킬] 적 능력치 낮추기(디버프)
     "약점 노출": { rank: 2, cost: 1, type: "skill", target: "enemy", desc: "적 약화(2턴) + 취약(2턴) + 마비(1턴)", buffs: [{ name: "약화", val: 2 }, { name: "취약", val: 2 }, { name: "마비", val: 1 }], job: "common" },
+
+    // [스킬] 적 덱에 상태이상 카드 섞기
+    "독구름 살포": { rank: 2, cost: 1, type: "skill", desc: "적 덱에 [고통] 2장 추가", target: "enemy", statusEnemyAdd: { card: "고통", count: 2 }, job: "common" },
+    "방해 연막탄": { rank: 2, cost: 1, type: "skill", desc: "적 덱에 [혼란] 1장, [상처] 1장 추가", target: "enemy", statusEnemyAdd: { card: "혼란", count: 1 }, statusEnemyAdd2: { card: "상처", count: 1 }, job: "common" },
 
     // [스킬] 가시
     "가시 갑옷": { rank: 2, cost: 1, type: "skill", target: "self", desc: "나에게 [가시] 3 적용 (전투 종료까지, 공격받을 때마다 고정 피해 반격)", buff: { name: "가시", val: 3 }, job: "common" },
@@ -110,6 +114,9 @@ const CARD_DATA = {
     "광신의 채찍": { rank: 2, cost: 1, type: "attack", desc: "피부가 찢어진다! (피해 8) [상태이상: 상처]", job: "enemy", dmg: 8, statusAdd: { card: "상처", count: 1, destination: "discard" } },
     "저주의 할퀴기": { rank: 3, cost: 2, type: "attack", desc: "저주가 스민 손톱! (피해 9) [상태이상: 고통]", job: "enemy", dmg: 9, statusAdd: { card: "고통", count: 1, destination: "discard" } },
     "핏빛 실": { rank: 2, cost: 1, type: "attack", desc: "실이 살을 파고든다! (피해 6) [상태이상: 혼란]", job: "enemy", dmg: 6, statusAdd: { card: "혼란", count: 1, destination: "discard" } },
+    "쇠약 바늘": { rank: 2, cost: 1, type: "attack", desc: "녹슨 바늘로 찌릅니다. (피해 5) [상태이상: 상처]", job: "enemy", dmg: 5, statusAdd: { card: "상처", count: 1, destination: "discard" } },
+    "검은 연기": { rank: 2, cost: 1, type: "skill", desc: "검은 연기를 뿜어 시야를 흐립니다. [상태이상: 혼란 1장 뽑을 카드에 섞음]", job: "enemy", statusAdd: { card: "혼란", count: 1, destination: "draw" } },
+    "저주 각인": { rank: 3, cost: 2, type: "skill", desc: "주술 각인을 새깁니다. [상태이상: 고통 1장 손으로]", job: "enemy", statusAdd: { card: "고통", count: 1, destination: "hand" } },
 
     // --- 장비 전용 카드 (장비 장착 시 덱에 추가, 해제 시 제거) ---
     "사격(관통)": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
@@ -153,7 +160,8 @@ const ENEMY_DATA = {
         stats: { atk: 1, def: 0, spd: 3 }, // 기본 스탯
         weakness : "strike", // 타격에 약함 (주먹)
         growth: { hp: 4, atk: 0.5, def: 0, spd: 0.1 }, // 레벨당 성장 수치
-        deckType: "basic", // 사용하는 덱 타입
+        deckType: "custom",
+        deck: ["타격", "타격", "수비", "쇠약 바늘"], // 사용하는 덱
         img: "https://placehold.co/100x100/c0392b/ffffff?text=Bully"
     },
     "허수아비": {
@@ -183,7 +191,7 @@ const ENEMY_DATA = {
         weakness : "holy",
         growth: { hp: 0, atk: 0, def: 0, spd: 0 },
         deckType: "custom",
-        deck: ["광신의 춤", "독 뿌리기", "광신의 비명", "광신의 채찍", "사격"], // 하이브리드 패턴
+        deck: ["광신의 춤", "독 뿌리기", "검은 연기", "광신의 비명", "광신의 채찍", "사격"], // 하이브리드 패턴
         img: "https://placehold.co/120x120/4b0082/fff?text=BOSS+2"
     },
     "boss_cursed_doll": {
@@ -194,7 +202,7 @@ const ENEMY_DATA = {
         growth: { hp: 0, atk: 0, def: 0, spd: 0 },
         deckType: "custom",
         // 독을 걸거나 멘탈 공격(비명)을 섞어 쓰는 까다로운 패턴
-        deck: ["독 뿌리기", "독 뿌리기", "비명", "저주의 할퀴기", "핏빛 실"], 
+        deck: ["독 뿌리기", "독 뿌리기", "비명", "저주의 할퀴기", "핏빛 실", "저주 각인"], 
         img: "https://placehold.co/120x120/5e2a84/fff?text=DOLL",
         // [추가 데이터] 패시브/태그/전리품 힌트
         passive: {
