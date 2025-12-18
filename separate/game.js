@@ -996,6 +996,7 @@ function createEnemyData(key, index) {
         img: data.img,
         // 적에게만 선행 게이지를 주지 않도록 0에서 시작 (플레이어와 동일 조건)
         ag: 0,
+        baseAp: 2,
         weakness: data.weakness || "none",
         isBroken: false,
         isStunned: false
@@ -1020,8 +1021,92 @@ function createNpcEnemyData(npcKey, index = 0) {
         deck: data.deck || ["횡설수설"], 
         img: data.img,
         ag: 0,
+        baseAp: 2,
         isNpc: true,
     };
+}
+
+/* [NEW] 적 의도(다음 행동) 계산 */
+function pickEnemyCardForIntent(enemy) {
+    if (!enemy || !Array.isArray(enemy.deck) || enemy.deck.length === 0) return null;
+    return enemy.deck[Math.floor(Math.random() * enemy.deck.length)];
+}
+
+function describeIntentFromCard(cardName) {
+    const data = CARD_DATA[cardName] || {};
+    const result = { icon: "❓", tooltip: "무슨 행동을 할지 알 수 없습니다." };
+
+    if (data.special === "summon") {
+        result.icon = "📢";
+        result.tooltip = "소환/지원 요청을 준비 중";
+        return result;
+    }
+
+    if (data.type === "social") {
+        const isAttack = data.subtype === "attack";
+        result.icon = isAttack ? "💬" : "🗣️";
+        result.tooltip = isAttack ? "멘탈 공격을 시도하려 함" : "교란/설득을 준비 중";
+        return result;
+    }
+
+    if (data.type === "attack") {
+        const hits = data.multiHit || data.randomHits || 1;
+        const totalDmg = (data.dmg || 0) * hits;
+        const isHeavy = totalDmg >= 12 || data.rank >= 3;
+        result.icon = isHeavy ? "💥" : "⚔️";
+        result.tooltip = isHeavy ? "강한 공격을 준비 중" : "공격하려 함";
+        return result;
+    }
+
+    if (data.type === "skill") {
+        if (data.block && data.block > 0) {
+            result.icon = "🛡️";
+            result.tooltip = "방어 태세를 갖추려 함";
+            return result;
+        }
+        if (data.buff || data.power) {
+            result.icon = "✨";
+            result.tooltip = "자신을 강화하거나 특수 효과를 준비 중";
+            return result;
+        }
+        result.icon = "🎲";
+        result.tooltip = "특수 행동을 준비 중";
+        return result;
+    }
+
+    if (data.type === "power") {
+        result.icon = "✨";
+        result.tooltip = "지속 효과를 전개하려 함";
+        return result;
+    }
+
+    return result;
+}
+
+// 여러 장 예고를 위해 큐 사용
+function setEnemyIntentQueue(enemy, count = 1) {
+    if (!enemy || enemy.hp <= 0) {
+        if (enemy) enemy.intentQueue = [];
+        return;
+    }
+    const intents = [];
+    for (let i = 0; i < count; i++) {
+        const cardName = pickEnemyCardForIntent(enemy);
+        if (!cardName) break;
+        const info = describeIntentFromCard(cardName);
+        intents.push({ card: cardName, icon: info.icon, tooltip: info.tooltip });
+    }
+    enemy.intentQueue = intents;
+}
+
+function seedEnemyIntents(force = false) {
+    if (!Array.isArray(enemies)) return;
+    enemies.forEach(e => {
+        if (e.hp > 0 && (force || !Array.isArray(e.intentQueue) || e.intentQueue.length === 0)) {
+            const planned = e.ap || e.baseAp || 2;
+            setEnemyIntentQueue(e, planned);
+        }
+    });
 }
 /* [NEW] 스탯 기반 파생 능력치 재계산 */
 function recalcStats() {
@@ -1762,6 +1847,7 @@ function startSocialBattle(npcKey, preserveEnemies = false) {
         let npc = createNpcEnemyData(npcKey, 0);
         if (npc) enemies.push(npc);
     }
+    seedEnemyIntents(true);
 
     let data = NPC_DATA[npcKey] || enemies[0];
     if (data) log(`💬 [${data.name}]와(과) 설전을 벌입니다! (의지을 무너뜨리세요)`);
@@ -3295,6 +3381,7 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     }
 
     // 6. 적 화면 렌더링 (즉시 실행)
+    seedEnemyIntents(true);
     renderEnemies();
 
     // 프리뷰 모드 해제 (애니메이션 효과를 위해 약간 딜레이 줄 수 있으나, 안전을 위해 즉시 해제)
@@ -3537,6 +3624,8 @@ function renderEnemies() {
 /* [수정] 플레이어 행동 개시 (연속 턴 방어도 유지) */
 function startPlayerTurnLogic() {
     ensureCardSystems(player);
+    // 플레이어 턴 시작 시 적 의도 예고를 새로 설정
+    seedEnemyIntents(true);
     // [NEW] 기절 체크
     if (player.isStunned) {
         log("😵 <b>기절 상태입니다! 아무것도 할 수 없습니다.</b>");
@@ -3659,9 +3748,13 @@ function endPlayerTurn() {
 /* [game.js] startEnemyTurnLogic 함수 수정 (안전장치 추가) */
 async function startEnemyTurnLogic(actor) {
     actor.block = 0; 
-    actor.ap = 2; 
+    actor.ap = actor.baseAp || 2; 
     
     let el = document.getElementById(`enemy-unit-${actor.id}`);
+    if (!Array.isArray(actor.intentQueue) || actor.intentQueue.length === 0) {
+        setEnemyIntentQueue(actor, actor.ap || actor.baseAp || 2);
+        updateUI();
+    }
     // 1. 기절(Stun) 체크
     if (actor.isStunned) {
         log(`😵 <b>${actor.name}</b>은(는) 기절하여 움직일 수 없습니다!`);
@@ -3702,7 +3795,13 @@ async function startEnemyTurnLogic(actor) {
 
             await sleep(800);
 
-            let cName = actor.deck[Math.floor(Math.random() * actor.deck.length)];
+            let cName = null;
+            if (actor.intentQueue && actor.intentQueue.length > 0) {
+                const intent = actor.intentQueue.shift();
+                cName = intent.card;
+            } else {
+                cName = pickEnemyCardForIntent(actor);
+            }
             let cData = CARD_DATA[cName];
 
             // [수정/보완] 카드 데이터가 없는 경우(비명 등 누락 시) 방어 로직
@@ -3717,7 +3816,9 @@ async function startEnemyTurnLogic(actor) {
 
             actor.ap--; 
             useCard(actor, player, cName); 
-            
+            if (actor.ap > 0 && actor.hp > 0 && (!actor.intentQueue || actor.intentQueue.length === 0)) {
+                setEnemyIntentQueue(actor, actor.ap);
+            }
             updateUI(); 
             if (checkGameOver()) return; 
         }
@@ -4661,6 +4762,20 @@ function renderShopScreen(shopType = "shop_black_market") {
         itemContainer.appendChild(el);
     });
 }
+// [유틸] 카드가 들어갈 올바른 덱에 자동 분배 (배틀/소셜)
+function addCardToAppropriateDeck(cardName) {
+    const data = CARD_DATA[cardName] || {};
+    const isSocial = data.type === "social";
+    if (isSocial) {
+        if (!Array.isArray(player.socialDeck)) player.socialDeck = [];
+        player.socialDeck.push(cardName);
+        return "소셜 덱";
+    }
+    if (!Array.isArray(player.deck)) player.deck = [];
+    player.deck.push(cardName);
+    return "전투 덱";
+}
+
 // [수정] buyShopItem: alert -> showPopup
 function buyShopItem(el, type, name, cost) {
     if (el.classList.contains('sold-out')) return;
@@ -4673,10 +4788,10 @@ function buyShopItem(el, type, name, cost) {
 
     if (type === 'card') {
         player.gold -= cost;
-        player.storage.push(name);
+        const deckLabel = addCardToAppropriateDeck(name);
         
         // [수정] 구매 완료 알림
-        showPopup("구매 성공", `[${name}] 구매 완료!<br>보관함으로 이동되었습니다.`, [{txt: "확인", func: closePopup}]);
+        showPopup("구매 성공", `[${name}] 구매 완료!<br>${deckLabel}에 바로 추가되었습니다.`, [{txt: "확인", func: closePopup}]);
         
         el.classList.add('sold-out');
         el.style.opacity = 0.5;
@@ -5328,8 +5443,17 @@ if (enemies && enemies.length > 0) {
         let hpPct = isSocialEnemy ? Math.min(100, Math.max(0, e.hp)) : Math.max(0, (e.hp / e.maxHp) * 100);
         let barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
 
-        let intent = "💤";
-        if (game.turnOwner === "enemy" && game.currentActorId === e.id) intent = isSocialEnemy ? "💬" : "⚔️";
+        let intentIconsHtml = `<span class="intent-icon" title="행동 준비 중">💤</span>`;
+        if (e.intentQueue && e.intentQueue.length > 0) {
+            intentIconsHtml = e.intentQueue.map((intObj, idx) => {
+                const icon = intObj.icon || "❓";
+                const tip = intObj.tooltip || "준비 중";
+                return `<span class="intent-icon" title="${tip}" data-int-idx="${idx}">${icon}</span>`;
+            }).join(" ");
+        } else if (e.intent && e.intent.icon) {
+            const tip = e.intent.tooltip || "행동 준비 중";
+            intentIconsHtml = `<span class="intent-icon" title="${tip}">${e.intent.icon}</span>`;
+        }
         
         // 버프 텍스트 툴팁 적용 + 가시(thorns) 별도 표기
         ensureThornsField(e);
@@ -5363,7 +5487,7 @@ if (enemies && enemies.length > 0) {
         // HTML 덮어쓰기 (onerror 추가)
         el.innerHTML = `
             <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">
-                ${statusIcon} ${e.name} <span class="intent-icon">${intent}</span>
+                ${statusIcon} ${e.name} ${intentIconsHtml}
             </div>
             <img src="${imgSrc}" alt="${e.name}" class="char-img"
                  onerror="this.src='https://placehold.co/100x100/555/fff?text=No+Img';">
@@ -5704,7 +5828,8 @@ function getCardReward() {
         {
             txt: "받기", 
             func: ()=>{
-                player.deck.push(newCard); 
+                const deckLabel = addCardToAppropriateDeck(newCard);
+                log(`🃏 [${newCard}]을(를) ${deckLabel}에 추가했습니다.`);
                 finishReward(); // 제자리 유지
             }
         }, 
