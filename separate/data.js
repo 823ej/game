@@ -324,7 +324,7 @@ const CITY_MAP = {
             desc: "영진 탐정 사무소와 카페 헤카테, 청운맨션, 재래시장, 사이버 벙커, 뒷골목, 주택가, 성당이 모여 있는 오래된 거리.", 
             vibe: "busy", 
             pos: { x: 72, y: 50 }, 
-            tags: ["영진 탐정 사무소", "카페 헤카테", "청운맨션", "재래시장", "사이버 벙커", "뒷골목", "주택가", "성당"],
+            tags: ["영진 탐정 사무소", "카페 헤카테", "청운맨션", "재래시장", "사이버 벙커", "주택가", "성당"],
             links: ["central_admin"]
         },
         { 
@@ -334,7 +334,7 @@ const CITY_MAP = {
             desc: "폐공장 단지와 시 외곽으로 이어지는 국도, 클럽 Bad Sector가 숨어 있는 산업 구역.", 
             vibe: "outskirts", 
             pos: { x: 50, y: 78 }, 
-            tags: ["폐공장", "외곽 국도", "화물 트럭", "클럽 Bad Sector"],
+            tags: ["폐공장", "외곽 국도", "화물 트럭", "클럽 Bad Sector", "뒷골목"],
             links: ["central_admin"]
         },
         { 
@@ -396,9 +396,19 @@ const CITY_AREA_DATA = {
                 desc: "도심 지하철과 연결되는 입구. 사람들의 발길이 끊이지 않는다.",
                 pos: { x: 54, y: 82 },
                 grid: { x: 1, y: 2 },
-                links: ["central_plaza"],
+                links: ["central_plaza", "subway_market"],
                 tags: ["교통", "만남의 장소"],
                 icon: "🚇"
+            },
+            {
+                id: "subway_market",
+                name: "지하철역 지하상가",
+                desc: "지하로 이어진 상가. 쇼핑과 먹거리가 가득하다.",
+                pos: { x: 30, y: 86 },
+                grid: { x: 0, y: 2 },
+                links: ["subway_gate"],
+                tags: ["상가", "지하"],
+                icon: "🛍️"
             },
             {
                 id: "st_jude_academy",
@@ -426,9 +436,19 @@ const CITY_AREA_DATA = {
                 desc: "비정형관리국(UDRA) 별관이 입주한 건물. 허가받은 사람만 드나든다.",
                 pos: { x: 22, y: 32 },
                 grid: { x: 2, y: 1 },
-                links: ["central_plaza"],
+                links: ["central_plaza", "udra_hq"],
                 tags: ["정부", "보안"],
                 icon: "🏢"
+            },
+            {
+                id: "udra_hq",
+                name: "비정형관리국(UDRA)",
+                desc: "비정형 사건을 전담하는 중앙 기관.",
+                pos: { x: 70, y: 18 },
+                grid: { x: 2, y: 0 },
+                links: ["udra_annex"],
+                tags: ["기관", "정보"],
+                icon: "🧿"
             }
         ]
     },
@@ -491,16 +511,6 @@ const CITY_AREA_DATA = {
                 icon: "🛰️"
             },
             {
-                id: "back_alley",
-                name: "뒷골목",
-                desc: "사람들의 시선을 피해 걷기 좋은 어두운 골목.",
-                pos: { x: 52, y: 84 },
-                grid: { x: 1, y: 2 },
-                links: ["oldtown_market", "residential_block", "cathedral"],
-                tags: ["은신", "위험"],
-                icon: "🌒"
-            },
-            {
                 id: "residential_block",
                 name: "주택가",
                 desc: "오래된 주택들이 빼곡하게 들어선 생활 구역.",
@@ -516,7 +526,7 @@ const CITY_AREA_DATA = {
                 desc: "낡은 종탑이 구시가지의 밤을 지킨다.",
                 pos: { x: 78, y: 84 },
                 grid: { x: 2, y: 2 },
-                links: ["oldtown_market", "cyber_bunker", "back_alley"],
+                links: ["oldtown_market", "cyber_bunker"],
                 tags: ["성지", "기도"],
                 icon: "⛪"
             }
@@ -566,6 +576,19 @@ const CITY_AREA_DATA = {
                 links: ["industrial_yard", "national_road"],
                 tags: ["클럽", "은밀"],
                 icon: "🎧"
+            },
+            {
+                id: "back_alley",
+                name: "뒷골목",
+                desc: "사람들의 시선을 피해 걷기 좋은 어두운 골목.",
+                pos: { x: 22, y: 84 },
+                grid: { x: 0, y: 2 },
+                links: ["industrial_yard", "national_road"],
+                tags: ["은신", "위험"],
+                icon: "🌒",
+                objects: [
+                    { id: "slums_dungeon", name: "뒷골목 슬럼", icon: "🧭", action: "enter_dungeon", dungeonId: "slums_back_alley" }
+                ]
             }
         ]
     },
@@ -691,6 +714,21 @@ const CITY_DUNGEON_CONFIGS = {
         },
         noClueLock: true,
         discoverCitySpot: { areaId: "north_mountain", key: "abandoned_lab", name: "폐연구소" }
+    },
+    slums_back_alley: {
+        title: "뒷골목 슬럼",
+        desc: "범죄와 오물이 뒤섞인 골목. 위험하지만 정보가 모인다.",
+        width: 6,
+        height: 3,
+        roomCount: 12,
+        data: {          
+            battle: 4,
+            box: 2,
+            note: 2,
+            bush: 2,
+            shop: 1,
+            heal: 1
+        }
     }
 };
 
