@@ -207,14 +207,76 @@
     </div>
 </div>
 
-<div id="city-scene" class="scene hidden" style="background:#111; align-items:center;">
-    <h2 style="color:#f1c40f; margin-bottom:10px;">🌃 나이트 시티 지도</h2>
-    <p style="color:#777; margin-bottom:20px;">이동할 구역을 선택하세요.</p>
-    
-    <div id="district-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; width:100%; max-width:700px; padding:10px;">
+<div id="city-scene" class="scene hidden city-scene">
+    <div id="city-map-mode">
+        <div class="city-map-shell">
+            <div class="city-map-column">
+                <div class="city-map-header">
+                    <div>
+                        <p class="city-kicker">Seju City</p>
+                        <h2 class="city-title">🌃 세주시 전역 지도</h2>
+                        <p class="city-sub">중앙/동/서/남/북 구역을 눌러 이동 동선을 잡아보세요.</p>
+                    </div>
+                    <div id="city-legend" class="city-legend"></div>
+                </div>
+                <div id="city-map" class="city-map-canvas"></div>
+            </div>
+            <div class="city-detail-panel" id="city-detail-panel">
+                <p class="city-detail-title" id="city-detail-title">구역을 선택하세요</p>
+                <p class="city-detail-desc" id="city-detail-desc">세주시 중심부와 동서남북 구역의 주요 거점을 확인하며 동선을 세웁니다.</p>
+                <div id="city-detail-tags" class="city-tags"></div>
+                <div id="city-detail-status" class="city-detail-status">현재는 지도 배치만 완료된 상태입니다. 이후 각 구역에서 탐색/던전 진입을 연결할 예정입니다.</div>
+                <div class="city-detail-actions">
+                    <button class="action-btn" id="city-action-explore" disabled>탐색 준비 중</button>
+                    <div class="city-note">현재는 도시 배치를 확인하는 단계입니다.</div>
+                </div>
+            </div>
         </div>
+    </div>
 
-    <button class="action-btn" style="margin-top:20px; background:#7f8c8d;" onclick="renderHub()">🏠 사무소 복귀</button>
+    <div id="city-area-mode" class="hidden">
+        <div class="city-area-header">
+            <div>
+                <p class="city-kicker" id="city-area-name">내부 지도</p>
+                <p class="city-sub" id="city-area-desc">구역 내부 주요 지점을 걷거나 퀵 이동할 수 있습니다.</p>
+            </div>
+            <div>
+                <button class="small-btn" onclick="exitCityAreaMode()">◀ 전역 지도</button>
+            </div>
+        </div>
+        <div class="city-area-body">
+            <div id="city-area-map" class="city-area-map">
+                <svg class="city-area-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+                <div class="city-area-node-layer"></div>
+            </div>
+            <div class="city-area-detail">
+                <p class="city-detail-title" id="city-spot-title">지점을 선택하세요</p>
+                <p class="city-detail-desc" id="city-spot-desc">지도를 눌러 이동할 지점을 선택하세요.</p>
+                <div id="city-spot-tags" class="city-tags"></div>
+                <div id="city-spot-status" class="city-detail-status">현재 위치와 선택 지점이 표시됩니다.</div>
+                <div class="city-spot-actions">
+                    <button class="action-btn" id="btn-area-walk" onclick="moveCityArea('walk')">🚶 걷기</button>
+                    <button class="action-btn" id="btn-area-warp" onclick="moveCityArea('warp')">⚡ 퀵 이동</button>
+                </div>
+            </div>
+        </div>
+        <div class="city-side-wrapper">
+            <div class="city-side-header">
+                <p class="city-kicker">Side View</p>
+                <p class="city-sub">좌우 이동으로 건물 앞을 지납니다. (내부 진입은 추후 연결)</p>
+            </div>
+            <div class="city-side-controls">
+                <button class="small-btn" onclick="moveCitySide('left')">◀</button>
+                <button class="small-btn" onclick="moveCitySide('right')">▶</button>
+                <button class="small-btn" onclick="interactCitySpot()">⏺ 인터랙트</button>
+            </div>
+            <div id="city-side-lane" class="city-side-lane">
+                <div id="city-side-player" class="city-side-player">🧍</div>
+                <div id="city-side-buildings" class="city-side-buildings"></div>
+            </div>
+        </div>
+    </div>
+    <button class="action-btn city-back-btn" style="margin-top:10px; background:#7f8c8d;" onclick="renderHub()">🏠 사무소 복귀</button>
 </div>
 <div id="exploration-scene" class="scene hidden">
     

@@ -52,111 +52,548 @@ function getRandomCardByRank(rank) {
 /* SCENARIOS 데이터에 구역 연결 (기존 데이터 유지하되 location은 동적으로 처리 가능) */
 // (기존 SCENARIOS 데이터는 그대로 두셔도 됩니다)
 
-/* [수정] 도시 지도 렌더링 (수락한 의뢰 위치 강조) */
+const CITY_VIBE_META = {
+    safe: { label: "거점", color: "#f1c40f" },
+    busy: { label: "번화", color: "#1abc9c" },
+    corporate: { label: "빌딩가", color: "#3498db" },
+    dark: { label: "음지", color: "#c0392b" },
+    calm: { label: "주거", color: "#95a5a6" },
+    outskirts: { label: "외곽", color: "#e67e22" },
+    water: { label: "해안", color: "#00b5d8" },
+    neutral: { label: "기타", color: "#9b59b6" }
+};
+
+/* [수정] 도시 지도 렌더링 (전역 거점 배치 확인) */
 function renderCityMap() {
     game.state = 'city';
-    // 던전을 벗어날 때는 다음 탐사 진입 시 새 맵을 생성하도록 플래그 설정
     resetDungeonState();
     switchScene('city');
-    // [★핵심 수정] 전투/탐사 중 잠겼던 버튼들을 강제로 다시 풀어줍니다.
     game.inputLocked = false; 
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
-    const grid = document.getElementById('district-grid');
-    grid.innerHTML = "";
-    
-    // 현재 활성화된(수락한) 시나리오 데이터 가져오기
-    let activeScId = game.activeScenarioId;
-    let unlockList = [];
-    if (activeScId && SCENARIOS[activeScId]) {
-        unlockList = SCENARIOS[activeScId].unlocks || [];
+
+    const mapEl = document.getElementById('city-map');
+    const legendEl = document.getElementById('city-legend');
+    if (!mapEl) return;
+
+    mapEl.innerHTML = `
+        <svg class="city-map-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <div class="city-map-node-layer"></div>
+    `;
+
+    const lineLayer = mapEl.querySelector('.city-map-lines');
+    const nodeLayer = mapEl.querySelector('.city-map-node-layer');
+    const nodes = (CITY_MAP && Array.isArray(CITY_MAP.nodes)) ? CITY_MAP.nodes : [];
+    const lookup = {};
+    nodes.forEach(n => lookup[n.id] = n);
+
+    const drawn = new Set();
+    nodes.forEach(a => {
+        (a.links || []).forEach(toId => {
+            const b = lookup[toId];
+            if (!b) return;
+            const key = [a.id, b.id].sort().join("-");
+            if (drawn.has(key)) return;
+            drawn.add(key);
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", a.pos?.x ?? 0);
+            line.setAttribute("y1", a.pos?.y ?? 0);
+            line.setAttribute("x2", b.pos?.x ?? 0);
+            line.setAttribute("y2", b.pos?.y ?? 0);
+            lineLayer.appendChild(line);
+        });
+    });
+
+    nodes.forEach(node => {
+        const el = document.createElement('button');
+        el.className = `city-node tone-${node.vibe || 'neutral'}`;
+        el.dataset.id = node.id;
+        el.style.left = `${node.pos?.x ?? 0}%`;
+        el.style.top = `${node.pos?.y ?? 0}%`;
+        el.innerHTML = `
+            <span class="city-node-name">${node.name}</span>
+            <span class="city-node-sub">${node.label || ""}</span>
+        `;
+        el.onclick = () => enterDistrict(node.id);
+        nodeLayer.appendChild(el);
+    });
+
+    if (legendEl) {
+        legendEl.innerHTML = Object.keys(CITY_VIBE_META).map(key => {
+            const meta = CITY_VIBE_META[key];
+            return `<span class="city-chip" style="border-color:${meta.color}; color:${meta.color}">${meta.label}</span>`;
+        }).join("");
     }
 
-    for (let key in DISTRICTS) {
-        let d = DISTRICTS[key];
-        
-        // [표시 조건]
-        // 1. 숨겨진 구역이 아님 OR
-        // 2. 현재 의뢰로 인해 해금된 구역임
-        let isVisible = !d.hidden || unlockList.includes(key);
-
-        if (!isVisible) continue; 
-
-        let el = document.createElement('div');
-        el.className = "hub-card";
-        el.style.borderColor = d.color;
-        
-        // [핵심] 현재 수락한 의뢰가 이 구역에 있는가?
-        let isTarget = d.scenarios.includes(activeScId);
-        let badge = isTarget ? "🎯 <span style='color:#e74c3c; font-weight:bold;'>목표 지역</span>" : "";
-
-        el.innerHTML = `
-            <h3 style="color:${d.color}">${d.name}</h3>
-            <div style="margin-bottom:5px;">${badge}</div>
-            <p style="font-size:0.8em; color:#aaa;">${d.desc}</p>
-            <div style="font-size:0.8em; margin-top:5px;">⚠️ 위험도: ${"★".repeat(d.danger)}</div>
-        `;
-        
-        // 클릭 시 해당 구역 진입
-        el.onclick = () => enterDistrict(key);
-        grid.appendChild(el);
+    const defaultNode = nodes.find(n => n.id === "east_oldtown") || nodes[0];
+    if (defaultNode) {
+        enterDistrict(defaultNode.id, true);
     }
     autoSave();
 }
-/* [game.js] enterDistrict 함수 수정 (버튼 통합) */
-function enterDistrict(key) {
-    let d = DISTRICTS[key];
-    let distScenarios = d.scenarios || []; 
-    
-    let content = `<div style="display:flex; flex-direction:column; gap:10px;">`;
 
-    // [핵심 변경] 버튼 표시 로직 통합
-    // 현재 수락한 의뢰가 있고, 이 구역이 그 의뢰의 목표 장소인가?
-    let isTargetLocation = game.activeScenarioId && distScenarios.includes(game.activeScenarioId);
+/* [수정] 도시 거점 선택 (현재는 정보 패널만) */
+function enterDistrict(key, silentAreaOpen) {
+    const nodes = (CITY_MAP && Array.isArray(CITY_MAP.nodes)) ? CITY_MAP.nodes : [];
+    const node = nodes.find(n => n.id === key);
+    if (!node) return;
 
-    if (isTargetLocation) {
-        // [CASE A] 목표 구역임 -> '수사 시작' 버튼 표시
-        let scId = game.activeScenarioId;
-        let scTitle = SCENARIOS[scId].title;
-        
-        content += `
-            <button class="action-btn" onclick="beginMission()" style="border-left:5px solid #e74c3c; background:#2c3e50;">
-                🕵️ <b>수사 진행: ${scTitle}</b><br>
-                <span style="font-size:0.7em; color:#ddd;">메인 의뢰를 수행합니다.</span>
-            </button>
-        `;
-    } else {
-        // [CASE B] 목표 아님 (또는 의뢰 없음) -> '순찰' 버튼 표시
-        content += `
-            <button class="action-btn" onclick="startPatrol('${key}')" style="background:#555;">
-                🚓 주변 순찰 (자유 전투/파밍)
-            </button>
-        `;
-    }
+    game.selectedCityNode = key;
 
-    // 구분선 (상점이 있을 때만 깔끔하게 보이도록)
-    if (d.facilities && d.facilities.length > 0) {
-        content += `<div style="height:1px; background:#444; margin:5px 0;"></div>`;
-        
-        // [시설] 상점 버튼들
-        d.facilities.forEach(fac => {
-            if (fac.startsWith("shop_")) {
-                let shopName = "상점";
-                let btnColor = "#e67e22";
-                
-                if (fac === "shop_black_market") { shopName = "💀 암시장"; btnColor = "#444"; }
-                else if (fac === "shop_pharmacy") { shopName = "💊 약국/편의점"; btnColor = "#27ae60"; }
-                else if (fac === "shop_high_end") { shopName = "💎 고급 부티크"; btnColor = "#8e44ad"; }
+    document.querySelectorAll('.city-node').forEach(el => {
+        el.classList.toggle('active', el.dataset.id === key);
+    });
 
-                content += `<button class="action-btn" onclick="renderShopScreen('${fac}')" style="background:${btnColor};">${shopName}</button>`;
+    const titleEl = document.getElementById('city-detail-title');
+    const descEl = document.getElementById('city-detail-desc');
+    const tagsEl = document.getElementById('city-detail-tags');
+    const statusEl = document.getElementById('city-detail-status');
+    const exploreBtn = document.getElementById('city-action-explore');
+    const mapMode = document.getElementById('city-map-mode');
+    const areaMode = document.getElementById('city-area-mode');
+
+    if (titleEl) titleEl.textContent = node.name;
+    if (descEl) descEl.textContent = node.desc;
+    if (tagsEl) {
+        const tags = (node.tags && node.tags.length > 0) ? node.tags : ["탐색 루트 배치 중"];
+        tagsEl.innerHTML = "";
+        const area = getCityArea(key);
+        const visibleArea = getVisibleCityArea(key);
+        const visibleSpots = (visibleArea && visibleArea.spots) ? visibleArea.spots : [];
+        const allSpots = (area && area.spots) ? area.spots : [];
+        tags.forEach(tag => {
+            const chip = document.createElement('button');
+            chip.type = "button";
+            chip.className = 'city-chip city-chip-action';
+            chip.textContent = tag;
+
+            if (area) {
+                const visibleSpot = findSpotByTag({ spots: visibleSpots }, tag);
+                if (visibleSpot) {
+                    chip.onclick = () => quickTravelCitySpot(key, visibleSpot.id);
+                } else {
+                    const hiddenSpot = findSpotByTag({ spots: allSpots }, tag);
+                    if (hiddenSpot && hiddenSpot.requiresDiscovery) {
+                        chip.disabled = true;
+                        chip.title = "아직 발견되지 않은 장소입니다.";
+                    }
+                }
             }
+
+            tagsEl.appendChild(chip);
         });
     }
+    const hasArea = CITY_AREA_DATA && CITY_AREA_DATA[key];
 
-    content += `</div>`;
+    if (statusEl) {
+        statusEl.textContent = hasArea
+            ? "이 구역은 내부 탐색이 가능합니다. 아래 버튼으로 진입하세요."
+            : "지금은 도시 지도만 확인할 수 있습니다. 추후 이 거점에서 탐색/던전 진입을 연결합니다.";
+    }
+    if (exploreBtn) {
+        if (hasArea) {
+            exploreBtn.textContent = "구역 진입";
+            exploreBtn.disabled = false;
+            exploreBtn.onclick = () => startCityExploration(key);
+        } else {
+            exploreBtn.textContent = "탐색 준비 중";
+            exploreBtn.disabled = true;
+            exploreBtn.onclick = null;
+        }
+    }
 
-    showPopup(`📍 ${d.name}`, "이 구역에서 무엇을 하시겠습니까?", [
-        {txt: "뒤로가기", func: closePopup}
-    ], content);
+    if (mapMode && areaMode) {
+        mapMode.classList.remove('hidden');
+        areaMode.classList.add('hidden');
+    }
+}
+
+function enterCityAreaMode(areaId) {
+    const mapMode = document.getElementById('city-map-mode');
+    const areaMode = document.getElementById('city-area-mode');
+    if (mapMode) mapMode.classList.add('hidden');
+    if (areaMode) areaMode.classList.remove('hidden');
+    renderCityArea(areaId);
+}
+
+function exitCityAreaMode() {
+    const mapMode = document.getElementById('city-map-mode');
+    const areaMode = document.getElementById('city-area-mode');
+    if (mapMode) mapMode.classList.remove('hidden');
+    if (areaMode) areaMode.classList.add('hidden');
+}
+
+/* --- 시티 내부 지도 렌더링/이동 --- */
+function getCityArea(areaId) {
+    if (!CITY_AREA_DATA) return null;
+    return CITY_AREA_DATA[areaId] || null;
+}
+
+function ensureCityDiscoveries() {
+    if (!game.cityDiscoveries) game.cityDiscoveries = {};
+    return game.cityDiscoveries;
+}
+
+function isCitySpotUnlocked(areaId, spot) {
+    if (!spot || !spot.requiresDiscovery) return true;
+    const discoveries = ensureCityDiscoveries();
+    return !!(discoveries[areaId] && discoveries[areaId][spot.requiresDiscovery]);
+}
+
+function unlockCitySpot(areaId, discoveryKey) {
+    if (!areaId || !discoveryKey) return;
+    const discoveries = ensureCityDiscoveries();
+    if (!discoveries[areaId]) discoveries[areaId] = {};
+    if (!discoveries[areaId][discoveryKey]) {
+        discoveries[areaId][discoveryKey] = true;
+        autoSave();
+    }
+}
+
+function getVisibleCityArea(areaId) {
+    const area = getCityArea(areaId);
+    if (!area) return null;
+    const visibleSpots = (area.spots || []).filter(spot => isCitySpotUnlocked(areaId, spot));
+    return { ...area, spots: visibleSpots };
+}
+
+function findSpotByTag(area, tag) {
+    if (!area || !Array.isArray(area.spots)) return null;
+    return area.spots.find(spot => spot.name === tag || (spot.tags || []).includes(tag)) || null;
+}
+
+function syncCityDungeonPosition(spotId) {
+    if (!DungeonSystem || !Array.isArray(DungeonSystem.map)) return;
+    for (let y = 0; y < DungeonSystem.map.length; y++) {
+        for (let x = 0; x < DungeonSystem.map[y].length; x++) {
+            const cell = DungeonSystem.map[y][x];
+            if (cell && cell.citySpot && cell.citySpot.id === spotId) {
+                DungeonSystem.currentPos = { x, y };
+                DungeonSystem.progress = 0;
+                if (typeof DungeonSystem.renderView === 'function') {
+                    DungeonSystem.renderView();
+                }
+                return;
+            }
+        }
+    }
+}
+
+function quickTravelCitySpot(areaId, spotId) {
+    const area = getVisibleCityArea(areaId);
+    if (!area) return;
+    const spot = getAreaSpot(area, spotId);
+    if (!spot) return;
+    startCityExploration(areaId, spotId);
+}
+
+function getAreaSpot(area, spotId) {
+    if (!area || !Array.isArray(area.spots)) return null;
+    return area.spots.find(s => s.id === spotId) || null;
+}
+
+function findCityAreaPath(area, startId, targetId) {
+    if (!area || !Array.isArray(area.spots)) return [];
+    if (startId === targetId) return [startId];
+    const queue = [[startId]];
+    const visited = new Set([startId]);
+    const linkMap = {};
+    area.spots.forEach(s => linkMap[s.id] = s.links || []);
+    while (queue.length > 0) {
+        const path = queue.shift();
+        const current = path[path.length - 1];
+        for (let next of (linkMap[current] || [])) {
+            if (visited.has(next)) continue;
+            const nextPath = [...path, next];
+            if (next === targetId) return nextPath;
+            visited.add(next);
+            queue.push(nextPath);
+        }
+    }
+    return [];
+}
+
+function renderCityArea(areaId) {
+    const area = getVisibleCityArea(areaId);
+    if (!area) return;
+    if (!game.cityArea) game.cityArea = {};
+    game.cityArea.areaId = areaId;
+    const validIds = (area.spots || []).map(s => s.id);
+    if (!validIds.includes(game.cityArea.currentSpot)) {
+        game.cityArea.currentSpot = area.start || validIds[0];
+    }
+    if (!validIds.includes(game.cityArea.selectedSpot)) {
+        game.cityArea.selectedSpot = game.cityArea.currentSpot;
+    }
+    if (game.cityArea.sideIndex === undefined) {
+        game.cityArea.sideIndex = Math.max(0, validIds.indexOf(game.cityArea.currentSpot));
+    }
+
+    const nameEl = document.getElementById('city-area-name');
+    const descEl = document.getElementById('city-area-desc');
+    if (nameEl) nameEl.textContent = area.name || "내부 지도";
+    if (descEl) descEl.textContent = area.desc || "구역 내부 주요 지점을 걷거나 퀵 이동할 수 있습니다.";
+
+    const mapEl = document.getElementById('city-area-map');
+    if (!mapEl) return;
+    mapEl.innerHTML = `
+        <svg class="city-area-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <div class="city-area-node-layer"></div>
+    `;
+    const lineLayer = mapEl.querySelector('.city-area-lines');
+    const nodeLayer = mapEl.querySelector('.city-area-node-layer');
+
+    const lookup = {};
+    (area.spots || []).forEach(s => lookup[s.id] = s);
+    const drawn = new Set();
+    (area.spots || []).forEach(a => {
+        (a.links || []).forEach(toId => {
+            const b = lookup[toId];
+            if (!b) return;
+            const key = [a.id, b.id].sort().join("-");
+            if (drawn.has(key)) return;
+            drawn.add(key);
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", a.pos?.x ?? 0);
+            line.setAttribute("y1", a.pos?.y ?? 0);
+            line.setAttribute("x2", b.pos?.x ?? 0);
+            line.setAttribute("y2", b.pos?.y ?? 0);
+            lineLayer.appendChild(line);
+        });
+    });
+
+    (area.spots || []).forEach(spot => {
+        const el = document.createElement('button');
+        el.className = 'city-area-node';
+        el.dataset.id = spot.id;
+        el.style.left = `${spot.pos?.x ?? 0}%`;
+        el.style.top = `${spot.pos?.y ?? 0}%`;
+        el.style.setProperty('--accent', '#f1c40f');
+        if (spot.id === game.cityArea.currentSpot) {
+            el.classList.add('active');
+        }
+        el.innerHTML = `
+            <span class="city-node-name">${spot.name}</span>
+        `;
+        el.onclick = () => selectCityAreaSpot(spot.id);
+        nodeLayer.appendChild(el);
+    });
+
+    renderCitySideView(area);
+    updateCityAreaDetail();
+}
+
+function selectCityAreaSpot(spotId) {
+    if (!game.cityArea) game.cityArea = {};
+    game.cityArea.selectedSpot = spotId;
+    updateCityAreaDetail();
+    renderCityArea(game.cityArea.areaId);
+}
+
+function moveCityArea(mode) {
+    if (!game.cityArea) return;
+    const area = getVisibleCityArea(game.cityArea.areaId);
+    if (!area) return;
+    const currentId = game.cityArea.currentSpot;
+    const targetId = game.cityArea.selectedSpot || currentId;
+    const validIds = (area.spots || []).map(s => s.id);
+    if (!validIds.includes(targetId)) {
+        setCitySpotStatus("아직 알려지지 않은 위치입니다.");
+        return;
+    }
+    if (currentId === targetId) {
+        setCitySpotStatus("이미 해당 위치에 있습니다.");
+        return;
+    }
+
+    if (mode === 'walk') {
+        const path = findCityAreaPath(area, currentId, targetId);
+        if (!path || path.length === 0) {
+            setCitySpotStatus("이동 경로를 찾을 수 없습니다.");
+            return;
+        }
+        game.cityArea.currentSpot = targetId;
+        game.cityArea.lastPath = path;
+        setCitySpotStatus(`걷기: ${path.map(id => getAreaSpot(area, id)?.name || id).join(" → ")}`);
+    } else {
+        game.cityArea.currentSpot = targetId;
+        game.cityArea.lastPath = null;
+        setCitySpotStatus("퀵 이동 완료.");
+    }
+    renderCityArea(area.id);
+}
+
+function setCitySpotStatus(text) {
+    const statusEl = document.getElementById('city-spot-status');
+    if (statusEl) statusEl.textContent = text;
+}
+
+function updateCityAreaDetail() {
+    const area = getVisibleCityArea(game.cityArea?.areaId);
+    if (!area) return;
+    const currentId = game.cityArea.currentSpot;
+    const targetId = game.cityArea.selectedSpot || currentId;
+    const spot = getAreaSpot(area, targetId) || getAreaSpot(area, currentId);
+
+    const titleEl = document.getElementById('city-spot-title');
+    const descEl = document.getElementById('city-spot-desc');
+    const tagsEl = document.getElementById('city-spot-tags');
+    if (titleEl) titleEl.textContent = spot?.name || "지점을 선택하세요";
+    if (descEl) descEl.textContent = spot?.desc || "지도를 눌러 이동할 지점을 선택하세요.";
+    if (tagsEl) {
+        const tags = (spot && spot.tags && spot.tags.length > 0) ? spot.tags : [];
+        tagsEl.innerHTML = tags.map(t => `<span class="city-chip">${t}</span>`).join("");
+    }
+
+    const walkBtn = document.getElementById('btn-area-walk');
+    const warpBtn = document.getElementById('btn-area-warp');
+    const disabled = !spot;
+    [walkBtn, warpBtn].forEach(btn => {
+        if (btn) btn.disabled = disabled;
+    });
+
+    if (spot) {
+        if (spot.id === currentId) {
+            setCitySpotStatus("현재 위치입니다.");
+        } else {
+            setCitySpotStatus("이동할 지점을 선택했습니다.");
+        }
+    }
+}
+
+/* --- 도시 구역을 던전 모듈로 탐사 --- */
+function startCityExploration(areaId, targetSpotId) {
+    const area = getVisibleCityArea(areaId);
+    if (!area) return;
+
+    // 시나리오/상태 설정 (도시 탐사용)
+    game.state = 'exploration';
+    switchScene('exploration');
+    game.inputLocked = false;
+    document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
+
+    // 저장용 플래그
+    game.cityArea = game.cityArea || {};
+    game.cityArea.areaId = areaId;
+    const validIds = (area.spots || []).map(s => s.id);
+    const initialSpot = (targetSpotId && validIds.includes(targetSpotId))
+        ? targetSpotId
+        : (area.start || (area.spots && area.spots[0] && area.spots[0].id));
+    game.cityArea.currentSpot = initialSpot;
+    game.cityArea.selectedSpot = initialSpot;
+    game.cityArea.sideIndex = Math.max(0, validIds.indexOf(initialSpot));
+    game.cityArea.returnToAreaId = areaId; // 던전 탈출 시 돌아올 도시 구역
+
+    // 던전 모듈을 도시 모드로 로드
+    if (DungeonSystem && typeof DungeonSystem.loadCityArea === 'function') {
+        DungeonSystem.loadCityArea(area);
+        game.dungeonMap = true;
+        game.scenario = {
+            id: `city:${areaId}`,
+            title: area.name || "도시 탐사",
+            isCity: true,
+            canRetreat: true
+        };
+        syncCityDungeonPosition(initialSpot);
+    }
+
+    // 플레이어 이미지 연결
+    const playerEl = document.getElementById('dungeon-player');
+    if (playerEl) {
+        playerEl.src = player.img || "https://placehold.co/150x150/3498db/ffffff?text=Hero";
+    }
+
+    showExplorationView();
+    updateUI();
+    autoSave();
+}
+
+/* 도시 특수 던전 진입 (화이트 큐브 등) */
+function startCityDungeon(dungeonId) {
+    const config = (typeof CITY_DUNGEON_CONFIGS !== 'undefined' && CITY_DUNGEON_CONFIGS[dungeonId]) ? CITY_DUNGEON_CONFIGS[dungeonId] : null;
+    const title = (config && config.title) ? config.title : "도시 던전";
+
+    game.state = 'exploration';
+    switchScene('exploration');
+    game.inputLocked = false;
+    document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
+
+    game.activeScenarioId = null;
+    game.dungeonMap = false; // 새 던전 강제 생성
+    game.scenario = {
+        id: `city_dungeon:${dungeonId}`,
+        title: title,
+        isActive: true,
+        canRetreat: true,
+        customDungeon: config || {
+            width: 5, height: 5, roomCount: 10,
+            data: { battle: 5, event: 2, treasure: 1 }
+        }
+    };
+
+    // 던전 탈출 시 복귀할 도시 구역/스팟 기억
+    if (game.cityArea && game.cityArea.areaId) {
+        game.scenario.returnToCity = { areaId: game.cityArea.areaId, spotId: game.cityArea.currentSpot };
+    }
+
+    renderExploration(true);
+}
+
+/* --- 시티 내부 사이드뷰 이동 --- */
+function renderCitySideView(area) {
+    const lane = document.getElementById('city-side-lane');
+    const bWrap = document.getElementById('city-side-buildings');
+    const playerEl = document.getElementById('city-side-player');
+    if (!lane || !bWrap || !playerEl) return;
+
+    bWrap.innerHTML = "";
+    const spots = area.spots || [];
+    const count = Math.max(1, spots.length);
+    spots.forEach((spot, idx) => {
+        const left = count === 1 ? 50 : (idx / (count - 1)) * 90 + 5;
+        const el = document.createElement('div');
+        el.className = 'city-side-building';
+        el.dataset.id = spot.id;
+        el.style.left = `${left}%`;
+        const icon = "🏢";
+        el.innerHTML = `<span class="icon">${icon}</span><span>${spot.name}</span>`;
+        if (spot.id === game.cityArea.currentSpot) el.classList.add('active');
+        el.onclick = () => {
+            game.cityArea.selectedSpot = spot.id;
+            game.cityArea.sideIndex = idx;
+            updateCityAreaDetail();
+            renderCitySideView(area);
+        };
+        bWrap.appendChild(el);
+    });
+
+    const idx = spots.findIndex(s => s.id === game.cityArea.currentSpot);
+    const left = spots.length <= 1 ? 50 : (Math.max(0, idx) / (spots.length - 1)) * 90 + 5;
+    playerEl.style.left = `${left}%`;
+}
+
+function moveCitySide(dir) {
+    const area = getVisibleCityArea(game.cityArea?.areaId);
+    if (!area || !area.spots) return;
+    let idx = area.spots.findIndex(s => s.id === game.cityArea.currentSpot);
+    if (idx < 0) idx = 0;
+    if (dir === 'left') idx = Math.max(0, idx - 1);
+    else idx = Math.min(area.spots.length - 1, idx + 1);
+    const target = area.spots[idx];
+    if (!target) return;
+    game.cityArea.currentSpot = target.id;
+    game.cityArea.selectedSpot = target.id;
+    game.cityArea.sideIndex = idx;
+    setCitySpotStatus(`${target.name} 앞에 섰습니다.`);
+    renderCityArea(area.id);
+}
+
+function interactCitySpot() {
+    const area = getVisibleCityArea(game.cityArea?.areaId);
+    const currentId = game.cityArea?.currentSpot;
+    if (!area || !currentId) return;
+    const spot = getAreaSpot(area, currentId);
+    if (!spot) return;
+    setCitySpotStatus(`(${spot.name}) 내부 진입/상호작용은 추후 구현 예정`);
 }
 /* [game.js] 상점 나가기 핸들러 (상황별 복귀) */
 function exitShop(shopType) {
@@ -894,7 +1331,8 @@ let game = {
     // [NEW] 시나리오 진행 상태
     scenario: null,
     // 던전 재진입 시 맵을 재생성해야 하는지 여부
-    shouldResetDungeon: false
+    shouldResetDungeon: false,
+    cityDiscoveries: {}
 };
 
 // 현재 전투에서 사용할 적 목록을 전역으로 보관
@@ -1248,6 +1686,7 @@ function loadGame() {
         // 데이터 복구
         player = loadedData.player;
         game = loadedData.game;
+        if (!game.cityDiscoveries) game.cityDiscoveries = {};
 
         ensureEquipmentFields(player);
         migrateLegacyEquipment(player);
@@ -1310,6 +1749,8 @@ function loadGame() {
         // 기존: if (game.activeScenarioId && game.scenario) 
         // 변경: 의뢰 ID가 있거나, 또는 시나리오 데이터가 있고 그것이 '순찰(Patrol)'인 경우
         if ((game.activeScenarioId || (game.scenario && game.scenario.isPatrol)) && game.scenario) {
+            renderExploration();
+        } else if (game.scenario && (game.scenario.isCity || (typeof game.scenario.id === "string" && game.scenario.id.startsWith("city:")))) {
             renderExploration();
         } else {
             // 데이터가 깨졌거나 비정상 종료된 경우 안전하게 사무소로
@@ -2985,8 +3426,12 @@ function renderExploration(forceReset = false) {
     if (!game.dungeonMap) {
         let dungeonConfig = null;
 
+        // [0순위] 커스텀 던전(도시 특수/화이트 큐브 등)
+        if (game.scenario && game.scenario.customDungeon) {
+            dungeonConfig = game.scenario.customDungeon;
+        }
         // [1순위] 현재 활성화된 시나리오의 던전 설정
-        if (game.activeScenarioId && SCENARIOS[game.activeScenarioId]) {
+        else if (game.activeScenarioId && SCENARIOS[game.activeScenarioId]) {
             dungeonConfig = SCENARIOS[game.activeScenarioId].dungeon;
         }
         
@@ -3115,20 +3560,25 @@ function toggleBattleUI(isBattle) {
 }
 /* [game.js] confirmRetreat 함수 수정 (탈출 제약 적용) */
 function confirmRetreat() {
+    const DS = typeof DungeonSystem !== 'undefined' ? DungeonSystem : null;
+
+    // [도시 모드] 언제든 전역 지도로 복귀
+    if (DS && DS.isCity) {
+        showPopup("🏙️ 도시 지도 복귀", "지금 탐색을 종료하고 세주시 전역 지도로 돌아갑니다.", [
+            { txt: "복귀", func: () => { closePopup(); resetDungeonState(); renderCityMap(); } },
+            { txt: "취소", func: closePopup }
+        ]);
+        return;
+    }
+
     // 현재 방 정보 확인
     let currentRoom = DungeonSystem.map[DungeonSystem.currentPos.y][DungeonSystem.currentPos.x];
     let isStartRoom = (currentRoom.type === 'start');
 
     // [CASE 1] 시작 방(입구)에 있을 때 -> 자유롭게 탈출 가능
     if (isStartRoom) {
-        showPopup("🏠 복귀 확인", "사무소로 복귀하시겠습니까?<br>(입구에서는 안전하게 나갈 수 있습니다)", [
-            { 
-                txt: "돌아가기", 
-                func: () => { 
-                    closePopup();
-                    renderHub(); 
-                }
-            },
+        showPopup("🏠 복귀 확인", "던전을 떠나시겠습니까?<br>(입구에서는 안전하게 나갈 수 있습니다)", [
+            { txt: "돌아가기", func: () => { closePopup(); handleDungeonExit(); } },
             { txt: "취소", func: closePopup }
         ]);
         return;
@@ -3156,6 +3606,26 @@ function confirmRetreat() {
             { txt: "확인", func: closePopup }
         ]);
     }
+}
+
+/* 던전 탈출 처리: 도시 입구 복귀 우선 */
+function handleDungeonExit() {
+    // 도시 던전에서 돌아올 때: 도시 구역/스팟으로 복귀
+    if (game.scenario && game.scenario.returnToCity) {
+        const { areaId, spotId } = game.scenario.returnToCity;
+        resetDungeonState();
+        renderCityMap();
+        // 바로 해당 도시 구역을 열고 스팟을 현재 위치로 설정
+        if (areaId) {
+            // 전역 지도 -> 내부 도시 구역 탐사 모드로 전환
+            startCityExploration(areaId, spotId);
+        }
+        return;
+    }
+
+    // 기본: 사무소로 복귀
+    resetDungeonState();
+    renderHub();
 }
 /* [game.js] exploreAction 수정 (애니메이션 및 심리스 전투 연출) */
 function exploreAction(action) {

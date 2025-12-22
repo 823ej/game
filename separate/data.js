@@ -212,6 +212,17 @@ const ENEMY_DATA = {
         tags: ["boss", "cursed", "doll"],
         lootHint: ["울끈불끈 패딩", "고급 액세서리"] // 필수는 아니지만 테이블 구성 시 참고용
     }
+    ,
+    "curator": {
+        name: "큐레이터",
+        baseHp: 95,
+        stats: { atk: 3, def: 2, spd: 3 },
+        weakness: "holy",
+        growth: { hp: 2, atk: 0.3, def: 0.2, spd: 0.2 },
+        deckType: "custom",
+        deck: ["광신의 비명", "검은 연기", "독 뿌리기", "비명", "저주의 할퀴기", "수비"],
+        img: "https://placehold.co/120x120/222/fff?text=CURATOR"
+    }
 };
 
 // [data.js] SOCIAL_CARD_DATA 수정
@@ -291,6 +302,396 @@ const TOOLTIPS = {
     "분노": "화가 나서 참을성이 없어집니다. 턴마다 인내심이 2배로 감소합니다.",
     "우울": "감정이 격해집니다. 멘탈 공격 스탯이 2배 증가합니다."
     
+};
+
+/* [CITY MAP] 세주시 전역 구역 데이터 (노드+링크 기반) */
+const CITY_MAP = {
+    nodes: [
+        { 
+            id: "central_admin", 
+            name: "중앙 행정구", 
+            label: "세주시 중심", 
+            desc: "시청과 빌딩가, 백화점, 지하철역 지하상가, 백산 타워, 성 주드 아카데미, 비정형관리국(UDRA)이 모여 있는 행정 중심.", 
+            vibe: "corporate", 
+            pos: { x: 50, y: 50 }, 
+            tags: ["빌딩가", "백화점", "지하철역 지하상가", "백산 타워", "성 주드 아카데미", "비정형관리국(UDRA)"],
+            links: ["east_oldtown", "west_industrial", "south_coast", "north_mountain"]
+        },
+        { 
+            id: "east_oldtown", 
+            name: "구시가지", 
+            label: "동쪽", 
+            desc: "영진 탐정 사무소와 카페 헤카테, 청운맨션, 재래시장, 사이버 벙커, 뒷골목, 주택가, 성당이 모여 있는 오래된 거리.", 
+            vibe: "busy", 
+            pos: { x: 72, y: 50 }, 
+            tags: ["영진 탐정 사무소", "카페 헤카테", "청운맨션", "재래시장", "사이버 벙커", "뒷골목", "주택가", "성당"],
+            links: ["central_admin"]
+        },
+        { 
+            id: "west_industrial", 
+            name: "공업지대", 
+            label: "남쪽", 
+            desc: "폐공장 단지와 시 외곽으로 이어지는 국도, 클럽 Bad Sector가 숨어 있는 산업 구역.", 
+            vibe: "outskirts", 
+            pos: { x: 50, y: 78 }, 
+            tags: ["폐공장", "외곽 국도", "화물 트럭", "클럽 Bad Sector"],
+            links: ["central_admin"]
+        },
+        { 
+            id: "south_coast", 
+            name: "해안 관광단지", 
+            label: "서쪽", 
+            desc: "바닷가와 놀이공원, 대형 마트, 호텔이 이어진 해안 관광 구역.", 
+            vibe: "water", 
+            pos: { x: 30, y: 62 }, 
+            tags: ["바닷가", "놀이공원", "대형 마트", "해안 호텔"],
+            links: ["central_admin"]
+        },
+        { 
+            id: "north_mountain", 
+            name: "성주산 구역", 
+            label: "북쪽", 
+            desc: "성주산 능선과 숲, 그 안에 숨겨진 폐연구소가 있는 산악 지대.", 
+            vibe: "calm", 
+            pos: { x: 50, y: 24 }, 
+            tags: ["숲 입구", "폐연구소"],
+            links: ["central_admin"]
+        }
+    ]
+};
+
+/* [CITY AREAS] 각 구역 내부 이동 노드 정의 */
+const CITY_AREA_DATA = {
+    central_admin: {
+        name: "중앙 행정구 내부",
+        desc: "행정 중심을 이루는 주요 건물과 시설들을 직접 걸어서 둘러보거나 퀵 이동할 수 있습니다.",
+        start: "central_plaza",
+        spots: [
+            {
+                id: "central_plaza",
+                name: "중앙 광장",
+                desc: "세주시의 중심. 모든 시설이 이 광장을 둘러싸고 있다.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 1, y: 1 },
+                links: ["baeksan_tower", "subway_gate", "st_jude_academy", "bs_convenience", "udra_annex"],
+                tags: ["집결지", "기점"],
+                icon: "🧭",
+                objects: [
+                    { id: "white_cube", name: "화이트 큐브", icon: "⬜", action: "enter_dungeon", dungeonId: "white_cube_beyond" }
+                ]
+            },
+            {
+                id: "baeksan_tower",
+                name: "백산 타워",
+                desc: "세주시 스카이라인을 장식하는 고층 타워.",
+                pos: { x: 70, y: 22 },
+                grid: { x: 1, y: 0 },
+                links: ["central_plaza"],
+                tags: ["타워", "전망대"],
+                icon: "🏙️"
+            },
+            {
+                id: "subway_gate",
+                name: "지하철역 입구",
+                desc: "도심 지하철과 연결되는 입구. 사람들의 발길이 끊이지 않는다.",
+                pos: { x: 54, y: 82 },
+                grid: { x: 1, y: 2 },
+                links: ["central_plaza"],
+                tags: ["교통", "만남의 장소"],
+                icon: "🚇"
+            },
+            {
+                id: "st_jude_academy",
+                name: "성 주드 아카데미",
+                desc: "명문 교육기관. 밤이 되면 연구동에 불이 켜진다.",
+                pos: { x: 28, y: 66 },
+                grid: { x: 0, y: 1 },
+                links: ["central_plaza"],
+                tags: ["교육", "연구"],
+                icon: "🏫"
+            },
+            {
+                id: "bs_convenience",
+                name: "BS편의점",
+                desc: "도심 한가운데 있는 24시 편의점. 탐정들의 임시 보급소.",
+                pos: { x: 76, y: 70 },
+                grid: { x: 2, y: 2 },
+                links: ["central_plaza"],
+                tags: ["보급", "24시"],
+                icon: "🏪"
+            },
+            {
+                id: "udra_annex",
+                name: "정부 합동 청사 별관",
+                desc: "비정형관리국(UDRA) 별관이 입주한 건물. 허가받은 사람만 드나든다.",
+                pos: { x: 22, y: 32 },
+                grid: { x: 2, y: 1 },
+                links: ["central_plaza"],
+                tags: ["정부", "보안"],
+                icon: "🏢"
+            }
+        ]
+    },
+    east_oldtown: {
+        name: "구시가지 내부",
+        desc: "낡은 거리와 생활권이 촘촘하게 이어진 구역. 걸어서 둘러보며 동선을 잡을 수 있습니다.",
+        start: "oldtown_market",
+        spots: [
+            {
+                id: "oldtown_market",
+                name: "재래시장",
+                desc: "손때 묻은 상점과 가판대가 줄지어 있는 시장.",
+                pos: { x: 50, y: 52 },
+                grid: { x: 1, y: 1 },
+                links: ["youngjin_office", "hecate_cafe", "chungwoon_mansion", "cyber_bunker", "back_alley", "residential_block", "cathedral"],
+                tags: ["먹거리", "소문", "생활"],
+                icon: "🧺"
+            },
+            {
+                id: "youngjin_office",
+                name: "영진 탐정 사무소",
+                desc: "오래된 간판이 걸려 있는 작은 탐정 사무소.",
+                pos: { x: 22, y: 50 },
+                grid: { x: 0, y: 1 },
+                links: ["oldtown_market", "hecate_cafe", "residential_block"],
+                tags: ["사무소", "의뢰"],
+                icon: "🕵️",
+                objects: [
+                    { id: "return_office", name: "사무소로 복귀", icon: "🏠", action: "return_hub" }
+                ]
+            },
+            {
+                id: "hecate_cafe",
+                name: "카페 헤카테",
+                desc: "진한 커피 향과 함께 비밀 이야기가 오간다.",
+                pos: { x: 20, y: 22 },
+                grid: { x: 0, y: 0 },
+                links: ["oldtown_market", "youngjin_office", "chungwoon_mansion"],
+                tags: ["카페", "휴식"],
+                icon: "☕"
+            },
+            {
+                id: "chungwoon_mansion",
+                name: "청운맨션",
+                desc: "낡았지만 규모가 있는 공동주택.",
+                pos: { x: 76, y: 22 },
+                grid: { x: 2, y: 0 },
+                links: ["oldtown_market", "hecate_cafe", "cyber_bunker"],
+                tags: ["주거", "소문"],
+                icon: "🏘️"
+            },
+            {
+                id: "cyber_bunker",
+                name: "사이버 벙커",
+                desc: "조용한 골목 깊숙한 곳의 불법 네트워크 거점.",
+                pos: { x: 78, y: 52 },
+                grid: { x: 2, y: 1 },
+                links: ["oldtown_market", "chungwoon_mansion", "cathedral"],
+                tags: ["네트워크", "암시장"],
+                icon: "🛰️"
+            },
+            {
+                id: "back_alley",
+                name: "뒷골목",
+                desc: "사람들의 시선을 피해 걷기 좋은 어두운 골목.",
+                pos: { x: 52, y: 84 },
+                grid: { x: 1, y: 2 },
+                links: ["oldtown_market", "residential_block", "cathedral"],
+                tags: ["은신", "위험"],
+                icon: "🌒"
+            },
+            {
+                id: "residential_block",
+                name: "주택가",
+                desc: "오래된 주택들이 빼곡하게 들어선 생활 구역.",
+                pos: { x: 22, y: 84 },
+                grid: { x: 0, y: 2 },
+                links: ["oldtown_market", "youngjin_office", "back_alley"],
+                tags: ["생활", "거주"],
+                icon: "🏠"
+            },
+            {
+                id: "cathedral",
+                name: "성당",
+                desc: "낡은 종탑이 구시가지의 밤을 지킨다.",
+                pos: { x: 78, y: 84 },
+                grid: { x: 2, y: 2 },
+                links: ["oldtown_market", "cyber_bunker", "back_alley"],
+                tags: ["성지", "기도"],
+                icon: "⛪"
+            }
+        ]
+    },
+    west_industrial: {
+        name: "공업지대 내부",
+        desc: "폐공장과 국도가 얽힌 산업 지대. 거친 소음과 기계음이 끊이지 않습니다.",
+        start: "industrial_yard",
+        spots: [
+            {
+                id: "industrial_yard",
+                name: "폐공장 단지",
+                desc: "녹슨 설비와 컨베이어가 멈춰 선 넓은 부지.",
+                pos: { x: 50, y: 52 },
+                grid: { x: 1, y: 1 },
+                links: ["cargo_depot", "national_road", "bad_sector"],
+                tags: ["폐공장", "소음"],
+                icon: "🏭"
+            },
+            {
+                id: "cargo_depot",
+                name: "화물 집하장",
+                desc: "대형 트럭과 컨테이너가 드나드는 곳.",
+                pos: { x: 78, y: 52 },
+                grid: { x: 2, y: 1 },
+                links: ["industrial_yard", "national_road"],
+                tags: ["화물 트럭", "물류"],
+                icon: "🚛"
+            },
+            {
+                id: "national_road",
+                name: "외곽 국도",
+                desc: "도시 외곽으로 빠져나가는 넓은 도로.",
+                pos: { x: 50, y: 84 },
+                grid: { x: 1, y: 2 },
+                links: ["industrial_yard", "cargo_depot", "bad_sector"],
+                tags: ["국도", "외곽"],
+                icon: "🛣️"
+            },
+            {
+                id: "bad_sector",
+                name: "클럽 Bad Sector",
+                desc: "산업 지대 속에 숨겨진 클럽. 밤에만 문을 연다.",
+                pos: { x: 22, y: 52 },
+                grid: { x: 0, y: 1 },
+                links: ["industrial_yard", "national_road"],
+                tags: ["클럽", "은밀"],
+                icon: "🎧"
+            }
+        ]
+    },
+    south_coast: {
+        name: "해안 관광단지 내부",
+        desc: "바닷바람과 네온이 뒤섞인 관광 구역. 산책하며 들를 곳이 많습니다.",
+        start: "coast_boardwalk",
+        spots: [
+            {
+                id: "coast_boardwalk",
+                name: "해안 산책로",
+                desc: "바닷바람을 느끼며 걸을 수 있는 산책길.",
+                pos: { x: 50, y: 52 },
+                grid: { x: 1, y: 1 },
+                links: ["amusement_park", "mega_mart", "seaside_hotel", "beachfront"],
+                tags: ["바닷가", "산책"],
+                icon: "🌊"
+            },
+            {
+                id: "amusement_park",
+                name: "놀이공원",
+                desc: "빛과 소음으로 가득한 관광 명소.",
+                pos: { x: 22, y: 52 },
+                grid: { x: 0, y: 1 },
+                links: ["coast_boardwalk", "mega_mart"],
+                tags: ["놀이기구", "축제"],
+                icon: "🎡"
+            },
+            {
+                id: "mega_mart",
+                name: "대형 마트",
+                desc: "관광객과 주민 모두가 들르는 대형 상점.",
+                pos: { x: 78, y: 52 },
+                grid: { x: 2, y: 1 },
+                links: ["coast_boardwalk", "amusement_park", "seaside_hotel"],
+                tags: ["쇼핑", "보급"],
+                icon: "🛒"
+            },
+            {
+                id: "seaside_hotel",
+                name: "해안 호텔",
+                desc: "전망 좋은 고급 숙박 시설.",
+                pos: { x: 50, y: 84 },
+                grid: { x: 1, y: 2 },
+                links: ["coast_boardwalk", "mega_mart", "beachfront"],
+                tags: ["숙박", "전망"],
+                icon: "🏨"
+            },
+            {
+                id: "beachfront",
+                name: "바닷가",
+                desc: "파도 소리와 모래사장이 이어지는 해변.",
+                pos: { x: 50, y: 22 },
+                grid: { x: 1, y: 0 },
+                links: ["coast_boardwalk", "seaside_hotel"],
+                tags: ["해변", "휴식"],
+                icon: "🏖️"
+            }
+        ]
+    },
+    north_mountain: {
+        name: "성주산 구역 내부",
+        desc: "짙은 숲과 산길이 이어지는 지대. 길을 잃기 쉬워 주의가 필요합니다.",
+        start: "forest_entry",
+        spots: [
+            {
+                id: "forest_entry",
+                name: "숲 입구",
+                desc: "성주산 숲으로 들어가는 입구. 여기서부터 길이 모호해진다.",
+                pos: { x: 50, y: 52 },
+                grid: { x: 0, y: 0 },
+                links: ["abandoned_lab"],
+                tags: ["산길", "주의"],
+                icon: "🌲",
+                objects: [
+                    { id: "deep_forest", name: "깊은 숲으로", icon: "🌲", action: "enter_dungeon", dungeonId: "north_mountain_forest" }
+                ]
+            },
+            {
+                id: "abandoned_lab",
+                name: "폐연구소",
+                desc: "숲속 깊숙한 곳에서 발견된 폐쇄 연구시설.",
+                pos: { x: 78, y: 52 },
+                grid: { x: 1, y: 0 },
+                links: ["forest_entry"],
+                tags: ["연구소", "폐쇄"],
+                icon: "🧪",
+                requiresDiscovery: "abandoned_lab"
+            }
+        ]
+    }
+};
+
+/* [CITY DUNGEONS] 도시 오브젝트로 진입하는 던전 설정 (추가 확장용) */
+const CITY_DUNGEON_CONFIGS = {
+    white_cube_beyond: {
+        title: "화이트 큐브 너머",
+        desc: "도심 한복판에 숨겨진 이면세계. 큐레이터가 지배한다.",
+        width: 6,
+        height: 3,
+        roomCount: 12,
+        data: {
+            battle: 5,
+            investigate: 3,
+            event: 2,
+            treasure: 1,
+            boss: 1
+        },
+        boss: "curator"
+    },
+    north_mountain_forest: {
+        title: "성주산 깊은 숲",
+        desc: "짙은 숲길을 헤매다 보면 어딘가로 이어지는 흔적이 보인다.",
+        width: 7,
+        height: 3,
+        roomCount: 12,
+        data: {
+            battle: 4,
+            investigate: 3,
+            event: 3,
+            treasure: 1,
+            boss: 1
+        },
+        noClueLock: true,
+        discoverCitySpot: { areaId: "north_mountain", key: "abandoned_lab", name: "폐연구소" }
+    }
 };
 
 const DISTRICTS = {

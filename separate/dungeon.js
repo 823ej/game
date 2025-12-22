@@ -90,7 +90,9 @@ const DungeonSystem = {
         }
 
         this.map[startY][x] = { type: type, visited: false, exits: [], events: null };
-        if (type === "boss") this.map[startY][x].locked = true;
+        if (type === "boss") {
+            if (!config.noClueLock) this.map[startY][x].locked = true;
+        }
 
         if (x === 0) {
             this.currentPos = { x: 0, y: startY };
@@ -168,11 +170,75 @@ const DungeonSystem = {
     },
 
     // 도시 맵 생성 (고정 데이터)
-    loadCity: function(districtData) {
+    loadCityArea: function(area) {
+        if (!area || !Array.isArray(area.spots) || area.spots.length === 0) return;
         this.isCity = true;
-        this.width = 3; this.height = 3; // 예시
-        // 도시 데이터에 맞춰 this.map 수동 구성...
-        // 도시에서는 모든 방 visited: true
+
+        // 그리드 좌표 계산 (grid.x/y가 있으면 사용, 없으면 일렬 배치)
+        let coords = area.spots.map((s, idx) => {
+            if (s.grid && Number.isInteger(s.grid.x) && Number.isInteger(s.grid.y)) {
+                return { id: s.id, x: s.grid.x, y: s.grid.y };
+            }
+            return { id: s.id, x: idx, y: 0 };
+        });
+        let minX = Math.min(...coords.map(c => c.x));
+        let maxX = Math.max(...coords.map(c => c.x));
+        let minY = Math.min(...coords.map(c => c.y));
+        let maxY = Math.max(...coords.map(c => c.y));
+        const width = (maxX - minX + 1);
+        const height = (maxY - minY + 1);
+
+        this.width = Math.max(1, width);
+        this.height = Math.max(1, height);
+
+        this.map = Array.from({ length: this.height }, () => 
+            Array.from({ length: this.width }, () => ({
+                type: "city", visited: true, exits: [], events: null, citySpot: null
+            }))
+        );
+
+        area.spots.forEach((spot, idx) => {
+            const coord = coords[idx];
+            const x = coord.x - minX;
+            const y = coord.y - minY;
+            const room = this.map[y][x];
+            room.type = "city";
+            room.citySpot = spot;
+            room.visited = true; // 도시 모드는 전체 가시화
+            // 네 방향 연결은 아래에서 일괄 처리
+        });
+
+        // 네 방향 인접 연결 생성
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                const room = this.map[y][x];
+                if (!room.citySpot) continue;
+                const exits = room.exits;
+                if (y > 0 && this.map[y-1][x].citySpot) exits.push('n');
+                if (y < this.height-1 && this.map[y+1][x].citySpot) exits.push('s');
+                if (x > 0 && this.map[y][x-1].citySpot) exits.push('w');
+                if (x < this.width-1 && this.map[y][x+1].citySpot) exits.push('e');
+            }
+        }
+
+        // 시작 위치: 중앙 하단 칸을 우선 선택 (가장 아래 줄에서 중앙에 가까운 스팟)
+        const maxRow = Math.max(...coords.map(c => c.y - minY));
+        const bottomSpots = coords.filter(c => (c.y - minY) === maxRow);
+        const centerX = this.width / 2;
+        let startCoord = bottomSpots.sort((a, b) => Math.abs((a.x - minX) - centerX) - Math.abs((b.x - minX) - centerX))[0];
+
+        // 만약 하단 스팟이 없다면 지정된 start나 첫 스팟 사용
+        if (!startCoord) {
+            const startId = area.start || (area.spots[0] && area.spots[0].id);
+            startCoord = coords.find(c => c.id === startId) || coords[0];
+        }
+
+        this.currentPos = { x: startCoord.x - minX, y: startCoord.y - minY };
+        if (this.currentPos.x < 0) this.currentPos.x = 0;
+        if (this.currentPos.y < 0) this.currentPos.y = this.height - 1;
+        this.progress = 0;
+        this.objectAnchor = 50;
+        this.renderView();
     },
 
     // 2. 이동 로직 (스크롤)
@@ -281,30 +347,38 @@ updateParallax: function() {
     if (!objEl) return;
 
         // 1. 전투/시작/빈방/벽은 숨김 (클리어 여부 무관)
-        if (room.type === 'battle' || room.type === 'start' || room.type === 'empty' || room.type === 'wall') {
+        if (!this.isCity && (room.type === 'battle' || room.type === 'start' || room.type === 'empty' || room.type === 'wall')) {
             objEl.classList.add('hidden');
             return;
         }
 
         // [수정] 아이콘 및 라벨 설정
-    let icon = "❓";
-    let label = "조사하기";
+        let icon = "❓";
+        let label = "조사하기";
 
-    switch (room.type) {
-        case 'treasure': icon = "🎁"; label = "보물상자"; break;
-        case 'heal': icon = "🔥"; label = "모닥불"; break;
-        case 'shop': icon = "⛺"; label = "상점"; break;
-        case 'event': icon = "❔"; label = "무언가 있다"; break;
-        case 'investigate': icon = "🔍"; label = "수상한 흔적"; break;
-        case 'boss': icon = room.locked ? "🔒" : "👹"; label = room.locked ? "잠긴 문" : "보스"; break;
-        
-        // ★ [추가된 부분] 새로운 타입 정의
-        case 'box': icon = "📦"; label = "낡은 상자"; break;
-        case 'note': icon = "📄"; label = "떨어진 쪽지"; break;
-        case 'bush': icon = "🌿"; label = "수상한 덤불"; break;
-    }
+        if (this.isCity && room.citySpot) {
+            const objects = Array.isArray(room.citySpot.objects) ? room.citySpot.objects : [];
+            const firstObjIcon = (objects[0] && objects[0].icon) ? objects[0].icon : null;
+            icon = firstObjIcon || room.citySpot.icon || "🏢";
+            label = room.citySpot.name || "건물";
+        } else {
+            switch (room.type) {
+                case 'treasure': icon = "🎁"; label = "보물상자"; break;
+                case 'heal': icon = "🔥"; label = "모닥불"; break;
+                case 'shop': icon = "⛺"; label = "상점"; break;
+                case 'event': icon = "❔"; label = "무언가 있다"; break;
+                case 'investigate': icon = "🔍"; label = "수상한 흔적"; break;
+                case 'boss': icon = room.locked ? "🔒" : "👹"; label = room.locked ? "잠긴 문" : "보스"; break;
+                
+                // ★ [추가된 부분] 새로운 타입 정의
+                case 'box': icon = "📦"; label = "낡은 상자"; break;
+                case 'note': icon = "📄"; label = "떨어진 쪽지"; break;
+                case 'bush': icon = "🌿"; label = "수상한 덤불"; break;
+            }
+        }
+
         // 클리어된 방이면 표시만 하고 상호작용 비활성화
-        if (room.cleared) {
+        if (room.cleared && !this.isCity) {
             objEl.classList.remove('hidden');
             objEl.style.pointerEvents = 'none';
             objEl.style.opacity = 0.5;
@@ -462,6 +536,7 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
     container.appendChild(el);
 },
     checkRoomEvent: function() {
+        if (this.isCity) return;
         if (Math.abs(this.progress - 50) < 2) {
             let room = this.map[this.currentPos.y][this.currentPos.x];
             if (room.type === 'battle' && !room.battleTriggered) {
@@ -475,13 +550,36 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
     },
     // [신규] 오브젝트 클릭 시 실행되는 함수
     interactWithObject: function() {
+        if (typeof game !== 'undefined' && game.state === 'battle') {
+            log("⚠️ 전투 중에는 상호작용할 수 없습니다.");
+            return;
+        }
         let room = this.map[this.currentPos.y][this.currentPos.x];
-        if (room.cleared) return;
+        if (room.cleared && !this.isCity) return;
 
         // 플레이어와 오브젝트 거리 체크 (너무 멀면 상호작용 불가)
-        // 진입/퇴출 직전(5% 이내 또는 90% 이상)일 때는 상호작용 불가
         if (this.progress < 5 || this.progress > 90) {
             log("🚫 너무 멉니다. 더 가까이 가세요.");
+            return;
+        }
+
+        if (this.isCity && room.citySpot) {
+            const objects = Array.isArray(room.citySpot.objects) ? room.citySpot.objects : [];
+            if (objects.length > 0) {
+                const obj = objects[0];
+                const name = obj.name || "이름 없는 객체";
+                const action = obj.action || "";
+                const dungeonId = obj.dungeonId || obj.targetDungeon;
+                if (action === 'enter_dungeon' && dungeonId) {
+                    if (typeof startCityDungeon === 'function') startCityDungeon(dungeonId);
+                } else if (action === 'return_hub') {
+                    if (typeof renderHub === 'function') renderHub();
+                } else {
+                    log(`▶ ${name}을(를) 살펴봅니다. (내부 진입 예정)`);
+                }
+            } else {
+                log("▶ 내부 진입/상호작용은 추후 구현 예정입니다.");
+            }
             return;
         }
 
@@ -494,21 +592,17 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
             showPopup("상자 열기", `상자를 열었습니다!<br><span style="color:#f1c40f">${gold} 골드</span>를 획득했습니다.`, [{txt:"확인", func:closePopup}]);
         }
         else if (room.type === 'heal') {
-            // 휴식은 반복 가능하게 할지, 1회성일지 결정 (여기선 1회성)
-            // room.cleared = true; 
-            renderRestScreen(); // 기존 game.js의 휴식 화면 호출 (팝업 형태가 아니라면 수정 필요)
-            // 만약 팝업 형태라면:
-            // showPopup("휴식", "쉬시겠습니까?", [{txt:"휴식", func:() => { restAction(); closePopup(); }}]);
+            renderRestScreen(); 
         }
         else if (room.type === 'shop') {
-            renderShopScreen(); // 상점 열기
+            renderShopScreen(); 
         }
         else if (room.type === 'investigate') {
-            this.resolveInvestigate(room); // 기존 조사 함수 호출
+            this.resolveInvestigate(room); 
         }
         else if (room.type === 'event') {
             room.cleared = true;
-            triggerRandomEvent(); // 랜덤 이벤트 실행
+            triggerRandomEvent(); 
         }
         // 1. [상자] 아이템 획득 (회복약 등)
     else if (room.type === 'box') {
@@ -557,6 +651,17 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
         ]);
     }
        else if (room.type === 'boss') {
+    const discovery = game.scenario && game.scenario.customDungeon && game.scenario.customDungeon.discoverCitySpot;
+    if (discovery && !room.cleared) {
+        room.cleared = true;
+        if (typeof unlockCitySpot === 'function') {
+            unlockCitySpot(discovery.areaId, discovery.key);
+        }
+        showPopup("발견", `${discovery.name} 구역을 찾아냈습니다!<br>이제 지도에서 바로 이동할 수 있습니다.`, [
+            { txt: "복귀", func: () => { closePopup(); handleDungeonExit(); } }
+        ]);
+        return;
+    }
     if (room.locked) {
         // [1] 잠겨 있을 때
         if (game.scenario.clues >= this.REQUIRED_CLUES) {
@@ -675,6 +780,12 @@ renderView: function() {
         const panel = document.getElementById('minimap-inline');
         const btn = document.getElementById('btn-minimap');
         if (!panel || !btn) return;
+        if (this.isCity) {
+            panel.classList.add('hidden');
+            btn.classList.remove('hidden');
+            this.toggleMinimap();
+            return;
+        }
         const show = panel.classList.contains('hidden');
         if (show) {
             panel.classList.remove('hidden');
@@ -692,6 +803,63 @@ renderMinimap: function(gridId = 'minimap-grid', cellSize = 50) {
     const grid = document.getElementById(gridId);
     if (!grid) return;
 
+    // 도시 모드일 때는 지도를 넉넉하게 키움
+    if (this.isCity) {
+        if (gridId === 'minimap-grid') cellSize = 110;
+        if (gridId === 'minimap-inline-grid') cellSize = 40;
+    }
+
+    const overlay = document.getElementById('minimap-overlay');
+    const isCityOverlay = this.isCity && gridId === 'minimap-grid';
+    if (overlay) overlay.classList.toggle('city-minimap-full', isCityOverlay);
+    grid.classList.toggle('city-minimap-grid', isCityOverlay);
+
+    const panel = overlay ? overlay.querySelector('.inventory-panel') : null;
+    const scrollWrap = grid.parentElement;
+    if (panel && isCityOverlay) {
+        if (!panel.dataset.defaultMaxWidth) {
+            panel.dataset.defaultMaxWidth = panel.style.maxWidth || "";
+            panel.dataset.defaultWidth = panel.style.width || "";
+            panel.dataset.defaultHeight = panel.style.height || "";
+            panel.dataset.defaultDisplay = panel.style.display || "";
+            panel.dataset.defaultFlexDirection = panel.style.flexDirection || "";
+            panel.dataset.defaultAlignItems = panel.style.alignItems || "";
+            panel.dataset.defaultOverflow = panel.style.overflow || "";
+        }
+        panel.style.maxWidth = "95vw";
+        panel.style.width = "95vw";
+        panel.style.height = "90vh";
+        panel.style.display = "flex";
+        panel.style.flexDirection = "column";
+        panel.style.alignItems = "stretch";
+        panel.style.overflow = "hidden";
+
+        if (scrollWrap) {
+            if (!scrollWrap.dataset.defaultOverflow) {
+                scrollWrap.dataset.defaultOverflow = scrollWrap.style.overflow || "";
+                scrollWrap.dataset.defaultFlex = scrollWrap.style.flex || "";
+                scrollWrap.dataset.defaultMinHeight = scrollWrap.style.minHeight || "";
+            }
+            scrollWrap.style.flex = "1";
+            scrollWrap.style.overflow = "auto";
+            scrollWrap.style.minHeight = "0";
+        }
+    } else if (panel) {
+        panel.style.maxWidth = panel.dataset.defaultMaxWidth || "";
+        panel.style.width = panel.dataset.defaultWidth || "";
+        panel.style.height = panel.dataset.defaultHeight || "";
+        panel.style.display = panel.dataset.defaultDisplay || "";
+        panel.style.flexDirection = panel.dataset.defaultFlexDirection || "";
+        panel.style.alignItems = panel.dataset.defaultAlignItems || "";
+        panel.style.overflow = panel.dataset.defaultOverflow || "";
+
+        if (scrollWrap && scrollWrap.dataset.defaultOverflow !== undefined) {
+            scrollWrap.style.overflow = scrollWrap.dataset.defaultOverflow || "";
+            scrollWrap.style.flex = scrollWrap.dataset.defaultFlex || "";
+            scrollWrap.style.minHeight = scrollWrap.dataset.defaultMinHeight || "";
+        }
+    }
+
     grid.innerHTML = "";
     grid.style.gridTemplateColumns = `repeat(${this.width}, ${cellSize}px)`;
     grid.style.gridAutoRows = `${cellSize}px`;
@@ -703,7 +871,7 @@ renderMinimap: function(gridId = 'minimap-grid', cellSize = 50) {
             el.className = 'map-cell';
 
             // [1] 가시성 체크
-            let isRoom = cellData.type !== 'wall';
+            let isRoom = cellData.type !== 'wall' && (!this.isCity || !!cellData.citySpot);
             let isVisited = cellData.visited;
             let isKnownWall = false;
             let isCurrent = (this.currentPos.x === x && this.currentPos.y === y);
@@ -745,13 +913,28 @@ renderMinimap: function(gridId = 'minimap-grid', cellSize = 50) {
                         case 'treasure': icon = "📦"; break;
                         case 'event': icon = "❔"; break;
                         case 'investigate': icon = "🔍"; break;
+                        case 'city': icon = "🏢"; break;
                     }
-                    el.innerText = icon;
+
+                    const isCitySpot = this.isCity && cellData.citySpot;
+                    let hasLabelContent = false;
+                    if (isCitySpot) {
+                        const label = cellData.citySpot.name || cellData.citySpot.id || "";
+                        const shortLabel = (gridId === 'minimap-inline-grid') ? label.slice(0, 3) : label;
+                        el.classList.add('city-cell');
+                        el.title = label;
+                        el.innerHTML = `<span class=\"map-cell-icon\">${icon}</span><span class=\"map-cell-label\">${shortLabel}</span>`;
+                        hasLabelContent = true;
+                    } else {
+                        el.innerText = icon;
+                    }
 
                     // 현재 위치 표시
                     if (isCurrent) {
                         el.classList.add('current');
-                        el.innerText = "";
+                        if (!hasLabelContent) {
+                            el.innerText = "";
+                        }
                     }
 
                     // [4] 통로(Path) 연결 표시 (뚫린 길)
@@ -761,7 +944,7 @@ renderMinimap: function(gridId = 'minimap-grid', cellSize = 50) {
                     if (cellData.exits.includes('e')) el.classList.add('path-e');
                     if (cellData.exits.includes('w')) el.classList.add('path-w');
 
-                    if (this.isCity) {
+                    if (this.isCity && cellData.citySpot) {
                         el.classList.add('teleport-target');
                         el.onclick = () => this.teleport(x, y);
                     }
