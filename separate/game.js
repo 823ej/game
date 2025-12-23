@@ -612,7 +612,8 @@ function startCityDungeon(dungeonId) {
         customDungeon: config || {
             width: 5, height: 5, roomCount: 10,
             data: { battle: 5, event: 2, treasure: 1 }
-        }
+        },
+        enemyPool: (config && Array.isArray(config.enemyPool)) ? config.enemyPool : null
     };
 
     // 던전 탈출 시 복귀할 도시 구역/스팟 기억
@@ -729,7 +730,8 @@ function beginMission() {
         clues: 0,
         location: scData.locations[0], 
         bossReady: false,
-        isActive: true
+        isActive: true,
+        enemyPool: getEnemyPoolFromScenario(scData)
     };
     
     renderExploration(true);
@@ -748,6 +750,7 @@ function startPatrol(districtKey) {
 
     // 3. 순찰용 가짜 시나리오 데이터 생성
     // (districtKey를 저장해두어야 나중에 던전 설정을 불러옵니다)
+    const dist = DISTRICTS[districtKey];
     game.scenario = {
         id: "patrol",
         title: `${DISTRICTS[districtKey].name} 순찰`,
@@ -755,7 +758,8 @@ function startPatrol(districtKey) {
         clues: 0,
         isPatrol: true,
         isActive: true,
-        canRetreat: true 
+        canRetreat: true,
+        enemyPool: dist ? (dist.enemyPool || (dist.dungeon && dist.dungeon.enemyPool) || null) : null
     };
     
     // 바로 전투를 붙이지 않고 탐사 화면을 먼저 보여준다
@@ -1483,6 +1487,39 @@ function advanceTimeSlot(reason) {
     if (game.timeIndex === 0) game.day += 1;
     updateUI();
     autoSave();
+}
+
+function getEnemyPoolFromScenario(scData) {
+    if (!scData) return null;
+    if (Array.isArray(scData.enemyPool) && scData.enemyPool.length > 0) return scData.enemyPool;
+    if (scData.dungeon && Array.isArray(scData.dungeon.enemyPool) && scData.dungeon.enemyPool.length > 0) {
+        return scData.dungeon.enemyPool;
+    }
+    if (scData.customDungeon && Array.isArray(scData.customDungeon.enemyPool) && scData.customDungeon.enemyPool.length > 0) {
+        return scData.customDungeon.enemyPool;
+    }
+    return null;
+}
+
+function getCurrentEnemyPool() {
+    if (game.scenario) {
+        const direct = getEnemyPoolFromScenario(game.scenario);
+        if (direct) return direct;
+    }
+    if (game.activeScenarioId && SCENARIOS[game.activeScenarioId]) {
+        const pool = getEnemyPoolFromScenario(SCENARIOS[game.activeScenarioId]);
+        if (pool) return pool;
+    }
+    if (game.scenario && game.scenario.isPatrol && game.scenario.districtKey) {
+        const dist = DISTRICTS[game.scenario.districtKey];
+        if (dist) {
+            if (Array.isArray(dist.enemyPool) && dist.enemyPool.length > 0) return dist.enemyPool;
+            if (dist.dungeon && Array.isArray(dist.dungeon.enemyPool) && dist.dungeon.enemyPool.length > 0) {
+                return dist.dungeon.enemyPool;
+            }
+        }
+    }
+    return null;
 }
 
 /* [NEW] 랜덤 이벤트 실행기 */
@@ -2719,7 +2756,8 @@ function startScenarioFromCity(id) {
         clues: 0,
         location: scData.locations[0],
         bossReady: false,
-        isActive: false
+        isActive: false,
+        enemyPool: getEnemyPoolFromScenario(scData)
     };
 
     if (Array.isArray(scData.unlocks) && scData.unlocks.length > 0) {
@@ -2757,7 +2795,8 @@ function acceptMission(id) {
         clues: 0,
         location: scData.locations[0], 
         bossReady: false,
-        isActive: false
+        isActive: false,
+        enemyPool: getEnemyPoolFromScenario(scData)
     };
 
     if (Array.isArray(scData.unlocks) && scData.unlocks.length > 0) {
@@ -4173,11 +4212,13 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
             let picked = [];
             if (Array.isArray(enemyKeys) && enemyKeys.length > 0) picked = enemyKeys;
             else if (typeof enemyKeys === 'string') picked = [enemyKeys];
-            else {
-                let count = (Math.random() < 0.5) ? 2 : 1; 
-                const pool = Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
-                for (let i = 0; i < count; i++) picked.push(pool[Math.floor(Math.random() * pool.length)]);
-            }
+              else {
+                  let count = (Math.random() < 0.5) ? 2 : 1; 
+                  const pool = getCurrentEnemyPool() || Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
+                  const filteredPool = pool.filter(k => ENEMY_DATA[k] && !k.startsWith("boss_"));
+                  const finalPool = (filteredPool.length > 0) ? filteredPool : Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
+                  for (let i = 0; i < count; i++) picked.push(finalPool[Math.floor(Math.random() * finalPool.length)]);
+              }
             
             picked.forEach((key, idx) => {
                 let enemy = createEnemyData(key, idx);

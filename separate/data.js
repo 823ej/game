@@ -1207,6 +1207,7 @@ const CITY_DUNGEON_CONFIGS = {
             treasure: 1,
             boss: 1
         },
+        enemyPool: ["curator"],
         boss: "curator"
     },
     north_mountain_forest: {
@@ -1238,23 +1239,25 @@ const CITY_DUNGEON_CONFIGS = {
             bush: 2,
             shop: 1,
             heal: 1
-        }
+        },
+        enemyPool: ["괴물 쥐", "불량배"]
     }
 };
 
 const DISTRICTS = {
-    "slums": {
-        name: "뒷골목 슬럼",
-        desc: "범죄와 오물이 뒤섞인 곳. 불량배가 많지만 정보도 많다.",
-        danger: 1, 
-        color: "#c0392b", 
-        scenarios: ["tutorial"], 
-        facilities: ["shop_black_market"],
-        dungeon: {
-        width: 6,        // 맵 길이
-        height: 3,       // 맵 높이
-        roomCount: 12,   // 총 방 개수
-        data: {          
+      "slums": {
+          name: "뒷골목 슬럼",
+          desc: "범죄와 오물이 뒤섞인 곳. 불량배가 많지만 정보도 많다.",
+          danger: 1, 
+          color: "#c0392b", 
+          scenarios: ["tutorial"], 
+          facilities: ["shop_black_market"],
+          enemyPool: ["괴물 쥐", "불량배"],
+          dungeon: {
+          width: 6,        // 맵 길이
+          height: 3,       // 맵 높이
+          roomCount: 12,   // 총 방 개수
+          data: {          
             "battle": 4,      // 전투방 3개
             "box": 2,         // 📦 상자방 2개 (NEW)
             "note": 2,        // 📄 쪽지방 2개 (NEW)
@@ -1292,16 +1295,17 @@ const DISTRICTS = {
             }
         }
     },
-    "cult_hideout": {
-        name: "👁️ 교단 은신처",
-        desc: "음습한 기운이 느껴지는 폐쇄된 지하철역.",
-        danger: 3, 
-        color: "#8e44ad", 
-        hidden: true, 
-        // ★ [이 부분이 빠져 있었습니다!] 추가해주세요. ★
-        scenarios: ["cult_investigation"], 
-        facilities: [] 
-    },
+      "cult_hideout": {
+          name: "👁️ 교단 은신처",
+          desc: "음습한 기운이 느껴지는 폐쇄된 지하철역.",
+          danger: 3, 
+          color: "#8e44ad", 
+          hidden: true, 
+          // ★ [이 부분이 빠져 있었습니다!] 추가해주세요. ★
+          scenarios: ["cult_investigation"], 
+          facilities: [],
+          enemyPool: ["사교도"]
+      },
     "abandoned_mansion": {
         name: "🏚️ 폐쇄된 저택",
         desc: "오랫동안 방치되어 잡초가 무성한 대저택. 기분 나쁜 시선이 느껴진다.",
@@ -1424,6 +1428,7 @@ const SCENARIOS = {
         desc: "사람들이 지하철역 근처에서 사라진다.",
         locations: ["지하철 승강장", "환기구 통로", "제물 보관소"],
         events: [{ type: "battle", chance: 0.4 }, { type: "text", chance: 0.3 }, { type: "nothing", chance: 0.3 }],
+        enemyPool: ["괴물 쥐"],
         boss: "boss_cult_leader",
         unlocks: ["cult_hideout"], 
         clueEvents: [{ text: "부적 발견.", gain: 10 }, { text: "제사 도구 발견.", gain: 25 }],
