@@ -2286,6 +2286,12 @@ position: absolute !important;
     filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
     animation: none;
 }
+.room-object .npc-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+}
 
 /* 라벨 (이름) */
 .dungeon-obj-label {

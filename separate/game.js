@@ -66,6 +66,7 @@ const CITY_VIBE_META = {
 /* [수정] 도시 지도 렌더링 (전역 거점 배치 확인) */
 function renderCityMap() {
     game.state = 'city';
+    updateHomeUI();
     resetDungeonState();
     switchScene('city');
     game.inputLocked = false; 
@@ -259,6 +260,18 @@ function getVisibleCityArea(areaId) {
     const npcAssignments = game.cityArea?.npcAssignments?.[areaId] || {};
     const enrichedSpots = visibleSpots.map(spot => {
         const nextSpot = { ...spot };
+        if (areaId === "east_oldtown" && spot.id === "youngjin_office") {
+            if (isDetectiveJob()) {
+                nextSpot.objects = [
+                    { id: "return_office", name: "사무소로 복귀", icon: "🏠", action: "return_hub" }
+                ];
+            } else {
+                nextSpot.objects = [
+                    { id: "enter_office", name: "탐정 사무소 내부", icon: "🕵️", action: "enter_city_area", areaId: "youngjin_office_interior" }
+                ];
+            }
+        }
+
         if (spot.npcSlot) {
             const assigned = npcAssignments[spot.id];
             const npcList = Array.isArray(assigned) ? assigned : (assigned ? [assigned] : []);
@@ -2239,11 +2252,69 @@ function finishCreation() {
 }
 
 /* [NEW] 거점 화면 렌더링 */
+
+function isDetectiveJob() {
+    return player && player.job === "detective";
+}
+
+
+function getOfficeName() {
+    const area = (typeof CITY_AREA_DATA !== 'undefined' && CITY_AREA_DATA) ? CITY_AREA_DATA.east_oldtown : null;
+    if (area && Array.isArray(area.spots)) {
+        const spot = area.spots.find(s => s.id === "youngjin_office");
+        if (spot && spot.name) return spot.name;
+    }
+    return "영진 탐정 사무소";
+}
+
+function getHomeMeta() {
+    const officeName = getOfficeName();
+    if (isDetectiveJob()) {
+        return {
+            tag: officeName,
+            title: `🕵️ ${officeName}`,
+            sub: "도시의 어둠을 밝히는 유일한 불빛",
+            bg: "https://placehold.co/1400x800/1c1f28/3f4757?text=Detective+Office+Panorama",
+            returnLabel: "🏠 사무소 복귀",
+            returnLabelLong: "🏠 사무소로 복귀"
+        };
+    }
+    return {
+        tag: "카페 헤카테",
+        title: "☕ 카페 헤카테",
+        sub: "해결사들이 쉬어가는 은신처",
+        bg: "https://placehold.co/1400x800/2b1f1a/d9c2a3?text=Cafe+Hecate",
+        returnLabel: "🏠 카페 복귀",
+        returnLabelLong: "🏠 카페로 복귀"
+    };
+}
+
+function updateHomeUI() {
+    const meta = getHomeMeta();
+    const hub = document.getElementById('hub-scene');
+    if (hub) {
+        const tagEl = hub.querySelector('.hub-tag');
+        const titleEl = hub.querySelector('.hub-copy h1');
+        const subEl = hub.querySelector('.hub-sub');
+        if (tagEl) tagEl.textContent = meta.tag;
+        if (titleEl) titleEl.textContent = meta.title;
+        if (subEl) subEl.textContent = meta.sub;
+        const illus = hub.querySelector('.hub-illustration');
+        if (illus) illus.style.backgroundImage = `url('${meta.bg}')`;
+    }
+
+    const cityBack = document.querySelector('.city-back-btn');
+    if (cityBack) cityBack.textContent = meta.returnLabel;
+
+    const returnBtn = document.querySelector('button[onclick="returnToHub()"]');
+    if (returnBtn) returnBtn.textContent = meta.returnLabelLong;
+}
 function renderHub() {
     game.state = 'hub';
     // 사무소로 돌아올 때는 던전 진행을 리셋하여 다음 진입 시 시작방에서 시작
     resetDungeonState();
     switchScene('hub');
+    updateHomeUI();
     updateUI(); // 상단 바 갱신
     autoSave();
 }

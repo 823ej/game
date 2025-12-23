@@ -623,6 +623,9 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
                     } else {
                         showPopup("🚇 이동할 역을 선택하세요", "목적지를 선택하면 바로 이동합니다.", buttons);
                     }
+                } else if (action === 'open_casefiles') {
+                    if (typeof closePopup === 'function') closePopup();
+                    if (typeof openCaseFiles === 'function') openCaseFiles();
                 } else if (action === 'hecate_dialogue') {
                     const options = [
                         {

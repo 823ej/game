@@ -351,6 +351,30 @@ const NPC_DATA = {
         dislikes: ["toy", "trash"],
         icon: "🧢",
         tags: ["fixer"]
+    },
+    "영진 탐정": {
+        name: "영진 탐정",
+        maxSp: 100, sp: 80,
+        baseAtk: 3, baseDef: 2, baseSpd: 3,
+        deck: ["논리적 반박", "증거 제시", "심호흡"],
+        img: "assets/my_detective.png",
+        desc: "사무소를 지키며 의뢰를 정리하는 베테랑 탐정.",
+        likes: ["paper", "tool", "warm"],
+        dislikes: ["noise", "trash"],
+        icon: "🕵️",
+        tags: ["detective"]
+    },
+    "사무소 조수": {
+        name: "사무소 조수",
+        maxSp: 100, sp: 90,
+        baseAtk: 2, baseDef: 1, baseSpd: 4,
+        deck: ["관찰", "심호흡", "무시"],
+        img: "https://placehold.co/100x100/2c3e50/ffffff?text=Assistant",
+        desc: "의뢰 목록을 관리하고 의뢰인과 연락을 담당한다.",
+        likes: ["paper", "money"],
+        dislikes: ["noise", "weapon"],
+        icon: "📋",
+        tags: ["assistant"]
     }
 };
 
@@ -940,6 +964,28 @@ const CITY_AREA_DATA = {
                 objects: [
                     { id: "hecate_dialogue", name: "레이디 헤카테", icon: "💬", action: "hecate_dialogue" },
                     { id: "hecate_exit", name: "구시가지로", icon: "🚪", action: "enter_city_area", areaId: "east_oldtown", spotId: "hecate_cafe" }
+                ]
+            }
+        ]
+    },
+    youngjin_office_interior: {
+        name: "영진 탐정 사무소",
+        desc: "서류와 사진으로 가득한 작은 탐정 사무소.",
+        start: "office_desk",
+        spots: [
+            {
+                id: "office_desk",
+                name: "사무소 데스크",
+                desc: "탐정과 조수가 의뢰를 정리하는 자리.",
+                pos: { x: 50, y: 52 },
+                grid: { x: 1, y: 1 },
+                links: [],
+                tags: ["사무소", "의뢰"],
+                icon: "🕵️",
+                objects: [
+                    { id: "office_detective", name: "탐정", icon: "<img src=\"assets/my_detective.png\" alt=\"탐정\" class=\"npc-icon\">", action: "npc_dialogue", npcKey: "영진 탐정" },
+                    { id: "office_assistant", name: "조수", icon: "📋", action: "open_casefiles", npcKey: "사무소 조수" },
+                    { id: "office_exit", name: "구시가지로", icon: "🚪", action: "enter_city_area", areaId: "east_oldtown", spotId: "youngjin_office" }
                 ]
             }
         ]
