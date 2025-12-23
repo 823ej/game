@@ -600,6 +600,7 @@ function startCityDungeon(dungeonId) {
     switchScene('exploration');
     game.inputLocked = false;
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
+    advanceTimeSlot("city_dungeon");
 
     game.activeScenarioId = null;
     game.dungeonMap = false; // 새 던전 강제 생성
@@ -718,6 +719,7 @@ function beginMission() {
         showPopup("진행 중인 의뢰 정보를 찾을 수 없습니다.");
         return;
     }
+    advanceTimeSlot("mission");
 
     // 탐사 화면 진입 데이터 설정
     let scData = SCENARIOS[game.activeScenarioId];
@@ -736,6 +738,7 @@ function beginMission() {
 /* [수정] 순찰 시작 (복귀 가능 설정) */
 function startPatrol(districtKey) {
     closePopup();
+    advanceTimeSlot("patrol");
     
     // 1. 활성 시나리오 ID 제거 (순찰이므로)
     game.activeScenarioId = null;
@@ -1453,11 +1456,34 @@ let game = {
     scenario: null,
     // 던전 재진입 시 맵을 재생성해야 하는지 여부
     shouldResetDungeon: false,
-    cityDiscoveries: {}
+    cityDiscoveries: {},
+    day: 1,
+    timeIndex: 0
 };
 
 // 현재 전투에서 사용할 적 목록을 전역으로 보관
 let enemies = [];
+
+const TIME_SLOTS = ["오전", "낮", "오후", "밤"];
+
+function ensureTimeState() {
+    if (!Number.isInteger(game.day)) game.day = 1;
+    if (!Number.isInteger(game.timeIndex)) game.timeIndex = 0;
+}
+
+function getTimeLabel() {
+    ensureTimeState();
+    const slot = TIME_SLOTS[game.timeIndex] || TIME_SLOTS[0];
+    return `${game.day}일차 ${slot}`;
+}
+
+function advanceTimeSlot(reason) {
+    ensureTimeState();
+    game.timeIndex = (game.timeIndex + 1) % TIME_SLOTS.length;
+    if (game.timeIndex === 0) game.day += 1;
+    updateUI();
+    autoSave();
+}
 
 /* [NEW] 랜덤 이벤트 실행기 */
 function triggerRandomEvent() {
@@ -1840,6 +1866,7 @@ function loadGame() {
         // 데이터 복구
         player = loadedData.player;
         game = loadedData.game;
+        ensureTimeState();
         if (!game.cityDiscoveries) game.cityDiscoveries = {};
 
         ensureEquipmentFields(player);
@@ -2214,6 +2241,8 @@ function finishCreation() {
 
     // 캐릭터 생성 완료 상태로 전환
     game.started = true;
+    game.day = 1;
+    game.timeIndex = 0;
     game.state = 'hub';
     game.activeScenarioId = null;
     game.scenario = null;
@@ -2368,6 +2397,7 @@ function hubRest() {
     player.sp = player.maxSp;
     
     updateUI();
+    advanceTimeSlot("rest");
     showPopup("휴식", "따뜻한 커피를 마시며 안정을 찾았습니다.<br>(HP/SP 완전 회복)", [{txt:"확인", func:closePopup}]);
 }
 
@@ -2387,8 +2417,7 @@ function openHospitalCure() {
                 closePopup();
                 removeTrait(key);
                 if (cardName) removeCardEverywhere(cardName);
-                updateUI();
-                autoSave();
+                advanceTimeSlot("hospital_cure");
                 showPopup("치료 완료", `${t.name}이(가) 해제되었습니다.`, [{ txt: "확인", func: closePopup }]);
             }
         };
@@ -2675,6 +2704,7 @@ function startScenario(id) {
 function startScenarioFromCity(id) {
     const scData = SCENARIOS[id];
     if (!scData) return;
+    advanceTimeSlot("city_scenario");
 
     game.activeScenarioId = id;
     game.scenario = {
@@ -6117,15 +6147,16 @@ function updateUI() {
 
     // 1. 상단 플레이어 정보
     const infoEl = document.getElementById('game-info');
-    if (infoEl) {
-        if (!game.started) {
-            infoEl.textContent = "";
-            infoEl.classList.add('hidden');
-        } else {
-            infoEl.classList.remove('hidden');
-            infoEl.textContent = `Lv.${game.level} | ${player.gold}G | HP ${player.hp}/${player.maxHp} | SP ${player.sp}/${player.maxSp}`;
-        }
-    }
+      if (infoEl) {
+          if (!game.started) {
+              infoEl.textContent = "";
+              infoEl.classList.add('hidden');
+          } else {
+              ensureTimeState();
+              infoEl.classList.remove('hidden');
+              infoEl.textContent = `${getTimeLabel()} | Lv.${game.level} | ${player.gold}G | HP ${player.hp}/${player.maxHp} | SP ${player.sp}/${player.maxSp}`;
+          }
+      }
 
     // 2. [NEW] 상단 시나리오 정보 (진척도/위협도)
     const topScInfo = document.getElementById('top-scenario-info');
