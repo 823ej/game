@@ -626,6 +626,8 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
                 } else if (action === 'open_casefiles') {
                     if (typeof closePopup === 'function') closePopup();
                     if (typeof openCaseFiles === 'function') openCaseFiles();
+                } else if (action === 'hospital_cure') {
+                    if (typeof openHospitalCure === 'function') openHospitalCure();
                 } else if (action === 'hecate_dialogue') {
                     const options = [
                         {

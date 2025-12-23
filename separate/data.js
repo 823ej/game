@@ -405,10 +405,10 @@ const CITY_MAP = {
             id: "central_admin", 
             name: "중앙 행정구", 
             label: "세주시 중심", 
-            desc: "시청과 빌딩가, 백화점, 지하철역 지하상가, 백산 타워, 성 주드 아카데미, 비정형관리국(UDRA)이 모여 있는 행정 중심.", 
+            desc: "시청과 빌딩가, 백화점, 지하철역 지하상가, 백산 타워, 성 주드 아카데미, 대학 병원, 비정형관리국(UDRA)이 모여 있는 행정 중심.", 
             vibe: "corporate", 
             pos: { x: 50, y: 50 }, 
-            tags: ["빌딩가", "백화점", "지하철역 지하상가", "백산 타워", "성 주드 아카데미", "비정형관리국(UDRA)"],
+            tags: ["빌딩가", "백화점", "지하철역 지하상가", "백산 타워", "성 주드 아카데미", "대학 병원", "비정형관리국(UDRA)"],
             links: ["east_oldtown", "west_industrial", "south_coast", "north_mountain"]
         },
         { 
@@ -467,7 +467,7 @@ const CITY_AREA_DATA = {
                 desc: "세주시의 중심. 모든 시설이 이 광장을 둘러싸고 있다.",
                 pos: { x: 50, y: 50 },
                 grid: { x: 1, y: 1 },
-                links: ["baeksan_tower", "subway_gate", "st_jude_academy", "bs_convenience", "udra_annex"],
+                links: ["baeksan_tower", "subway_gate", "st_jude_academy", "university_hospital", "bs_convenience", "udra_annex"],
                 tags: ["집결지", "기점"],
                 icon: "🧭",
                 objects: [
@@ -506,6 +506,19 @@ const CITY_AREA_DATA = {
                 links: ["central_plaza"],
                 tags: ["교육", "연구"],
                 icon: "🏫"
+            },
+            {
+                id: "university_hospital",
+                name: "대학 병원",
+                desc: "의료 연구와 진료가 함께 이뤄지는 대형 병원.",
+                pos: { x: 30, y: 30 },
+                grid: { x: 0, y: 0 },
+                links: ["central_plaza"],
+                tags: ["의료", "진료"],
+                icon: "🏥",
+                objects: [
+                    { id: "hospital_cure", name: "저주 치료", icon: "💊", action: "hospital_cure" }
+                ]
             },
             {
                 id: "bs_convenience",
@@ -1685,6 +1698,18 @@ const TRAIT_DATA = {
         desc: "건강 -4, 최대 HP 감소",
         cost: -3,
         stats: { con: -4 }
+    },
+    "curse_unlucky": {
+        name: "저주: 불운",
+        type: "curse",
+        desc: "덱에 [저주: 불운]이(가) 고정됩니다. 치료로만 해제 가능",
+        cost: -2
+    },
+    "curse_shackles": {
+        name: "저주: 족쇄",
+        type: "curse",
+        desc: "덱에 [저주: 족쇄]이(가) 고정됩니다. 치료로만 해제 가능",
+        cost: -2
     }
 };
 

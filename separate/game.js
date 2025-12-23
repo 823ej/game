@@ -1250,10 +1250,47 @@ function addStatusCardToEnemyDeck(enemy, cardName, count = 1) {
     return true;
 }
 
+const CURSE_TRAIT_MAP = {
+    "저주: 불운": "curse_unlucky",
+    "저주: 족쇄": "curse_shackles"
+};
+
+function getCurseTraitKey(cardName) {
+    return CURSE_TRAIT_MAP[cardName] || null;
+}
+
+function getCurseCardByTrait(traitKey) {
+    const entries = Object.entries(CURSE_TRAIT_MAP);
+    for (let [card, key] of entries) {
+        if (key === traitKey) return card;
+    }
+    return null;
+}
+
+function removeCardEverywhere(cardName) {
+    const removeFromArray = (arr) => {
+        if (!Array.isArray(arr) || arr.length === 0) return;
+        const filtered = arr.filter(name => name !== cardName);
+        arr.length = 0;
+        arr.push(...filtered);
+    };
+
+    removeFromArray(player.deck);
+    removeFromArray(player.socialDeck);
+    removeFromArray(player.storage);
+    removeFromArray(player.drawPile);
+    removeFromArray(player.discardPile);
+    removeFromArray(player.exhaustPile);
+    removeFromArray(player.hand);
+    removeFromArray(player.combatTempCards);
+}
+
 function addCurseCardToDeck(cardName, count = 1) {
     if (!CARD_DATA[cardName] || !isPenaltyCard(cardName, 'curse')) return false;
     if (!player.deck) player.deck = [];
     for (let i = 0; i < count; i++) player.deck.push(cardName);
+    const traitKey = getCurseTraitKey(cardName);
+    if (traitKey && !player.traits.includes(traitKey)) addTrait(traitKey);
     autoSave();
     return true;
 }
@@ -2333,6 +2370,32 @@ function hubRest() {
     updateUI();
     showPopup("휴식", "따뜻한 커피를 마시며 안정을 찾았습니다.<br>(HP/SP 완전 회복)", [{txt:"확인", func:closePopup}]);
 }
+
+function openHospitalCure() {
+    const curseTraits = (player.traits || []).filter(key => getCurseCardByTrait(key));
+    if (curseTraits.length === 0) {
+        showPopup("대학 병원", "치료할 저주가 없습니다.", [{ txt: "확인", func: closePopup }]);
+        return;
+    }
+
+    const buttons = curseTraits.map(key => {
+        const cardName = getCurseCardByTrait(key);
+        const t = TRAIT_DATA[key] || { name: key };
+        return {
+            txt: `${t.name}${cardName ? ` (${cardName})` : ""}`,
+            func: () => {
+                closePopup();
+                removeTrait(key);
+                if (cardName) removeCardEverywhere(cardName);
+                updateUI();
+                autoSave();
+                showPopup("치료 완료", `${t.name}이(가) 해제되었습니다.`, [{ txt: "확인", func: closePopup }]);
+            }
+        };
+    });
+    buttons.push({ txt: "취소", func: closePopup });
+    showPopup("대학 병원", "치료할 저주를 선택하세요.", buttons);
+}
 /* [NEW] 덱 관리 시스템 변수 */
 let currentDeckMode = 'battle'; // 'battle' or 'social'
 
@@ -2419,14 +2482,20 @@ function createBuilderCard(cName, onClickFunc) {
 /* [NEW] 카드 이동: 덱 -> 보관함 */
 function moveCardToStorage(deckIdx) {
     let targetDeck = (currentDeckMode === 'battle') ? player.deck : player.socialDeck;
-    
+
     // 최소 덱 매수 제한 (예: 5장)
     if (targetDeck.length <= 5) {
         showPopup("최소 5장의 카드는 있어야 합니다.");
         return;
     }
 
-    let card = targetDeck.splice(deckIdx, 1)[0]; // 덱에서 제거
+    let card = targetDeck[deckIdx];
+    if (isPenaltyCard(card, 'curse')) {
+        showPopup("저주는 제거할 수 없습니다.");
+        return;
+    }
+
+    card = targetDeck.splice(deckIdx, 1)[0]; // 덱에서 제거
     player.storage.push(card); // 보관함에 추가
     
     renderDeckBuilder(); // 재렌더링
