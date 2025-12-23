@@ -1,4 +1,4 @@
-/* [dungeon.js] 던전 시스템 모듈 */
+﻿/* [dungeon.js] 던전 시스템 모듈 */
 
 const DungeonSystem = {
     map: [],        // 현재 층의 2D 맵 데이터
@@ -269,7 +269,7 @@ const DungeonSystem = {
 updateParallax: function() {
     const bgLayer = document.getElementById('layer-bg');
     const fgLayer = document.getElementById('layer-fg');
-    const objLayer = document.getElementById('dungeon-object');
+    const objLayer = document.getElementById('dungeon-objects');
     
     // [핵심] 플레이어와 스테이지 요소를 가져옵니다.
     const playerEl = document.getElementById('dungeon-player');
@@ -339,63 +339,88 @@ updateParallax: function() {
 },
     // [신규] 방 타입에 따라 오브젝트 표시/숨김 결정
   checkObjectVisibility: function() {
-    let room = this.map[this.currentPos.y][this.currentPos.x];
-    const objEl = document.getElementById('dungeon-object');
-    const iconEl = document.getElementById('dungeon-obj-icon');
-    const labelEl = document.getElementById('dungeon-obj-label');
+      let room = this.map[this.currentPos.y][this.currentPos.x];
+      const objWrap = document.getElementById('dungeon-objects');
+      if (!objWrap) return;
 
-    if (!objEl) return;
+      const setObjects = (list, opts = {}) => {
+          objWrap.innerHTML = "";
+          list.forEach(obj => {
+              const el = document.createElement('div');
+              el.className = 'room-object';
+              if (opts.disabled) {
+                  el.style.pointerEvents = 'none';
+              }
+              const icon = obj.icon || "❓";
+              const label = obj.label || "조사하기";
+              el.innerHTML = `
+                  <div class="dungeon-obj-icon">${icon}</div>
+                  <div class="dungeon-obj-label">${label}</div>
+              `;
+              if (!opts.disabled) {
+                  el.onclick = () => {
+                      if (obj.onClick) obj.onClick();
+                      else if (obj.data) this.interactWithObject(obj.data);
+                      else this.interactWithObject();
+                  };
+              }
+              objWrap.appendChild(el);
+          });
+      };
 
-        // 1. 전투/시작/빈방/벽은 숨김 (클리어 여부 무관)
-        if (!this.isCity && (room.type === 'battle' || room.type === 'start' || room.type === 'empty' || room.type === 'wall')) {
-            objEl.classList.add('hidden');
-            return;
-        }
+      // 1. 전투/시작/빈방/벽은 숨김 (클리어 여부 무관)
+      if (!this.isCity && (room.type === 'battle' || room.type === 'start' || room.type === 'empty' || room.type === 'wall')) {
+          objWrap.classList.add('hidden');
+          return;
+      }
 
-        // [수정] 아이콘 및 라벨 설정
-        let icon = "❓";
-        let label = "조사하기";
+      if (this.isCity && room.citySpot) {
+          const objects = Array.isArray(room.citySpot.objects) ? room.citySpot.objects : [];
+          if (objects.length === 0) {
+              objWrap.classList.add('hidden');
+              return;
+          }
+          const list = objects.map(obj => ({
+              icon: obj.icon || room.citySpot.icon || "🏢",
+              label: obj.name || room.citySpot.name || "건물",
+              data: obj
+          }));
+          setObjects(list);
+          objWrap.classList.remove('hidden');
+          objWrap.style.pointerEvents = 'auto';
+          objWrap.style.opacity = 1;
+          return;
+      }
 
-        if (this.isCity && room.citySpot) {
-            const objects = Array.isArray(room.citySpot.objects) ? room.citySpot.objects : [];
-            const firstObjIcon = (objects[0] && objects[0].icon) ? objects[0].icon : null;
-            icon = firstObjIcon || room.citySpot.icon || "🏢";
-            label = room.citySpot.name || "건물";
-        } else {
-            switch (room.type) {
-                case 'treasure': icon = "🎁"; label = "보물상자"; break;
-                case 'heal': icon = "🔥"; label = "모닥불"; break;
-                case 'shop': icon = "⛺"; label = "상점"; break;
-                case 'event': icon = "❔"; label = "무언가 있다"; break;
-                case 'investigate': icon = "🔍"; label = "수상한 흔적"; break;
-                case 'boss': icon = room.locked ? "🔒" : "👹"; label = room.locked ? "잠긴 문" : "보스"; break;
-                
-                // ★ [추가된 부분] 새로운 타입 정의
-                case 'box': icon = "📦"; label = "낡은 상자"; break;
-                case 'note': icon = "📄"; label = "떨어진 쪽지"; break;
-                case 'bush': icon = "🌿"; label = "수상한 덤불"; break;
-            }
-        }
+      // 비도시: 아이콘 및 라벨 설정
+      let icon = "❓";
+      let label = "조사하기";
+      switch (room.type) {
+          case 'treasure': icon = "🎁"; label = "보물상자"; break;
+          case 'heal': icon = "🔥"; label = "모닥불"; break;
+          case 'shop': icon = "⛺"; label = "상점"; break;
+          case 'event': icon = "❔"; label = "무언가 있다"; break;
+          case 'investigate': icon = "🔍"; label = "수상한 흔적"; break;
+          case 'boss': icon = room.locked ? "🔒" : "👹"; label = room.locked ? "잠긴 문" : "보스"; break;
+          case 'box': icon = "📦"; label = "낡은 상자"; break;
+          case 'note': icon = "📄"; label = "떨어진 쪽지"; break;
+          case 'bush': icon = "🌿"; label = "수상한 덤불"; break;
+      }
 
-        // 클리어된 방이면 표시만 하고 상호작용 비활성화
-        if (room.cleared && !this.isCity) {
-            objEl.classList.remove('hidden');
-            objEl.style.pointerEvents = 'none';
-            objEl.style.opacity = 0.5;
-            iconEl.innerText = "✔";
-            labelEl.innerText = "비어 있음";
-            return;
-        }
+      if (room.cleared && !this.isCity) {
+          setObjects([{ icon: "✔", label: "비어 있음" }], { disabled: true });
+          objWrap.classList.remove('hidden');
+          objWrap.style.pointerEvents = 'none';
+          objWrap.style.opacity = 0.5;
+          return;
+      }
 
-        iconEl.innerText = icon;
-        labelEl.innerText = label;
-        
-        // 3. 표시 + 활성화
-        objEl.classList.remove('hidden');
-        objEl.style.pointerEvents = 'auto';
-        objEl.style.opacity = 1;
-    },
-    // [수정] 방 전환 팝업 제거 (이동 제한만 함)
+      setObjects([{ icon, label }]);
+      objWrap.classList.remove('hidden');
+      objWrap.style.pointerEvents = 'auto';
+      objWrap.style.opacity = 1;
+  },
+  // [수정] 방 전환 팝업 제거 (이동 제한만 함)
     checkRoomTransition: function(side) {
         // 더 이상 팝업을 띄우지 않고, 그냥 진행도가 0이나 100을 넘어가지 않게만 막습니다.
         // 문이 그 위치에 있으니 클릭하면 됩니다.
@@ -426,7 +451,7 @@ updateParallax: function() {
     this.checkObjectVisibility();
 
     // 2. [핵심] 화면에 배치된 움직이는 요소들을 모두 선택
-    const targets = document.querySelectorAll('.dungeon-door, #dungeon-object');
+    const targets = document.querySelectorAll('.dungeon-door, #dungeon-objects');
 
     // 3. 트랜지션 '강제' 차단 (CSS 우선순위 최상위 !important 적용)
     // 위치를 잡는 동안에는 절대 애니메이션이 작동하지 않게 합니다.
@@ -549,7 +574,7 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
         }
     },
     // [신규] 오브젝트 클릭 시 실행되는 함수
-    interactWithObject: function() {
+    interactWithObject: function(objOverride) {
         if (typeof game !== 'undefined' && game.state === 'battle') {
             log("⚠️ 전투 중에는 상호작용할 수 없습니다.");
             return;
@@ -565,8 +590,7 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
 
         if (this.isCity && room.citySpot) {
             const objects = Array.isArray(room.citySpot.objects) ? room.citySpot.objects : [];
-            if (objects.length > 0) {
-                const obj = objects[0];
+            const runCityObject = (obj) => {
                 const name = obj.name || "이름 없는 객체";
                 const action = obj.action || "";
                 const dungeonId = obj.dungeonId || obj.targetDungeon;
@@ -599,8 +623,61 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
                     } else {
                         showPopup("🚇 이동할 역을 선택하세요", "목적지를 선택하면 바로 이동합니다.", buttons);
                     }
+                } else if (action === 'hecate_dialogue') {
+                    const options = [
+                        {
+                            txt: "의뢰 목록 보기",
+                            func: () => {
+                                closePopup();
+                                if (typeof openCaseFiles === 'function') openCaseFiles();
+                            }
+                        },
+                        { txt: "대화 종료", func: closePopup }
+                    ];
+                    if (typeof showChoice === 'function') {
+                        showChoice("레이디 헤카테", "의뢰가 필요하면 말만 해요.", options);
+                    } else {
+                        showPopup("레이디 헤카테", "의뢰가 필요하면 말만 해요.", options);
+                    }
+                } else if (action === 'npc_dialogue' && obj.npcKey) {
+                    const npc = (typeof NPC_DATA !== 'undefined') ? NPC_DATA[obj.npcKey] : null;
+                    const title = npc?.name || "해결사";
+                    const desc = npc?.desc || "말을 건다.";
+                    if (typeof showChoice === 'function') {
+                        showChoice(title, desc, [{ txt: "대화 종료", func: closePopup }]);
+                    } else {
+                        showPopup(title, desc, [{ txt: "대화 종료", func: closePopup }]);
+                    }
                 } else {
                     log(`▶ ${name}을(를) 살펴봅니다. (내부 진입 예정)`);
+                }
+            };
+            if (objOverride) {
+                runCityObject(objOverride);
+                return;
+            }
+            if (objects.length > 0) {
+                if (objects.length === 1) {
+                    runCityObject(objects[0]);
+                } else {
+                    const title = room.citySpot.name || "상호작용";
+                    const desc = "무엇을 할까?";
+                    const buttons = objects.map(obj => {
+                        const label = `${obj.icon ? `${obj.icon} ` : ""}${obj.name || "상호작용"}`;
+                        return {
+                            txt: label,
+                            func: () => {
+                                if (typeof closePopup === 'function') closePopup();
+                                runCityObject(obj);
+                            }
+                        };
+                    });
+                    buttons.push({ txt: "취소", func: closePopup });
+                    if (typeof showChoice === 'function') {
+                        showChoice(title, desc, buttons);
+                    } else {
+                        showPopup(title, desc, buttons);
+                    }
                 }
             } else {
                 log("▶ 내부 진입/상호작용은 추후 구현 예정입니다.");
@@ -700,7 +777,7 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
         // [2] 열려 있을 때 (전투 진입)
         
         // ★ [수정] 보스전 시작 시 오브젝트(아이콘)를 즉시 숨깁니다.
-        const objEl = document.getElementById('dungeon-object');
+        const objEl = document.getElementById('dungeon-objects');
         if (objEl) objEl.classList.add('hidden');
 
         startBossBattle();
@@ -751,7 +828,7 @@ renderView: function() {
     this.renderDoors(room);
 
     // 2. [핵심] 화면 요소 선택 (문, 오브젝트)
-    const targets = document.querySelectorAll('.dungeon-door, #dungeon-object');
+    const targets = document.querySelectorAll('.dungeon-door, #dungeon-objects');
 
     // 3. 트랜지션 강제 차단 & 숨김 (위치 잡기 전)
     targets.forEach(el => {
@@ -1040,3 +1117,4 @@ function stopMove() {
 function toggleMinimap() {
     DungeonSystem.toggleMinimap();
 }
+

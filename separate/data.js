@@ -315,6 +315,42 @@ const NPC_DATA = {
         likes: ["money", "valuable", "alcohol"], 
         dislikes: ["toy", "trash", "paper"],
         battle: { maxHp: 80, stats: { atk: 4, def: 2, spd: 2 }, deck: ["타격", "방패 부수기", "수비", "사격"] }
+    },
+    "라거 트레이스": {
+        name: "라거 트레이스",
+        maxSp: 100, sp: 60,
+        baseAtk: 2, baseDef: 1, baseSpd: 3,
+        deck: ["무시", "위협", "심호흡"],
+        img: "https://placehold.co/100x100/34495e/ffffff?text=Fixer",
+        desc: "조용히 커피를 마시며 의뢰를 기다리는 해결사.",
+        likes: ["drink", "tool"],
+        dislikes: ["noise", "horror"],
+        icon: "🧥",
+        tags: ["fixer"]
+    },
+    "진서 루멘": {
+        name: "진서 루멘",
+        maxSp: 100, sp: 70,
+        baseAtk: 2, baseDef: 0, baseSpd: 4,
+        deck: ["비꼬기", "심호흡", "논리적 반박"],
+        img: "https://placehold.co/100x100/7f8c8d/ffffff?text=Fixer",
+        desc: "날카로운 시선으로 주변을 훑는 해결사.",
+        likes: ["paper", "valuable"],
+        dislikes: ["trash", "noise"],
+        icon: "🧤",
+        tags: ["fixer"]
+    },
+    "도카 벨": {
+        name: "도카 벨",
+        maxSp: 100, sp: 55,
+        baseAtk: 3, baseDef: 1, baseSpd: 2,
+        deck: ["위협", "무시", "심호흡"],
+        img: "https://placehold.co/100x100/2c3e50/ffffff?text=Fixer",
+        desc: "검은 코트를 걸치고 벽에 기대 서 있다.",
+        likes: ["weapon", "valuable"],
+        dislikes: ["toy", "trash"],
+        icon: "🧢",
+        tags: ["fixer"]
     }
 };
 
@@ -388,7 +424,7 @@ const CITY_MAP = {
             desc: "성주산 능선과 숲, 그 안에 숨겨진 폐연구소가 있는 산악 지대.", 
             vibe: "calm", 
             pos: { x: 50, y: 24 }, 
-            tags: ["숲 입구", "폐연구소", "북림역"],
+            tags: ["숲 입구", "폐연구소", "성주산역"],
             links: ["central_admin"]
         }
     ]
@@ -587,7 +623,7 @@ const CITY_AREA_DATA = {
                             { label: "동문역", areaId: "subway_east_station", spotId: "east_platform" },
                             { label: "서항역", areaId: "subway_west_station", spotId: "west_platform" },
                             { label: "남산역", areaId: "subway_south_station", spotId: "south_platform" },
-                            { label: "북림역", areaId: "subway_north_station", spotId: "north_platform" }
+                            { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
                     { id: "back_to_market", name: "상가로 올라가기", icon: "⬆️", action: "enter_city_area", areaId: "central_subway_market", spotId: "market_hall" }
@@ -654,7 +690,7 @@ const CITY_AREA_DATA = {
             },
             {
                 id: "subway_north",
-                name: "북림역",
+                name: "성주산역",
                 desc: "북쪽 숲길로 이어지는 역.",
                 pos: { x: 50, y: 22 },
                 grid: { x: 1, y: 0 },
@@ -662,7 +698,7 @@ const CITY_AREA_DATA = {
                 tags: ["북쪽", "역"],
                 icon: "🚉",
                 objects: [
-                    { id: "to_north_station", name: "북림역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_north_station", spotId: "north_platform" }
+                    { id: "to_north_station", name: "성주산역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_north_station", spotId: "north_platform" }
                 ]
             },
             {
@@ -745,13 +781,13 @@ const CITY_AREA_DATA = {
         ]
     },
     subway_north_station: {
-        name: "북림역",
+        name: "성주산역",
         desc: "북쪽 산길로 이어지는 지하철역.",
         start: "north_platform",
         spots: [
             {
                 id: "north_platform",
-                name: "북림역 플랫폼",
+                name: "성주산역 플랫폼",
                 desc: "북쪽 방면 열차가 정차한다.",
                 pos: { x: 50, y: 50 },
                 grid: { x: 0, y: 0 },
@@ -822,7 +858,10 @@ const CITY_AREA_DATA = {
                 grid: { x: 0, y: 0 },
                 links: ["oldtown_market", "youngjin_office", "chungwoon_mansion"],
                 tags: ["카페", "휴식"],
-                icon: "☕"
+                icon: "☕",
+                objects: [
+                    { id: "enter_hecate", name: "카페 헤카테 내부", icon: "☕", action: "enter_city_area", areaId: "hecate_cafe_interior" }
+                ]
             },
             {
                 id: "chungwoon_mansion",
@@ -875,6 +914,32 @@ const CITY_AREA_DATA = {
                 icon: "🚉",
                 objects: [
                     { id: "to_east_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_east_station", spotId: "east_platform" }
+                ]
+            }
+        ]
+    },
+    hecate_cafe_interior: {
+        name: "카페 헤카테",
+        desc: "잔잔한 조명 아래 해결사들이 모여드는 카페.",
+        start: "hecate_counter",
+        randomNpcPool: ["라거 트레이스", "진서 루멘", "도카 벨"],
+        npcSpotIds: ["hecate_counter"],
+        npcSpotCounts: { hecate_counter: { min: 1, max: 3 } },
+        spots: [
+            {
+                id: "hecate_counter",
+                name: "레이디 헤카테",
+                desc: "카페의 사장. 해결사 의뢰를 관리한다.",
+                pos: { x: 50, y: 52 },
+                grid: { x: 1, y: 1 },
+                links: [],
+                tags: ["카페", "의뢰"],
+                icon: "👑",
+                npcSlot: true,
+                keepBaseName: true,
+                objects: [
+                    { id: "hecate_dialogue", name: "레이디 헤카테", icon: "💬", action: "hecate_dialogue" },
+                    { id: "hecate_exit", name: "구시가지로", icon: "🚪", action: "enter_city_area", areaId: "east_oldtown", spotId: "hecate_cafe" }
                 ]
             }
         ]
@@ -1053,7 +1118,7 @@ const CITY_AREA_DATA = {
             },
             {
                 id: "north_station",
-                name: "북림역",
+                name: "성주산역",
                 desc: "성주산과 이어지는 지하철역 출구.",
                 pos: { x: 78, y: 80 },
                 grid: { x: 1, y: 1 },

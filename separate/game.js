@@ -252,8 +252,76 @@ function unlockCitySpot(areaId, discoveryKey) {
 function getVisibleCityArea(areaId) {
     const area = getCityArea(areaId);
     if (!area) return null;
+    if (area.randomNpcPool && area.npcSpotIds) {
+        ensureCityAreaNpcAssignments(areaId, area);
+    }
     const visibleSpots = (area.spots || []).filter(spot => isCitySpotUnlocked(areaId, spot));
-    return { ...area, spots: visibleSpots };
+    const npcAssignments = game.cityArea?.npcAssignments?.[areaId] || {};
+    const enrichedSpots = visibleSpots.map(spot => {
+        const nextSpot = { ...spot };
+        if (spot.npcSlot) {
+            const assigned = npcAssignments[spot.id];
+            const npcList = Array.isArray(assigned) ? assigned : (assigned ? [assigned] : []);
+            if (npcList.length > 0) {
+                const primaryNpc = NPC_DATA[npcList[0]];
+                if (primaryNpc && !spot.keepBaseName) {
+                    nextSpot.name = primaryNpc.name || nextSpot.name;
+                    nextSpot.desc = primaryNpc.desc || nextSpot.desc;
+                    nextSpot.icon = primaryNpc.icon || nextSpot.icon;
+                }
+                const baseObjects = Array.isArray(spot.objects) ? [...spot.objects] : [];
+                const npcObjects = npcList.map((npcKey, idx) => {
+                    const npc = NPC_DATA[npcKey] || {};
+                    return {
+                        id: `talk_${spot.id}_${idx}`,
+                        name: npc.name || "대화하기",
+                        icon: npc.icon || "💬",
+                        action: "npc_dialogue",
+                        npcKey
+                    };
+                });
+                nextSpot.objects = [...baseObjects, ...npcObjects];
+            }
+        }
+        return nextSpot;
+    });
+    return { ...area, spots: enrichedSpots };
+}
+
+function ensureCityAreaNpcAssignments(areaId, area) {
+    if (!game.cityArea) game.cityArea = {};
+    if (!game.cityArea.npcAssignments) game.cityArea.npcAssignments = {};
+    if (game.cityArea.npcAssignments[areaId]) return;
+
+    const pool = Array.isArray(area.randomNpcPool) ? [...area.randomNpcPool] : [];
+    const targets = Array.isArray(area.npcSpotIds) ? [...area.npcSpotIds] : [];
+    const assignments = {};
+    targets.forEach(id => {
+        let count = 1;
+        if (area.npcSpotCounts && area.npcSpotCounts[id]) {
+            const rule = area.npcSpotCounts[id];
+            if (typeof rule === "number") {
+                count = rule;
+            } else if (rule && typeof rule === "object") {
+                const min = Number.isInteger(rule.min) ? rule.min : 1;
+                const max = Number.isInteger(rule.max) ? rule.max : min;
+                count = Math.max(min, Math.floor(Math.random() * (max - min + 1)) + min);
+            }
+        }
+        assignments[id] = [];
+        for (let i = 0; i < count; i++) {
+            if (pool.length === 0) break;
+            const pickIndex = Math.floor(Math.random() * pool.length);
+            const picked = pool.splice(pickIndex, 1)[0];
+            assignments[id].push(picked);
+        }
+        if (assignments[id].length === 1) {
+            assignments[id] = assignments[id][0];
+        } else if (assignments[id].length === 0) {
+            delete assignments[id];
+        }
+    });
+    game.cityArea.npcAssignments[areaId] = assignments;
 }
 
 function findSpotByTag(area, tag) {
@@ -485,6 +553,9 @@ function startCityExploration(areaId, targetSpotId) {
 
     // 던전 모듈을 도시 모드로 로드
     if (DungeonSystem && typeof DungeonSystem.loadCityArea === 'function') {
+        if (area.randomNpcPool && area.npcSpotIds) {
+            ensureCityAreaNpcAssignments(areaId, area);
+        }
         DungeonSystem.loadCityArea(area);
         game.dungeonMap = true;
         game.scenario = {
