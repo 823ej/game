@@ -1447,6 +1447,7 @@ function createEnemyData(key, index) {
         thorns: 0,
         deck: (data.deckType === "custom") ? data.deck : getEnemyDeck(data.deckType),
         img: data.img,
+        tags: Array.isArray(data.tags) ? data.tags : [],
         // 적에게만 선행 게이지를 주지 않도록 0에서 시작 (플레이어와 동일 조건)
         ag: 0,
         baseAp: 2,
@@ -1454,6 +1455,38 @@ function createEnemyData(key, index) {
         isBroken: false,
         isStunned: false
     };
+}
+
+function isSurrenderableEnemy(enemy) {
+    if (!enemy || enemy.hp <= 0) return false;
+    const tags = Array.isArray(enemy.tags) ? enemy.tags : [];
+    if (!tags.includes("human")) return false;
+    if (tags.includes("cult")) return false;
+    if (tags.includes("boss")) return false;
+    return true;
+}
+
+function triggerSurrenderWin() {
+    if (game.state === "win") return;
+    game.state = "win";
+
+    let rewardGold = 1000 * (player.lucky ? 2 : 1);
+    player.gold += rewardGold;
+
+    let gainXp = 40 + (game.level * 10);
+    player.xp += gainXp;
+
+    game.winMsg = `승리! (항복 수락) <span style="color:#f1c40f">${rewardGold}원</span>, <span style="color:#3498db">${gainXp} XP</span> 획득.`;
+    if (player.lucky) game.winMsg += " (🍀럭키피스 효과!)";
+
+    game.pendingLoot = null;
+    if (Math.random() < 0.5) {
+        game.pendingLoot = getRandomItem();
+        game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`;
+    }
+
+    updateUI();
+    renderWinPopup();
 }
 
 /* [NEW] 소셜 NPC 전투 데이터 생성 */
@@ -2428,6 +2461,41 @@ function startScenario(id) {
     }
 }
 
+function startScenarioFromCity(id) {
+    const scData = SCENARIOS[id];
+    if (!scData) return;
+
+    game.activeScenarioId = id;
+    game.scenario = {
+        id: id,
+        title: scData.title,
+        clues: 0,
+        location: scData.locations[0],
+        bossReady: false,
+        isActive: false
+    };
+
+    if (Array.isArray(scData.unlocks) && scData.unlocks.length > 0) {
+        const unlockMap = {
+            cult_hideout: { areaId: "subway_transfer_hall", key: "cult_hideout" }
+        };
+        scData.unlocks.forEach(unlockKey => {
+            const target = unlockMap[unlockKey];
+            if (target) unlockCitySpot(target.areaId, target.key);
+        });
+    }
+
+    if (game.cityArea && game.cityArea.areaId) {
+        game.scenario.returnToCity = {
+            areaId: game.cityArea.areaId,
+            spotId: game.cityArea.currentSpot
+        };
+    }
+
+    game.dungeonMap = false;
+    renderExploration(true);
+}
+
 /* [NEW] 실제 의뢰 수락 로직 (기존 startScenario의 내용을 여기로 옮김) */
 function acceptMission(id) {
     let scData = SCENARIOS[id];
@@ -2444,6 +2512,16 @@ function acceptMission(id) {
         bossReady: false,
         isActive: false
     };
+
+    if (Array.isArray(scData.unlocks) && scData.unlocks.length > 0) {
+        const unlockMap = {
+            cult_hideout: { areaId: "subway_transfer_hall", key: "cult_hideout" }
+        };
+        scData.unlocks.forEach(unlockKey => {
+            const target = unlockMap[unlockKey];
+            if (target) unlockCitySpot(target.areaId, target.key);
+        });
+    }
     
     // 3. 알림 메시지 및 화면 복귀
     let targetDistrictName = "알 수 없는 곳";
@@ -3798,6 +3876,7 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     game.isBossBattle = isBoss;
     game.turnOwner = "none";     
     game.lastTurnOwner = "none"; 
+    game.surrenderOffered = false;
 
     // 3. 플레이어 상태 초기화
     // (덱이 비어있으면 기본 덱으로 복구하는 안전장치 추가)
@@ -4890,6 +4969,22 @@ if (game.state === "social") {
     else if (game.state === "battle") {
         // 모든 적의 HP가 0 이하인지 확인 (유효한 적만 판단)
         const aliveEnemies = enemies.filter(e => e && e.hp > 0);
+        if (aliveEnemies.length > 0 && !game.surrenderOffered) {
+            const allSurrenderable = aliveEnemies.every(isSurrenderableEnemy);
+            const allLowHp = aliveEnemies.every(e => e.hp <= e.maxHp * 0.2);
+            if (allSurrenderable && allLowHp) {
+                game.surrenderOffered = true;
+                showConfirm(
+                    "🫱 항복 제의",
+                    "상대가 무기를 내려놓고 항복을 제안합니다.<br>수락하시겠습니까?",
+                    () => triggerSurrenderWin(),
+                    closePopup,
+                    "수락",
+                    "거절"
+                );
+                return true;
+            }
+        }
         // 안전장치: enemies가 비어있거나 정의되지 않은 경우도 승리 처리
         if (!enemies || enemies.length === 0 || aliveEnemies.length === 0) {
             // 중복 승리 처리 방지
@@ -6190,6 +6285,26 @@ function showPopup(title, desc, buttons = [], contentHTML = "") {
     const btnBox = document.getElementById('popup-buttons'); btnBox.innerHTML = "";
     (buttons || []).forEach(b => { let btn = document.createElement('button'); btn.className = 'action-btn'; btn.style.fontSize = "1em"; btn.style.padding = "5px 15px"; btn.innerText = b.txt; btn.onclick = b.func; btnBox.appendChild(btn); });
     layer.style.display = "flex";
+}
+
+function showAlert(title, desc, onClose) {
+    const closeFn = onClose || closePopup;
+    showChoice(title, desc, [{ txt: "확인", func: closeFn }]);
+}
+
+function showConfirm(title, desc, onYes, onNo, yesText = "확인", noText = "취소") {
+    showChoice(title, desc, [
+        { txt: yesText, func: onYes || closePopup },
+        { txt: noText, func: onNo || closePopup }
+    ]);
+}
+
+function showChoice(title, desc, options = [], contentHTML = "") {
+    const buttons = (options || []).map(opt => ({
+        txt: opt.txt || opt.label || "선택",
+        func: opt.func || closePopup
+    }));
+    showPopup(title, desc, buttons, contentHTML);
 }
 
 /* [누락된 함수 추가] 팝업 닫기 기능 */

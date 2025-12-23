@@ -574,6 +574,31 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
                     if (typeof startCityDungeon === 'function') startCityDungeon(dungeonId);
                 } else if (action === 'return_hub') {
                     if (typeof renderHub === 'function') renderHub();
+                } else if (action === 'enter_city_area' && obj.areaId) {
+                    if (typeof startCityExploration === 'function') {
+                        startCityExploration(obj.areaId, obj.spotId);
+                    }
+                } else if (action === 'enter_scenario' && obj.scenarioId) {
+                    if (typeof startScenarioFromCity === 'function') {
+                        startScenarioFromCity(obj.scenarioId);
+                    }
+                } else if (action === 'subway_transfer_select') {
+                    const options = Array.isArray(obj.options) ? obj.options : [];
+                    if (options.length === 0) return;
+                    const buttons = options.map(opt => ({
+                        txt: opt.label,
+                        func: () => {
+                            closePopup();
+                            if (typeof startCityExploration === 'function') {
+                                startCityExploration(opt.areaId, opt.spotId);
+                            }
+                        }
+                    }));
+                    if (typeof showChoice === 'function') {
+                        showChoice("🚇 이동할 역을 선택하세요", "목적지를 선택하면 바로 이동합니다.", buttons);
+                    } else {
+                        showPopup("🚇 이동할 역을 선택하세요", "목적지를 선택하면 바로 이동합니다.", buttons);
+                    }
                 } else {
                     log(`▶ ${name}을(를) 살펴봅니다. (내부 진입 예정)`);
                 }

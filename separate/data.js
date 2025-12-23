@@ -162,7 +162,8 @@ const ENEMY_DATA = {
         growth: { hp: 4, atk: 0.5, def: 0, spd: 0.1 }, // 레벨당 성장 수치
         deckType: "custom",
         deck: ["타격", "타격", "수비", "쇠약 바늘"], // 사용하는 덱
-        img: "https://placehold.co/100x100/c0392b/ffffff?text=Bully"
+        img: "https://placehold.co/100x100/c0392b/ffffff?text=Bully",
+        tags: ["human"]
     },
     "허수아비": {
         name: "허수아비",
@@ -222,6 +223,39 @@ const ENEMY_DATA = {
         deckType: "custom",
         deck: ["광신의 비명", "검은 연기", "독 뿌리기", "비명", "저주의 할퀴기", "수비"],
         img: "https://placehold.co/120x120/222/fff?text=CURATOR"
+    },
+    "사교도": {
+        name: "사교도",
+        baseHp: 28,
+        stats: { atk: 2, def: 0, spd: 3 },
+        weakness: "holy",
+        growth: { hp: 4, atk: 0.6, def: 0, spd: 0.2 },
+        deckType: "custom",
+        deck: ["광신의 비명", "검은 연기", "비명", "타격"],
+        img: "https://placehold.co/100x100/6c3483/ffffff?text=Cult",
+        tags: ["human", "cult"]
+    },
+    "괴물 쥐": {
+        name: "괴물 쥐",
+        baseHp: 22,
+        stats: { atk: 2, def: 0, spd: 4 },
+        weakness: "fire",
+        growth: { hp: 3, atk: 0.5, def: 0, spd: 0.3 },
+        deckType: "custom",
+        deck: ["타격", "타격", "쇠약 바늘", "사냥꾼의 발차기"],
+        img: "https://placehold.co/100x100/5d4037/ffffff?text=Rat",
+        tags: ["beast"]
+    },
+    "폭주족": {
+        name: "폭주족",
+        baseHp: 30,
+        stats: { atk: 2, def: 1, spd: 3 },
+        weakness: "strike",
+        growth: { hp: 4, atk: 0.6, def: 0.3, spd: 0.2 },
+        deckType: "custom",
+        deck: ["타격", "타격", "사냥꾼의 발차기", "수비"],
+        img: "https://placehold.co/100x100/2c3e50/ffffff?text=Biker",
+        tags: ["human"]
     }
 };
 
@@ -321,10 +355,10 @@ const CITY_MAP = {
             id: "east_oldtown", 
             name: "구시가지", 
             label: "동쪽", 
-            desc: "영진 탐정 사무소와 카페 헤카테, 청운맨션, 재래시장, 사이버 벙커, 뒷골목, 주택가, 성당이 모여 있는 오래된 거리.", 
+            desc: "영진 탐정 사무소와 카페 헤카테, 청운맨션, 재래시장, 사이버 벙커, 주택가, 성당이 모여 있는 오래된 거리.", 
             vibe: "busy", 
             pos: { x: 72, y: 50 }, 
-            tags: ["영진 탐정 사무소", "카페 헤카테", "청운맨션", "재래시장", "사이버 벙커", "주택가", "성당"],
+            tags: ["영진 탐정 사무소", "카페 헤카테", "청운맨션", "재래시장", "사이버 벙커", "주택가", "성당", "동문역"],
             links: ["central_admin"]
         },
         { 
@@ -334,7 +368,7 @@ const CITY_MAP = {
             desc: "폐공장 단지와 시 외곽으로 이어지는 국도, 클럽 Bad Sector가 숨어 있는 산업 구역.", 
             vibe: "outskirts", 
             pos: { x: 50, y: 78 }, 
-            tags: ["폐공장", "외곽 국도", "화물 트럭", "클럽 Bad Sector", "뒷골목"],
+            tags: ["폐공장", "외곽 국도", "화물 트럭", "클럽 Bad Sector", "뒷골목", "남산역"],
             links: ["central_admin"]
         },
         { 
@@ -344,7 +378,7 @@ const CITY_MAP = {
             desc: "바닷가와 놀이공원, 대형 마트, 호텔이 이어진 해안 관광 구역.", 
             vibe: "water", 
             pos: { x: 30, y: 62 }, 
-            tags: ["바닷가", "놀이공원", "대형 마트", "해안 호텔"],
+            tags: ["바닷가", "놀이공원", "대형 마트", "해안 호텔", "서항역"],
             links: ["central_admin"]
         },
         { 
@@ -354,7 +388,7 @@ const CITY_MAP = {
             desc: "성주산 능선과 숲, 그 안에 숨겨진 폐연구소가 있는 산악 지대.", 
             vibe: "calm", 
             pos: { x: 50, y: 24 }, 
-            tags: ["숲 입구", "폐연구소"],
+            tags: ["숲 입구", "폐연구소", "북림역"],
             links: ["central_admin"]
         }
     ]
@@ -396,19 +430,12 @@ const CITY_AREA_DATA = {
                 desc: "도심 지하철과 연결되는 입구. 사람들의 발길이 끊이지 않는다.",
                 pos: { x: 54, y: 82 },
                 grid: { x: 1, y: 2 },
-                links: ["central_plaza", "subway_market"],
-                tags: ["교통", "만남의 장소"],
-                icon: "🚇"
-            },
-            {
-                id: "subway_market",
-                name: "지하철역 지하상가",
-                desc: "지하로 이어진 상가. 쇼핑과 먹거리가 가득하다.",
-                pos: { x: 30, y: 86 },
-                grid: { x: 0, y: 2 },
-                links: ["subway_gate"],
-                tags: ["상가", "지하"],
-                icon: "🛍️"
+                links: ["central_plaza"],
+                tags: ["교통", "만남의 장소", "지하철역 지하상가"],
+                icon: "🚇",
+                objects: [
+                    { id: "to_subway_market", name: "지하철역 지하상가", icon: "🛍️", action: "enter_city_area", areaId: "central_subway_market" }
+                ]
             },
             {
                 id: "st_jude_academy",
@@ -433,22 +460,329 @@ const CITY_AREA_DATA = {
             {
                 id: "udra_annex",
                 name: "정부 합동 청사 별관",
-                desc: "비정형관리국(UDRA) 별관이 입주한 건물. 허가받은 사람만 드나든다.",
+                desc: "비정형재난대응국이 위장한 부서가 입주해 있다. 허가받은 사람만 드나든다.",
                 pos: { x: 22, y: 32 },
                 grid: { x: 2, y: 1 },
                 links: ["central_plaza", "udra_hq"],
-                tags: ["정부", "보안"],
-                icon: "🏢"
+                tags: ["정부", "보안", "국가표준지표산정실"],
+                icon: "🏢",
+                objects: [
+                    { id: "udra_basement", name: "국가표준지표산정실", icon: "🗂️", action: "enter_city_area", areaId: "udra_basement" }
+                ]
             },
             {
                 id: "udra_hq",
-                name: "비정형관리국(UDRA)",
-                desc: "비정형 사건을 전담하는 중앙 기관.",
+                name: "정부 합동 청사 별관",
+                desc: "비정형재난대응국이 위장한 부서.",
                 pos: { x: 70, y: 18 },
                 grid: { x: 2, y: 0 },
                 links: ["udra_annex"],
                 tags: ["기관", "정보"],
                 icon: "🧿"
+            }
+        ]
+    },
+    udra_basement: {
+        name: "국가표준지표산정실",
+        desc: "정부 부서로 위장한 비정형재난대응국의 내부 구역.",
+        start: "udra_core",
+        spots: [
+            {
+                id: "udra_core",
+                name: "국가표준지표산정실",
+                desc: "형식상 정부 부서로 보이지만, 깊숙한 곳에 비정형재난대응국이 자리한다.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 0, y: 0 },
+                links: [],
+                tags: ["정부", "비정형재난대응국"],
+                icon: "🗂️"
+            }
+        ]
+    },
+    central_subway_market: {
+        name: "지하철역 지하상가",
+        desc: "지하로 내려온 상가 구역. 상점과 개찰구가 이어진다.",
+        start: "market_hall",
+        spots: [
+            {
+                id: "market_hall",
+                name: "상가 통로",
+                desc: "사람들과 간판이 빽빽한 지하 통로.",
+                pos: { x: 50, y: 52 },
+                grid: { x: 1, y: 1 },
+                links: ["snack_stall", "convenience_kiosk", "ticket_gate", "surface_exit"],
+                tags: ["쇼핑", "먹거리"],
+                icon: "🛍️"
+            },
+            {
+                id: "snack_stall",
+                name: "먹거리 골목",
+                desc: "따뜻한 길거리 음식 냄새가 퍼진다.",
+                pos: { x: 22, y: 52 },
+                grid: { x: 0, y: 1 },
+                links: ["market_hall"],
+                tags: ["음식", "휴식"],
+                icon: "🥟"
+            },
+            {
+                id: "convenience_kiosk",
+                name: "편의점 부스",
+                desc: "작은 부스형 편의점. 간단한 물품을 판다.",
+                pos: { x: 78, y: 52 },
+                grid: { x: 2, y: 1 },
+                links: ["market_hall"],
+                tags: ["보급", "소모품"],
+                icon: "🏪"
+            },
+            {
+                id: "ticket_gate",
+                name: "개찰구",
+                desc: "플랫폼으로 내려가는 개찰구.",
+                pos: { x: 50, y: 84 },
+                grid: { x: 1, y: 2 },
+                links: ["market_hall"],
+                tags: ["개찰", "플랫폼"],
+                icon: "🎫",
+                objects: [
+                    { id: "to_platform", name: "플랫폼으로", icon: "⬇️", action: "enter_city_area", areaId: "central_subway_platform" }
+                ]
+            },
+            {
+                id: "surface_exit",
+                name: "지상 출구",
+                desc: "지상으로 올라가는 출구.",
+                pos: { x: 50, y: 22 },
+                grid: { x: 1, y: 0 },
+                links: ["market_hall"],
+                tags: ["출구", "지상"],
+                icon: "⬆️",
+                objects: [
+                    { id: "to_surface", name: "지상으로", icon: "⬆️", action: "enter_city_area", areaId: "central_admin", spotId: "subway_gate" }
+                ]
+            }
+        ]
+    },
+    central_subway_platform: {
+        name: "세주중앙역 플랫폼",
+        desc: "플랫폼 한 칸. 스크린도어 너머로 선로가 이어진다.",
+        start: "platform",
+        spots: [
+            {
+                id: "platform",
+                name: "플랫폼",
+                desc: "기차가 도착하는 플랫폼.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 0, y: 0 },
+                links: [],
+                tags: ["플랫폼", "스크린도어"],
+                icon: "🚆",
+                objects: [
+                    { 
+                        id: "screen_door", 
+                        name: "스크린도어", 
+                        icon: "🚪", 
+                        action: "subway_transfer_select",
+                        options: [
+                            { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
+                            { label: "동문역", areaId: "subway_east_station", spotId: "east_platform" },
+                            { label: "서항역", areaId: "subway_west_station", spotId: "west_platform" },
+                            { label: "남산역", areaId: "subway_south_station", spotId: "south_platform" },
+                            { label: "북림역", areaId: "subway_north_station", spotId: "north_platform" }
+                        ]
+                    },
+                    { id: "back_to_market", name: "상가로 올라가기", icon: "⬆️", action: "enter_city_area", areaId: "central_subway_market", spotId: "market_hall" }
+                ]
+            }
+        ]
+    },
+    subway_transfer_hall: {
+        name: "지하철 환승 구역",
+        desc: "중앙역에서 동서남북으로 갈 수 있는 환승 통로.",
+        start: "subway_central",
+        spots: [
+            {
+                id: "subway_central",
+                name: "세주중앙역",
+                desc: "중앙 환승 지점.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 1, y: 1 },
+                links: ["subway_east", "subway_west", "subway_south", "subway_north", "cult_hideout_track"],
+                tags: ["환승", "중앙"],
+                icon: "🧭",
+                objects: [
+                    { id: "to_platform", name: "중앙역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "central_subway_platform", spotId: "platform" }
+                ]
+            },
+            {
+                id: "subway_east",
+                name: "동문역",
+                desc: "동쪽으로 이어지는 역.",
+                pos: { x: 78, y: 50 },
+                grid: { x: 2, y: 1 },
+                links: ["subway_central"],
+                tags: ["동쪽", "역"],
+                icon: "🚉",
+                objects: [
+                    { id: "to_east_station", name: "동문역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_east_station", spotId: "east_platform" }
+                ]
+            },
+            {
+                id: "subway_west",
+                name: "서항역",
+                desc: "서쪽 항만 방면의 역.",
+                pos: { x: 22, y: 50 },
+                grid: { x: 0, y: 1 },
+                links: ["subway_central"],
+                tags: ["서쪽", "역"],
+                icon: "🚉",
+                objects: [
+                    { id: "to_west_station", name: "서항역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_west_station", spotId: "west_platform" }
+                ]
+            },
+            {
+                id: "subway_south",
+                name: "남산역",
+                desc: "남쪽 산기슭으로 향하는 역.",
+                pos: { x: 50, y: 84 },
+                grid: { x: 1, y: 2 },
+                links: ["subway_central"],
+                tags: ["남쪽", "역"],
+                icon: "🚉",
+                objects: [
+                    { id: "to_south_station", name: "남산역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_south_station", spotId: "south_platform" }
+                ]
+            },
+            {
+                id: "subway_north",
+                name: "북림역",
+                desc: "북쪽 숲길로 이어지는 역.",
+                pos: { x: 50, y: 22 },
+                grid: { x: 1, y: 0 },
+                links: ["subway_central"],
+                tags: ["북쪽", "역"],
+                icon: "🚉",
+                objects: [
+                    { id: "to_north_station", name: "북림역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_north_station", spotId: "north_platform" }
+                ]
+            },
+            {
+                id: "cult_hideout_track",
+                name: "선로로 내려가기",
+                desc: "선로를 따라 은신처로 갈 수 있다.",
+                pos: { x: 78, y: 84 },
+                grid: { x: 2, y: 2 },
+                links: ["subway_central"],
+                tags: ["선로", "은신처"],
+                icon: "🛤️",
+                requiresDiscovery: "cult_hideout",
+                objects: [
+                    { id: "to_hideout", name: "교단 은신처로", icon: "🕯️", action: "enter_city_area", areaId: "cult_hideout" }
+                ]
+            }
+        ]
+    },
+    subway_east_station: {
+        name: "동문역",
+        desc: "동쪽 구시가지로 이어지는 지하철역.",
+        start: "east_platform",
+        spots: [
+            {
+                id: "east_platform",
+                name: "동문역 플랫폼",
+                desc: "동쪽 방면 열차가 정차한다.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 0, y: 0 },
+                links: [],
+                tags: ["플랫폼", "동쪽"],
+                icon: "🚉",
+                objects: [
+                    { id: "east_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station" },
+                    { id: "east_back", name: "중앙역 환승", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                ]
+            }
+        ]
+    },
+    subway_west_station: {
+        name: "서항역",
+        desc: "서쪽 해안으로 이어지는 지하철역.",
+        start: "west_platform",
+        spots: [
+            {
+                id: "west_platform",
+                name: "서항역 플랫폼",
+                desc: "서쪽 방면 열차가 정차한다.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 0, y: 0 },
+                links: [],
+                tags: ["플랫폼", "서쪽"],
+                icon: "🚉",
+                objects: [
+                    { id: "west_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station" },
+                    { id: "west_back", name: "중앙역 환승", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                ]
+            }
+        ]
+    },
+    subway_south_station: {
+        name: "남산역",
+        desc: "남쪽 공업지대로 이어지는 지하철역.",
+        start: "south_platform",
+        spots: [
+            {
+                id: "south_platform",
+                name: "남산역 플랫폼",
+                desc: "남쪽 방면 열차가 정차한다.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 0, y: 0 },
+                links: [],
+                tags: ["플랫폼", "남쪽"],
+                icon: "🚉",
+                objects: [
+                    { id: "south_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station" },
+                    { id: "south_back", name: "중앙역 환승", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                ]
+            }
+        ]
+    },
+    subway_north_station: {
+        name: "북림역",
+        desc: "북쪽 산길로 이어지는 지하철역.",
+        start: "north_platform",
+        spots: [
+            {
+                id: "north_platform",
+                name: "북림역 플랫폼",
+                desc: "북쪽 방면 열차가 정차한다.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 0, y: 0 },
+                links: [],
+                tags: ["플랫폼", "북쪽"],
+                icon: "🚉",
+                objects: [
+                    { id: "north_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station" },
+                    { id: "north_back", name: "중앙역 환승", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                ]
+            }
+        ]
+    },
+    cult_hideout: {
+        name: "교단 은신처",
+        desc: "음습한 분위기의 폐쇄된 지하철역 구역.",
+        start: "hideout_entrance",
+        spots: [
+            {
+                id: "hideout_entrance",
+                name: "은신처 입구",
+                desc: "축축한 공기와 촛농 냄새가 감도는 입구.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 0, y: 0 },
+                links: [],
+                tags: ["교단", "지하"],
+                icon: "🕯️",
+                objects: [
+                    { id: "start_cult_investigation", name: "은신처 조사", icon: "🔍", action: "enter_scenario", scenarioId: "cult_investigation" },
+                    { id: "back_to_tracks", name: "선로로 돌아가기", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                ]
             }
         ]
     },
@@ -463,7 +797,7 @@ const CITY_AREA_DATA = {
                 desc: "손때 묻은 상점과 가판대가 줄지어 있는 시장.",
                 pos: { x: 50, y: 52 },
                 grid: { x: 1, y: 1 },
-                links: ["youngjin_office", "hecate_cafe", "chungwoon_mansion", "cyber_bunker", "back_alley", "residential_block", "cathedral"],
+                links: ["youngjin_office", "hecate_cafe", "chungwoon_mansion", "cyber_bunker", "residential_block", "cathedral", "oldtown_station"],
                 tags: ["먹거리", "소문", "생활"],
                 icon: "🧺"
             },
@@ -516,7 +850,7 @@ const CITY_AREA_DATA = {
                 desc: "오래된 주택들이 빼곡하게 들어선 생활 구역.",
                 pos: { x: 22, y: 84 },
                 grid: { x: 0, y: 2 },
-                links: ["oldtown_market", "youngjin_office", "back_alley"],
+                links: ["oldtown_market", "youngjin_office", "oldtown_station"],
                 tags: ["생활", "거주"],
                 icon: "🏠"
             },
@@ -529,6 +863,19 @@ const CITY_AREA_DATA = {
                 links: ["oldtown_market", "cyber_bunker"],
                 tags: ["성지", "기도"],
                 icon: "⛪"
+            },
+            {
+                id: "oldtown_station",
+                name: "동문역",
+                desc: "구시가지와 이어진 지하철역 출구.",
+                pos: { x: 50, y: 92 },
+                grid: { x: 1, y: 3 },
+                links: ["oldtown_market", "residential_block"],
+                tags: ["역", "지하철"],
+                icon: "🚉",
+                objects: [
+                    { id: "to_east_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_east_station", spotId: "east_platform" }
+                ]
             }
         ]
     },
@@ -543,7 +890,7 @@ const CITY_AREA_DATA = {
                 desc: "녹슨 설비와 컨베이어가 멈춰 선 넓은 부지.",
                 pos: { x: 50, y: 52 },
                 grid: { x: 1, y: 1 },
-                links: ["cargo_depot", "national_road", "bad_sector"],
+                links: ["cargo_depot", "national_road", "bad_sector", "industrial_station"],
                 tags: ["폐공장", "소음"],
                 icon: "🏭"
             },
@@ -563,7 +910,7 @@ const CITY_AREA_DATA = {
                 desc: "도시 외곽으로 빠져나가는 넓은 도로.",
                 pos: { x: 50, y: 84 },
                 grid: { x: 1, y: 2 },
-                links: ["industrial_yard", "cargo_depot", "bad_sector"],
+                links: ["industrial_yard", "cargo_depot", "bad_sector", "industrial_station"],
                 tags: ["국도", "외곽"],
                 icon: "🛣️"
             },
@@ -576,6 +923,19 @@ const CITY_AREA_DATA = {
                 links: ["industrial_yard", "national_road"],
                 tags: ["클럽", "은밀"],
                 icon: "🎧"
+            },
+            {
+                id: "industrial_station",
+                name: "남산역",
+                desc: "공업지대와 이어지는 지하철역 출구.",
+                pos: { x: 78, y: 84 },
+                grid: { x: 2, y: 2 },
+                links: ["industrial_yard", "national_road"],
+                tags: ["역", "지하철"],
+                icon: "🚉",
+                objects: [
+                    { id: "to_south_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_south_station", spotId: "south_platform" }
+                ]
             },
             {
                 id: "back_alley",
@@ -603,7 +963,7 @@ const CITY_AREA_DATA = {
                 desc: "바닷바람을 느끼며 걸을 수 있는 산책길.",
                 pos: { x: 50, y: 52 },
                 grid: { x: 1, y: 1 },
-                links: ["amusement_park", "mega_mart", "seaside_hotel", "beachfront"],
+                links: ["amusement_park", "mega_mart", "seaside_hotel", "beachfront", "coast_station"],
                 tags: ["바닷가", "산책"],
                 icon: "🌊"
             },
@@ -623,7 +983,7 @@ const CITY_AREA_DATA = {
                 desc: "관광객과 주민 모두가 들르는 대형 상점.",
                 pos: { x: 78, y: 52 },
                 grid: { x: 2, y: 1 },
-                links: ["coast_boardwalk", "amusement_park", "seaside_hotel"],
+                links: ["coast_boardwalk", "amusement_park", "seaside_hotel", "coast_station"],
                 tags: ["쇼핑", "보급"],
                 icon: "🛒"
             },
@@ -636,6 +996,19 @@ const CITY_AREA_DATA = {
                 links: ["coast_boardwalk", "mega_mart", "beachfront"],
                 tags: ["숙박", "전망"],
                 icon: "🏨"
+            },
+            {
+                id: "coast_station",
+                name: "서항역",
+                desc: "해안 관광단지와 이어지는 지하철역 출구.",
+                pos: { x: 78, y: 84 },
+                grid: { x: 2, y: 2 },
+                links: ["coast_boardwalk", "mega_mart"],
+                tags: ["역", "지하철"],
+                icon: "🚉",
+                objects: [
+                    { id: "to_west_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_west_station", spotId: "west_platform" }
+                ]
             },
             {
                 id: "beachfront",
@@ -660,7 +1033,7 @@ const CITY_AREA_DATA = {
                 desc: "성주산 숲으로 들어가는 입구. 여기서부터 길이 모호해진다.",
                 pos: { x: 50, y: 52 },
                 grid: { x: 0, y: 0 },
-                links: ["abandoned_lab"],
+                links: ["abandoned_lab", "north_station"],
                 tags: ["산길", "주의"],
                 icon: "🌲",
                 objects: [
@@ -677,6 +1050,19 @@ const CITY_AREA_DATA = {
                 tags: ["연구소", "폐쇄"],
                 icon: "🧪",
                 requiresDiscovery: "abandoned_lab"
+            },
+            {
+                id: "north_station",
+                name: "북림역",
+                desc: "성주산과 이어지는 지하철역 출구.",
+                pos: { x: 78, y: 80 },
+                grid: { x: 1, y: 1 },
+                links: ["forest_entry"],
+                tags: ["역", "지하철"],
+                icon: "🚉",
+                objects: [
+                    { id: "to_north_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_north_station", spotId: "north_platform" }
+                ]
             }
         ]
     }
