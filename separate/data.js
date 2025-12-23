@@ -1703,13 +1703,15 @@ const TRAIT_DATA = {
         name: "저주: 불운",
         type: "curse",
         desc: "덱에 [저주: 불운]이(가) 고정됩니다. 치료로만 해제 가능",
-        cost: -2
+        cost: -2,
+        cureCost: 1000
     },
     "curse_shackles": {
         name: "저주: 족쇄",
         type: "curse",
         desc: "덱에 [저주: 족쇄]이(가) 고정됩니다. 치료로만 해제 가능",
-        cost: -2
+        cost: -2,
+        cureCost: 2000
     }
 };
 

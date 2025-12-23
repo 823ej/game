@@ -2411,10 +2411,16 @@ function openHospitalCure() {
     const buttons = curseTraits.map(key => {
         const cardName = getCurseCardByTrait(key);
         const t = TRAIT_DATA[key] || { name: key };
+        const cost = Number.isFinite(t.cureCost) ? t.cureCost : 1000;
         return {
-            txt: `${t.name}${cardName ? ` (${cardName})` : ""}`,
+            txt: `${t.name}${cardName ? ` (${cardName})` : ""} - ${cost}G`,
             func: () => {
                 closePopup();
+                if (player.gold < cost) {
+                    showPopup("잔액 부족", "치료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    return;
+                }
+                player.gold -= cost;
                 removeTrait(key);
                 if (cardName) removeCardEverywhere(cardName);
                 advanceTimeSlot("hospital_cure");
