@@ -468,7 +468,7 @@ const CITY_AREA_DATA = {
                 desc: "세주시의 중심. 모든 시설이 이 광장을 둘러싸고 있다.",
                 pos: { x: 50, y: 50 },
                 grid: { x: 1, y: 1 },
-                links: ["baeksan_tower", "subway_gate", "st_jude_academy", "university_hospital", "bs_convenience", "udra_annex"],
+                links: ["baeksan_tower", "subway_gate", "st_jude_academy", "university_hospital", "silence_clinic", "bs_convenience", "udra_annex"],
                 tags: ["집결지", "기점"],
                 icon: "🧭",
                 objects: [
@@ -519,6 +519,19 @@ const CITY_AREA_DATA = {
                 icon: "🏥",
                 objects: [
                     { id: "hospital_cure", name: "저주 치료", icon: "💊", action: "hospital_cure" }
+                ]
+            },
+            {
+                id: "silence_clinic",
+                name: "힐링 클리닉 사일런스",
+                desc: "조용한 상담과 맞춤 치료를 제공하는 고급 클리닉.",
+                pos: { x: 70, y: 40 },
+                grid: { x: 2, y: 0 },
+                links: ["central_plaza"],
+                tags: ["고급 의료", "회복"],
+                icon: "🩺",
+                objects: [
+                    { id: "healing_clinic", name: "힐링 클리닉 사일런스", icon: "🩺", action: "open_healing_clinic" }
                 ]
             },
             {
@@ -873,7 +886,10 @@ const CITY_AREA_DATA = {
                 grid: { x: 1, y: 1 },
                 links: ["youngjin_office", "hecate_cafe", "chungwoon_mansion", "cyber_bunker", "residential_block", "cathedral", "oldtown_station"],
                 tags: ["먹거리", "소문", "생활"],
-                icon: "🧺"
+                icon: "🧺",
+                objects: [
+                    { id: "goblin_shop", name: "도깨비 만물상 (구 씨 아저씨)", icon: "🪔", action: "open_occult_shop" }
+                ]
             },
             {
                 id: "youngjin_office",
@@ -929,7 +945,11 @@ const CITY_AREA_DATA = {
                 grid: { x: 0, y: 2 },
                 links: ["oldtown_market", "youngjin_office", "oldtown_station"],
                 tags: ["생활", "거주"],
-                icon: "🏠"
+                icon: "🏠",
+                objects: [
+                    { id: "yonggung_sauna", name: "용궁 사우나", icon: "♨️", action: "open_sauna" },
+                    { id: "jesaengdang", name: "한의원 제생당 (마고 원장님)", icon: "🌿", action: "open_occult_clinic" }
+                ]
             },
             {
                 id: "cathedral",
@@ -1322,29 +1342,29 @@ const DISTRICTS = {
 const ITEM_DATA = {
     // --- 장비 아이템 (유물에서 분리) ---
     // bonusStats는 '원본 스탯'에 더해지는 값입니다. (예: +2 => 보정치(mod) +1)
-    "권총": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3000, icon: "🔫", desc: "탐정의 기본 무기. 장착 시 덱에 [사격(관통)] 카드가 추가됩니다.", grantCards: ["사격(관통)"], tags: ["weapon", "gun"]},
-    "쿠보탄": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (장착 효과) 장착 시 덱에 [쿠보탄 급소] 카드가 추가됩니다.", bonusStats: { str: 2 }, grantCards: ["쿠보탄 급소"], tags: ["weapon", "tool"]},
-    "강인함의 부적": {type: "item", usage: "equip", equipSlots: ["accessory1", "accessory2"], rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (장착 효과)", bonusStats: { con: 2 }, tags: ["charm", "accessory"]},
-    "좋은 운동화": {type: "item", usage: "equip", equipSlots: ["legs"], rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (장착 효과)", bonusStats: { dex: 2 }, tags: ["clothes", "brand"]},
-    "울끈불끈 패딩": {type: "item", usage: "equip", equipSlots: ["body"], rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 (장착 효과)", bonusHp: 50, tags: ["clothes", "warm"]},
+    "권총": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3000, icon: "🔫", desc: "탐정의 기본 무기. 장착 시 덱에 [사격(관통)] 카드가 추가됩니다.", grantCards: ["사격(관통)"], tags: ["weapon", "gun"], categories: ["general"]},
+    "쿠보탄": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (장착 효과) 장착 시 덱에 [쿠보탄 급소] 카드가 추가됩니다.", bonusStats: { str: 2 }, grantCards: ["쿠보탄 급소"], tags: ["weapon", "tool"], categories: ["general"]},
+    "강인함의 부적": {type: "item", usage: "equip", equipSlots: ["accessory1", "accessory2"], rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (장착 효과)", bonusStats: { con: 2 }, tags: ["charm", "accessory"], categories: ["occult"]},
+    "좋은 운동화": {type: "item", usage: "equip", equipSlots: ["legs"], rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (장착 효과)", bonusStats: { dex: 2 }, tags: ["clothes", "brand"], categories: ["general"]},
+    "울끈불끈 패딩": {type: "item", usage: "equip", equipSlots: ["body"], rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 (장착 효과)", bonusHp: 50, tags: ["clothes", "warm"], categories: ["general"]},
     "은 단검": {
         type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3500, icon: "⚔️", 
         desc: "장착 시 덱에 [은빛 찌르기] 카드가 추가됩니다.", 
-        grantCards: ["은빛 찌르기"], tags: ["weapon", "holy"]
+        grantCards: ["은빛 찌르기"], tags: ["weapon", "holy"], categories: ["occult"]
     },
     "스파이크 너클": {
         type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 1500, icon: "🔨", 
         desc: "장착 시 덱에 [너클 강타] 카드가 추가됩니다.", 
-        grantCards: ["너클 강타"], tags: ["weapon", "physical"]
+        grantCards: ["너클 강타"], tags: ["weapon", "physical"], categories: ["general"]
     },
 
     // --- 유물 아이템 (수집/지속효과) ---
-    "황금 대타": {type: "item", usage: "passive", rank: 3, price: 4000, icon: "🏺", desc: "부활 1회 (보유 효과)", tags: ["magic", "valuable"]},
+    "황금 대타": {type: "item", usage: "passive", rank: 3, price: 4000, icon: "🏺", desc: "부활 1회 (보유 효과)", tags: ["magic", "valuable"], categories: ["occult"]},
     
 
     // --- 소모성 아이템 ---
-    "회복약": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복 (사용 시 소모)", effect: "heal", val: 25, target: "self", tags: ["drink", "alcohol"]},
-    "호신용 스프레이": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🧴", desc: "적 10 피해 (사용 시 소모)", effect: "damage", val: 10, target: "enemy", tags: ["weapon", "chemical"]},
+    "회복약": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복 (사용 시 소모)", effect: "heal", val: 25, target: "self", tags: ["drink", "alcohol"], categories: ["pharmacy"]},
+    "호신용 스프레이": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🧴", desc: "적 10 피해 (사용 시 소모)", effect: "damage", val: 10, target: "enemy", tags: ["weapon", "chemical"], categories: ["general"]},
     "해결사의 연락처": {
     type: "item", 
     usage: "consume", 
@@ -1354,15 +1374,16 @@ const ITEM_DATA = {
     desc: "즉시 던전을 탈출합니다. (전문 해결사 호출)", 
     effect: "escape", // ★ 새로운 효과 정의
     target: "self", 
-    tags: ["tool", "phone"]
+    tags: ["tool", "phone"],
+    categories: ["general"]
 },
-    "뇌물 봉투": {type: "item", usage: "consume", rank: 2, price: 1500, icon: "✉️", desc: "NPC 호감도 대폭 상승", effect: "none", target: "enemy", tags: ["money", "paper"]},
-    "공포 영화 포스터": {type: "item", usage: "consume", rank: 1, price: 500, icon: "👻", desc: "NPC 멘탈 감소", effect: "none", target: "enemy", tags: ["horror", "paper"]},
+    "뇌물 봉투": {type: "item", usage: "consume", rank: 2, price: 1500, icon: "✉️", desc: "NPC 호감도 대폭 상승", effect: "none", target: "enemy", tags: ["money", "paper"], categories: ["general"]},
+    "공포 영화 포스터": {type: "item", usage: "consume", rank: 1, price: 500, icon: "👻", desc: "NPC 멘탈 감소", effect: "none", target: "enemy", tags: ["horror", "paper"], categories: ["general"]},
     "라이터": {
         type: "item", usage: "consume", rank: 1, price: 2000, icon: "🔥", 
         desc: "3턴 동안 공격에 [화염] 속성을 부여합니다.", 
         effect: "buff_attr", val: "fire", duration: 3, target: "self",
-        tags: ["tool", "fire"]
+        tags: ["tool", "fire"], categories: ["general"]
     },
     "성수": {
       type: "item", usage: "consume", rank: 1, price: 500, icon: "💧", 
@@ -1370,16 +1391,18 @@ const ITEM_DATA = {
         effect: "buff_attr", 
         val: ["water", "holy"], // ★ 핵심: 배열로 정의
         duration: 3, target: "self",
-        tags: ["holy", "water"]
+        tags: ["holy", "water"], categories: ["occult"]
     },
     "숫돌": {
         type: "item", usage: "consume", rank: 1, price: 300, icon: "🪨", 
         desc: "3턴 동안 공격에 [참격] 속성을 부여합니다.", 
-        effect: "buff_attr", val: "slash", duration: 3, target: "self"
+        effect: "buff_attr", val: "slash", duration: 3, target: "self", categories: ["general"]
     },
+    "한방차": {type: "item", usage: "consume", rank: 1, price: 1200, icon: "🍵", desc: "SP 15 회복 (한방)", effect: "heal", val: 0, target: "self", tags: ["herbal"], categories: ["herbal"], healSp: 15},
+    "보혈환": {type: "item", usage: "consume", rank: 2, price: 1800, icon: "🟢", desc: "HP 20, SP 10 회복 (한방)", effect: "heal", val: 20, target: "self", tags: ["herbal"], categories: ["herbal"], healSp: 10},
     // --- 특수 (패시브지만 소모품처럼 취급되었던 것들) ---
     // 대타 인형은 가지고 있으면 효과가 발동하고 사라지므로 'passive'에 가깝지만 로직상 특수 처리
-    "대타 인형": {type: "item", usage: "passive", rank: 3, price: 3000, icon: "🧸", desc: "사망 시 자동 소모하여 부활", effect: "revive", target: "passive", tags: ["doll", "toy"]}
+    "대타 인형": {type: "item", usage: "passive", rank: 3, price: 3000, icon: "🧸", desc: "사망 시 자동 소모하여 부활", effect: "revive", target: "passive", tags: ["doll", "toy"], categories: ["occult"]}
 };
 
 /* [수정] 시나리오 데이터 (복귀 가능 여부 플래그 추가) */
@@ -1489,7 +1512,7 @@ const EVENT_DATA = [
                     }
                     
                     player.gold -= 100;
-                    let item = getRandomItem("consumable");
+                    let item = getRandomItem("consumable", { categories: ["general"] });
                     
                     // 아이템 획득 시도 (성공 시 팝업 띄우고 종료)
                     addItem(item, () => {
@@ -1503,7 +1526,7 @@ const EVENT_DATA = [
                 txt: "발로 찬다 (체력 -5, 50% 확률)", 
                 func: () => {
                     if(Math.random() < 0.5) {
-                        let item = getRandomItem("consumable");
+                        let item = getRandomItem("consumable", { categories: ["general"] });
                         addItem(item, () => {
                             showPopup("성공!", `쾅! 충격으로 [${item}]이(가) 떨어졌습니다!`, [
                                 { txt: "확인", func: () => { closePopup(); renderExploration(); } }
@@ -1710,14 +1733,16 @@ const TRAIT_DATA = {
         type: "curse",
         desc: "덱에 [저주: 불운]이(가) 고정됩니다. 치료로만 해제 가능",
         cost: -2,
-        cureCost: 1000
+        cureCost: 1000,
+        cureTag: "occult"
     },
     "curse_shackles": {
         name: "저주: 족쇄",
         type: "curse",
         desc: "덱에 [저주: 족쇄]이(가) 고정됩니다. 치료로만 해제 가능",
         cost: -2,
-        cureCost: 2000
+        cureCost: 2000,
+        cureTag: "occult"
     }
 };
 

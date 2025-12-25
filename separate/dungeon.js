@@ -629,6 +629,14 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
                     if (typeof openCaseFiles === 'function') openCaseFiles();
                 } else if (action === 'hospital_cure') {
                     if (typeof openHospitalCure === 'function') openHospitalCure();
+                } else if (action === 'open_occult_shop') {
+                    if (typeof renderShopScreen === 'function') renderShopScreen("shop_occult");
+                } else if (action === 'open_sauna') {
+                    if (typeof openSaunaRest === 'function') openSaunaRest();
+                } else if (action === 'open_occult_clinic') {
+                    if (typeof openOccultClinic === 'function') openOccultClinic();
+                } else if (action === 'open_healing_clinic') {
+                    if (typeof openHealingClinic === 'function') openHealingClinic();
                 } else if (action === 'hecate_dialogue') {
                     const options = [
                         {

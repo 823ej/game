@@ -1710,7 +1710,7 @@ function triggerSurrenderWin() {
 
     game.pendingLoot = null;
     if (Math.random() < 0.5) {
-        game.pendingLoot = getRandomItem();
+            game.pendingLoot = getRandomItem(null, { categories: ["general"] }); 
         game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`;
     }
 
@@ -2508,7 +2508,7 @@ function hubRest() {
 }
 
 function openHospitalCure() {
-    const curseTraits = (player.traits || []).filter(key => getCurseCardByTrait(key));
+    const curseTraits = getCureTraitsByTag("medical");
     if (curseTraits.length === 0) {
         showPopup("대학 병원", "치료할 부상이 없습니다.", [{ txt: "확인", func: closePopup }]);
         return;
@@ -2535,7 +2535,135 @@ function openHospitalCure() {
         };
     });
     buttons.push({ txt: "취소", func: closePopup });
-    showPopup("대학 병원", "치료할 저주를 선택하세요.", buttons);
+    showPopup("대학 병원", "치료할 부상을 선택하세요.", buttons);
+}
+
+function getCureTraitsByTag(tag) {
+    const list = (player.traits || []).filter(key => {
+        if (!getCurseCardByTrait(key)) return false;
+        const t = TRAIT_DATA[key] || {};
+        const cureTag = t.cureTag || "medical";
+        return tag ? cureTag === tag : true;
+    });
+    return list;
+}
+
+function openOccultClinic() {
+    const curseTraits = getCureTraitsByTag("occult");
+    if (curseTraits.length === 0) {
+        showPopup("한의원 제생당", "해주할 오컬트 저주가 없습니다.", [{ txt: "확인", func: closePopup }]);
+        return;
+    }
+
+    const buttons = curseTraits.map(key => {
+        const cardName = getCurseCardByTrait(key);
+        const t = TRAIT_DATA[key] || { name: key };
+        const cost = Number.isFinite(t.cureCost) ? t.cureCost : 1500;
+        return {
+            txt: `${t.name}${cardName ? ` (${cardName})` : ""} - ${cost}G`,
+            func: () => {
+                closePopup();
+                if (player.gold < cost) {
+                    showPopup("잔액 부족", "치료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    return;
+                }
+                player.gold -= cost;
+                removeTrait(key);
+                if (cardName) removeCardEverywhere(cardName);
+                advanceTimeSlot("occult_cure");
+                showPopup("해주 완료", `${t.name}이(가) 해제되었습니다.`, [{ txt: "확인", func: closePopup }]);
+            }
+        };
+    });
+    buttons.push({ txt: "한방약 구매", func: () => renderShopScreen("shop_herbal") });
+    buttons.push({ txt: "취소", func: closePopup });
+    showPopup("한의원 제생당", "해주할 오컬트 저주를 선택하세요.", buttons);
+}
+
+function openSaunaRest() {
+    if (player.hp >= player.maxHp && player.sp >= player.maxSp) {
+        showPopup("용궁 사우나", "이미 충분히 회복되어 있습니다.", [{ txt: "확인", func: closePopup }]);
+        return;
+    }
+    player.hp = player.maxHp;
+    player.sp = player.maxSp;
+    updateUI();
+    advanceTimeSlot("sauna_rest");
+    showPopup("용궁 사우나", "뜨끈한 탕에서 쉬며 체력과 이성을 회복했습니다.", [{ txt: "확인", func: closePopup }]);
+}
+
+function openHealingClinic() {
+    const healCost = 5000;
+    const buffCost = 4000;
+    const cureTraits = getCureTraitsByTag(null);
+    const cureCostBase = cureTraits.reduce((sum, key) => {
+        const t = TRAIT_DATA[key] || {};
+        const cost = Number.isFinite(t.cureCost) ? t.cureCost : 1500;
+        return sum + cost;
+    }, 0);
+    const cureCost = cureCostBase > 0 ? Math.floor(cureCostBase * 2) : 0;
+
+    const buttons = [
+        {
+            txt: `회복 진료 - ${healCost}G`,
+            func: () => {
+                closePopup();
+                if (player.gold < healCost) {
+                    showPopup("잔액 부족", "진료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    return;
+                }
+                player.gold -= healCost;
+                player.hp = player.maxHp;
+                player.sp = player.maxSp;
+                updateUI();
+                advanceTimeSlot("clinic_heal");
+                showPopup("힐링 클리닉 사일런스", "컨디션이 완전히 회복되었습니다.", [{ txt: "확인", func: closePopup }]);
+            }
+        },
+        {
+            txt: `모든 저주 해제 - ${cureCost}G`,
+            func: () => {
+                closePopup();
+                if (cureTraits.length === 0) {
+                    showPopup("힐링 클리닉 사일런스", "해제할 저주가 없습니다.", [{ txt: "확인", func: closePopup }]);
+                    return;
+                }
+                if (player.gold < cureCost) {
+                    showPopup("잔액 부족", "진료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    return;
+                }
+                player.gold -= cureCost;
+                cureTraits.forEach(key => {
+                    const cardName = getCurseCardByTrait(key);
+                    removeTrait(key);
+                    if (cardName) removeCardEverywhere(cardName);
+                });
+                advanceTimeSlot("clinic_cure_all");
+                showPopup("힐링 클리닉 사일런스", "모든 저주가 해제되었습니다.", [{ txt: "확인", func: closePopup }]);
+            }
+        },
+        {
+            txt: `컨디션 부스트 - ${buffCost}G`,
+            func: () => {
+                closePopup();
+                if (player.gold < buffCost) {
+                    showPopup("잔액 부족", "진료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    return;
+                }
+                player.gold -= buffCost;
+                applyBuff(player, "활력", 3);
+                applyBuff(player, "건강", 2);
+                applyBuff(player, "쾌속", 2);
+                updateUI();
+                advanceTimeSlot("clinic_buff");
+                showPopup("힐링 클리닉 사일런스", "맞춤 케어로 컨디션이 강화되었습니다.", [{ txt: "확인", func: closePopup }]);
+            }
+        },
+        { txt: "약 구매", func: () => renderShopScreen("shop_clinic") },
+        { txt: "닫기", func: closePopup }
+    ];
+
+    showPopup("힐링 클리닉 사일런스", "원하시는 서비스를 선택하세요.", buttons);
 }
 /* [NEW] 덱 관리 시스템 변수 */
 let currentDeckMode = 'battle'; // 'battle' or 'social'
@@ -3297,13 +3425,20 @@ function useItem(index, target) {
         playAnim("player-char", "anim-bounce");
         used = true;
         break;
-            case "heal":
+            case "heal": {
                 let healAmt = Math.min(target.maxHp - target.hp, data.val);
                 target.hp += healAmt;
-                log(`🍷 [${name}] 사용! HP +${healAmt}`);
+                if (Number.isFinite(data.healSp) && data.healSp > 0) {
+                    let spHeal = Math.min(target.maxSp - target.sp, data.healSp);
+                    target.sp += spHeal;
+                    log(`🍷 [${name}] 사용! HP +${healAmt}, SP +${spHeal}`);
+                } else {
+                    log(`🍷 [${name}] 사용! HP +${healAmt}`);
+                }
                 playAnim(targetId, 'anim-bounce');
                 used = true;
                 break;
+            }
             case "damage":
                 log(`🧴 [${name}] 투척! 적에게 ${data.val} 피해`);
                 takeDamage(target, data.val);
@@ -4206,7 +4341,7 @@ function exploreAction(action) {
                         logBox.innerHTML = `<span style='color:#f1c40f'>🔍 단서 발견!</span><br>${evt.text}`;
                     } else {
                         let foundItem = null;
-                        if (Math.random() < 0.4) { foundItem = getRandomItem(); addItem(foundItem); }
+                        if (Math.random() < 0.4) { foundItem = getRandomItem(null, { categories: ["general"] }); addItem(foundItem); }
                         game.doom = Math.min(100, game.doom + 2);
                         let msg = foundItem ? `주변을 뒤져 <span style='color:#2ecc71'>[${foundItem}]</span>을(를) 발견했습니다!` : "주변을 샅샅이 뒤져보았습니다. 별다른 특이사항은 없습니다.";
                         logBox.innerHTML = `${msg}`;
@@ -5423,7 +5558,7 @@ if (game.state === "social") {
             // 3. 전리품(아이템) 드랍 (확률 50%)
             game.pendingLoot = null;
             if (Math.random() < 0.5) { 
-                game.pendingLoot = getRandomItem(); 
+                game.pendingLoot = getRandomItem(null, { categories: ["general"] }); 
                 game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`; 
             }
             
@@ -5647,24 +5782,47 @@ function renderShopScreen(shopType = "shop_black_market") {
     let poolRank = 1; 
     let cardCount = 3;
     let itemCount = 2;
+    let itemCategories = null;
     
     if (shopType === "shop_black_market") {
         shopTitle = "💀 뒷골목 암시장";
         shopDesc = "출처는 묻지 마쇼. 싸게 넘길 테니.";
         poolRank = 1; 
+        itemCategories = ["general"];
     } else if (shopType === "shop_pharmacy") {
         shopTitle = "💊 24시 드럭스토어";
         shopDesc = "회복약과 생필품이 있습니다.";
         poolRank = 1; 
+        itemCategories = ["pharmacy"];
     } else if (shopType === "shop_high_end") {
         shopTitle = "💎 아라사카 부티크";
         shopDesc = "최고급 장비만을 취급합니다.";
         poolRank = 2; 
+        itemCategories = ["general"];
+    } else if (shopType === "shop_occult") {
+        shopTitle = "🪔 도깨비 만물상";
+        shopDesc = "눈을 속이지 않는 물건들만 모았습니다.";
+        poolRank = 1;
+        itemCount = 3;
+        itemCategories = ["occult"];
+    } else if (shopType === "shop_herbal") {
+        shopTitle = "🌿 한의원 제생당";
+        shopDesc = "몸과 기운을 다스리는 한방약을 판매합니다.";
+        poolRank = 1;
+        itemCount = 3;
+        itemCategories = ["herbal"];
+    } else if (shopType === "shop_clinic") {
+        shopTitle = "🩺 힐링 클리닉 사일런스";
+        shopDesc = "최상급 약품과 처방만 취급합니다.";
+        poolRank = 2;
+        itemCount = 3;
+        itemCategories = ["pharmacy"];
     } else if (shopType === "shop_internet") {
         shopTitle = "📦 익명 배송 센터";
         shopDesc = "집에서 편하게 주문하세요. (배송비 포함)";
         poolRank = 1;
         itemCount = 3;
+        itemCategories = ["general"];
     }
 
     // 2. 물품 생성
@@ -5680,7 +5838,8 @@ function renderShopScreen(shopType = "shop_black_market") {
     while (itemsForSale.length < itemCount && safety++ < 200) {
         const candidate = getRandomItem(null, {
             excludeOwnedEquip: true,
-            excludeNames: new Set(itemsForSale)
+            excludeNames: new Set(itemsForSale),
+            categories: itemCategories
         });
         if (!candidate) break;
         itemsForSale.push(candidate);
@@ -5734,6 +5893,9 @@ function renderShopScreen(shopType = "shop_black_market") {
         let price = data.rank * 150 + Math.floor(Math.random()*50);
         if (shopType === "shop_high_end") price *= 2; 
         if (shopType === "shop_black_market") price = Math.floor(price * 0.8);
+        if (shopType === "shop_occult") price = Math.floor(price * 1.2);
+        if (shopType === "shop_herbal") price = Math.floor(price * 1.1);
+        if (shopType === "shop_clinic") price = Math.floor(price * 2.0);
         if (shopType === "shop_internet") price = Math.floor(price * 1.1);
         const typeLabel = getCardTypeLabel(data);
         const groupLabel = getCardGroupLabel(data);
@@ -5764,6 +5926,9 @@ function renderShopScreen(shopType = "shop_black_market") {
         let price = data.price;
         if (shopType === "shop_black_market") price = Math.floor(price * 0.7); 
         if (shopType === "shop_high_end") price = Math.floor(price * 1.5);
+        if (shopType === "shop_occult") price = Math.floor(price * 1.2);
+        if (shopType === "shop_herbal") price = Math.floor(price * 1.1);
+        if (shopType === "shop_clinic") price = Math.floor(price * 2.0);
         if (shopType === "shop_internet") price = Math.floor(price * 1.1);
 
         let el = document.createElement('div');
@@ -5962,7 +6127,7 @@ function renderResultScreen() {
     // [수정] 아이템 보상 처리
     let itemReward = "없음";
     const desiredRank = rewardData.itemRank;
-    let newItem = getRandomItem(null, { rank: desiredRank });
+    let newItem = getRandomItem(null, { rank: desiredRank, categories: ["general"] });
 
     if (newItem) {
         const itemData = ITEM_DATA[newItem];
@@ -6177,6 +6342,7 @@ function getRandomItem(filter, opts = null) {
     const excludeOwnedEquip = !!options.excludeOwnedEquip;
     const excludeNames = options.excludeNames instanceof Set ? options.excludeNames : null;
     const fixedRank = Number.isFinite(options.rank) ? Number(options.rank) : null;
+    const categories = Array.isArray(options.categories) ? options.categories.filter(Boolean) : null;
 
     let pool = Object.keys(ITEM_DATA);
 
@@ -6197,6 +6363,17 @@ function getRandomItem(filter, opts = null) {
 
         // fallback to full pool if nothing matched to avoid undefined picks
         if (pool.length === 0) pool = Object.keys(ITEM_DATA);
+    }
+
+    if (categories && categories.length > 0) {
+        pool = pool.filter(key => {
+            const item = ITEM_DATA[key];
+            if (!item) return false;
+            const itemCategories = Array.isArray(item.categories)
+                ? item.categories
+                : (item.category ? [item.category] : ["general"]);
+            return itemCategories.some(cat => categories.includes(cat));
+        });
     }
 
     if (excludeNames) {
