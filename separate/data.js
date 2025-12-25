@@ -693,63 +693,11 @@ const CITY_AREA_DATA = {
                 desc: "중앙 환승 지점.",
                 pos: { x: 50, y: 50 },
                 grid: { x: 1, y: 1 },
-                links: ["subway_east", "subway_west", "subway_south", "subway_north", "cult_hideout_track"],
+                links: ["cult_hideout_track"],
                 tags: ["환승", "중앙"],
                 icon: "🧭",
                 objects: [
                     { id: "to_platform", name: "중앙역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "central_subway_platform", spotId: "platform" }
-                ]
-            },
-            {
-                id: "subway_east",
-                name: "동문역",
-                desc: "동쪽으로 이어지는 역.",
-                pos: { x: 78, y: 50 },
-                grid: { x: 2, y: 1 },
-                links: ["subway_central"],
-                tags: ["동쪽", "역"],
-                icon: "🚉",
-                objects: [
-                    { id: "to_east_station", name: "동문역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_east_station", spotId: "east_platform" }
-                ]
-            },
-            {
-                id: "subway_west",
-                name: "서항역",
-                desc: "서쪽 항만 방면의 역.",
-                pos: { x: 22, y: 50 },
-                grid: { x: 0, y: 1 },
-                links: ["subway_central"],
-                tags: ["서쪽", "역"],
-                icon: "🚉",
-                objects: [
-                    { id: "to_west_station", name: "서항역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_west_station", spotId: "west_platform" }
-                ]
-            },
-            {
-                id: "subway_south",
-                name: "남산역",
-                desc: "남쪽 산기슭으로 향하는 역.",
-                pos: { x: 50, y: 84 },
-                grid: { x: 1, y: 2 },
-                links: ["subway_central"],
-                tags: ["남쪽", "역"],
-                icon: "🚉",
-                objects: [
-                    { id: "to_south_station", name: "남산역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_south_station", spotId: "south_platform" }
-                ]
-            },
-            {
-                id: "subway_north",
-                name: "성주산역",
-                desc: "북쪽 숲길로 이어지는 역.",
-                pos: { x: 50, y: 22 },
-                grid: { x: 1, y: 0 },
-                links: ["subway_central"],
-                tags: ["북쪽", "역"],
-                icon: "🚉",
-                objects: [
-                    { id: "to_north_station", name: "성주산역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "subway_north_station", spotId: "north_platform" }
                 ]
             },
             {
@@ -783,8 +731,21 @@ const CITY_AREA_DATA = {
                 tags: ["플랫폼", "동쪽"],
                 icon: "🚉",
                 objects: [
-                    { id: "east_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station" },
-                    { id: "east_back", name: "중앙역 환승", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                    { 
+                        id: "screen_door", 
+                        name: "스크린도어", 
+                        icon: "🚪", 
+                        action: "subway_transfer_select",
+                        options: [
+                            { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
+                            { label: "세주중앙역", areaId: "central_subway_platform", spotId: "platform" },
+                            { label: "동문역", areaId: "subway_east_station", spotId: "east_platform" },
+                            { label: "서항역", areaId: "subway_west_station", spotId: "west_platform" },
+                            { label: "남산역", areaId: "subway_south_station", spotId: "south_platform" },
+                            { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
+                        ]
+                    },
+                    { id: "east_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station" }
                 ]
             }
         ]
@@ -804,8 +765,21 @@ const CITY_AREA_DATA = {
                 tags: ["플랫폼", "서쪽"],
                 icon: "🚉",
                 objects: [
-                    { id: "west_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station" },
-                    { id: "west_back", name: "중앙역 환승", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                    { 
+                        id: "screen_door", 
+                        name: "스크린도어", 
+                        icon: "🚪", 
+                        action: "subway_transfer_select",
+                        options: [
+                            { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
+                            { label: "세주중앙역", areaId: "central_subway_platform", spotId: "platform" },
+                            { label: "동문역", areaId: "subway_east_station", spotId: "east_platform" },
+                            { label: "서항역", areaId: "subway_west_station", spotId: "west_platform" },
+                            { label: "남산역", areaId: "subway_south_station", spotId: "south_platform" },
+                            { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
+                        ]
+                    },
+                    { id: "west_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station" }
                 ]
             }
         ]
@@ -825,8 +799,21 @@ const CITY_AREA_DATA = {
                 tags: ["플랫폼", "남쪽"],
                 icon: "🚉",
                 objects: [
-                    { id: "south_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station" },
-                    { id: "south_back", name: "중앙역 환승", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                    { 
+                        id: "screen_door", 
+                        name: "스크린도어", 
+                        icon: "🚪", 
+                        action: "subway_transfer_select",
+                        options: [
+                            { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
+                            { label: "세주중앙역", areaId: "central_subway_platform", spotId: "platform" },
+                            { label: "동문역", areaId: "subway_east_station", spotId: "east_platform" },
+                            { label: "서항역", areaId: "subway_west_station", spotId: "west_platform" },
+                            { label: "남산역", areaId: "subway_south_station", spotId: "south_platform" },
+                            { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
+                        ]
+                    },
+                    { id: "south_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station" }
                 ]
             }
         ]
@@ -846,8 +833,21 @@ const CITY_AREA_DATA = {
                 tags: ["플랫폼", "북쪽"],
                 icon: "🚉",
                 objects: [
-                    { id: "north_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station" },
-                    { id: "north_back", name: "중앙역 환승", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                    { 
+                        id: "screen_door", 
+                        name: "스크린도어", 
+                        icon: "🚪", 
+                        action: "subway_transfer_select",
+                        options: [
+                            { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
+                            { label: "세주중앙역", areaId: "central_subway_platform", spotId: "platform" },
+                            { label: "동문역", areaId: "subway_east_station", spotId: "east_platform" },
+                            { label: "서항역", areaId: "subway_west_station", spotId: "west_platform" },
+                            { label: "남산역", areaId: "subway_south_station", spotId: "south_platform" },
+                            { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
+                        ]
+                    },
+                    { id: "north_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station" }
                 ]
             }
         ]
