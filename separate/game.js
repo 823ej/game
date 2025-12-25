@@ -2472,12 +2472,12 @@ function renderHub() {
 
 /* [NEW] 거점 휴식 */
 function hubRest() {
-    if (player.gold < 500) {
+    if (player.gold < 1900) {
         showPopup("잔액 부족", "커피 사 마실 돈도 없습니다...", [{txt:"확인", func:closePopup}]);
         return;
     }
     
-    player.gold -= 500;
+    player.gold -= 1900;
     player.hp = player.maxHp;
     player.sp = player.maxSp;
     
@@ -2489,7 +2489,7 @@ function hubRest() {
 function openHospitalCure() {
     const curseTraits = (player.traits || []).filter(key => getCurseCardByTrait(key));
     if (curseTraits.length === 0) {
-        showPopup("대학 병원", "치료할 저주가 없습니다.", [{ txt: "확인", func: closePopup }]);
+        showPopup("대학 병원", "치료할 부상이 없습니다.", [{ txt: "확인", func: closePopup }]);
         return;
     }
 
