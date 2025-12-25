@@ -745,7 +745,8 @@ const CITY_AREA_DATA = {
                             { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
-                    { id: "east_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station" }
+                    { id: "east_exit_oldtown", name: "동문역 출구", icon: "⬆️", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station" },
+                    { id: "east_exit_market", name: "재래시장 방면", icon: "🧺", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_market" }
                 ]
             }
         ]
@@ -779,7 +780,8 @@ const CITY_AREA_DATA = {
                             { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
-                    { id: "west_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station" }
+                    { id: "west_exit_station", name: "서항역 출구", icon: "⬆️", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station" },
+                    { id: "west_exit_boardwalk", name: "해안 산책로 방면", icon: "🌊", action: "enter_city_area", areaId: "south_coast", spotId: "coast_boardwalk" }
                 ]
             }
         ]
@@ -813,7 +815,8 @@ const CITY_AREA_DATA = {
                             { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
-                    { id: "south_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station" }
+                    { id: "south_exit_station", name: "남산역 출구", icon: "⬆️", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station" },
+                    { id: "south_exit_alley", name: "뒷골목 방면", icon: "🌒", action: "enter_city_area", areaId: "west_industrial", spotId: "back_alley" }
                 ]
             }
         ]
@@ -847,7 +850,8 @@ const CITY_AREA_DATA = {
                             { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
-                    { id: "north_exit", name: "지상 출구", icon: "⬆️", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station" }
+                    { id: "north_exit_station", name: "성주산역 출구", icon: "⬆️", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station" },
+                    { id: "north_exit_forest", name: "숲 입구 방면", icon: "🌲", action: "enter_city_area", areaId: "north_mountain", spotId: "forest_entry" }
                 ]
             }
         ]
@@ -888,7 +892,8 @@ const CITY_AREA_DATA = {
                 tags: ["먹거리", "소문", "생활"],
                 icon: "🧺",
                 objects: [
-                    { id: "goblin_shop", name: "도깨비 만물상 (구 씨 아저씨)", icon: "🪔", action: "open_occult_shop" }
+                    { id: "goblin_shop", name: "도깨비 만물상 (구 씨 아저씨)", icon: "🪔", action: "open_occult_shop" },
+                    { id: "to_oldtown_station", name: "동문역 출구", icon: "🚇", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station" }
                 ]
             },
             {
@@ -971,7 +976,9 @@ const CITY_AREA_DATA = {
                 tags: ["역", "지하철"],
                 icon: "🚉",
                 objects: [
-                    { id: "to_east_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_east_station", spotId: "east_platform" }
+                    { id: "to_east_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_east_station", spotId: "east_platform" },
+                    { id: "to_oldtown_market", name: "재래시장 방면", icon: "🧺", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_market" },
+                    { id: "to_residential_block", name: "주택가 방면", icon: "🏠", action: "enter_city_area", areaId: "east_oldtown", spotId: "residential_block" }
                 ]
             }
         ]
@@ -1079,7 +1086,9 @@ const CITY_AREA_DATA = {
                 tags: ["역", "지하철"],
                 icon: "🚉",
                 objects: [
-                    { id: "to_south_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_south_station", spotId: "south_platform" }
+                    { id: "to_south_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_south_station", spotId: "south_platform" },
+                    { id: "to_industrial_yard", name: "공업단지 방면", icon: "🏭", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_yard" },
+                    { id: "to_back_alley", name: "뒷골목 방면", icon: "🌒", action: "enter_city_area", areaId: "west_industrial", spotId: "back_alley" }
                 ]
             },
             {
@@ -1092,7 +1101,8 @@ const CITY_AREA_DATA = {
                 tags: ["은신", "위험"],
                 icon: "🌒",
                 objects: [
-                    { id: "slums_dungeon", name: "뒷골목 슬럼", icon: "🧭", action: "enter_dungeon", dungeonId: "slums_back_alley" }
+                    { id: "slums_dungeon", name: "뒷골목 슬럼", icon: "🧭", action: "enter_dungeon", dungeonId: "slums_back_alley" },
+                    { id: "to_south_station", name: "남산역 출구", icon: "🚇", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station" }
                 ]
             }
         ]
@@ -1110,7 +1120,10 @@ const CITY_AREA_DATA = {
                 grid: { x: 1, y: 1 },
                 links: ["amusement_park", "mega_mart", "seaside_hotel", "beachfront", "coast_station"],
                 tags: ["바닷가", "산책"],
-                icon: "🌊"
+                icon: "🌊",
+                objects: [
+                    { id: "to_west_station", name: "서항역 출구", icon: "🚇", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station" }
+                ]
             },
             {
                 id: "amusement_park",
@@ -1152,7 +1165,9 @@ const CITY_AREA_DATA = {
                 tags: ["역", "지하철"],
                 icon: "🚉",
                 objects: [
-                    { id: "to_west_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_west_station", spotId: "west_platform" }
+                    { id: "to_west_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_west_station", spotId: "west_platform" },
+                    { id: "to_coast_boardwalk", name: "해안 산책로 방면", icon: "🌊", action: "enter_city_area", areaId: "south_coast", spotId: "coast_boardwalk" },
+                    { id: "to_mega_mart", name: "대형 마트 방면", icon: "🛒", action: "enter_city_area", areaId: "south_coast", spotId: "mega_mart" }
                 ]
             },
             {
@@ -1182,7 +1197,8 @@ const CITY_AREA_DATA = {
                 tags: ["산길", "주의"],
                 icon: "🌲",
                 objects: [
-                    { id: "deep_forest", name: "깊은 숲으로", icon: "🌲", action: "enter_dungeon", dungeonId: "north_mountain_forest" }
+                    { id: "deep_forest", name: "깊은 숲으로", icon: "🌲", action: "enter_dungeon", dungeonId: "north_mountain_forest" },
+                    { id: "to_north_station", name: "성주산역 출구", icon: "🚇", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station" }
                 ]
             },
             {
@@ -1206,7 +1222,8 @@ const CITY_AREA_DATA = {
                 tags: ["역", "지하철"],
                 icon: "🚉",
                 objects: [
-                    { id: "to_north_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_north_station", spotId: "north_platform" }
+                    { id: "to_north_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_north_station", spotId: "north_platform" },
+                    { id: "to_forest_entry", name: "숲 입구 방면", icon: "🌲", action: "enter_city_area", areaId: "north_mountain", spotId: "forest_entry" }
                 ]
             }
         ]
