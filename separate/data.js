@@ -119,13 +119,14 @@ const CARD_DATA = {
     "저주 각인": { rank: 3, cost: 2, type: "skill", desc: "주술 각인을 새깁니다. [상태이상: 고통 1장 손으로]", job: "enemy", statusAdd: { card: "고통", count: 1, destination: "hand" } },
 
     // --- 장비 전용 카드 (장비 장착 시 덱에 추가, 해제 시 제거) ---
-    "사격(관통)": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
+    "권총 사격": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
     "쿠보탄 급소": { rank: 1, cost: 1, type: "attack", desc: "쿠보탄으로 급소를 찌른다! 적 HP -6 [관통]", dmg: 6, attr: "pierce", job: "equipment", noReward: true },
     "은빛 찌르기": { rank: 2, cost: 1, type: "attack", desc: "은 단검의 찌르기! 적 HP -7 [신성]", dmg: 7, attr: "holy", job: "equipment", noReward: true },
     "너클 강타": { rank: 1, cost: 1, type: "attack", desc: "스파이크 너클로 강타! 적 HP -6 [타격]", dmg: 6, attr: "strike", job: "equipment", noReward: true },
     
     "광신의 춤": { rank: 3, cost: 2, type: "skill", desc: "체력 회복 +20, 방어도 +10",job: "common", buff: {name:"활력", val:5}, block: 10 },
     "정신 붕괴 파동": { rank: 3, cost: 2, type: "attack", desc: "전체 멘탈 공격 (SP 데미지)",job: "common", dmg: 10, type: "social", val: -20 }, // 소셜/배틀 하이브리드
+     "발톱 갈기": { rank: 2, cost: 2, type: "skill", desc: "발톱을 갈아 공격력을 올린다",job: "enemy", buff: {name:"강화", val:2}, target:"self"}, 
     
     "부하 호출": { 
         rank: 3, 
@@ -237,12 +238,12 @@ const ENEMY_DATA = {
     },
     "괴물 쥐": {
         name: "괴물 쥐",
-        baseHp: 22,
+        baseHp: 17,
         stats: { atk: 2, def: 0, spd: 4 },
         weakness: "fire",
         growth: { hp: 3, atk: 0.5, def: 0, spd: 0.3 },
         deckType: "custom",
-        deck: ["타격", "타격", "쇠약 바늘", "사냥꾼의 발차기"],
+        deck: ["타격", "수비", "발톱 갈기", "타격"],
         img: "https://placehold.co/100x100/5d4037/ffffff?text=Rat",
         tags: ["beast"]
     },
@@ -1321,7 +1322,7 @@ const DISTRICTS = {
 const ITEM_DATA = {
     // --- 장비 아이템 (유물에서 분리) ---
     // bonusStats는 '원본 스탯'에 더해지는 값입니다. (예: +2 => 보정치(mod) +1)
-    "권총": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 0, icon: "🔫", desc: "탐정의 기본 무기. 장착 시 덱에 [사격(관통)] 카드가 추가됩니다.", grantCards: ["사격(관통)"], tags: ["weapon", "gun"]},
+    "권총": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3000, icon: "🔫", desc: "탐정의 기본 무기. 장착 시 덱에 [사격(관통)] 카드가 추가됩니다.", grantCards: ["사격(관통)"], tags: ["weapon", "gun"]},
     "쿠보탄": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (장착 효과) 장착 시 덱에 [쿠보탄 급소] 카드가 추가됩니다.", bonusStats: { str: 2 }, grantCards: ["쿠보탄 급소"], tags: ["weapon", "tool"]},
     "강인함의 부적": {type: "item", usage: "equip", equipSlots: ["accessory1", "accessory2"], rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (장착 효과)", bonusStats: { con: 2 }, tags: ["charm", "accessory"]},
     "좋은 운동화": {type: "item", usage: "equip", equipSlots: ["legs"], rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (장착 효과)", bonusStats: { dex: 2 }, tags: ["clothes", "brand"]},
