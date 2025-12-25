@@ -2774,6 +2774,31 @@ function openCaseFiles() {
     ], content);
 }
 
+function openActiveMissions() {
+    let content = "";
+    if (game.activeScenarioId && SCENARIOS[game.activeScenarioId]) {
+        const sc = SCENARIOS[game.activeScenarioId];
+        const isActive = (game.scenario && game.scenario.id === game.activeScenarioId && game.scenario.isActive);
+        const progress = (isActive && Number.isFinite(game.scenario.clues)) ? `${game.scenario.clues}%` : "대기 중";
+        const locationText = Array.isArray(sc.locations) ? sc.locations.join(", ") : (sc.location || "");
+
+        content = `
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="font-weight:bold; font-size:1.05em;">${sc.title}</div>
+                <div style="font-size:0.85em; color:#aaa;">${sc.desc || ""}</div>
+                <div style="font-size:0.85em; color:#f1c40f;">진행도: ${progress}</div>
+                ${locationText ? `<div style="font-size:0.8em; color:#777;">예상 지역: ${locationText}</div>` : ""}
+            </div>
+        `;
+    } else {
+        content = `<div style="color:#777;">현재 받은 의뢰가 없습니다.</div>`;
+    }
+
+    showPopup("📌 진행 중 의뢰", "현재 수락된 의뢰 정보입니다.", [
+        {txt: "닫기", func: closePopup}
+    ], content);
+}
+
 function startScenario(id) {
     console.log("시나리오 시작 시도:", id); // [확인용 로그]
     closePopup();
@@ -2804,7 +2829,7 @@ function startScenarioFromCity(id) {
         clues: 0,
         location: scData.locations[0],
         bossReady: false,
-        isActive: false,
+        isActive: true,
         enemyPool: getEnemyPoolFromScenario(scData)
     };
 

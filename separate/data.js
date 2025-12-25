@@ -239,7 +239,7 @@ const ENEMY_DATA = {
     "괴물 쥐": {
         name: "괴물 쥐",
         baseHp: 17,
-        stats: { atk: 2, def: 0, spd: 4 },
+        stats: { atk: 1, def: 0, spd: 4 },
         weakness: "fire",
         growth: { hp: 3, atk: 0.5, def: 0, spd: 0.3 },
         deckType: "custom",
