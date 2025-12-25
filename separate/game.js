@@ -545,6 +545,7 @@ function updateCityAreaDetail() {
 function startCityExploration(areaId, targetSpotId) {
     const area = getVisibleCityArea(areaId);
     if (!area) return;
+    storeActiveScenarioState();
 
     // 시나리오/상태 설정 (도시 탐사용)
     game.state = 'exploration';
@@ -571,10 +572,10 @@ function startCityExploration(areaId, targetSpotId) {
         }
         DungeonSystem.loadCityArea(area);
         game.dungeonMap = true;
-        game.scenario = {
-            id: `city:${areaId}`,
-            title: area.name || "도시 탐사",
-            isCity: true,
+    game.scenario = {
+        id: `city:${areaId}`,
+        title: area.name || "도시 탐사",
+        isCity: true,
             canRetreat: true
         };
         syncCityDungeonPosition(initialSpot);
@@ -602,19 +603,37 @@ function startCityDungeon(dungeonId) {
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
     advanceTimeSlot("city_dungeon");
 
-    game.activeScenarioId = null;
+    storeActiveScenarioState();
     game.dungeonMap = false; // 새 던전 강제 생성
-    game.scenario = {
-        id: `city_dungeon:${dungeonId}`,
-        title: title,
-        isActive: false,
-        canRetreat: true,
-        customDungeon: config || {
-            width: 5, height: 5, roomCount: 10,
-            data: { battle: 5, event: 2, treasure: 1 }
-        },
-        enemyPool: (config && Array.isArray(config.enemyPool)) ? config.enemyPool : null
+    const activeId = game.activeScenarioId;
+    const storedScenario = (activeId && game.activeScenarioState && game.activeScenarioState[activeId])
+        ? game.activeScenarioState[activeId]
+        : null;
+    const missionScenario = (activeId && SCENARIOS[activeId]) ? (storedScenario || null) : null;
+    const fallbackDungeon = config || {
+        width: 5, height: 5, roomCount: 10,
+        data: { battle: 5, event: 2, treasure: 1 }
     };
+
+    if (missionScenario) {
+        game.scenario = {
+            ...missionScenario,
+            isActive: true,
+            canRetreat: true,
+            customDungeon: fallbackDungeon,
+            enemyPool: missionScenario.enemyPool || ((config && Array.isArray(config.enemyPool)) ? config.enemyPool : null)
+        };
+    } else {
+        game.activeScenarioId = null;
+        game.scenario = {
+            id: `city_dungeon:${dungeonId}`,
+            title: title,
+            isActive: false,
+            canRetreat: true,
+            customDungeon: fallbackDungeon,
+            enemyPool: (config && Array.isArray(config.enemyPool)) ? config.enemyPool : null
+        };
+    }
 
     // 던전 탈출 시 복귀할 도시 구역/스팟 기억
     if (game.cityArea && game.cityArea.areaId) {
@@ -724,14 +743,16 @@ function beginMission() {
 
     // 탐사 화면 진입 데이터 설정
     let scData = SCENARIOS[game.activeScenarioId];
+    const prevScenario = (game.scenario && game.scenario.id === game.activeScenarioId) ? game.scenario : null;
     game.scenario = {
         id: game.activeScenarioId,
         title: scData.title,
-        clues: 0,
-        location: scData.locations[0], 
-        bossReady: false,
+        clues: prevScenario ? (prevScenario.clues || 0) : 0,
+        location: (prevScenario && prevScenario.location) ? prevScenario.location : scData.locations[0], 
+        bossReady: prevScenario ? !!prevScenario.bossReady : false,
         isActive: true,
-        enemyPool: getEnemyPoolFromScenario(scData)
+        enemyPool: prevScenario?.enemyPool || getEnemyPoolFromScenario(scData),
+        returnToCity: prevScenario?.returnToCity
     };
     
     renderExploration(true);
@@ -2778,8 +2799,10 @@ function openActiveMissions() {
     let content = "";
     if (game.activeScenarioId && SCENARIOS[game.activeScenarioId]) {
         const sc = SCENARIOS[game.activeScenarioId];
-        const isActive = (game.scenario && game.scenario.id === game.activeScenarioId && game.scenario.isActive);
-        const progress = (isActive && Number.isFinite(game.scenario.clues)) ? `${game.scenario.clues}%` : "대기 중";
+        const stored = game.activeScenarioState && game.activeScenarioState[game.activeScenarioId];
+        const activeScenario = (game.scenario && game.scenario.id === game.activeScenarioId) ? game.scenario : stored;
+        const isActive = !!(activeScenario && activeScenario.isActive);
+        const progress = (Number.isFinite(activeScenario?.clues)) ? `${activeScenario.clues}%` : "대기 중";
         const locationText = Array.isArray(sc.locations) ? sc.locations.join(", ") : (sc.location || "");
 
         content = `
@@ -2797,6 +2820,13 @@ function openActiveMissions() {
     showPopup("📌 진행 중 의뢰", "현재 수락된 의뢰 정보입니다.", [
         {txt: "닫기", func: closePopup}
     ], content);
+}
+
+function storeActiveScenarioState() {
+    if (!game.activeScenarioId || !game.scenario) return;
+    if (game.scenario.id !== game.activeScenarioId) return;
+    if (!game.activeScenarioState) game.activeScenarioState = {};
+    game.activeScenarioState[game.activeScenarioId] = { ...game.scenario };
 }
 
 function startScenario(id) {
@@ -2823,14 +2853,16 @@ function startScenarioFromCity(id) {
     advanceTimeSlot("city_scenario");
 
     game.activeScenarioId = id;
+    const prevScenario = (game.scenario && game.scenario.id === id) ? game.scenario : null;
     game.scenario = {
         id: id,
         title: scData.title,
-        clues: 0,
-        location: scData.locations[0],
-        bossReady: false,
+        clues: prevScenario ? (prevScenario.clues || 0) : 0,
+        location: (prevScenario && prevScenario.location) ? prevScenario.location : scData.locations[0],
+        bossReady: prevScenario ? !!prevScenario.bossReady : false,
         isActive: true,
-        enemyPool: getEnemyPoolFromScenario(scData)
+        enemyPool: prevScenario?.enemyPool || getEnemyPoolFromScenario(scData),
+        returnToCity: prevScenario?.returnToCity
     };
 
     if (Array.isArray(scData.unlocks) && scData.unlocks.length > 0) {

@@ -1,6 +1,6 @@
 // Simple passthrough service worker for PWA installability.
 // Bump the cache version whenever static assets (HUD/UI, styles, scripts) change.
-const CACHE_NAME = 'midnight-shell-v４.39';
+const CACHE_NAME = 'midnight-shell-v４.391';
 const SHELL_FILES = [
   './',
   './index.html',
