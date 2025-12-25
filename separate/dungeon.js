@@ -70,12 +70,13 @@ const DungeonSystem = {
     let startY = 1; 
     let placedCount = 0;
 
-    for (let x = 0; x < this.width; x++) {
-        let type;
+        for (let x = 0; x < this.width; x++) {
+            let type;
 
-        if (x === 0) type = "start";
-        else if (x === this.width - 1) type = "boss";
-        else {
+            if (x === 0) type = "start";
+            else if (x === this.width - 1) {
+                type = config.noBoss ? popRoom() : "boss";
+            } else {
             // ★ 여기서 덱에서 뽑습니다.
             // 단, 너무 중요한 방(상점, 회복)이 메인 경로에만 몰리면 재미 없으므로
             // 50% 확률로 메인 경로에 배치하고, 아니면 곁가지 배치를 위해 아껴둡니다.
@@ -797,6 +798,12 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
     // 3. 조사 결과 처리
     resolveInvestigate: function(room) {
         room.cleared = true; // 중복 조사 방지
+
+        if (!game.scenario || !game.scenario.isActive) {
+            updateUI();
+            showPopup("조사 완료", "주변을 조사했지만 진행도에 영향이 없습니다.", [{txt:"확인", func:closePopup}]);
+            return;
+        }
         
         // 단서 획득 (20~30 랜덤)
         let gain = Math.floor(Math.random() * 10) + 20;

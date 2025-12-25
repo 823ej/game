@@ -1857,6 +1857,10 @@ position: absolute !important;
     visibility: visible;
     transition: opacity 0.5s;
 }
+.intent-icon .intent-dmg {
+    font-size: 0.7em;
+    margin-left: 2px;
+}
 
 /* 상태 텍스트 공통 (툴팁 호버 허용) */
 .status-effects {

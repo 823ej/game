@@ -607,7 +607,7 @@ function startCityDungeon(dungeonId) {
     game.scenario = {
         id: `city_dungeon:${dungeonId}`,
         title: title,
-        isActive: true,
+        isActive: false,
         canRetreat: true,
         customDungeon: config || {
             width: 5, height: 5, roomCount: 10,
@@ -757,7 +757,7 @@ function startPatrol(districtKey) {
         districtKey: districtKey, // ★ 구역 키 저장
         clues: 0,
         isPatrol: true,
-        isActive: true,
+        isActive: false,
         canRetreat: true,
         enemyPool: dist ? (dist.enemyPool || (dist.dungeon && dist.dungeon.enemyPool) || null) : null
     };
@@ -999,6 +999,30 @@ function hasItemAnywhere(name) {
     if (player.warehouse && player.warehouse.includes(name)) return true;
     if (player.equipmentBag && player.equipmentBag.includes(name)) return true;
     return getEquippedItemNames(player).includes(name);
+}
+
+function consumeReviveItem() {
+    ensureEquipmentFields(player);
+    const isReviveItem = (name) => {
+        const data = ITEM_DATA[name];
+        return data && (data.effect === "revive" || name === "황금 대타");
+    };
+
+    const pools = [
+        player.relics,
+        player.inventory,
+        player.equipmentBag
+    ];
+
+    for (const list of pools) {
+        if (!Array.isArray(list)) continue;
+        const idx = list.findIndex(isReviveItem);
+        if (idx >= 0) {
+            return list.splice(idx, 1)[0];
+        }
+    }
+
+    return null;
 }
 
 function getDuplicateItemCompensation(itemName) {
@@ -1702,9 +1726,27 @@ function pickEnemyCardForIntent(enemy) {
     return enemy.deck[Math.floor(Math.random() * enemy.deck.length)];
 }
 
-function describeIntentFromCard(cardName) {
+function describeIntentFromCard(cardName, enemy = null) {
     const data = CARD_DATA[cardName] || {};
-    const result = { icon: "❓", tooltip: "무슨 행동을 할지 알 수 없습니다." };
+    const result = { icon: "❓", tooltip: "무슨 행동을 할지 알 수 없습니다.", damageText: "" };
+    const atkUser = enemy || null;
+    const getPerHitDamage = (statType) => {
+        if (typeof data.dmg !== 'number') return null;
+        const base = Number(data.dmg || 0);
+        if (!atkUser) return Math.max(0, base);
+        return Math.max(0, base + getStat(atkUser, statType));
+    };
+    const getHitCount = () => {
+        const randomHits = Math.max(0, Number(data.randomHits || 0));
+        if (randomHits > 0) return randomHits;
+        return Math.max(1, Number(data.multiHit || 1));
+    };
+    const appendDamageText = (perHit) => {
+        if (!Number.isFinite(perHit)) return;
+        const hits = getHitCount();
+        result.damageText = hits > 1 ? `${perHit}x${hits}` : `${perHit}`;
+        result.tooltip += ` (예상 피해: ${result.damageText})`;
+    };
 
     if (data.special === "summon") {
         result.icon = "📢";
@@ -1716,15 +1758,21 @@ function describeIntentFromCard(cardName) {
         const isAttack = data.subtype === "attack";
         result.icon = isAttack ? "💬" : "🗣️";
         result.tooltip = isAttack ? "멘탈 공격을 시도하려 함" : "교란/설득을 준비 중";
+        if (isAttack) {
+            const perHit = getPerHitDamage('socialAtk');
+            appendDamageText(perHit);
+        }
         return result;
     }
 
-    if (data.type === "attack") {
-        const hits = data.multiHit || data.randomHits || 1;
-        const totalDmg = (data.dmg || 0) * hits;
+    if (data.type && data.type.includes("attack")) {
+        const perHit = getPerHitDamage('atk');
+        const hits = getHitCount();
+        const totalDmg = (perHit || 0) * hits;
         const isHeavy = totalDmg >= 12 || data.rank >= 3;
         result.icon = isHeavy ? "💥" : "⚔️";
         result.tooltip = isHeavy ? "강한 공격을 준비 중" : "공격하려 함";
+        appendDamageText(perHit);
         return result;
     }
 
@@ -1763,8 +1811,8 @@ function setEnemyIntentQueue(enemy, count = 1) {
     for (let i = 0; i < count; i++) {
         const cardName = pickEnemyCardForIntent(enemy);
         if (!cardName) break;
-        const info = describeIntentFromCard(cardName);
-        intents.push({ card: cardName, icon: info.icon, tooltip: info.tooltip });
+        const info = describeIntentFromCard(cardName, enemy);
+        intents.push({ card: cardName, icon: info.icon, tooltip: info.tooltip, damageText: info.damageText });
     }
     enemy.intentQueue = intents;
 }
@@ -3814,6 +3862,17 @@ function renderExploration(forceReset = false) {
                 data: { "battle": 4, "event": 2, "treasure": 1 } 
             };
         }
+
+        if (dungeonConfig && typeof dungeonConfig === 'object') {
+            dungeonConfig = {
+                ...dungeonConfig,
+                data: dungeonConfig.data ? { ...dungeonConfig.data } : dungeonConfig.data
+            };
+        }
+
+        if (game.scenario && game.scenario.isActive === false) {
+            dungeonConfig.noBoss = true;
+        }
         
         // 던전 생성 실행
         DungeonSystem.generateDungeon(dungeonConfig);
@@ -4083,7 +4142,7 @@ function exploreAction(action) {
             } else {
                 setTimeout(() => {
                     game.inputLocked = false;
-                    if (scData && scData.clueEvents && !game.scenario.isPatrol) {
+                    if (scData && scData.clueEvents && game.scenario && game.scenario.isActive && !game.scenario.isPatrol) {
                         let evt = scData.clueEvents[Math.floor(Math.random() * scData.clueEvents.length)];
                         game.scenario.clues = Math.min(100, game.scenario.clues + evt.gain);
                         game.doom = Math.min(100, game.doom + 5);
@@ -5206,6 +5265,17 @@ function checkGameOver() {
 
     // 1. [물리적 사망] HP 0
     if (player.hp <= 0) { 
+        const reviveItem = consumeReviveItem();
+        if (reviveItem) {
+            player.hp = Math.max(1, Math.floor(player.maxHp * 0.4));
+            updateInventoryUI();
+            updateUI();
+            autoSave();
+            showPopup("✨ 부활", `[${reviveItem}] 효과로 다시 일어났습니다.`, [
+                { txt: "확인", func: closePopup }
+            ]);
+            return false;
+        }
         game.state = "gameover"; // 상태 잠금
         showPopup("💀 사망", "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.", [
             {
@@ -6339,11 +6409,13 @@ if (enemies && enemies.length > 0) {
             intentIconsHtml = e.intentQueue.map((intObj, idx) => {
                 const icon = intObj.icon || "❓";
                 const tip = intObj.tooltip || "준비 중";
-                return `<span class="intent-icon" title="${tip}" data-int-idx="${idx}">${icon}</span>`;
+                const dmgText = intObj.damageText ? `<span class="intent-dmg">${intObj.damageText}</span>` : "";
+                return `<span class="intent-icon" title="${tip}" data-int-idx="${idx}">${icon}${dmgText}</span>`;
             }).join(" ");
         } else if (e.intent && e.intent.icon) {
             const tip = e.intent.tooltip || "행동 준비 중";
-            intentIconsHtml = `<span class="intent-icon" title="${tip}">${e.intent.icon}</span>`;
+            const dmgText = e.intent.damageText ? `<span class="intent-dmg">${e.intent.damageText}</span>` : "";
+            intentIconsHtml = `<span class="intent-icon" title="${tip}">${e.intent.icon}${dmgText}</span>`;
         }
         
         // 버프 텍스트 툴팁 적용 + 가시(thorns) 별도 표기
