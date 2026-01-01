@@ -25,12 +25,7 @@
         <div id="doom-pill" class="utility-pill hidden">Doom 0%</div>
 
         <div class="utility-buttons">
-            <button id="btn-player-stats" class="small-btn" onclick="openPlayerStats()">🧬</button>
-            <button id="btn-card-collection" class="small-btn" onclick="openAllCards()">🃏</button>
-            <button id="btn-main-inventory" class="small-btn" onclick="openInventory()">🎒</button>
-            <button id="btn-active-missions" class="small-btn" onclick="openActiveMissions()">📌</button>
-            <button class="small-btn" onclick="toggleFullScreen()">⛶</button>
-            <button class="small-btn" style="background:#c0392b; border-color:#e74c3c;" onclick="confirmReset()">🗑️</button>
+            <button id="btn-game-menu" class="small-btn" onclick="openGameMenu()">≡</button>
         </div>
     </div>
 </div>
@@ -64,6 +59,57 @@
             
             <div style="font-size:0.8em; color:#777; margin-top:5px;">
                 아이템을 클릭하여 사용하거나 정보를 확인하세요.
+            </div>
+        </div>
+    </div>
+    <div id="game-menu-overlay" class="game-menu-overlay hidden" onclick="closeGameMenu()">
+        <div class="game-menu-panel" onclick="event.stopPropagation()">
+            <div class="game-menu-header">
+                <div class="game-menu-title">GAME MENU</div>
+                <div class="game-menu-controls">
+                    <button id="game-menu-back" class="small-btn hidden" onclick="showGameMenuHome()">←</button>
+                    <button class="small-btn" onclick="closeGameMenu()">✖</button>
+                </div>
+            </div>
+            <div class="game-menu-body">
+                <div id="game-menu-home" class="game-menu-grid menu-home-vertical">
+                    <button class="menu-tile" onclick="openGameMenuAction('status')">
+                        <div class="menu-tile-icon">🧬</div>
+                        <div class="menu-tile-title">상태</div>
+                        <div class="menu-tile-desc">스탯과 현재 상태</div>
+                    </button>
+                    <button class="menu-tile" onclick="openGameMenuAction('inventory')">
+                        <div class="menu-tile-icon">🎒</div>
+                        <div class="menu-tile-title">아이템</div>
+                        <div class="menu-tile-desc">가방 및 소모품</div>
+                    </button>
+                    <button class="menu-tile" onclick="openGameMenuAction('cards')">
+                        <div class="menu-tile-icon">🃏</div>
+                        <div class="menu-tile-title">스킬/카드</div>
+                        <div class="menu-tile-desc">카드 컬렉션</div>
+                    </button>
+                    <button class="menu-tile" onclick="openGameMenuAction('missions')">
+                        <div class="menu-tile-icon">📌</div>
+                        <div class="menu-tile-title">의뢰</div>
+                        <div class="menu-tile-desc">진행 중 의뢰</div>
+                    </button>
+                    <button class="menu-tile" onclick="openGameMenuAction('options')">
+                        <div class="menu-tile-icon">⚙️</div>
+                        <div class="menu-tile-title">옵션</div>
+                        <div class="menu-tile-desc">설정 및 표시</div>
+                    </button>
+                    <button class="menu-tile danger" onclick="openGameMenuAction('reset')">
+                        <div class="menu-tile-icon">🗑️</div>
+                        <div class="menu-tile-title">데이터 초기화</div>
+                        <div class="menu-tile-desc">저장 데이터 삭제</div>
+                    </button>
+                    <button class="menu-tile" onclick="openGameMenuAction('fullscreen')">
+                        <div class="menu-tile-icon">⛶</div>
+                        <div class="menu-tile-title">전체 화면</div>
+                        <div class="menu-tile-desc">화면 전환</div>
+                    </button>
+                </div>
+                <div id="game-menu-content" class="game-menu-content hidden"></div>
             </div>
         </div>
     </div>

@@ -3584,6 +3584,305 @@ function closeInventory() {
     document.getElementById('inventory-overlay').classList.add('hidden');
 }
 
+function openGameMenu() {
+    const el = document.getElementById('game-menu-overlay');
+    if (el) el.classList.remove('hidden');
+    showGameMenuHome();
+}
+
+function closeGameMenu() {
+    const el = document.getElementById('game-menu-overlay');
+    if (el) el.classList.add('hidden');
+}
+
+function openGameMenuAction(action) {
+    showGameMenuView(action);
+}
+
+function showGameMenuHome() {
+    const home = document.getElementById('game-menu-home');
+    const content = document.getElementById('game-menu-content');
+    const backBtn = document.getElementById('game-menu-back');
+    if (home) home.classList.remove('hidden');
+    if (content) content.classList.add('hidden');
+    if (backBtn) backBtn.classList.add('hidden');
+}
+
+let gameMenuInventoryTab = 'consume';
+
+function showGameMenuView(view) {
+    const home = document.getElementById('game-menu-home');
+    const content = document.getElementById('game-menu-content');
+    const backBtn = document.getElementById('game-menu-back');
+    if (!content) return;
+
+    if (home) home.classList.add('hidden');
+    content.classList.remove('hidden');
+    if (backBtn) backBtn.classList.remove('hidden');
+
+    const escapeHtml = (val) => String(val)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const makeItemChips = (names, limit = 10) => {
+        const safeNames = Array.isArray(names) ? names.slice(0, limit) : [];
+        if (safeNames.length === 0) return `<div class="menu-item-chip">없음</div>`;
+        return safeNames.map(name => {
+            const data = ITEM_DATA?.[name];
+            const icon = data?.icon ? escapeHtml(data.icon) : "•";
+            return `<div class="menu-item-chip">${icon} ${escapeHtml(name)}</div>`;
+        }).join("");
+    };
+
+    const makeCardChips = (names, limit = 10) => {
+        const safeNames = Array.isArray(names) ? names.slice(0, limit) : [];
+        if (safeNames.length === 0) return `<div class="menu-item-chip">없음</div>`;
+        return safeNames.map(name => `<div class="menu-item-chip">🃏 ${escapeHtml(name)}</div>`).join("");
+    };
+    const makeTraitList = (keys, limit = 12) => {
+        const safeKeys = Array.isArray(keys) ? keys.slice(0, limit) : [];
+        if (safeKeys.length === 0) return `<div class="menu-pill">없음</div>`;
+        return safeKeys.map(key => {
+            const t = TRAIT_DATA?.[key] || {};
+            const name = t.name || key;
+            const desc = t.desc || "";
+            return `
+                <div class="menu-list-item">
+                    <div class="menu-list-left">
+                        <div class="menu-list-icon">✦</div>
+                        <div class="menu-list-text">
+                            <div class="menu-list-title">${escapeHtml(name)}</div>
+                            <div class="menu-list-desc">${escapeHtml(desc)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    };
+    const makeCardList = (names, limit = 12) => {
+        const safeNames = Array.isArray(names) ? names.slice(0, limit) : [];
+        if (safeNames.length === 0) return `<div class="menu-pill">없음</div>`;
+        return safeNames.map(name => {
+            const data = getEffectiveCardData(name) || CARD_DATA?.[name] || {};
+            const typeLabel = getCardTypeLabel(data);
+            const groupLabel = getCardGroupLabel(data);
+            return `
+                <div class="card" style="margin:0;">
+                    <div class="card-cost">${data.cost ?? 0}</div>
+                    <div class="card-rank">${"★".repeat(data.rank || 1)}</div>
+                    <div class="card-name">${escapeHtml(name)}</div>
+                    ${(typeLabel || groupLabel) ? `<div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:4px;">
+                        ${typeLabel ? `<div class="card-group-badge">[${escapeHtml(typeLabel)}]</div>` : ""}
+                        ${groupLabel ? `<div class="card-group-badge">[${escapeHtml(groupLabel)}]</div>` : ""}
+                    </div>` : ""}
+                    <div class="card-desc">${applyTooltip(escapeHtml(data.desc || ""))}</div>
+                </div>
+            `;
+        }).join("");
+    };
+
+    const makeMenuTabs = (tabs, active) => {
+        return `
+            <div class="menu-tabs">
+                ${tabs.map(t => `
+                    <button class="menu-tab ${t.key === active ? "active" : ""}" onclick="${t.action}">
+                        ${escapeHtml(t.label)}
+                    </button>
+                `).join("")}
+            </div>
+        `;
+    };
+
+    if (view === 'status') {
+        content.innerHTML = `
+            <div class="menu-content-title">상태</div>
+            <div class="menu-content-section">
+                <div class="menu-content-label">핵심</div>
+                <div class="menu-content-grid">
+                    <div class="menu-pill">HP ${player.hp}/${player.maxHp}</div>
+                    <div class="menu-pill">SP ${player.sp}/${player.maxSp}</div>
+                    <div class="menu-pill">Gold ${player.gold}G</div>
+                    <div class="menu-pill">Lv ${game.level || 1} · XP ${player.xp}/${player.maxXp}</div>
+                </div>
+            </div>
+            <div class="menu-content-section">
+                <div class="menu-content-label">스탯</div>
+                <div class="menu-content-grid">
+                    <div class="menu-pill">STR ${player.stats?.str ?? "-"}</div>
+                    <div class="menu-pill">CON ${player.stats?.con ?? "-"}</div>
+                    <div class="menu-pill">DEX ${player.stats?.dex ?? "-"}</div>
+                    <div class="menu-pill">INT ${player.stats?.int ?? "-"}</div>
+                    <div class="menu-pill">WIL ${player.stats?.wil ?? "-"}</div>
+                    <div class="menu-pill">CHA ${player.stats?.cha ?? "-"}</div>
+                </div>
+            </div>
+            <div class="menu-content-section">
+                <div class="menu-content-label">특성</div>
+                <div class="menu-list">${makeTraitList(player.traits, 12)}</div>
+            </div>
+        `;
+    } else if (view === 'inventory') {
+        const tabs = [
+            { key: 'consume', label: '소모품', action: "setGameMenuInventoryTab('consume')" },
+            { key: 'equip', label: '장비', action: "setGameMenuInventoryTab('equip')" },
+            { key: 'relic', label: '유물', action: "setGameMenuInventoryTab('relic')" }
+        ];
+        const listData = (gameMenuInventoryTab === 'consume')
+            ? (player.inventory || [])
+            : (gameMenuInventoryTab === 'equip')
+                ? (player.equipmentBag || [])
+                : (player.relics || []);
+
+        const listHtml = (listData.length === 0)
+            ? `<div class="menu-pill">비어 있음</div>`
+            : listData.map((name, idx) => {
+                const data = ITEM_DATA?.[name] || {};
+                const icon = data.icon ? escapeHtml(data.icon) : "•";
+                const desc = data.desc ? escapeHtml(data.desc) : "";
+                const actionBtn = (gameMenuInventoryTab === 'consume')
+                    ? `<button class="small-btn" onclick="menuUseItem(${idx})">사용</button>`
+                    : (gameMenuInventoryTab === 'equip')
+                        ? `<button class="small-btn" onclick="menuEquipItem(${idx})">장착</button>`
+                        : `<button class="small-btn" onclick="showPopup('유물', '${escapeHtml(name)}<br>${desc}', [{ txt: '확인', func: closePopup }])">보기</button>`;
+                return `
+                    <div class="menu-list-item">
+                        <div class="menu-list-left">
+                            <div class="menu-list-icon">${icon}</div>
+                            <div class="menu-list-text">
+                                <div class="menu-list-title">${escapeHtml(name)}</div>
+                                <div class="menu-list-desc">${desc}</div>
+                            </div>
+                        </div>
+                        <div>${actionBtn}</div>
+                    </div>
+                `;
+            }).join("");
+
+        if (gameMenuInventoryTab === 'equip') {
+            const slotOrder = ["head", "body", "legs", "leftHand", "rightHand", "accessory1", "accessory2"];
+            const equippedHtml = slotOrder.map(slotKey => {
+                const meta = EQUIP_SLOT_META[slotKey];
+                const equippedName = player.equipment?.[slotKey] || "";
+                const data = equippedName ? ITEM_DATA?.[equippedName] : null;
+                const icon = data?.icon ? escapeHtml(data.icon) : meta.icon;
+                const desc = data?.desc ? escapeHtml(data.desc) : "비어 있음";
+                return `
+                    <div class="menu-list-item">
+                        <div class="menu-list-left">
+                            <div class="menu-list-icon">${icon}</div>
+                            <div class="menu-list-text">
+                                <div class="menu-list-title">${meta.label}</div>
+                                <div class="menu-list-desc">${equippedName ? escapeHtml(equippedName) : "비어 있음"} · ${desc}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            content.innerHTML = `
+                <div class="menu-content-title">아이템</div>
+                ${makeMenuTabs(tabs, gameMenuInventoryTab)}
+                <div class="menu-split">
+                    <div class="menu-pane">
+                        <div class="menu-content-label">장비 가방 (${player.equipmentBag?.length || 0})</div>
+                        <div class="menu-list">${listHtml}</div>
+                    </div>
+                    <div class="menu-pane">
+                        <div class="menu-content-label">현재 장착</div>
+                        <div class="menu-list">${equippedHtml}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            content.innerHTML = `
+                <div class="menu-content-title">아이템</div>
+                ${makeMenuTabs(tabs, gameMenuInventoryTab)}
+                <div class="menu-list">${listHtml}</div>
+            `;
+        }
+    } else if (view === 'cards') {
+        content.innerHTML = `
+            <div class="menu-content-title">스킬/카드</div>
+            <div class="menu-content-section">
+                <div class="menu-content-label">전투 덱 (${player.deck?.length || 0})</div>
+                <div class="card-grid">${makeCardList(player.deck, 12)}</div>
+            </div>
+            <div class="menu-content-section">
+                <div class="menu-content-label">소셜 덱 (${player.socialDeck?.length || 0})</div>
+                <div class="card-grid">${makeCardList(player.socialDeck, 12)}</div>
+            </div>
+        `;
+    } else if (view === 'missions') {
+        const scId = game.activeScenarioId;
+        const sc = (scId && SCENARIOS?.[scId]) ? SCENARIOS[scId] : null;
+        const stored = game.activeScenarioState?.[scId];
+        const activeScenario = (game.scenario && game.scenario.id === scId) ? game.scenario : stored;
+        const progress = Number.isFinite(activeScenario?.clues) ? `${activeScenario.clues}%` : "대기 중";
+        content.innerHTML = `
+            <div class="menu-content-title">의뢰</div>
+            <div class="menu-content-section">
+                <div class="menu-content-label">현재 의뢰</div>
+                <div class="menu-pill">${sc ? escapeHtml(sc.title) : "없음"}</div>
+                <div class="menu-pill">진행도 ${progress}</div>
+            </div>
+            <div class="menu-action-row">
+                <button class="small-btn" onclick="openActiveMissions()">의뢰 상세</button>
+            </div>
+        `;
+    } else if (view === 'options') {
+        content.innerHTML = `
+            <div class="menu-content-title">옵션</div>
+            <div class="menu-content-section">
+                <div class="menu-pill">화면 및 시스템 설정은 여기서 확장 가능합니다.</div>
+            </div>
+            <div class="menu-action-row">
+                <button class="small-btn" onclick="toggleFullScreen()">전체 화면</button>
+            </div>
+        `;
+    } else if (view === 'fullscreen') {
+        content.innerHTML = `
+            <div class="menu-content-title">전체 화면</div>
+            <div class="menu-content-section">
+                <div class="menu-pill">현재 창에서 전체 화면을 켜거나 끕니다.</div>
+            </div>
+            <div class="menu-action-row">
+                <button class="small-btn" onclick="toggleFullScreen()">전환</button>
+            </div>
+        `;
+    } else if (view === 'reset') {
+        content.innerHTML = `
+            <div class="menu-content-title">데이터 초기화</div>
+            <div class="menu-content-section">
+                <div class="menu-pill" style="border-color: rgba(231, 76, 60, 0.6);">저장 데이터를 삭제하면 복구할 수 없습니다.</div>
+            </div>
+            <div class="menu-action-row">
+                <button class="small-btn" style="background:#c0392b; border-color:#e74c3c;" onclick="confirmReset()">초기화 진행</button>
+            </div>
+        `;
+    } else {
+        showGameMenuHome();
+    }
+}
+
+function setGameMenuInventoryTab(tab) {
+    gameMenuInventoryTab = tab;
+    showGameMenuView('inventory');
+}
+
+function menuUseItem(idx) {
+    currentInvTab = 'consume';
+    useItem(idx, player);
+    showGameMenuView('inventory');
+}
+
+function menuEquipItem(idx) {
+    currentInvTab = 'equip';
+    equipItemFromBag(idx);
+    setTimeout(() => showGameMenuView('inventory'), 0);
+}
+
 function renderEquipmentPanel() {
     const panel = document.getElementById('inventory-equipment-panel');
     if (!panel) return;
@@ -6483,7 +6782,7 @@ function drawCards(n) {
             log(`🔥 손패가 꽉 차서 [${card}] 카드가 버려졌습니다!`);
             
             // 시각적 효과 (버림 카드 더미가 흔들림)
-            playAnim('btn-discard-pile', 'anim-bounce');
+            playAnim('btn-discard-pile-floating', 'anim-bounce');
         }
     }
     
@@ -6548,6 +6847,7 @@ function updateUI() {
             apIndicator.style.transform = "scale(1)";
         }
     }
+    updatePileButtons();
    // 3. ★ [핵심 수정] 플레이어 전투 정보 (HUD) 업데이트
     const pHud = document.getElementById('player-hud');
     if (pHud) {
@@ -6697,6 +6997,22 @@ if (enemies && enemies.length > 0) {
             <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
         `;
     });
+}
+
+function updatePileButtons() {
+    const drawBtn = document.getElementById('btn-draw-pile-floating');
+    const exhaustBtn = document.getElementById('btn-exhaust-pile-floating');
+    const discardBtn = document.getElementById('btn-discard-pile-floating');
+    if (!drawBtn && !exhaustBtn && !discardBtn) return;
+
+    const inCombat = (game.state === 'battle' || game.state === 'social');
+    const drawCount = inCombat ? (player.drawPile?.length || 0) : 0;
+    const exhaustCount = inCombat ? (player.exhaustPile?.length || 0) : 0;
+    const discardCount = inCombat ? (player.discardPile?.length || 0) : 0;
+
+    if (drawBtn) drawBtn.textContent = `덱(${drawCount})`;
+    if (exhaustBtn) exhaustBtn.textContent = `소멸(${exhaustCount})`;
+    if (discardBtn) discardBtn.textContent = `버림(${discardCount})`;
 }
 
     if (typeof updateTurnOrderList === "function") updateTurnOrderList();
@@ -6924,9 +7240,9 @@ function addCardToHand(cardName) {
     if (!player.hand) player.hand = [];
 
     if (player.hand.length >= MAX_HAND_SIZE) {
-        player.discardPile.push(cardName);
-        log(`🔥 손패가 꽉 차서 [${cardName}] 카드가 버려졌습니다!`);
-        playAnim('btn-discard-pile', 'anim-bounce');
+    player.discardPile.push(cardName);
+    log(`🔥 손패가 꽉 차서 [${cardName}] 카드가 버려졌습니다!`);
+    playAnim('btn-discard-pile-floating', 'anim-bounce');
         return false;
     }
 

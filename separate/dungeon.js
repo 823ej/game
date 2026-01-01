@@ -316,8 +316,14 @@ updateParallax: function() {
             objLayer.style.transform = `translateX(calc(-50% + ${objOffset}px))`;
             
             objLayer.style.opacity = 1;
-            if (dist >= -15 && dist <= 15) objLayer.style.pointerEvents = "auto";
-            else objLayer.style.pointerEvents = "none";
+            const inBattle = (typeof game !== 'undefined') && (game.state === 'battle' || game.state === 'social');
+            if (inBattle) {
+                objLayer.style.pointerEvents = "none";
+            } else if (dist >= -15 && dist <= 15) {
+                objLayer.style.pointerEvents = "auto";
+            } else {
+                objLayer.style.pointerEvents = "none";
+            }
         }
     }
 
@@ -375,6 +381,8 @@ updateParallax: function() {
           return;
       }
 
+      const inBattle = (typeof game !== 'undefined') && (game.state === 'battle' || game.state === 'social');
+
       if (this.isCity && room.citySpot) {
           const objects = Array.isArray(room.citySpot.objects) ? room.citySpot.objects : [];
           if (objects.length === 0) {
@@ -386,9 +394,9 @@ updateParallax: function() {
               label: obj.name || room.citySpot.name || "건물",
               data: obj
           }));
-          setObjects(list);
+          setObjects(list, { disabled: inBattle });
           objWrap.classList.remove('hidden');
-          objWrap.style.pointerEvents = 'auto';
+          objWrap.style.pointerEvents = inBattle ? 'none' : 'auto';
           objWrap.style.opacity = 1;
           return;
       }
@@ -416,9 +424,9 @@ updateParallax: function() {
           return;
       }
 
-      setObjects([{ icon, label }]);
+      setObjects([{ icon, label }], { disabled: inBattle });
       objWrap.classList.remove('hidden');
-      objWrap.style.pointerEvents = 'auto';
+      objWrap.style.pointerEvents = inBattle ? 'none' : 'auto';
       objWrap.style.opacity = 1;
   },
   // [수정] 방 전환 팝업 제거 (이동 제한만 함)
@@ -1190,7 +1198,15 @@ function handleStagePointerDown(e) {
     const rect = stage.getBoundingClientRect();
     const x = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
     if (!Number.isFinite(x)) return;
-    const dir = (x < rect.left + rect.width / 2) ? -1 : 1;
+
+    const playerEl = document.getElementById('dungeon-player');
+    let playerCenterX = rect.left + rect.width / 2;
+    if (playerEl) {
+        const pRect = playerEl.getBoundingClientRect();
+        playerCenterX = pRect.left + (pRect.width / 2);
+    }
+
+    const dir = (x < playerCenterX) ? -1 : 1;
     pointerMoveActive = true;
     startMove(dir);
 }
