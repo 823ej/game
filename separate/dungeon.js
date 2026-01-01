@@ -1100,6 +1100,8 @@ renderMinimap: function(gridId = 'minimap-grid', cellSize = 50) {
 
 // 이동 버튼 홀드 처리용 변수
 let moveInterval = null;
+let moveDirection = 0;
+let pointerMoveActive = false;
 
 function startMove(direction) {
     if (moveInterval) clearInterval(moveInterval);
@@ -1122,11 +1124,13 @@ function startMove(direction) {
     moveInterval = setInterval(() => {
         DungeonSystem.moveScroll(direction);
     }, 20);
+    moveDirection = direction;
 }
 
 function stopMove() {
     if (moveInterval) clearInterval(moveInterval);
     moveInterval = null;
+    moveDirection = 0;
 
     // 멈추면 걷기 애니메이션 제거
     const playerImg = document.getElementById('dungeon-player');
@@ -1136,5 +1140,82 @@ function stopMove() {
 }
 function toggleMinimap() {
     DungeonSystem.toggleMinimap();
+}
+
+function canDungeonMove() {
+    if (typeof game === 'undefined') return false;
+    if (game.state !== 'exploration') return false;
+    if (game.inputLocked) return false;
+    return true;
+}
+
+function isInputTarget(target) {
+    if (!target) return false;
+    if (target.isContentEditable) return true;
+    const tag = target.tagName ? target.tagName.toLowerCase() : "";
+    return tag === 'input' || tag === 'textarea' || tag === 'select';
+}
+
+function isBlockedMoveTarget(target) {
+    if (!target) return false;
+    return !!target.closest(
+        '#dungeon-objects, .dungeon-door, .action-btn, .battle-ui, .exploration-ui, .utility-dock, #minimap-inline, #minimap-overlay, .inventory-overlay, .card, .shop-item, .hub-card, button'
+    );
+}
+
+function handleMoveKeyDown(e) {
+    if (!canDungeonMove()) return;
+    if (isInputTarget(e.target)) return;
+
+    let dir = 0;
+    if (e.key === 'ArrowLeft') dir = -1;
+    else if (e.key === 'ArrowRight') dir = 1;
+    else return;
+
+    e.preventDefault();
+    if (moveDirection !== dir) startMove(dir);
+}
+
+function handleMoveKeyUp(e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    stopMove();
+}
+
+function handleStagePointerDown(e) {
+    if (!canDungeonMove()) return;
+    if (isBlockedMoveTarget(e.target)) return;
+
+    const stage = document.getElementById('dungeon-stage');
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const x = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+    if (!Number.isFinite(x)) return;
+    const dir = (x < rect.left + rect.width / 2) ? -1 : 1;
+    pointerMoveActive = true;
+    startMove(dir);
+}
+
+function handleStagePointerUp() {
+    if (!pointerMoveActive) return;
+    pointerMoveActive = false;
+    stopMove();
+}
+
+function initDungeonMovementInputs() {
+    document.addEventListener('keydown', handleMoveKeyDown);
+    document.addEventListener('keyup', handleMoveKeyUp);
+
+    const stage = document.getElementById('dungeon-stage');
+    if (!stage) return;
+    stage.addEventListener('mousedown', handleStagePointerDown);
+    stage.addEventListener('touchstart', handleStagePointerDown, { passive: true });
+    document.addEventListener('mouseup', handleStagePointerUp);
+    document.addEventListener('touchend', handleStagePointerUp);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDungeonMovementInputs);
+} else {
+    initDungeonMovementInputs();
 }
 

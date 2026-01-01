@@ -4128,7 +4128,7 @@ function toggleBattleUI(isBattle) {
             DS.minimapOverlayWasOpen = minimapOverlay ? !minimapOverlay.classList.contains('hidden') : false;
             DS.minimapInlineWasOpen = minimapInline ? !minimapInline.classList.contains('hidden') : false;
         }
-        moveControls.style.display = 'none';   // 이동 키 숨김
+        if (moveControls) moveControls.style.display = 'none';   // 이동 키 숨김
         if(dungeonActions) dungeonActions.style.display = 'none'; // 조사 버튼 등 숨김
         if(minimapBtn) minimapBtn.style.display = 'none'; // 전투 중 지도 금지
         if (minimapOverlay) minimapOverlay.classList.add('hidden'); // 큰 지도 자동 닫기
@@ -4144,7 +4144,7 @@ function toggleBattleUI(isBattle) {
 
     } else {
         // [탐사 복귀]
-        moveControls.style.display = 'flex';   // 이동 키 복구
+        if (moveControls) moveControls.style.display = 'flex';   // 이동 키 복구
         if(dungeonActions) dungeonActions.style.display = 'grid';
         if(minimapBtn) {
             minimapBtn.style.display = 'block'; // 버튼만 복구 (지도는 닫힌 상태 유지)
