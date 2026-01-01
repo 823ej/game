@@ -782,7 +782,8 @@ _createDoor: function(container, pos, type, icon, label, onClick) {
             unlockCitySpot(discovery.areaId, discovery.key);
         }
         showPopup("발견", `${discovery.name} 구역을 찾아냈습니다!<br>이제 지도에서 바로 이동할 수 있습니다.`, [
-            { txt: "복귀", func: () => { closePopup(); handleDungeonExit(); } }
+            { txt: "복귀", func: () => { closePopup(); handleDungeonExit(); } },
+            { txt: "계속 탐색", func: closePopup }
         ]);
         return;
     }
