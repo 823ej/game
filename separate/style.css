@@ -1532,6 +1532,23 @@ position: absolute !important;
     z-index: 20; /* 시각적으로 오브젝트 위에 있지만 */
     pointer-events: none; /* 탐색 시 캐릭터 뒤 오브젝트 클릭 가능하도록 클릭 통과 */
 }
+#assistant-wrapper {
+    position: absolute;
+    left: 100%;
+    margin-left: 24px;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+}
+#assistant-player {
+    height: 220px;
+    width: auto;
+    transition: transform 0.2s;
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5));
+    pointer-events: none;
+}
 /* 걷는 모션 (좌우 반전 등) */
 .walking-right #dungeon-player { transform: scaleX(1); }
 .walking-left #dungeon-player { transform: scaleX(-1); }
@@ -2327,6 +2344,41 @@ body {
     border: 1px solid var(--mono-border) !important;
     color: var(--mono-text) !important;
     box-shadow: none !important;
+}
+.hud-subpanel {
+    margin-top: 6px;
+    padding: 6px 8px;
+    border: 1px solid var(--mono-border);
+    background: var(--mono-panel);
+}
+.hud-label {
+    font-size: 0.7em;
+    color: var(--mono-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.hud-bar {
+    height: 6px;
+    margin: 4px 0;
+    background: var(--mono-panel-2);
+    border: 1px solid var(--mono-border);
+}
+.hud-bar-fill {
+    height: 100%;
+    background: var(--mono-text);
+}
+.hud-value {
+    font-size: 0.75em;
+    color: var(--mono-text);
+}
+.logic-break {
+    animation: logicBreakFlash 0.3s ease-in-out;
+    outline: 1px solid var(--mono-border);
+}
+@keyframes logicBreakFlash {
+    0% { filter: invert(0); }
+    50% { filter: invert(1); }
+    100% { filter: invert(0); }
 }
 .game-menu-title,
 .menu-content-title,

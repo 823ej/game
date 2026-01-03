@@ -37,7 +37,7 @@ const CARD_DATA = {
     // [스킬] 원하는 카드/랜덤 카드 가져오기
     "재활용": { rank: 1, cost: 1, type: "skill", desc: "버린 카드에서 원하는 카드 1장 가져오기", fetch: { from: "discard", mode: "choose", count: 1, to: "hand" }, job: "common" },
     "주워담기": { rank: 1, cost: 0, type: "skill", desc: "버린 카드에서 랜덤 카드 1장 가져오기", fetch: { from: "discard", mode: "random", count: 1, to: "hand" }, job: "common" },
-    "탐색": { rank: 2, cost: 1, type: "skill", desc: "뽑을 카드에서 원하는 카드 1장 가져오기", fetch: { from: "draw", mode: "choose", count: 1, to: "hand" }, job: "common" },
+    "탐색(공용)": { rank: 2, cost: 1, type: "skill", desc: "뽑을 카드에서 원하는 카드 1장 가져오기", fetch: { from: "draw", mode: "choose", count: 1, to: "hand" }, job: "common" },
     "즉흥": { rank: 1, cost: 0, type: "skill", desc: "뽑을 카드에서 랜덤 카드 1장 가져오기", fetch: { from: "draw", mode: "random", count: 1, to: "hand" }, job: "common" },
 
     // [스킬] 원하는 카드 복사
@@ -83,10 +83,30 @@ const CARD_DATA = {
     "주머니 뒤지기": { rank: 2, cost: 1, type: "skill", desc: "방어도 +2, 카드 2장 뽑기", job: "common", block: 2, draw: 2 },
    "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, job: "common", isExhaust: true },
    
-   // [탐정 전용] (Detective) - 논리, 이성적
+   // [탐정 전용] (Detective) - 단서/조수 기반
     "논리적 반박": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 의지 -10", dmg: 10, job: "detective" },
-    "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 의지 -25", dmg: 25, job: "detective" },
+    "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "논리 방어를 깨뜨리고 적 의지 -25", dmg: 25, evidence: true, job: "detective" },
+    "사실 확인": { rank: 1, cost: 1, type: "social", subtype: "defend", desc: "논리 방어 +8, 프로파일링 +20", block: 8, profilingGain: 20, job: "detective" },
+    "결정적 논증": { rank: 3, cost: 0, type: "social", subtype: "attack", desc: "프로파일링 완성 시 생성되는 결정타", dmg: 40, job: "detective", isExhaust: true, noReward: true },
     "관찰": { rank: 1, cost: 0, type: "skill", desc: "카드 2장 뽑기", draw: 2, job: "detective" },
+    "단서 수집": { rank: 1, cost: 1, type: "skill", target: "enemy", desc: "적에게 단서 3", addClue: 3, job: "detective" },
+    "탐색": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5, 단서 2", dmg: 5, addClue: 2, job: "detective" },
+    "조사": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5, 단서 1", dmg: 5, addClue: 1, job: "detective" },
+    "회피": { rank: 1, cost: 1, type: "skill", desc: "방어도 +5", block: 5, job: "detective" },
+    "경계": { rank: 1, cost: 0, type: "attack", desc: "적 HP -3, 이번 턴 조수 피해 30% 감소", dmg: 3, assistantDamageReductionPct: 0.3, job: "detective" },
+    "명령: 제압": { rank: 2, cost: 2, type: "attack", desc: "조수가 돌진해 피해 12, 적 약점 피격 1회 (조수 생존 시)", dmg: 12, requireAssistant: true, forceWeaknessHit: true, job: "detective" },
+    "파고들기": { rank: 2, cost: 1, type: "attack", desc: "적의 단서 수치만큼 피해 (단서 유지)", dmgByClue: true, job: "detective" },
+    "추리": { rank: 2, cost: 1, type: "attack", desc: "적 HP -6, 단서 5 이상이면 카드 1장 뽑기", dmg: 6, drawOnClue: { threshold: 5, draw: 1 }, job: "detective" },
+    "잠복 근무": { rank: 1, cost: 1, type: "skill", desc: "방어도 +8, 다음 턴 카드 1장 추가 드로우", block: 8, nextTurnDraw: 1, job: "detective" },
+    "조수 호출": { rank: 1, cost: 1, type: "skill", desc: "조수 회복 +5", assistantHeal: 5, job: "detective" },
+    "명령: 눈길 끌기": { rank: 2, cost: 0, type: "skill", desc: "이번 턴 적의 공격을 조수가 대신 받음, 조수 방어도 +15", assistantTauntTurns: 1, assistantBlock: 15, requireAssistant: true, job: "detective" },
+    "고찰": { rank: 2, cost: 1, type: "skill", desc: "적 전체 단서 3, 손패 공격 카드 비용 0 (이번 턴)", addClueAll: 3, reduceAttackCostThisTurn: true, job: "detective" },
+    "비정한 결단": { rank: 3, cost: 0, type: "skill", desc: "조수 HP 절반 감소, 감소 HP 2당 AP +1", assistantSacrifice: true, job: "detective" },
+    "직감": { rank: 3, cost: 2, type: "power", desc: "매 턴 시작 시 무작위 적에게 단서 3", power: { clueOnTurnStart: 3 }, job: "detective" },
+    "방탄 코트": { rank: 2, cost: 1, type: "power", desc: "조수가 받는 모든 피해 3 감소", power: { assistantDamageReductionFlat: 3 }, job: "detective" },
+    "연쇄 작용": { rank: 3, cost: 3, type: "power", desc: "단서 부여량 2배", power: { clueMultiplier: 2 }, job: "detective" },
+    "결론": { rank: 2, cost: 2, type: "attack", desc: "적 HP -6, 단서 10 이상이면 강력한 결론", dmg: 6, solveCase: { threshold: 10, bonusDmg: 50, consume: true }, job: "detective" },
+    "조수 치료": { rank: 1, cost: 1, type: "skill", desc: "조수 회복 +10 (내 HP -5)", assistantHeal: 10, assistantHpCost: 5, job: "detective" },
     "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: {name:"강화", val:2}, target:"self", job: "detective", dmg: 8 },
     
    
@@ -297,6 +317,7 @@ const NPC_DATA = {
         name: "겁먹은 목격자",
         maxSp: 100, sp: 50,
         baseAtk: 2, baseDef: 0, baseSpd: 2,
+        logicShield: "silence",
         // [수정] 덱을 새 카드로 교체 (침묵, 무시, 심호흡 등)
         deck: ["침묵", "무시", "심호흡", "논리적 반박"], 
         img: "https://placehold.co/100x100/7f8c8d/ffffff?text=Witness",
@@ -309,6 +330,7 @@ const NPC_DATA = {
         name: "부패 경찰",
         maxSp: 100, sp: 50,
         baseAtk: 3, baseDef: 2, baseSpd: 3,
+        logicShield: "liar",
         // [수정] 덱을 새 카드로 교체 (증거 제시, 비꼬기, 호통치기 등)
         deck: ["증거 제시", "비꼬기", "호통치기", "무시"],
         img: "https://placehold.co/100x100/2c3e50/ffffff?text=Police",
@@ -321,6 +343,7 @@ const NPC_DATA = {
         name: "라거 트레이스",
         maxSp: 100, sp: 60,
         baseAtk: 2, baseDef: 1, baseSpd: 3,
+        logicShield: "liar",
         deck: ["무시", "위협", "심호흡"],
         img: "https://placehold.co/100x100/34495e/ffffff?text=Fixer",
         desc: "조용히 커피를 마시며 의뢰를 기다리는 해결사.",
@@ -333,6 +356,7 @@ const NPC_DATA = {
         name: "진서 루멘",
         maxSp: 100, sp: 70,
         baseAtk: 2, baseDef: 0, baseSpd: 4,
+        logicShield: "liar",
         deck: ["비꼬기", "심호흡", "논리적 반박"],
         img: "https://placehold.co/100x100/7f8c8d/ffffff?text=Fixer",
         desc: "날카로운 시선으로 주변을 훑는 해결사.",
@@ -345,6 +369,7 @@ const NPC_DATA = {
         name: "도카 벨",
         maxSp: 100, sp: 55,
         baseAtk: 3, baseDef: 1, baseSpd: 2,
+        logicShield: "liar",
         deck: ["위협", "무시", "심호흡"],
         img: "https://placehold.co/100x100/2c3e50/ffffff?text=Fixer",
         desc: "검은 코트를 걸치고 벽에 기대 서 있다.",
@@ -357,6 +382,7 @@ const NPC_DATA = {
         name: "영진 탐정",
         maxSp: 100, sp: 80,
         baseAtk: 3, baseDef: 2, baseSpd: 3,
+        logicShield: "silence",
         deck: ["논리적 반박", "증거 제시", "심호흡"],
         img: "assets/my_detective.png",
         desc: "사무소를 지키며 의뢰를 정리하는 베테랑 탐정.",
@@ -369,6 +395,7 @@ const NPC_DATA = {
         name: "사무소 조수",
         maxSp: 100, sp: 90,
         baseAtk: 2, baseDef: 1, baseSpd: 4,
+        logicShield: "silence",
         deck: ["관찰", "심호흡", "무시"],
         img: "https://placehold.co/100x100/2c3e50/ffffff?text=Assistant",
         desc: "의뢰 목록을 관리하고 의뢰인과 연락을 담당한다.",
@@ -395,7 +422,9 @@ const TOOLTIPS = {
     // [NEW] 소셜 모드 전용 상태이상
     "헤롱헤롱": "정신을 못 차립니다. 멘탈 방어 스탯이 절반으로 감소합니다.",
     "분노": "화가 나서 참을성이 없어집니다. 턴마다 인내심이 2배로 감소합니다.",
-    "우울": "감정이 격해집니다. 멘탈 공격 스탯이 2배 증가합니다."
+    "우울": "감정이 격해집니다. 멘탈 공격 스탯이 2배 증가합니다.",
+    "흐트러짐": "약점 공략으로 자세가 흐트러졌습니다. 다음 약점 피격 시 기절합니다.",
+    "기절": "다음 턴 행동이 불가능합니다."
     
 };
 
@@ -506,7 +535,10 @@ const CITY_AREA_DATA = {
                 grid: { x: 0, y: 1 },
                 links: ["central_plaza"],
                 tags: ["교육", "연구"],
-                icon: "🏫"
+                icon: "🏫",
+                objects: [
+                    { id: "academy_entry", name: "아카데미 내부", icon: "🚪", action: "enter_city_area", areaId: "st_jude_academy_interior", spotId: "academy_courtyard" }
+                ]
             },
             {
                 id: "university_hospital",
@@ -566,6 +598,52 @@ const CITY_AREA_DATA = {
                 links: ["udra_annex"],
                 tags: ["기관", "정보"],
                 icon: "🧿"
+            }
+        ]
+    },
+    st_jude_academy_interior: {
+        name: "성 주드 아카데미",
+        desc: "성 주드 아카데미 내부 구역. 기숙사와 동아리실이 모여 있다.",
+        start: "academy_courtyard",
+        spots: [
+            {
+                id: "academy_courtyard",
+                name: "중앙 중정",
+                desc: "아카데미 중심의 조용한 중정.",
+                pos: { x: 50, y: 50 },
+                grid: { x: 1, y: 1 },
+                links: ["academy_dormitory", "academy_clubroom"],
+                tags: ["중정", "캠퍼스"],
+                icon: "🌿",
+                objects: [
+                    { id: "academy_exit", name: "밖으로 나가기", icon: "🚪", action: "enter_city_area", areaId: "central_admin", spotId: "st_jude_academy" }
+                ]
+            },
+            {
+                id: "academy_dormitory",
+                name: "기숙사",
+                desc: "학생들이 생활하는 조용한 기숙사.",
+                pos: { x: 22, y: 68 },
+                grid: { x: 0, y: 2 },
+                links: ["academy_courtyard"],
+                tags: ["생활", "휴식"],
+                icon: "🛏️",
+                objects: [
+                    { id: "dorm_return", name: "기숙사로 복귀", icon: "🏠", action: "return_hub" }
+                ]
+            },
+            {
+                id: "academy_clubroom",
+                name: "동아리실",
+                desc: "아카데미 동아리 활동을 진행하는 공간.",
+                pos: { x: 78, y: 62 },
+                grid: { x: 2, y: 1 },
+                links: ["academy_courtyard"],
+                tags: ["동아리", "의뢰"],
+                icon: "📚",
+                objects: [
+                    { id: "club_leader", name: "동아리 부장", icon: "🧑‍🏫", action: "open_casefiles" }
+                ]
             }
         ]
     },
@@ -1653,8 +1731,8 @@ const JOB_DATA = {
         desc: "논리와 이성으로 사건을 해결합니다.",
         baseStats: { str: 10, con: 10, dex: 12, int: 16, wil: 14, cha: 12 }, 
         defaultTraits: ["sharp_eye"], 
-        starterDeck: ["테스트용", "타격", "수비", "수비", "달리기", "관찰"],
-        starterSocialDeck: ["논리적 반박", "논리적 반박", "비꼬기", "심호흡", "무시"],
+        starterDeck: ["조사", "조사", "조사", "조사", "회피", "회피", "회피", "회피", "조수 호출", "추리"],
+        starterSocialDeck: ["논리적 반박", "논리적 반박", "증거 제시", "사실 확인", "심호흡"],
         starterEquipment: { rightHand: "권총" },
         // [NEW] 탐정 이미지
        img: "assets/my_detective.png"
@@ -1668,6 +1746,15 @@ const JOB_DATA = {
         starterSocialDeck: ["위협", "위협", "무시", "무시", "심호흡"],
         // [NEW] 해결사 이미지
         img: "https://placehold.co/150x150/c0392b/ffffff?text=Fixer"
+    },
+    "wizard": {
+        name: "마법사",
+        desc: "기초 마법과 이론으로 힘을 끌어냅니다.",
+        baseStats: { str: 8, con: 10, dex: 10, int: 18, wil: 16, cha: 10 },
+        defaultTraits: ["arcane_student"],
+        starterDeck: ["타격", "타격", "수비", "수비", "힐링광선", "전술적 보충"],
+        starterSocialDeck: ["침묵", "무시", "심호흡", "심호흡"],
+        img: "https://placehold.co/150x150/1f1f1f/ffffff?text=Wizard"
     }
 };
 
@@ -1687,6 +1774,13 @@ const TRAIT_DATA = {
         desc: "[해결사] 주먹질 보정 (근력 +2)",
         cost: 0,
         stats: { str: 2 } // [수정] +1 -> +2
+    },
+    "arcane_student": {
+        name: "비전 수련생",
+        type: "job_unique",
+        desc: "[마법사] 이성 보정 (지능 +2)",
+        cost: 0,
+        stats: { int: 2 }
     },
     "genius": { 
         name: "천재성", 

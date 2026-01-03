@@ -20,7 +20,7 @@ function getEnemyDeck(type) {
 
 
 /* [NEW] 랭크별 랜덤 카드 뽑기 유틸리티 (기존 getRandomCard 보완) */
-function isCardRewardableForPlayer(cardName) {
+function isCardRewardableForPlayer(cardName, opts = {}) {
     const c = CARD_DATA[cardName];
     if (!c) return false;
     if (isPenaltyCard(cardName)) return false;
@@ -29,23 +29,193 @@ function isCardRewardableForPlayer(cardName) {
     if (c.job === "equipment") return false; // 장비 전용
 
     const job = player && player.job ? player.job : null;
+    if (opts.onlyCommon) return c.job === "common";
+    if (opts.onlyJob) {
+        if (!job) return c.job === "common";
+        return c.job === job;
+    }
     if (c.job && c.job !== "common" && job && c.job !== job) return false;
     // 직업 미선택 상태라면 공용 카드만
     if (!job && c.job && c.job !== "common") return false;
     return true;
 }
 
-function getRandomCardByRank(rank) {
+function getRandomCardByRank(rank, opts = {}) {
     // 상점/보상 등 "플레이어 획득용" 풀 기준
     let pool = Object.keys(CARD_DATA).filter(k => {
         const c = CARD_DATA[k];
         if (!c) return false;
         if (c.rank !== rank) return false;
         if (c.type === "social") return false;
-        return isCardRewardableForPlayer(k);
+        return isCardRewardableForPlayer(k, opts);
     });
     if (pool.length === 0) return "타격";
     return pool[Math.floor(Math.random() * pool.length)];
+}
+
+class Debuff {
+    constructor(name) {
+        this.name = name;
+    }
+}
+
+class ClueDebuff extends Debuff {
+    constructor() {
+        super("Clue");
+    }
+    getStacks(target) {
+        return Math.max(0, Number(target?.clueStacks || 0));
+    }
+    addStacks(target, amount) {
+        if (!target) return 0;
+        const add = Math.max(0, Number(amount || 0));
+        const next = Math.max(0, this.getStacks(target) + add);
+        target.clueStacks = next;
+        return next;
+    }
+    consumeAll(target) {
+        if (!target) return 0;
+        const cur = this.getStacks(target);
+        target.clueStacks = 0;
+        return cur;
+    }
+}
+
+class AssistantManager {
+    constructor() {
+        this.maxHp = 0;
+        this.hp = 0;
+        this.block = 0;
+    }
+    reset(maxHp) {
+        this.maxHp = Math.max(0, Number(maxHp || 0));
+        this.hp = this.maxHp;
+        this.block = 0;
+    }
+    isAlive() {
+        return this.hp > 0;
+    }
+    takeDamage(dmg) {
+        const val = Math.max(0, Number(dmg || 0));
+        let remain = val;
+        if (this.block > 0) {
+            const blocked = Math.min(this.block, remain);
+            this.block -= blocked;
+            remain -= blocked;
+        }
+        const dealt = Math.min(this.hp, remain);
+        this.hp -= dealt;
+        return dealt;
+    }
+    addBlock(amount) {
+        const val = Math.max(0, Number(amount || 0));
+        if (val > 0) this.block += val;
+    }
+    heal(amount) {
+        const val = Math.max(0, Number(amount || 0));
+        if (val <= 0) return 0;
+        const before = this.hp;
+        this.hp = Math.min(this.maxHp, this.hp + val);
+        return this.hp - before;
+    }
+}
+
+const clueDebuff = new ClueDebuff();
+
+function getClueMultiplier() {
+    const mul = Number(getTotalPowerValue('clueMultiplier') || 1);
+    return Math.max(1, mul);
+}
+
+function addClueStacks(target, count) {
+    const base = Math.max(0, Number(count || 0));
+    if (!target || base <= 0) return clueDebuff.getStacks(target);
+    const mult = getClueMultiplier();
+    const total = Math.max(0, Math.floor(base * mult));
+    return clueDebuff.addStacks(target, total);
+}
+
+function CardEffect_CheckClue(target, threshold = 10) {
+    return clueDebuff.getStacks(target) >= Math.max(1, Number(threshold || 10));
+}
+
+function Card_SolveCase(user, target, config = {}) {
+    if (!target) return { triggered: false, dealt: 0 };
+    const threshold = Math.max(1, Number(config.threshold || 10));
+    if (!CardEffect_CheckClue(target, threshold)) return { triggered: false, dealt: 0 };
+
+    const bonus = Math.max(0, Number(config.bonusDmg || 0));
+    const consume = config.consume !== false;
+    if (consume) clueDebuff.consumeAll(target);
+    const res = takeDamage(target, bonus + getStat(user, 'atk'), false, null, user, { isAttack: true, isFinisher: true });
+    return { triggered: true, dealt: res?.dealt || 0 };
+}
+
+function ensureAssistantManager() {
+    const existing = player.assistantManager;
+    if (!existing || typeof existing.isAlive !== "function") {
+        const maxHp = Math.max(0, Number(existing?.maxHp || 0));
+        const hp = Math.max(0, Number(existing?.hp || 0));
+        const block = Math.max(0, Number(existing?.block || 0));
+        player.assistantManager = new AssistantManager();
+        player.assistantManager.maxHp = maxHp;
+        player.assistantManager.hp = Math.min(maxHp, hp);
+        player.assistantManager.block = block;
+    }
+    // 순환 참조 방지: owner는 사용하지 않으므로 제거
+    if (player.assistantManager.owner) player.assistantManager.owner = null;
+    return player.assistantManager;
+}
+
+function initAssistantForDetective() {
+    if (!isDetectiveJob()) return;
+    const mgr = ensureAssistantManager();
+    const maxHp = Math.max(10, Math.floor(player.maxHp * 0.6));
+    mgr.reset(maxHp);
+}
+
+function healAssistant(amount, hpCost = 0) {
+    if (!isDetectiveJob()) return false;
+    const mgr = ensureAssistantManager();
+    if (!mgr || mgr.maxHp <= 0) return false;
+    const cost = Math.max(0, Number(hpCost || 0));
+    if (cost > 0 && player.hp <= cost) {
+        log("🚫 체력이 부족해 조수를 치료할 수 없습니다.");
+        return false;
+    }
+    if (cost > 0) player.hp -= cost;
+    const healed = mgr.heal(amount);
+    if (healed > 0) log(`🩹 조수 회복 +${healed}`);
+    updateUI();
+    return healed > 0;
+}
+
+function hasLogicShield(target) {
+    const buffs = target?.buffs || {};
+    return !!(buffs["거짓말"] || buffs["침묵"] || buffs["Liar"] || buffs["Silence"]);
+}
+
+function breakLogicShield(target) {
+    if (!target || !target.buffs) return;
+    delete target.buffs["거짓말"];
+    delete target.buffs["침묵"];
+    delete target.buffs["Liar"];
+    delete target.buffs["Silence"];
+}
+
+function addProfiling(amount) {
+    const inc = Math.max(0, Number(amount || 0));
+    if (!game.profilingGauge) game.profilingGauge = 0;
+    game.profilingGauge = Math.min(100, game.profilingGauge + inc);
+    if (game.profilingGauge >= 100) {
+        game.profilingGauge = 0;
+        if (!Array.isArray(player.combatTempCards)) player.combatTempCards = [];
+        player.hand.push("결정적 논증");
+        player.combatTempCards.push("결정적 논증");
+        log("💡 프로파일링 완료! [결정적 논증]을 손에 추가했습니다.");
+        renderHand();
+    }
+    updateUI();
 }
 
 
@@ -854,6 +1024,7 @@ let player = {
     currentAttrs: [],                 // 현재 플레이어의 공격 속성 목록 (배열)
     attrBuff: { types: [], turns: 0 },
     handCostOverride: [],             // 이번 전투/턴 임시 코스트 오버라이드 (손패 인덱스 기준)
+    nextTurnDraw: 0,                  // 다음 턴 추가 드로우
     permanentCardGrowth: {},          // { [cardName]: { dmg?: number, block?: number } } 영구 누적
     powers: {},                       // { [powerId]: any } 전투 중 지속 효과
     // [NEW] 플레이어도 약점과 상태이상을 가짐
@@ -1089,6 +1260,7 @@ function ensureCardSystems(p) {
     if (!p.permanentCardGrowth) p.permanentCardGrowth = {};
     if (!p.powers) p.powers = {};
     if (!p.socialPowers) p.socialPowers = {};
+    if (typeof p.nextTurnDraw !== 'number') p.nextTurnDraw = 0;
 }
 
 function ensureThornsField(entity) {
@@ -1182,6 +1354,16 @@ function triggerTurnStartPowers() {
     if (apBonus > 0) {
         player.ap += apBonus;
         log(`✨ 파워 효과: AP +${apBonus}`);
+    }
+
+    const clueOnTurnStart = Math.max(0, Number(getTotalPowerValue('clueOnTurnStart') || 0));
+    if (clueOnTurnStart > 0) {
+        const alive = enemies.filter(e => e && e.hp > 0);
+        if (alive.length > 0) {
+            const picked = alive[Math.floor(Math.random() * alive.length)];
+            const next = addClueStacks(picked, clueOnTurnStart);
+            log(`🔍 [직감] ${picked.name} 단서 +${clueOnTurnStart} (현재 ${next})`);
+        }
     }
 }
 
@@ -1317,6 +1499,14 @@ function getCurseCardByTrait(traitKey) {
         if (key === traitKey) return card;
     }
     return null;
+}
+
+function ensureCurseCardForTrait(traitKey) {
+    const cardName = getCurseCardByTrait(traitKey);
+    if (!cardName) return false;
+    if (!Array.isArray(player.deck)) player.deck = [];
+    if (!player.deck.includes(cardName)) player.deck.push(cardName);
+    return true;
 }
 
 function removeCardEverywhere(cardName) {
@@ -1497,6 +1687,8 @@ let game = {
     pendingLoot: null,
     winMsg: "",
     lastTurnOwner: "none", // [NEW] 직전 턴 주인 기록용
+    assistantDamageReductionPct: 0,
+    assistantTauntTurns: 0,
     // [NEW] 행동 게이지 MAX 상수 (이 수치에 도달하면 턴 획득)
     AG_MAX: 1000,
     // 현재 수락한 의뢰 id (없으면 null)
@@ -1645,11 +1837,15 @@ function showDamageText(target, msg, isCrit = false) {
     }
 }
 function createBattleCheckpoint() {
+    const safeClone = (obj) => JSON.parse(JSON.stringify(obj, (key, value) => {
+        if (key === "owner") return null;
+        return value;
+    }));
     battleCheckpoint = {
         // 객체를 깊은 복사(Deep Copy)하여 현재 상태와 분리
-        player: JSON.parse(JSON.stringify(player)),
-        enemies: JSON.parse(JSON.stringify(enemies)),
-        game: JSON.parse(JSON.stringify(game))
+        player: safeClone(player),
+        enemies: safeClone(enemies),
+        game: safeClone(game)
     };
     // 체크포인트 안의 game 객체에는 체크포인트 자신이 포함되지 않도록 주의(순환 참조 방지)
     // (game 변수 안에 battleCheckpoint를 넣지 않고 전역 변수로 뺐으므로 안전함)
@@ -1723,6 +1919,12 @@ function createNpcEnemyData(npcKey, index = 0) {
     let data = NPC_DATA[npcKey];
     if (!data) return null;
 
+    const logicShieldType = data.logicShield;
+    const buffs = {};
+    if (logicShieldType === "silence") buffs["침묵"] = 1;
+    else if (logicShieldType === "liar") buffs["거짓말"] = 1;
+    else if (logicShieldType === true) buffs["거짓말"] = 1;
+
     return {
         id: index,
         npcKey,
@@ -1731,7 +1933,7 @@ function createNpcEnemyData(npcKey, index = 0) {
         baseAtk: data.baseAtk || 0, 
         baseDef: data.baseDef || 0, 
         baseSpd: data.baseSpd || 2,
-        block: 0, buffs: {}, 
+        block: 0, buffs, 
         thorns: 0,
         deck: data.deck || ["횡설수설"], 
         img: data.img,
@@ -1934,7 +2136,7 @@ function autoSave() {
     }
 
    const saveData = {
-        version: "2.4",
+        version: "2.5",
         player: targetPlayer,
         enemies: targetEnemies,
         game: targetGame,
@@ -1954,7 +2156,10 @@ function autoSave() {
     };
 
     try {
-        localStorage.setItem('midnight_rpg_save', JSON.stringify(saveData));
+        localStorage.setItem('midnight_rpg_save', JSON.stringify(saveData, (key, value) => {
+            if (key === "owner") return null;
+            return value;
+        }));
         // console.log(`[AutoSave] 저장 완료 (${saveData.timestamp})`);
     } catch (e) {
         console.error("자동 저장 실패:", e);
@@ -1974,6 +2179,20 @@ function loadGame() {
         game = loadedData.game;
         ensureTimeState();
         if (!game.cityDiscoveries) game.cityDiscoveries = {};
+
+        if (loadedData.version !== "2.5") {
+            const remapCardName = (list, from, to) => {
+                if (!Array.isArray(list)) return;
+                for (let i = 0; i < list.length; i++) {
+                    if (list[i] === from) list[i] = to;
+                }
+            };
+            remapCardName(player.deck, "추리", "탐색");
+            remapCardName(player.drawPile, "추리", "탐색");
+            remapCardName(player.discardPile, "추리", "탐색");
+            remapCardName(player.exhaustPile, "추리", "탐색");
+            remapCardName(player.storage, "추리", "탐색");
+        }
 
         ensureEquipmentFields(player);
         migrateLegacyEquipment(player);
@@ -2402,6 +2621,8 @@ function finishCreation() {
             }
         }
     });
+    // 저주 트레잇은 덱에 저주 카드를 고정으로 추가
+    player.traits.forEach(tKey => ensureCurseCardForTrait(tKey));
 
     // [STEP 4] 스탯 재계산 및 유효성 검사
     recalcStats(); 
@@ -2429,6 +2650,10 @@ function isDetectiveJob() {
     return player && player.job === "detective";
 }
 
+function isWizardJob() {
+    return player && player.job === "wizard";
+}
+
 
 function getOfficeName() {
     const area = (typeof CITY_AREA_DATA !== 'undefined' && CITY_AREA_DATA) ? CITY_AREA_DATA.east_oldtown : null;
@@ -2437,6 +2662,15 @@ function getOfficeName() {
         if (spot && spot.name) return spot.name;
     }
     return "영진 탐정 사무소";
+}
+
+function getAcademyDormName() {
+    const area = (typeof CITY_AREA_DATA !== 'undefined' && CITY_AREA_DATA) ? CITY_AREA_DATA.st_jude_academy_interior : null;
+    if (area && Array.isArray(area.spots)) {
+        const spot = area.spots.find(s => s.id === "academy_dormitory");
+        if (spot && spot.name) return spot.name;
+    }
+    return "기숙사";
 }
 
 function getHomeMeta() {
@@ -2449,6 +2683,17 @@ function getHomeMeta() {
             bg: "https://placehold.co/1400x800/1c1f28/3f4757?text=Detective+Office+Panorama",
             returnLabel: "🏠 사무소 복귀",
             returnLabelLong: "🏠 사무소로 복귀"
+        };
+    }
+    if (isWizardJob()) {
+        const dormName = getAcademyDormName();
+        return {
+            tag: `성 주드 아카데미 ${dormName}`,
+            title: `🏫 ${dormName}`,
+            sub: "캠퍼스의 조용한 밤공기 속 휴식",
+            bg: "https://placehold.co/1400x800/141414/ffffff?text=Academy+Dormitory",
+            returnLabel: `🏠 ${dormName} 복귀`,
+            returnLabelLong: `🏠 ${dormName}로 복귀`
         };
     }
     return {
@@ -2788,25 +3033,34 @@ function startSocialBattle(npcKey, preserveEnemies = false) {
     game.isBossBattle = false;
     game.turnOwner = "none";     
     game.lastTurnOwner = "none"; 
+    game.profilingGauge = 0;
 
     // 1. 플레이어 상태 초기화 (소셜 전용 스탯 설정)
     player.mental = 100; 
     player.maxMental = 100;
     
     // 덱 교체
+    if (!Array.isArray(player.socialDeck)) player.socialDeck = [];
+    const validSocial = player.socialDeck.filter(name => CARD_DATA[name]);
+    player.socialDeck = (validSocial.length > 0) ? validSocial : ["논리적 반박", "심호흡"];
     player.drawPile = [...player.socialDeck]; 
     shuffle(player.drawPile);
     player.discardPile = []; player.exhaustPile = []; player.hand = [];
     player.buffs = {}; player.block = 0; player.ag = 0;
+    player.isStunned = false;
+    player.isBroken = false;
     migrateThornsFromBuff(player);
     ensureThornsField(player);
     player.thorns = 0; // 소셜에선 의미 없지만 저장/표시 일관성 유지
     ensureCardSystems(player);
     player.handCostOverride = [];
+    player.nextTurnDraw = 0;
     player.powers = {};        // 전투 파워(안전장치)
     player.socialPowers = {};  // 소셜 파워
     game.combatCardGrowth = {}; // 소셜에서도 '이번 전투 한정 성장' 허용
     game.innateDrawn = false;
+    game.assistantDamageReductionPct = 0;
+    game.assistantTauntTurns = 0;
 
     renderHand();
 
@@ -4719,6 +4973,9 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     if (!player.deck || player.deck.length === 0) {
         player.deck = [...JOB_DATA[player.job].starterDeck];
     }
+    if (!Array.isArray(player.deck)) player.deck = [];
+    const validBattle = player.deck.filter(name => CARD_DATA[name]);
+    player.deck = (validBattle.length > 0) ? validBattle : ["타격", "타격", "수비", "수비"];
     player.drawPile = [...player.deck]; 
     shuffle(player.drawPile);
     player.discardPile = []; 
@@ -4729,13 +4986,23 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     ensureThornsField(player);
     player.thorns = 0;
     player.block = 0; 
+    player.isStunned = false;
+    player.isBroken = false;
     player.ag = 0; // 행동 게이지 초기화
     player.combatTempCards = []; // 전투 중 상태이상 카드 추적 초기화
     ensureCardSystems(player);
     player.handCostOverride = [];
+    player.nextTurnDraw = 0;
     player.powers = {};
     game.combatCardGrowth = {}; // 전투 중 성장(이번 전투 한정)
     game.innateDrawn = false;
+    game.assistantDamageReductionPct = 0;
+    game.assistantTauntTurns = 0;
+    if (isDetectiveJob()) {
+        initAssistantForDetective();
+    } else if (player.assistantManager) {
+        player.assistantManager.reset(0);
+    }
 
     // 4. UI 모드 전환 (이동 버튼 숨김, 전투 UI 표시)
     toggleBattleUI(true);
@@ -4811,6 +5078,12 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     
     // [핵심] 턴 시뮬레이션 시작
     processTimeline();
+    // 플레이어가 선턴인데 손패가 비어있으면 첫 턴 초기화가 누락된 것으로 간주
+    setTimeout(() => {
+        if (game.state === "battle" && game.turnOwner === "player" && player.hand.length === 0) {
+            startPlayerTurnLogic();
+        }
+    }, 0);
 }
 
 /* [NEW] 보스전 시작 래퍼 */
@@ -5056,11 +5329,15 @@ function startPlayerTurnLogic() {
     // 내가 행동하고 또 바로 내 차례가 오면(속도 차이) 방어도가 유지됨.
     if (game.lastTurnOwner !== 'player') {
         player.block = 0; 
+        const mgr = ensureAssistantManager();
+        if (mgr) mgr.block = 0;
     } else {
         log("⚡ 연속 행동! 방어도가 유지됩니다.");
     }
 
     player.ap = 3;
+    game.assistantDamageReductionPct = 0;
+    if (game.assistantTauntTurns > 0) game.assistantTauntTurns -= 1;
     if (game.state === 'battle') triggerTurnStartPowers();
     else if (game.state === 'social') triggerSocialTurnStartPowers();
 
@@ -5085,7 +5362,9 @@ function startPlayerTurnLogic() {
         renderHand();
     }
 
-    drawCards(5);
+    const extraDraw = Math.max(0, Number(player.nextTurnDraw || 0));
+    player.nextTurnDraw = 0;
+    drawCards(5 + extraDraw);
     if (game.state === 'battle') triggerAfterDrawPowers();
     else if (game.state === 'social') triggerSocialAfterDrawPowers();
 
@@ -5233,6 +5512,45 @@ async function startEnemyTurnLogic(actor) {
     }
 }
 
+function applyWeaknessHit(atkTarget) {
+    if (!atkTarget) return;
+    if (atkTarget.isStunned) {
+        log(`😵 기절한 대상을 가격합니다!`);
+        showDamageText(atkTarget, "CRITICAL!", true);
+        return;
+    }
+    if (atkTarget.isBroken) {
+        atkTarget.isStunned = true;
+        atkTarget.block = 0;
+        atkTarget.ag = 0;
+
+        log(`😵 <b>${atkTarget.name}</b> 기절! (약점 공략 성공)`);
+
+        const atkTargetId = (atkTarget === player) ? "dungeon-player" : `enemy-unit-${atkTarget.id}`;
+        playAnim(atkTargetId, 'anim-hit');
+        showDamageText(atkTarget, "😵DOWN!", true);
+
+        if (atkTarget !== player) {
+            const el = document.getElementById(atkTargetId);
+            if (el) el.classList.add('stunned');
+        } else {
+            log("🚫 <b>당신은 기절했습니다! 다음 턴 행동 불가!</b>");
+        }
+        return;
+    }
+
+    atkTarget.isBroken = true;
+    log(`⚡ <b>${atkTarget.name}</b>의 자세가 무너졌습니다! (WEAK)`);
+    showDamageText(atkTarget, "⚡BREAK!");
+
+    if (atkTarget !== player) {
+        const el = document.getElementById(`enemy-unit-${atkTarget.id}`);
+        if (el) el.classList.add('broken');
+    } else {
+        log("⚠️ <b>당신의 자세가 무너졌습니다! (피해량 증가)</b>");
+    }
+}
+
 /* [game.js] useCard 함수 수정 (변수명 오류 수정) */
 function useCard(user, target, cardName) {
     const base = CARD_DATA[cardName];
@@ -5242,6 +5560,14 @@ function useCard(user, target, cardName) {
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
 
     log(`🃏 [${cardName}] 사용!`);
+
+    if (user === player && data.requireAssistant) {
+        const mgr = ensureAssistantManager();
+        if (!mgr || !mgr.isAlive()) {
+            log("🚫 조수가 없어 사용할 수 없습니다.");
+            return;
+        }
+    }
 
     // [파워] 지속 효과 부여
     if (data.type === "power") {
@@ -5312,23 +5638,39 @@ function useCard(user, target, cardName) {
     if (data.type === "social") {
         playAnim(userId, 'anim-bounce');
         if (data.dmg) {
-            let finalDmg = data.dmg + getStat(user, 'socialAtk'); 
+            let finalDmg = data.dmg + getStat(user, 'socialAtk');
+            if (game.state === "social" && user === player && target !== player) {
+                if (hasLogicShield(target)) {
+                    if (data.evidence) {
+                        breakLogicShield(target);
+                        log("📌 증거로 논리 방어를 깨뜨렸습니다!");
+                        showDamageText(target, "🧠BREAK");
+                        const tEl = document.getElementById(targetId);
+                        if (tEl) {
+                            tEl.classList.add('logic-break');
+                            setTimeout(() => tEl.classList.remove('logic-break'), 300);
+                        }
+                    } else {
+                        finalDmg = 1;
+                    }
+                }
+            }
             takeDamage(target, finalDmg);
             // 상태이상(전투 중 임시 카드): 카드에 statusAdd가 명시된 경우만 추가
             if (game.state === 'battle' && user !== player && target === player && data.statusAdd) {
                 addStatusCardToCombat(data.statusAdd.card, data.statusAdd.count || 1, data.statusAdd.destination || 'discard');
             }
         }
-        if (data.heal) {
-            if (user === player) {
-                user.mental = Math.min(100, user.mental + data.heal);
-                log(`🌿 의지 회복 +${data.heal}`);
-                showDamageText(user, `💚+${data.heal}`);
-            } else {
-                user.hp = Math.min(100, user.hp + data.heal);
+            if (data.heal) {
+                if (user === player) {
+                    user.mental = Math.min(100, user.mental + data.heal);
+                    log(`🌿 의지 회복 +${data.heal}`);
+                    showDamageText(user, `💚+${data.heal}`);
+                } else {
+                    user.hp = Math.min(100, user.hp + data.heal);
+                }
+                updateUI(); 
             }
-            updateUI(); 
-        }
         if (data.special === "gamble_lie") {
             if (Math.random() < 0.5) {
                 log("🎲 거짓말 성공! 상대가 크게 동요합니다.");
@@ -5337,6 +5679,9 @@ function useCard(user, target, cardName) {
                 log("💦 거짓말을 들켰습니다! 망신살이 뻗칩니다.");
                 takeDamage(user, 20); 
             }
+        }
+        if (game.state === "social" && user === player && data.profilingGain && !data.block) {
+            addProfiling(data.profilingGain);
         }
     }
     else {
@@ -5399,46 +5744,26 @@ function useCard(user, target, cardName) {
                         updateUI();
                     }
                 }
-
-                if (atkTarget.isStunned) {
-                    log(`😵 기절한 대상을 가격합니다!`);
-                    showDamageText(atkTarget, "CRITICAL!", true);
-                }
-                else if (atkTarget.isBroken) {
-                    atkTarget.isStunned = true;
-                    atkTarget.block = 0;
-                    atkTarget.ag = 0;
-
-                    log(`😵 <b>${atkTarget.name}</b> 기절! (약점 공략 성공)`);
-
-                    let atkTargetId = (atkTarget === player) ? "dungeon-player" : `enemy-unit-${atkTarget.id}`;
-                    playAnim(atkTargetId, 'anim-hit');
-                    showDamageText(atkTarget, "😵DOWN!", true);
-
-                    if (atkTarget !== player) {
-                        let el = document.getElementById(atkTargetId);
-                        if (el) el.classList.add('stunned');
-                    } else {
-                        log("🚫 <b>당신은 기절했습니다! 다음 턴 행동 불가!</b>");
-                    }
-                }
-                else {
-                    atkTarget.isBroken = true;
-                    log(`⚡ <b>${atkTarget.name}</b>의 자세가 무너졌습니다! (WEAK)`);
-                    showDamageText(atkTarget, "⚡BREAK!");
-
-                    if (atkTarget !== player) {
-                        let el = document.getElementById(`enemy-unit-${atkTarget.id}`);
-                        if (el) el.classList.add('broken');
-                    } else {
-                        log("⚠️ <b>당신의 자세가 무너졌습니다! (피해량 증가)</b>");
-                    }
-                }
+                applyWeaknessHit(atkTarget);
             }
 
             // 5. 데미지 계산 (기존 로직 + 치명타 복구)
             let baseAtk = getStat(user, 'atk');
-            let finalDmg = (data.dmg || 0) + baseAtk;
+            let finalDmg = 0;
+            if (data.dmgByClue) {
+                finalDmg = Math.max(0, clueDebuff.getStacks(atkTarget));
+            } else {
+                finalDmg = (data.dmg || 0) + baseAtk;
+            }
+
+            if (data.solveCase) {
+                const config = data.solveCase || {};
+                if (CardEffect_CheckClue(atkTarget, config.threshold || 10)) {
+                    finalDmg = Math.max(finalDmg, Number(config.bonusDmg || finalDmg));
+                    if (config.consume !== false) clueDebuff.consumeAll(atkTarget);
+                    log("🧩 단서가 모여 강력한 결론을 도출했습니다!");
+                }
+            }
 
             // 약점/브레이크 시 1.5배
             if (isWeaknessHit || atkTarget.isBroken || atkTarget.isStunned) {
@@ -5465,6 +5790,20 @@ function useCard(user, target, cardName) {
             if (user === player && atkTarget !== player) {
                 addStatusToEnemyIfNeeded(atkTarget, data.statusEnemyAdd);
                 addStatusToEnemyIfNeeded(atkTarget, data.statusEnemyAdd2);
+            }
+
+            if (user === player && atkTarget !== player && data.addClue) {
+                const cfg = data.addClue;
+                const count = Math.max(0, Number(typeof cfg === "number" ? cfg : (cfg.count || 0)));
+                const chance = (typeof cfg === "object" && cfg.chance !== undefined) ? Number(cfg.chance || 0) : 1;
+                if (count > 0 && Math.random() <= chance) {
+                    const next = addClueStacks(atkTarget, count);
+                    log(`🔍 단서 +${count} (현재 ${next})`);
+                }
+            }
+
+            if (user === player && atkTarget !== player && data.forceWeaknessHit) {
+                applyWeaknessHit(atkTarget);
             }
 
             return res?.dealt || 0;
@@ -5499,6 +5838,16 @@ function useCard(user, target, cardName) {
                 }
             }
 
+            if (user === player && target !== player && data.drawOnClue) {
+                const cfg = data.drawOnClue || {};
+                const threshold = Math.max(1, Number(cfg.threshold || 5));
+                const drawCount = Math.max(0, Number(cfg.draw || 0));
+                if (drawCount > 0 && clueDebuff.getStacks(target) >= threshold) {
+                    drawCards(drawCount);
+                    log(`🧠 단서 ${threshold} 이상! 카드 ${drawCount}장 추가 드로우`);
+                }
+            }
+
             // 플레이어가 자기 덱에 상태이상 섞는 카드
             addStatusIfNeeded(user, data.statusAdd);
             // 플레이어가 적 덱에 상태이상 섞는 카드
@@ -5512,6 +5861,14 @@ function useCard(user, target, cardName) {
             if (target !== player) {
                 addStatusToEnemyIfNeeded(target, data.statusEnemyAdd);
                 addStatusToEnemyIfNeeded(target, data.statusEnemyAdd2);
+            }
+            if (user === player && target !== player && data.addClue) {
+                const cfg = data.addClue;
+                const count = Math.max(0, Number(typeof cfg === "number" ? cfg : (cfg.count || 0)));
+                if (count > 0) {
+                    const next = addClueStacks(target, count);
+                    log(`🔍 단서 +${count} (현재 ${next})`);
+                }
             }
         }
         
@@ -5528,6 +5885,10 @@ function useCard(user, target, cardName) {
         let defenseText = (game.state === "social") ? "논리 방어" : "방어도";
         log(`🛡️ ${defenseText} +${finalBlock}`);
         updateUI(); 
+        if (game.state === "social" && user === player) {
+            const gain = Number(data.profilingGain || 5);
+            addProfiling(gain);
+        }
     }
 
     if (data.buff) {
@@ -5546,6 +5907,69 @@ function useCard(user, target, cardName) {
     if (data.draw && user === player) {
         drawCards(data.draw);
         log(`🃏 카드를 ${data.draw}장 뽑았습니다.`);
+    }
+
+    if (user === player && data.nextTurnDraw) {
+        const extra = Math.max(0, Number(data.nextTurnDraw || 0));
+        if (extra > 0) {
+            player.nextTurnDraw += extra;
+            log(`🧭 다음 턴 카드 ${extra}장 추가 드로우 준비`);
+        }
+    }
+
+    if (user === player && data.addClueAll) {
+        const count = Math.max(0, Number(data.addClueAll || 0));
+        if (count > 0) {
+            enemies.filter(e => e && e.hp > 0).forEach(e => {
+                const next = addClueStacks(e, count);
+                log(`🔍 단서 +${count} (현재 ${next})`);
+            });
+        }
+    }
+
+    if (user === player && data.reduceAttackCostThisTurn) {
+        ensureCardSystems(player);
+        player.hand.forEach((cName, idx) => {
+            const cData = getEffectiveCardData(cName) || CARD_DATA[cName];
+            if (!cData) return;
+            if (cData.type === "attack" || (typeof cData.type === "string" && cData.type.includes("attack"))) {
+                player.handCostOverride[idx] = 0;
+            }
+        });
+        renderHand();
+    }
+
+    if (user === player && game.state === "battle" && data.assistantDamageReductionPct) {
+        const pct = Math.max(0, Number(data.assistantDamageReductionPct || 0));
+        game.assistantDamageReductionPct = Math.max(game.assistantDamageReductionPct || 0, pct);
+        if (pct > 0) log(`🛡️ 이번 턴 조수 피해 감소 ${Math.floor(pct * 100)}%`);
+    }
+
+    if (user === player && game.state === "battle" && data.assistantTauntTurns) {
+        const turns = Math.max(0, Number(data.assistantTauntTurns || 0));
+        game.assistantTauntTurns = Math.max(game.assistantTauntTurns || 0, turns);
+        const block = Math.max(0, Number(data.assistantBlock || 0));
+        if (block > 0) {
+            const mgr = ensureAssistantManager();
+            if (mgr) mgr.addBlock(block);
+        }
+        if (turns > 0) log("🎯 이번 턴 적의 공격이 조수에게 집중됩니다.");
+    }
+
+    if (user === player && game.state === "battle" && data.assistantSacrifice) {
+        const mgr = ensureAssistantManager();
+        if (mgr && mgr.isAlive()) {
+            const before = Math.max(0, Number(mgr.hp || 0));
+            const after = Math.floor(before / 2);
+            const removed = Math.max(0, before - after);
+            mgr.hp = after;
+            const apGain = Math.floor(removed / 2);
+            if (apGain > 0) player.ap += apGain;
+            log(`⚠️ 비정한 결단: 조수 HP -${removed}, AP +${apGain}`);
+            updateUI();
+        } else {
+            log("🚫 조수가 없어 효과가 없습니다.");
+        }
     }
 
     // 사용 시 자기 복제(버린 카드에 추가)
@@ -5578,6 +6002,12 @@ function useCard(user, target, cardName) {
             applyGrowth(game.combatCardGrowth);
             log(`📈 [${cardName}] 전투 중 성장!`);
         }
+    }
+
+    if (user === player && data.assistantHeal) {
+        const amt = Number(data.assistantHeal || 0);
+        const cost = Number(data.assistantHpCost || 0);
+        healAssistant(amt, cost);
     }
 }
 
@@ -5648,6 +6078,29 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
     const rawDmg = dmg;
     let blocked = 0;
+
+    if (game.state === "battle" && target === player && isDetectiveJob()) {
+        const mgr = ensureAssistantManager();
+        const isEnemyAttack = !!(meta && meta.isAttack && source && source !== player);
+        if (mgr && mgr.isAlive() && isEnemyAttack) {
+            const forceAssist = game.assistantTauntTurns > 0;
+            const redirect = forceAssist || Math.random() < 0.5;
+            if (redirect) {
+                let assistantDmg = dmg;
+                const pct = Math.max(0, Number(game.assistantDamageReductionPct || 0));
+                if (pct > 0) assistantDmg = Math.floor(assistantDmg * (1 - pct));
+                const flat = Math.max(0, Number(getTotalPowerValue('assistantDamageReductionFlat') || 0));
+                if (flat > 0) assistantDmg = Math.max(0, assistantDmg - flat);
+                const dealt = mgr.takeDamage(assistantDmg);
+                log(`🛡️ 조수가 피해를 대신 받았습니다. (-${dealt})`);
+                updateUI();
+                return { raw: rawDmg, blocked: 0, dealt };
+            }
+        }
+        if (mgr && !mgr.isAlive()) {
+            dmg = Math.floor(dmg * 2);
+        }
+    }
 
     // 0. 방어 상성(저항) 적용: 공격 속성과 방어 속성이 겹치면 피해 감소
     if (game.state === "battle" && dmg > 0 && Array.isArray(attackAttrs) && attackAttrs.length > 0) {
@@ -6002,6 +6455,11 @@ function renderRestScreen() {
     switchScene('event');
     const container = document.getElementById('event-content-box');
     
+    const restNpcKey = "사무소 조수";
+    const restNpc = (typeof NPC_DATA !== "undefined" && NPC_DATA) ? NPC_DATA[restNpcKey] : null;
+    const restNpcName = restNpc?.name || "조수";
+    const restNpcImg = restNpc?.img || "https://placehold.co/120x180/2c3e50/ffffff?text=Assistant";
+
     // 휴식 버튼 HTML 생성 (상태에 따라 다름)
     let restBtnHTML = "";
     if (!game.hasRested) {
@@ -6025,6 +6483,15 @@ function renderRestScreen() {
             <button class="action-btn" style="background:#7f8c8d" onclick="exitRestArea()">👣 떠나기</button>
         </div>
         
+        <div style="margin-top:16px; display:flex; justify-content:center;">
+            <button class="action-btn" style="display:flex; align-items:center; gap:12px; padding:10px 14px;" onclick="startSocialBattle('${restNpcKey}')">
+                <img src="${restNpcImg}" alt="${restNpcName}" style="width:64px; height:96px; object-fit:cover;">
+                <div style="text-align:left;">
+                    <div style="font-weight:bold;">${restNpcName}</div>
+                    <div style="font-size:0.8em; color:#bbb;">말을 걸어 소셜 전투 테스트</div>
+                </div>
+            </button>
+        </div>
         <div style="margin-top:20px; font-size:0.9em; color:#aaa;">
             (떠나기 전에 인벤토리의 아이템을 사용할 수 있습니다)
         </div>
@@ -6128,8 +6595,15 @@ function renderShopScreen(shopType = "shop_black_market") {
     // - 장비 전용 카드는 제외 (getRandomCardByRank에서 처리)
     // - 이미 보유한 장비는 상점에 나오지 않도록 제외
     let cardsForSale = [];
-    for (let i = 0; i < cardCount; i++) {
-        cardsForSale.push(getRandomCardByRank(poolRank + (Math.random() > 0.7 ? 1 : 0)));
+    const pickRank = () => poolRank + (Math.random() > 0.7 ? 1 : 0);
+    if (cardCount > 0) {
+        const commonCard = getRandomCardByRank(pickRank(), { onlyCommon: true });
+        cardsForSale.push(commonCard);
+    }
+    for (let i = cardsForSale.length; i < cardCount; i++) {
+        let card = getRandomCardByRank(pickRank(), { onlyJob: true });
+        if (!card || card === "타격") card = getRandomCardByRank(pickRank());
+        cardsForSale.push(card);
     }
 
     let itemsForSale = [];
@@ -6574,6 +7048,7 @@ function addTrait(key) {
     
     let t = TRAIT_DATA[key];
     if (t.onAcquire) t.onAcquire(player);
+    ensureCurseCardForTrait(key);
     
     recalcStats();
     showPopup("특성 획득", `[${t.name}]<br>${t.desc}`, [{txt: "확인", func: closePopup}]);
@@ -6614,7 +7089,7 @@ function addRandomCard(rank) {
     let pool = Object.keys(CARD_DATA).filter(k => 
         CARD_DATA[k].rank === rank && 
         CARD_DATA[k].type !== "social" && // ★ 핵심: 소셜 카드 제외
-        isCardRewardableForPlayer(k)
+        isCardRewardableForPlayer(k, { onlyJob: true })
     ); 
     if(pool.length > 0) {
         player.deck.push(pool[Math.floor(Math.random() * pool.length)]); 
@@ -6628,7 +7103,7 @@ function getRandomCard() {
     let pool = Object.keys(CARD_DATA).filter(k => 
         CARD_DATA[k].rank === rank && 
         CARD_DATA[k].type !== "social" && // ★ 핵심: 소셜 카드 제외
-        isCardRewardableForPlayer(k)
+        isCardRewardableForPlayer(k, { onlyJob: true })
     ); 
     
     // 만약 풀이 비었다면 기본 카드 반환
@@ -6864,6 +7339,16 @@ function updateUI() {
                     </div>
                     <div style="font-size:0.8em; color:#fff;">의지: ${player.mental} <span style="color:#f1c40f">🛡️${player.block}</span></div>
                 `;
+                const gauge = Math.max(0, Math.min(100, Number(game.profilingGauge || 0)));
+                pHud.innerHTML += `
+                    <div class="hud-subpanel">
+                        <div class="hud-label">프로파일링</div>
+                        <div class="hud-bar">
+                            <div class="hud-bar-fill" style="width:${gauge}%"></div>
+                        </div>
+                        <div class="hud-value">${gauge}%</div>
+                    </div>
+                `;
             } 
             // 일반 전투 모드 (체력 바)
             else {
@@ -6879,6 +7364,8 @@ function updateUI() {
             ensureThornsField(player);
             const entries = Object.entries(player.buffs || {});
             if ((player.thorns || 0) > 0) entries.push(["가시", player.thorns]);
+            if (player.isStunned) entries.push(["기절", 1]);
+            else if (player.isBroken) entries.push(["흐트러짐", 1]);
             let buffText = entries.map(([k, v]) => `${k}(${v})`).join(', ');
             if (buffText) {
                 const buffHtml = (typeof applyTooltip === 'function') ? applyTooltip(buffText) : buffText;
@@ -6888,6 +7375,47 @@ function updateUI() {
         } else {
             // 탐사 모드일 때는 이름만 깔끔하게
             pHud.innerHTML = `<div style="font-size:0.9em; color:#aaa;">탐색 중...</div>`;
+        }
+        const assistantWrapper = document.getElementById('assistant-wrapper') || (() => {
+            const wrapper = document.getElementById('dungeon-player-wrapper');
+            if (!wrapper) return null;
+            const el = document.createElement('div');
+            el.id = 'assistant-wrapper';
+            const img = document.createElement('img');
+            img.id = 'assistant-player';
+            img.alt = '조수';
+            const hud = document.createElement('div');
+            hud.id = 'assistant-hud';
+            el.appendChild(img);
+            el.appendChild(hud);
+            wrapper.appendChild(el);
+            return el;
+        })();
+        const assistantHud = document.getElementById('assistant-hud');
+        const assistantImgEl = document.getElementById('assistant-player');
+        if (assistantWrapper && assistantHud && assistantImgEl) {
+            if (isDetectiveJob() && game.state === 'battle') {
+                const assistantMeta = (typeof NPC_DATA !== 'undefined' && NPC_DATA && NPC_DATA["사무소 조수"])
+                    ? NPC_DATA["사무소 조수"]
+                    : null;
+                const assistantImg = assistantMeta?.img || "https://placehold.co/220x220/2c3e50/ffffff?text=Assistant";
+                assistantImgEl.src = assistantImg;
+                const mgr = ensureAssistantManager();
+                const cur = Math.max(0, Number(mgr?.hp || 0));
+                const max = Math.max(0, Number(mgr?.maxHp || 0));
+                const pct = max > 0 ? Math.max(0, Math.min(100, Math.round((cur / max) * 100))) : 0;
+                const assistantBlock = Math.max(0, Number(mgr?.block || 0));
+                assistantHud.innerHTML = `
+                    <div class="hp-bar-bg" style="height:8px; margin:2px 0;">
+                        <div class="hp-bar-fill" style="width:${pct}%"></div>
+                    </div>
+                    <div style="font-size:0.8em; color:#fff;">HP: ${cur} <span style="color:#f1c40f">🛡️${assistantBlock}</span></div>
+                `;
+                assistantWrapper.style.display = '';
+            } else {
+                assistantWrapper.style.display = 'none';
+                assistantHud.innerHTML = '';
+            }
         }
     // 내 현재 속성 아이콘들 표시 (공격/방어 분리)
     const atkAttrs = getAttackAttrs(player) || [];
@@ -6956,6 +7484,10 @@ if (enemies && enemies.length > 0) {
         ensureThornsField(e);
         const eEntries = Object.entries(e.buffs || {});
         if ((e.thorns || 0) > 0) eEntries.push(["가시", e.thorns]);
+        const clueStacks = clueDebuff.getStacks(e);
+        if (clueStacks > 0) eEntries.push(["단서", clueStacks]);
+        if (e.isStunned) eEntries.push(["기절", 1]);
+        else if (e.isBroken) eEntries.push(["흐트러짐", 1]);
         let buffTextRaw = eEntries.map(([k, v]) => `${k}(${v})`).join(', ');
         let buffText = (typeof applyTooltip === 'function') ? applyTooltip(buffTextRaw) : buffTextRaw;
         
@@ -7107,6 +7639,7 @@ function escapePhysicalBattle() {
 /* [game.js] renderHand 함수 수정 (PC/모바일 로직 분리) */
 function renderHand() {
     const container = document.getElementById('hand-container'); 
+    if (!container) return;
     container.innerHTML = "";
     ensureCardSystems(player);
     
@@ -7121,14 +7654,20 @@ function renderHand() {
 
     player.hand.forEach((cName, idx) => {
         const data = getEffectiveCardData(cName) || CARD_DATA[cName];
+        if (!data) {
+            console.warn(`Missing card data for ${cName}`);
+            return;
+        }
         let el = document.createElement('div'); 
         el.className = 'card';
         el.id = `card-el-${idx}`;
         el.style.pointerEvents = "auto";
      
         const isUnplayable = !!data.unplayable;
+        const assistantRequired = !!data.requireAssistant;
+        const assistantAlive = assistantRequired ? (ensureAssistantManager()?.isAlive?.() || false) : true;
         const cost = getHandCardCost(idx, cName);
-        if (player.ap < cost || game.turnOwner !== "player" || isUnplayable) el.className += " disabled";
+        if (player.ap < cost || game.turnOwner !== "player" || isUnplayable || !assistantAlive) el.className += " disabled";
 
         const groupLabel = getCardGroupLabel(data);
         const typeLabel = getCardTypeLabel(data);
@@ -7144,6 +7683,9 @@ function renderHand() {
         
         if (isUnplayable) {
             el.onclick = () => log(`🚫 [${cName}]은(는) 사용할 수 없습니다.`);
+        }
+        else if (!assistantAlive) {
+            el.onclick = () => log(`🚫 조수가 없어 [${cName}]을(를) 사용할 수 없습니다.`);
         }
         else if (game.turnOwner === "player" && player.ap >= cost) {
             el.onmousedown = (e) => startDrag(e, idx, cName);
