@@ -264,7 +264,9 @@
                         <h2 class="city-title">🌃 세주시 전역 지도</h2>
                         <p class="city-sub">중앙/동/서/남/북 구역을 눌러 이동 동선을 잡아보세요.</p>
                     </div>
-                    <div id="city-legend" class="city-legend"></div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <div id="city-legend" class="city-legend"></div>
+                    </div>
                 </div>
                 <div id="city-map" class="city-map-canvas"></div>
             </div>
@@ -275,7 +277,7 @@
                 <div id="city-detail-status" class="city-detail-status">현재는 지도 배치만 완료된 상태입니다. 이후 각 구역에서 탐색/던전 진입을 연결할 예정입니다.</div>
                 <div class="city-detail-actions">
                     <button class="action-btn" id="city-action-explore" disabled>탐색 준비 중</button>
-                    <div class="city-note">현재는 도시 배치를 확인하는 단계입니다.</div>
+                    <button class="action-btn city-back-btn" style="background:#7f8c8d;" onclick="renderHub()">🏠 사무소 복귀</button>
                 </div>
             </div>
         </div>
@@ -323,7 +325,6 @@
             </div>
         </div>
     </div>
-    <button class="action-btn city-back-btn" style="margin-top:10px; background:#7f8c8d;" onclick="renderHub()">🏠 사무소 복귀</button>
 </div>
 <div id="exploration-scene" class="scene hidden">
     
@@ -367,28 +368,30 @@
         </div>
     </div>
 
-    <div id="shared-log" class="shared-log-area">
-        <div style="color:#aaa; font-style:italic;">모험이 시작됩니다.</div>
-    </div>
-
-    <div class="action-grid exploration-ui" id="dungeon-actions">
-       <button class="action-btn" onclick="DungeonSystem.checkRoomEvent()">조사</button>
-        <button class="action-btn" onclick="openInventory()">🎒 가방</button>
-        <button class="action-btn" onclick="confirmRetreat()">🏃 탈출</button>
-    </div>
-
-    <div class="control-group battle-ui hidden">
-        <div id="ap-indicator">
-            <div class="ap-inner">
-                <span id="ap-val">3</span><span class="ap-sep">/</span><span id="ap-max">3</span>
-            </div>
-            <div class="ap-label">AP</div>
+    <div class="bottom-ui-stack">
+        <div id="shared-log" class="shared-log-area">
+            <div style="color:#aaa; font-style:italic;">모험이 시작됩니다.</div>
         </div>
-        
-        <div id="btn-group-right" class="btn-group-right">
-            <button id="end-turn-btn" class="action-btn btn-end-turn-side" onclick="endPlayerTurn()">
-                턴<br>종료
-            </button>
+
+        <div class="action-grid exploration-ui" id="dungeon-actions">
+           <button class="action-btn" onclick="DungeonSystem.checkRoomEvent()">조사</button>
+            <button class="action-btn" onclick="openInventory()">🎒 가방</button>
+            <button class="action-btn" onclick="confirmRetreat()">🏃 탈출</button>
+        </div>
+
+        <div class="control-group battle-ui hidden">
+            <div id="ap-indicator">
+                <div class="ap-inner">
+                    <span id="ap-val">3</span><span class="ap-sep">/</span><span id="ap-max">3</span>
+                </div>
+                <div class="ap-label">AP</div>
+            </div>
+            
+            <div id="btn-group-right" class="btn-group-right">
+                <button id="end-turn-btn" class="action-btn btn-end-turn-side" onclick="endPlayerTurn()">
+                    턴<br>종료
+                </button>
+            </div>
         </div>
     </div>
 

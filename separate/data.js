@@ -94,6 +94,8 @@ const CARD_DATA = {
     "조사": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5, 단서 1", dmg: 5, addClue: 1, job: "detective" },
     "회피": { rank: 1, cost: 1, type: "skill", desc: "방어도 +5", block: 5, job: "detective" },
     "경계": { rank: 1, cost: 0, type: "attack", desc: "적 HP -3, 이번 턴 조수 피해 30% 감소", dmg: 3, assistantDamageReductionPct: 0.3, job: "detective" },
+    "명령: 유인": { rank: 1, cost: 0, type: "skill", desc: "이번 턴 적의 공격을 조수가 대신 받는다 (조수 생존 시)", assistantTauntTurns: 1, requireAssistant: true, job: "detective" },
+    "명령: 방호": { rank: 2, cost: 2, type: "skill", desc: "조수에게 [건강] 적용, 방어도 +4 (조수 생존 시)", assistantBuff: { name: "건강", val: 2 }, assistantBlock: 4, requireAssistant: true, job: "detective" },
     "명령: 제압": { rank: 2, cost: 2, type: "attack", desc: "조수가 돌진해 피해 12, 적 약점 피격 1회 (조수 생존 시)", dmg: 12, requireAssistant: true, forceWeaknessHit: true, job: "detective" },
     "파고들기": { rank: 2, cost: 1, type: "attack", desc: "적의 단서 수치만큼 피해 (단서 유지)", dmgByClue: true, job: "detective" },
     "추리": { rank: 2, cost: 1, type: "attack", desc: "적 HP -6, 단서 5 이상이면 카드 1장 뽑기", dmg: 6, drawOnClue: { threshold: 5, draw: 1 }, job: "detective" },
@@ -1729,9 +1731,9 @@ const JOB_DATA = {
     "detective": {
         name: "사립 탐정",
         desc: "논리와 이성으로 사건을 해결합니다.",
-        baseStats: { str: 10, con: 10, dex: 12, int: 16, wil: 14, cha: 12 }, 
+        baseStats: { str: 10, con: 9, dex: 12, int: 16, wil: 14, cha: 12 }, 
         defaultTraits: ["sharp_eye"], 
-        starterDeck: ["조사", "조사", "조사", "조사", "회피", "회피", "회피", "회피", "조수 호출", "추리"],
+        starterDeck: ["조사", "조사", "조사", "회피", "회피", "회피", "조수 호출", "추리", "명령: 유인", "명령: 방호"],
         starterSocialDeck: ["논리적 반박", "논리적 반박", "증거 제시", "사실 확인", "심호흡"],
         starterEquipment: { rightHand: "권총" },
         // [NEW] 탐정 이미지

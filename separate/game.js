@@ -86,11 +86,14 @@ class AssistantManager {
         this.maxHp = 0;
         this.hp = 0;
         this.block = 0;
+        this.buffs = {};
+        this.stats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
     }
     reset(maxHp) {
         this.maxHp = Math.max(0, Number(maxHp || 0));
         this.hp = this.maxHp;
         this.block = 0;
+        this.buffs = {};
     }
     isAlive() {
         return this.hp > 0;
@@ -98,6 +101,9 @@ class AssistantManager {
     takeDamage(dmg) {
         const val = Math.max(0, Number(dmg || 0));
         let remain = val;
+        if (this.buffs["건강"]) {
+            remain = Math.floor(remain * 0.5);
+        }
         if (this.block > 0) {
             const blocked = Math.min(this.block, remain);
             this.block -= blocked;
@@ -162,6 +168,8 @@ function ensureAssistantManager() {
         player.assistantManager.hp = Math.min(maxHp, hp);
         player.assistantManager.block = block;
     }
+    if (!player.assistantManager.buffs) player.assistantManager.buffs = {};
+    if (!player.assistantManager.stats) player.assistantManager.stats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
     // 순환 참조 방지: owner는 사용하지 않으므로 제거
     if (player.assistantManager.owner) player.assistantManager.owner = null;
     return player.assistantManager;
@@ -170,7 +178,9 @@ function ensureAssistantManager() {
 function initAssistantForDetective() {
     if (!isDetectiveJob()) return;
     const mgr = ensureAssistantManager();
-    const maxHp = Math.max(10, Math.floor(player.maxHp * 0.6));
+    const base = Math.max(10, Math.floor(player.maxHp * 0.6));
+    const bonus = Math.max(0, Number(mgr.stats?.con || 0) * 2);
+    const maxHp = base + bonus;
     mgr.reset(maxHp);
 }
 
@@ -2534,7 +2544,7 @@ function renderTraitSelection() {
         `;
 
         if (isDefault) {
-            el.onclick = () => showPopup("이 직업의 기본 특성입니다. 해제할 수 없습니다.");
+            el.onclick = () => showPopup("기본 특성", "이 직업의 기본 특성입니다. 해제할 수 없습니다.", [{ txt: "확인", func: closePopup }]);
             el.style.cursor = "default";
         } else {
             el.onclick = () => toggleTrait(key);
@@ -4667,6 +4677,7 @@ function showBattleView() {
 }
 // 모드 전환 헬퍼 (true: 전투모드, false: 탐사모드)
 function toggleBattleUI(isBattle) {
+    document.body.classList.toggle('is-battle', isBattle);
     const moveControls = document.querySelector('.move-controls');
     const dungeonActions = document.getElementById('dungeon-actions');
     const battleUI = document.querySelectorAll('.battle-ui');
@@ -5241,6 +5252,18 @@ async function startTurn(unit, type) {
 
     tickBuffs(unit); 
     decrementBuffs(unit);
+    if (game.state === "battle" && isDetectiveJob()) {
+        const mgr = ensureAssistantManager();
+        if (mgr && mgr.buffs) {
+            for (let k in mgr.buffs) {
+                mgr.buffs[k]--;
+                if (mgr.buffs[k] <= 0) delete mgr.buffs[k];
+            }
+        }
+        if (mgr && mgr.isAlive()) {
+            mgr.heal(2);
+        }
+    }
     
     if (checkGameOver()) return;
     if (unit.hp <= 0 && game.state !== 'social') { 
@@ -5954,6 +5977,22 @@ function useCard(user, target, cardName) {
             if (mgr) mgr.addBlock(block);
         }
         if (turns > 0) log("🎯 이번 턴 적의 공격이 조수에게 집중됩니다.");
+    }
+
+    if (user === player && game.state === "battle" && data.assistantBuff) {
+        const mgr = ensureAssistantManager();
+        const buff = data.assistantBuff || {};
+        if (mgr && buff.name) {
+            const dur = Math.max(1, Number(buff.val || 1));
+            if (!mgr.buffs) mgr.buffs = {};
+            mgr.buffs[buff.name] = (mgr.buffs[buff.name] || 0) + dur;
+            log(`✨ 조수에게 [${buff.name}] 적용`);
+        }
+        const block = Math.max(0, Number(data.assistantBlock || 0));
+        if (mgr && block > 0) {
+            mgr.addBlock(block);
+            log(`🛡️ 조수 방어도 +${block}`);
+        }
     }
 
     if (user === player && game.state === "battle" && data.assistantSacrifice) {
@@ -7848,6 +7887,20 @@ function showLevelUp() {
         </div>
     `;
 
+    if (isDetectiveJob()) {
+        content += `
+            <div style="margin-top:14px; font-size:0.9em; color:#f1c40f;">조수 스탯 분배</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+                <button class="action-btn" onclick="applyAssistantStatUp('str')">💪 조수 근력</button>
+                <button class="action-btn" onclick="applyAssistantStatUp('con')">❤️ 조수 건강</button>
+                <button class="action-btn" onclick="applyAssistantStatUp('dex')">⚡ 조수 민첩</button>
+                <button class="action-btn" onclick="applyAssistantStatUp('int')">🧠 조수 지능</button>
+                <button class="action-btn" onclick="applyAssistantStatUp('wil')">👁️ 조수 정신</button>
+                <button class="action-btn" onclick="applyAssistantStatUp('cha')">💋 조수 매력</button>
+            </div>
+        `;
+    }
+
     showPopup("🆙 레벨 업!", "강화할 능력을 선택하세요.", [], content);
 }
 /* [NEW] 스탯 적용 헬퍼 */
@@ -7861,6 +7914,24 @@ function applyStatUp(type) {
     
     closePopup();
     getCardReward(); // 카드 보상으로 이어짐
+}
+
+function applyAssistantStatUp(type) {
+    if (!isDetectiveJob()) return;
+    const mgr = ensureAssistantManager();
+    if (!mgr.stats) mgr.stats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
+    if (mgr.stats[type] === undefined) return;
+    mgr.stats[type] += 1;
+    if (type === 'con') {
+        const base = Math.max(10, Math.floor(player.maxHp * 0.6));
+        const bonus = Math.max(0, Number(mgr.stats?.con || 0) * 2);
+        const newMax = base + bonus;
+        const delta = Math.max(0, newMax - mgr.maxHp);
+        mgr.maxHp = newMax;
+        mgr.hp = Math.min(newMax, mgr.hp + delta);
+    }
+    closePopup();
+    getCardReward();
 }
 /* [수정] 카드 보상 획득 로직 (화면 이동 강제 제거) */
 function getCardReward() {
