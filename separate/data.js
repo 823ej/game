@@ -1733,7 +1733,7 @@ const JOB_DATA = {
         desc: "논리와 이성으로 사건을 해결합니다.",
         baseStats: { str: 10, con: 9, dex: 12, int: 16, wil: 14, cha: 12 }, 
         defaultTraits: ["sharp_eye"], 
-        starterDeck: ["조사", "조사", "조사", "회피", "회피", "회피", "조수 호출", "추리", "명령: 유인", "명령: 방호"],
+        starterDeck: ["조사", "조사", "조사", "회피", "회피", "조수 호출", "추리", "명령: 유인", "명령: 방호", "명령: 방호"],
         starterSocialDeck: ["논리적 반박", "논리적 반박", "증거 제시", "사실 확인", "심호흡"],
         starterEquipment: { rightHand: "권총" },
         // [NEW] 탐정 이미지

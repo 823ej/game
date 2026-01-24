@@ -88,12 +88,16 @@ class AssistantManager {
         this.block = 0;
         this.buffs = {};
         this.stats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
+        this.isBroken = false;
+        this.isStunned = false;
     }
     reset(maxHp) {
         this.maxHp = Math.max(0, Number(maxHp || 0));
         this.hp = this.maxHp;
         this.block = 0;
         this.buffs = {};
+        this.isBroken = false;
+        this.isStunned = false;
     }
     isAlive() {
         return this.hp > 0;
@@ -111,6 +115,16 @@ class AssistantManager {
         }
         const dealt = Math.min(this.hp, remain);
         this.hp -= dealt;
+        if (remain > 0) {
+            if (this.isBroken && !this.isStunned) {
+                this.isStunned = true;
+                this.block = 0;
+                log("😵 조수가 기절했습니다!");
+            } else if (this.hp <= 0 && !this.isBroken && !this.isStunned) {
+                this.isBroken = true;
+                log("⚡ 조수가 흐트러졌습니다!");
+            }
+        }
         return dealt;
     }
     addBlock(amount) {
@@ -122,6 +136,10 @@ class AssistantManager {
         if (val <= 0) return 0;
         const before = this.hp;
         this.hp = Math.min(this.maxHp, this.hp + val);
+        if (this.hp > 0) {
+            this.isBroken = false;
+            this.isStunned = false;
+        }
         return this.hp - before;
     }
 }
@@ -170,6 +188,8 @@ function ensureAssistantManager() {
     }
     if (!player.assistantManager.buffs) player.assistantManager.buffs = {};
     if (!player.assistantManager.stats) player.assistantManager.stats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
+    if (typeof player.assistantManager.isBroken !== "boolean") player.assistantManager.isBroken = false;
+    if (typeof player.assistantManager.isStunned !== "boolean") player.assistantManager.isStunned = false;
     // 순환 참조 방지: owner는 사용하지 않으므로 제거
     if (player.assistantManager.owner) player.assistantManager.owner = null;
     return player.assistantManager;
@@ -178,7 +198,7 @@ function ensureAssistantManager() {
 function initAssistantForDetective() {
     if (!isDetectiveJob()) return;
     const mgr = ensureAssistantManager();
-    const base = Math.max(10, Math.floor(player.maxHp * 0.6));
+    const base = Math.max(10, Math.floor(player.maxHp * 3));
     const bonus = Math.max(0, Number(mgr.stats?.con || 0) * 2);
     const maxHp = base + bonus;
     mgr.reset(maxHp);
@@ -2504,6 +2524,7 @@ function renderTraitSelection() {
         <button id="btn-finish-creation" class="action-btn" style="margin-top:10px; width:100%;" onclick="finishCreation()" ${btnDisabled}>
             ${btnText}
         </button>
+        <button class="action-btn" style="margin-top:8px; width:100%; background:#7f8c8d;" onclick="renderJobSelection()">← 돌아가기</button>
     `;
 
     // 특성 목록 생성 (기존 로직 유지)
@@ -7444,11 +7465,17 @@ function updateUI() {
                 const max = Math.max(0, Number(mgr?.maxHp || 0));
                 const pct = max > 0 ? Math.max(0, Math.min(100, Math.round((cur / max) * 100))) : 0;
                 const assistantBlock = Math.max(0, Number(mgr?.block || 0));
+                const aEntries = [];
+                if (mgr.isStunned) aEntries.push(["기절", 1]);
+                else if (mgr.isBroken) aEntries.push(["흐트러짐", 1]);
+                const aBuffText = aEntries.map(([k, v]) => `${k}(${v})`).join(', ');
+                const aBuffHtml = aBuffText ? ((typeof applyTooltip === 'function') ? applyTooltip(aBuffText) : aBuffText) : "";
                 assistantHud.innerHTML = `
                     <div class="hp-bar-bg" style="height:8px; margin:2px 0;">
                         <div class="hp-bar-fill" style="width:${pct}%"></div>
                     </div>
                     <div style="font-size:0.8em; color:#fff;">HP: ${cur} <span style="color:#f1c40f">🛡️${assistantBlock}</span></div>
+                    ${aBuffHtml ? `<div class="status-effects" style="font-size:0.7em; color:#2ecc71; pointer-events:auto;" onclick="forwardClickThrough(event)" onmousedown="forwardClickThrough(event)">${aBuffHtml}</div>` : ""}
                 `;
                 assistantWrapper.style.display = '';
             } else {
@@ -7923,7 +7950,7 @@ function applyAssistantStatUp(type) {
     if (mgr.stats[type] === undefined) return;
     mgr.stats[type] += 1;
     if (type === 'con') {
-        const base = Math.max(10, Math.floor(player.maxHp * 0.6));
+        const base = Math.max(10, Math.floor(player.maxHp * 3));
         const bonus = Math.max(0, Number(mgr.stats?.con || 0) * 2);
         const newMax = base + bonus;
         const delta = Math.max(0, newMax - mgr.maxHp);
