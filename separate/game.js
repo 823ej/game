@@ -2367,15 +2367,27 @@ function renderJobSelection() {
     for (let key in JOB_DATA) {
         let job = JOB_DATA[key];
         let el = document.createElement('div');
-        el.className = 'hub-card';
+        // [FIX] 호버 움직임 제거 클래스 추가
+        el.className = 'hub-card no-hover-move';
+        // [FIX] 흰 배경, 검은 글씨, 호버 움직임 제거
+        el.style.background = "#fff";
+        el.style.color = "#000";
+        el.style.transform = "none";
+        el.style.transition = "none";
+
+        // title color
         el.innerHTML = `
-            <div class="hub-card-title">${job.name}</div>
-            <div class="hub-card-desc">${job.desc}</div>
-            <div style="font-size:0.7em; color:#aaa; margin-top:5px;">
+            <div class="hub-card-title" style="color:#000; font-weight:bold;">${job.name}</div>
+            <div class="hub-card-desc" style="color:#333;">${job.desc}</div>
+            <div style="font-size:0.7em; color:#555; margin-top:5px;">
                 💪${job.baseStats.str} ❤️${job.baseStats.con} ⚡${job.baseStats.dex}<br>
                 🧠${job.baseStats.int} 👁️${job.baseStats.wil} 💋${job.baseStats.cha}
             </div>
         `;
+        // 호버 시 움직임 제거를 위해 클래스 대신 인라인 스타일 강제 (CSS 우선순위 고려)
+        el.onmouseenter = function () { this.style.borderColor = "#f1c40f"; };
+        el.onmouseleave = function () { this.style.borderColor = "#444"; };
+
         el.onclick = () => selectJob(key);
         list.appendChild(el);
     }
@@ -2451,14 +2463,14 @@ function adjustStat(type, delta) {
     // 화면 갱신하여 숫자 업데이트
     renderTraitSelection();
 }
-/* [game.js] renderTraitSelection 함수 교체 (UI 레이아웃 통일) */
+/* [game.js] renderTraitSelection 함수 교체 (UI 레이아웃 통일 - Light Theme) */
 function renderTraitSelection() {
     calculateTP(); // TP 계산
 
     const container = document.getElementById('char-creation-content');
 
     // TP 상태 변수 및 UI 텍스트 설정
-    let tpColor = currentTP >= 0 ? "#2ecc71" : "#e74c3c";
+    let tpColor = currentTP >= 0 ? "#27ae60" : "#c0392b"; // Green / Red (Darker for light theme visibility)
     let btnText = currentTP >= 0 ? "결정 완료 (게임 시작)" : `포인트 부족! (${currentTP})`;
     let btnDisabled = currentTP < 0 ? "disabled" : "";
 
@@ -2470,63 +2482,62 @@ function renderTraitSelection() {
         int: "논리 방어(소셜)", wil: "이성/저항(소셜)", cha: "설득/공격(소셜)"
     };
 
-    // --- [UI 1] 스탯 조정 패널 ---
+
+    // --- [UI 1] 스탯 조정 패널 (Light Theme) ---
+    // Background: White, Text: Black, Border: Light Gray
     let statHtml = `
-        <div class="hub-card" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#3498db;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3 style="margin:0; color:#3498db;">📊 능력치 조정</h3>
-                <div style="font-size:0.9em;">남은 포인트: <span style="color:#f1c40f; font-weight:bold; font-size:1.2em;">${currentStatPoints}</span></div>
+        <div class="hub-card no-hover-move" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#ccc; background:#fff; color:#000;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:8px;">
+                <h3 style="margin:0; color:#2980b9; font-size:1.1em;">📊 능력치 조정</h3>
+                <div style="font-size:0.9em; color:#555;">남은 포인트: <span style="color:#f39c12; font-weight:bold; font-size:1.2em;">${currentStatPoints}</span></div>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+            <div style="display:flex; flex-direction:column; gap:6px;">
     `;
 
     for (let k in tempBonusStats) {
         let currentVal = base[k] + tempBonusStats[k];
-
         let mod = Math.floor((currentVal - 10) / 2);
         let modSign = mod >= 0 ? "+" : "";
-        let modText = `<span style="color:#888; font-size:0.8em; margin-left:2px;">(${modSign}${mod})</span>`;
-        let valColor = tempBonusStats[k] > 0 ? "#2ecc71" : (tempBonusStats[k] < 0 ? "#e74c3c" : "#eee");
+        let modText = `<span style="color:#777; font-size:0.8em; margin-left:4px;">(${modSign}${mod})</span>`;
+        // Value colors suitable for light background
+        let valColor = tempBonusStats[k] > 0 ? "#27ae60" : (tempBonusStats[k] < 0 ? "#c0392b" : "#333");
 
+        // [Unified Style] Use .char-stat-row class (defined in CSS now)
         statHtml += `
-            <div style="background:#222; padding:8px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-                <div title="${statDesc[k]}">${statLabels[k]}</div>
-                <div style="display:flex; align-items:center; gap:5px;">
-                    <button class="small-btn" onclick="adjustStat('${k}', -1)" style="width:24px; pointer-events:auto;">-</button>
-                    <span style="width:50px; text-align:center; font-weight:bold; color:${valColor};">${currentVal} ${modText}</span>
-                    <button class="small-btn" onclick="adjustStat('${k}', 1)" style="width:24px; pointer-events:auto;">+</button>
+            <div class="char-stat-row">
+                <div title="${statDesc[k]}" style="color:#333; font-weight:bold; width:80px;">${statLabels[k]}</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button class="small-btn" onclick="adjustStat('${k}', -1)" style="width:28px; height:28px; background:#f0f0f0; border:1px solid #ccc; color:#000;">-</button>
+                    <span style="width:60px; text-align:center; font-weight:bold; color:${valColor}; font-size:1.1em;">${currentVal} ${modText}</span>
+                    <button class="small-btn" onclick="adjustStat('${k}', 1)" style="width:28px; height:28px; background:#f0f0f0; border:1px solid #ccc; color:#000;">+</button>
                 </div>
             </div>
         `;
     }
-    statHtml += `</div><div style="font-size:0.7em; color:#777; margin-top:5px; text-align:center;">최소 8, 기본 10점 기준. (괄호 안은 보정치)</div></div>`;
+    statHtml += `</div><div style="font-size:0.8em; color:#777; margin-top:10px; text-align:center;">최소 8, 기본 10점 기준. (괄호 안은 보정치)</div></div>`;
 
-    // --- [UI 2] 특성 선택 패널 (디자인 변경됨) ---
-    // [FIX] 우측 패널 (특성 선택)
+    // --- [UI 2] 특성 선택 패널 (Light Theme) ---
     let traitHtml = `
-        <div class="hub-card" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#9b59b6; height: 100%;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3 style="margin:0; color:#9b59b6;">🧬 특성 선택</h3>
-                <div style="font-size:0.9em;">남은 포인트: <span style="color:${tpColor}; font-weight:bold; font-size:1.2em;">${currentTP}</span></div>
+        <div class="hub-card no-hover-move" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#ccc; height: 100%; background:#fff; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:8px;">
+                <h3 style="margin:0; color:#8e44ad; font-size:1.1em;">🧬 특성 선택</h3>
+                <div style="font-size:0.9em; color:#555;">남은 포인트: <span style="color:${tpColor}; font-weight:bold; font-size:1.2em;">${currentTP}</span></div>
             </div>
-            <div style="font-size:0.7em; color:#aaa; margin-bottom:10px; text-align:center;">
-                부정적 특성을 선택하여 포인트를 얻으세요.
-            </div>
-            <!-- 모바일 가로 모드에서는 max-height 해제 (CSS 제어) -->
-            <div class="action-grid" id="trait-list" style="max-height:250px; overflow-y:auto; padding-right:5px;"></div>
+            
+            <div id="trait-list" style="flex:1; overflow-y:auto; padding-right:5px; display:flex; flex-direction:column; gap:6px;"></div>
         </div>
     `;
 
-    // --- [UI 3] 전체 조립 (분할 레이아웃 적용) ---
-    // [FIX] Project Zomboid 스타일: 좌측(스탯+버튼) / 우측(특성목록)
+    // --- [UI 3] 전체 조립 ---
+    // [Request] Removed text-shadow from h2
     container.innerHTML = `
-        <h2 style="color:#f1c40f">캐릭터 상세 설정</h2>
+        <h2 style="color:#f1c40f; margin-bottom:15px;">캐릭터 상세 설정</h2>
         <div class="char-creation-split">
             <div class="char-col-left">
                 ${statHtml}
                 
                 <div style="position:sticky; bottom:10px; z-index:10;">
-                    <button id="btn-finish-creation" class="action-btn" style="margin-top:10px; width:100%;" onclick="finishCreation()" ${btnDisabled}>
+                    <button id="btn-finish-creation" class="action-btn" style="margin-top:10px; width:100%; height:50px; font-size:1.1em;" onclick="finishCreation()" ${btnDisabled}>
                         ${btnText}
                     </button>
                     <button class="action-btn" style="margin-top:8px; width:100%; background:#7f8c8d;" onclick="renderJobSelection()">← 돌아가기</button>
@@ -2539,14 +2550,14 @@ function renderTraitSelection() {
         </div>
     `;
 
-    // 특성 목록 생성 (기존 로직 유지)
+    // 특성 목록 생성
     const list = document.getElementById('trait-list');
     let jobDefaults = JOB_DATA[tempJob].defaultTraits || [];
 
     for (let key in TRAIT_DATA) {
         let t = TRAIT_DATA[key];
 
-        // 직업 전용 특성 필터링 (내 직업 거 아니면 숨김)
+        // 직업 전용 특성 필터링
         if (t.type === 'job_unique') {
             if (!tempTraits.includes(key)) continue;
         }
@@ -2554,31 +2565,40 @@ function renderTraitSelection() {
         let isSelected = tempTraits.includes(key);
         let isDefault = jobDefaults.includes(key);
 
-        let borderColor = "#444";
-        if (isSelected) borderColor = t.type === 'positive' ? "#2ecc71" : (t.type === 'negative' ? "#e74c3c" : "#f1c40f");
+        // [Unified Style] 리스트 아이템 생성
+        let el = document.createElement('div');
+        el.className = 'char-trait-item';
 
-        let el = document.createElement('button');
-        el.className = 'hub-card';
-        el.style.border = `2px solid ${borderColor}`;
-        el.style.opacity = isSelected ? "1" : "0.6";
-        el.style.position = "relative";
+        if (isSelected) el.classList.add('selected');
+        if (isDefault) el.classList.add('default');
 
-        let costText = "";
-        if (t.cost > 0) costText = `<span style="color:#e74c3c">-${t.cost} P</span>`;
-        else if (t.cost < 0) costText = `<span style="color:#2ecc71">+${Math.abs(t.cost)} P</span>`;
-        else costText = `<span style="color:#f1c40f">기본</span>`;
+        // 비용 표시 (배지 형태)
+        let costBadge = "";
+        if (t.cost > 0) costBadge = `<span class="trait-cost negative">-${t.cost}P</span>`; // 포인트 차감 (나쁜 효과는 아님, 좋은 특성이라 비싼 것)
+        else if (t.cost < 0) costBadge = `<span class="trait-cost positive">+${Math.abs(t.cost)}P</span>`; // 포인트 획득 (나쁜 특성)
+        else costBadge = `<span class="trait-cost neutral">기본</span>`;
+
+        // 아이콘/체크마크
+        let icon = isSelected ? "✅" : "⬜";
+        if (isDefault) icon = "🔒";
 
         el.innerHTML = `
-            <div style="display:flex; justify-content:space-between;">
-                <b style="color:${isSelected ? '#fff' : '#aaa'}">${t.name}</b>
-                <span style="font-weight:bold;">${costText}</span>
+            <div style="display:flex; align-items:center; gap:10px; width:100%;">
+                <div style="font-size:1.2em;">${icon}</div>
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <b style="color:${isSelected ? '#000' : '#444'}; font-size:1em;">${t.name}</b>
+                        ${costBadge}
+                    </div>
+                    <div style="font-size:0.85em; color:#666; margin-top:2px; line-height:1.3;">${t.desc}</div>
+                </div>
             </div>
-            <div style="font-size:0.75em; color:#ccc; margin-top:5px; text-align:left;">${t.desc}</div>
         `;
 
         if (isDefault) {
             el.onclick = () => showPopup("기본 특성", "이 직업의 기본 특성입니다. 해제할 수 없습니다.", [{ txt: "확인", func: closePopup }]);
             el.style.cursor = "default";
+            el.style.opacity = "0.8";
         } else {
             el.onclick = () => toggleTrait(key);
         }
@@ -2586,6 +2606,7 @@ function renderTraitSelection() {
         list.appendChild(el);
     }
 }
+
 // [game.js] toggleTrait 함수 수정
 
 function toggleTrait(key) {

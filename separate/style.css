@@ -485,18 +485,20 @@ body {
     justify-content: flex-start;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: clamp(12px, 3vw, 18px);
+    padding: clamp(10px, 2vw, 15px);
+    /* [MOD] 패딩 축소 */
 }
 
 .char-creation-content {
-    width: min(1000px, 100%);
-    /* [FIX] 넓은 화면 활용을 위해 width 증가 */
+    width: min(1400px, 98%);
+    /* [MOD] 너비 대폭 확장 */
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 12px;
     text-align: center;
-    padding: clamp(12px, 4vw, 20px);
+    padding: clamp(10px, 2vw, 15px);
+    /* [MOD] 내부 패딩 축소 */
     box-sizing: border-box;
 }
 
@@ -513,36 +515,59 @@ body {
     width: 100%;
 }
 
+/* [ADDED] 호버 움직임 강제 제거 클래스 */
+.no-hover-move:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    /* 그림자 확대도 제거 원할 시 */
+}
+
 /* [ADDED] 모바일 가로 모드 (및 태블릿 등 넓은 화면)에서만 좌우 분할 */
 @media (orientation: landscape) {
     .char-creation-split {
         flex-direction: row;
         align-items: flex-start;
-        gap: 15px;
+        gap: 20px;
+        /* [FIX] 가로 스크롤 방지 */
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
     .char-col-left {
-        flex: 0 0 40%;
-        /* 왼쪽 40% (스탯) */
+        flex: 0 0 320px;
+        /* 왼쪽 너비 고정 */
+        /* [FIX] 전체 페이지 스크롤 시 따라오도록 Sticky 설정 */
         position: sticky;
-        top: 0;
+        top: 10px;
+        z-index: 5;
+        /* 높이 제한 없음 (내용만큼 차지) */
     }
 
     .char-col-right {
         flex: 1;
-        /* 나머지 (특성) */
-        height: 100%;
-        overflow-y: auto;
-        /* 우측만 스크롤 가능하게 */
-        max-height: calc(100vh - 80px);
-        /* 화면 높이에 맞춤 */
+        /* 나머지 공간 차지 */
+        min-width: 0;
+        /* [FIX] Flex child가 내용물보다 작아질 수 있게 허용 (가로 스크롤 방지 핵심) */
+        height: auto;
+        /* [FIX] 고정 높이 제거 -> 자식 크기만큼 늘어남 */
+        overflow: visible;
+        /* 스크롤바 제거 (부모 스크롤 사용) */
+        padding-bottom: 20px;
+        /* 하단 여백 사용 */
     }
 
-    /* 특성 목록 그리드도 반응형으로 */
+    /* 특성 목록 그리드 */
     #trait-list {
         max-height: none !important;
-        /* game.js 인라인 스타일 덮어쓰기 */
         overflow-y: visible !important;
+        /* [MOD] 그리드 최소 너비를 줄여서 좁은 공간에서도 가로 스크롤 없이 배치되게 함 */
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+    }
+
+    /* [FIX] 우측 패널의 카드 컨테이너도 높이 제한 해제 */
+    .char-col-right .hub-card {
+        height: auto !important;
+        overflow: visible !important;
     }
 }
 
@@ -6441,6 +6466,8 @@ body {
             padding: 2px;
         }
 
+
+
         .hand-area {
             height: 74px;
             margin-top: 2px;
@@ -6466,4 +6493,154 @@ body {
             font-size: 0.68rem;
             min-width: 30px;
         }
+    }
+
+    /* [Unified Character Creation Styles - Light Theme] */
+    div.char-stat-row,
+    div.char-trait-item {
+        background-color: #fcfcfc !important;
+        border-radius: 6px !important;
+        border: 1px solid #ddd !important;
+        font-size: 0.95em;
+        color: #111 !important;
+        padding: 10px 12px !important;
+        margin-bottom: 8px;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        transition: all 0.2s ease;
+    }
+
+    div.char-stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* Trait Item Specifics */
+    div.char-trait-item {
+        cursor: pointer;
+        position: relative;
+    }
+
+    /* [Request] Individual Item Hover - Very Light Gray */
+    div.char-trait-item:hover {
+        background-color: #f9f9f9 !important;
+        /* Lighter than #f0f0f0 */
+        border-color: #bbb !important;
+        transform: translateY(-1px);
+    }
+
+    div.char-stat-row:hover {
+        background-color: #f9f9f9 !important;
+        border-color: #bbb !important;
+    }
+
+    /* [Fixed] Disable any Hover effect on the Panel Container */
+    .hub-card.no-hover-move:hover {
+        transform: none !important;
+        box-shadow: none !important;
+        border-color: #ccc !important;
+        /* Prevent border color change */
+        background-color: #fff !important;
+        /* Prevent background change */
+    }
+
+    div.char-trait-item.selected {
+        background-color: #fff !important;
+        border: 2px solid #3498db !important;
+        box-shadow: 0 0 5px rgba(52, 152, 219, 0.2) !important;
+    }
+
+    div.char-trait-item.default {
+        opacity: 0.8;
+        background-color: #f8f8f8 !important;
+        border-style: dashed !important;
+    }
+
+    /* Cost Badges */
+    .trait-cost {
+        font-size: 0.8em;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+
+    .trait-cost.neutral {
+        background: #eee;
+        color: #777;
+    }
+
+    .trait-cost.positive {
+        /* Gain Points */
+        background: #27ae60;
+        color: #fff;
+    }
+
+    .trait-cost.negative {
+        /* Spend Points */
+        background: #e74c3c;
+        color: #fff;
+    }
+
+    /* Landscape Layout Fixes */
+    @media (orientation: landscape) {
+        .char-creation-split {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-start !important;
+            gap: 20px !important;
+            max-width: 100%;
+            height: auto;
+            flex-wrap: wrap;
+        }
+
+        .char-col-left {
+            flex: 0 0 320px !important;
+            display: flex;
+            flex-direction: column;
+            height: auto;
+            position: sticky;
+            top: 10px;
+            z-index: 5;
+        }
+
+        .char-col-right {
+            flex: 1 1 360px;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            height: auto;
+        }
+
+        /* Ensure containers take full height for scrolling */
+        .char-col-left .hub-card,
+        .char-col-right .hub-card {
+            height: auto !important;
+            max-height: none !important;
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+        }
+
+
+        /* Stats usually don't need scroll, but just in case */
+        .char-col-left .hub-card>div:nth-child(2) {
+            overflow-y: auto;
+        }
+
+        #trait-list {
+            flex: 1;
+            overflow-y: auto;
+            max-height: none !important;
+        }
+    }
+
+    /* [Request] Disable interaction with dungeon objects during battle */
+    .is-battle .room-object,
+    .is-battle .dungeon-door {
+        pointer-events: none !important;
+        cursor: default !important;
+        opacity: 0.3 !important;
+        filter: grayscale(100%);
     }
