@@ -6524,26 +6524,29 @@ body {
     }
 
     /* [Request] Individual Item Hover - Very Light Gray */
-    div.char-trait-item:hover {
-        background-color: #f9f9f9 !important;
-        /* Lighter than #f0f0f0 */
-        border-color: #bbb !important;
+    /* [Request] Individual Item Hover - Visible Light Gray */
+    #char-creation-content div.char-trait-item:hover,
+    #char-creation-content div.char-stat-row:hover {
+        background-color: #ecf0f1 !important;
+        /* Slightly more visible gray */
+        border-color: #bdc3c7 !important;
+        border-radius: 4px;
         transform: translateY(-1px);
+        cursor: pointer;
     }
 
-    div.char-stat-row:hover {
-        background-color: #f9f9f9 !important;
-        border-color: #bbb !important;
-    }
-
-    /* [Fixed] Disable any Hover effect on the Panel Container */
-    .hub-card.no-hover-move:hover {
+    /* [Fixed] Disable any Hover effect on the Panel Container (Nuclear Option) */
+    /* Target via ID + Class to guarantee override */
+    #char-creation-content div.hub-card.no-hover-move,
+    #char-creation-content div.hub-card.no-hover-move:hover {
         transform: none !important;
-        box-shadow: none !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
+        /* Static shadow */
         border-color: #ccc !important;
-        /* Prevent border color change */
         background-color: #fff !important;
-        /* Prevent background change */
+        transition: none !important;
+        /* Kill transition */
+        cursor: default !important;
     }
 
     div.char-trait-item.selected {

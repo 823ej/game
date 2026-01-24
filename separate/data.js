@@ -1,5 +1,5 @@
 const CARD_DATA = {
-// [공용] 누구나 사용 가능
+    // [공용] 누구나 사용 가능
     "테스트용": { rank: 1, cost: 0, type: "attack", desc: "테스트용, 적 HP -50", dmg: 50, job: "common" },
     "타격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5", dmg: 5, job: "common" },
     "수비": { rank: 1, cost: 1, type: "skill", desc: "방어도 +4", block: 4, job: "common" },
@@ -60,30 +60,30 @@ const CARD_DATA = {
     // [파워] 전투 중 지속 효과
     "전투 준비": { rank: 1, cost: 1, type: "power", isExhaust: true, desc: "이번 전투 동안 매 턴 시작 시 AP +1 (소멸)", power: { apBonus: 1 }, job: "common" },
     "절약의 달인": { rank: 2, cost: 1, type: "power", isExhaust: true, desc: "이번 전투 동안 매 턴 시작 시 손패 랜덤 1장의 비용이 0이 됩니다. (소멸)", power: { freeCostEachTurn: 1 }, job: "common" },
-    "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: {name:"약화", val:2}, block: 3, target: "enemy", job: "common" },
-    "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: {name:"독", val:2}, block: 3, target: "enemy", job: "common" },   
-    "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: {name:"활력", val:2}, target:"self", job: "common", block: 3 },
-    "껴입기": { rank: 2, cost: 2, type: "skill", desc: "나 건강(2턴), 방어도+4", buff: {name:"건강", val:2}, target:"self", job: "common", block: 4 },
-    "넘어뜨리기": { rank: 2, cost: 2, type: "attack", desc: "적 취약(2턴), 적 HP -4", buff: {name:"취약", val:2}, job: "common", dmg: 4 },
-    "전기 충격": { rank: 2, cost: 2, type: "attack", desc: "적 마비(2턴), 적 HP -4", buff: {name:"마비", val:2}, job: "common", dmg: 4 },
-    "달리기": { rank: 2, cost: 2, type: "attack", desc: "나 쾌속(2턴), 적 HP -4", buff: {name:"쾌속", val:2}, target:"self", job: "common", dmg: 4 },
-     "마구 뽑기": { rank: 3, cost: 0, type: "skill", desc: "카드 5장 뽑기 (소멸)", job: "common",draw: 5, isExhaust: true },
-    "화염병 투척": { 
-        rank: 2, cost: 1, type: "attack", 
-        desc: "적에게 [화염] 피해 10", 
-        dmg: 10, attr: "fire", job: "common" 
+    "도발": { rank: 2, cost: 2, type: "skill", desc: "적 약화(2턴), 방어도+3", buff: { name: "약화", val: 2 }, block: 3, target: "enemy", job: "common" },
+    "독 뿌리기": { rank: 2, cost: 2, type: "skill", desc: "적 독(2턴), 방어도+3", buff: { name: "독", val: 2 }, block: 3, target: "enemy", job: "common" },
+    "힐링광선": { rank: 2, cost: 2, type: "skill", desc: "나 활력(2턴), 방어도+3", buff: { name: "활력", val: 2 }, target: "self", job: "common", block: 3 },
+    "껴입기": { rank: 2, cost: 2, type: "skill", desc: "나 건강(2턴), 방어도+4", buff: { name: "건강", val: 2 }, target: "self", job: "common", block: 4 },
+    "넘어뜨리기": { rank: 2, cost: 2, type: "attack", desc: "적 취약(2턴), 적 HP -4", buff: { name: "취약", val: 2 }, job: "common", dmg: 4 },
+    "전기 충격": { rank: 2, cost: 2, type: "attack", desc: "적 마비(2턴), 적 HP -4", buff: { name: "마비", val: 2 }, job: "common", dmg: 4 },
+    "달리기": { rank: 2, cost: 2, type: "attack", desc: "나 쾌속(2턴), 적 HP -4", buff: { name: "쾌속", val: 2 }, target: "self", job: "common", dmg: 4 },
+    "마구 뽑기": { rank: 3, cost: 0, type: "skill", desc: "카드 5장 뽑기 (소멸)", job: "common", draw: 5, isExhaust: true },
+    "화염병 투척": {
+        rank: 2, cost: 1, type: "attack",
+        desc: "적에게 [화염] 피해 10",
+        dmg: 10, attr: "fire", job: "common"
     },
-    "급소 찌르기": { 
-        rank: 2, cost: 2, type: "attack", 
-        desc: "적에게 [관통] 피해 8, 약점 시 3배", 
-        dmg: 8, attr: "pierce", job: "common" 
+    "급소 찌르기": {
+        rank: 2, cost: 2, type: "attack",
+        desc: "적에게 [관통] 피해 8, 약점 시 3배",
+        dmg: 8, attr: "pierce", job: "common"
     },
-   // 특수 기능 (special 태그 사용)
+    // 특수 기능 (special 태그 사용)
     "방패 부수기": { rank: 2, cost: 2, type: "attack", desc: "적 방어도 제거, 적 HP -2", special: "break_block", job: "common", dmg: 2 },
     "주머니 뒤지기": { rank: 2, cost: 1, type: "skill", desc: "방어도 +2, 카드 2장 뽑기", job: "common", block: 2, draw: 2 },
-   "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, job: "common", isExhaust: true },
-   
-   // [탐정 전용] (Detective) - 단서/조수 기반
+    "럭키피스": { rank: 3, cost: 1, type: "attack", desc: "적 HP -8, 상금 2배 (소멸)", special: "lucky", dmg: 8, job: "common", isExhaust: true },
+
+    // [탐정 전용] (Detective) - 단서/조수 기반
     "논리적 반박": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 의지 -10", dmg: 10, job: "detective" },
     "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "논리 방어를 깨뜨리고 적 의지 -25", dmg: 25, evidence: true, job: "detective" },
     "사실 확인": { rank: 1, cost: 1, type: "social", subtype: "defend", desc: "논리 방어 +8, 프로파일링 +20", block: 8, profilingGain: 20, job: "detective" },
@@ -109,29 +109,29 @@ const CARD_DATA = {
     "연쇄 작용": { rank: 3, cost: 3, type: "power", desc: "단서 부여량 2배", power: { clueMultiplier: 2 }, job: "detective" },
     "결론": { rank: 2, cost: 2, type: "attack", desc: "적 HP -6, 단서 10 이상이면 강력한 결론", dmg: 6, solveCase: { threshold: 10, bonusDmg: 50, consume: true }, job: "detective" },
     "조수 치료": { rank: 1, cost: 1, type: "skill", desc: "조수 회복 +10 (내 HP -5)", assistantHeal: 10, assistantHpCost: 5, job: "detective" },
-    "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: {name:"강화", val:2}, target:"self", job: "detective", dmg: 8 },
-    
-   
+    "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: { name: "강화", val: 2 }, target: "self", job: "detective", dmg: 8 },
+
+
     // [해결사 전용] (Fixer) - 물리, 전투적
     "강펀치": { rank: 1, cost: 2, type: "attack", desc: "적 HP -12", dmg: 12, job: "fixer" },
     "위협": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 의지 -15 (공포)", dmg: 15, job: "fixer" },
-    "무기 손질": { rank: 2, cost: 1, type: "skill", desc: "나 강화(3턴)", buff: {name:"강화", val:3}, target:"self", job: "fixer" },
-    "근육자랑": { rank: 2, cost: 2, type: "attack", desc: "나 강화(2턴), 적 HP -4", buff: {name:"강화", val:2}, target:"self",job: "fixer", dmg: 4 },
-    "돌진" : { rank: 2, cost: 2, type: "attack", desc: "적 8 피해, 방어도 +8", job: "fixer", dmg: 8, block: 8},
-    
-    
+    "무기 손질": { rank: 2, cost: 1, type: "skill", desc: "나 강화(3턴)", buff: { name: "강화", val: 3 }, target: "self", job: "fixer" },
+    "근육자랑": { rank: 2, cost: 2, type: "attack", desc: "나 강화(2턴), 적 HP -4", buff: { name: "강화", val: 2 }, target: "self", job: "fixer", dmg: 4 },
+    "돌진": { rank: 2, cost: 2, type: "attack", desc: "적 8 피해, 방어도 +8", job: "fixer", dmg: 8, block: 8 },
 
-     "비명": { 
-        rank: 2, cost: 1, type: "social", subtype: "attack", 
-        desc: "날카로운 비명! (SP -10)", 
-        dmg: 10, 
+
+
+    "비명": {
+        rank: 2, cost: 1, type: "social", subtype: "attack",
+        desc: "날카로운 비명! (SP -10)",
+        dmg: 10,
         job: "enemy",
         // (보스 전용 상태이상은 별도 카드로 분리해서 사용)
     },
     // --- 보스 전용 기술 ---
-    "강철 분쇄": { rank: 3, cost: 2, type: "attack", desc: "치명적인 일격! (피해 15) [상태이상: 상처]",job: "common", dmg: 15, statusAdd: { card: "상처", count: 2, destination: "discard" } },
+    "강철 분쇄": { rank: 3, cost: 2, type: "attack", desc: "치명적인 일격! (피해 15) [상태이상: 상처]", job: "common", dmg: 15, statusAdd: { card: "상처", count: 2, destination: "discard" } },
     "철제 몽둥이 난타": { rank: 2, cost: 1, type: "attack", desc: "거친 몽둥이질! (피해 9) [상태이상: 고통]", job: "enemy", dmg: 9, statusAdd: { card: "고통", count: 1, destination: "discard" } },
-    "사냥꾼의 발차기": { rank: 2, cost: 1, type: "attack", desc: "무릎을 걷어찬다! (피해 6) + 취약(1턴) [상태이상: 혼란]", job: "enemy", dmg: 6, buff: {name:"취약", val:1}, statusAdd: { card: "혼란", count: 1, destination: "discard" } },
+    "사냥꾼의 발차기": { rank: 2, cost: 1, type: "attack", desc: "무릎을 걷어찬다! (피해 6) + 취약(1턴) [상태이상: 혼란]", job: "enemy", dmg: 6, buff: { name: "취약", val: 1 }, statusAdd: { card: "혼란", count: 1, destination: "discard" } },
     "광신의 비명": { rank: 3, cost: 2, type: "social", subtype: "attack", desc: "광기의 비명! (SP -12) [상태이상: 공포]", job: "enemy", dmg: 12, statusAdd: { card: "공포", count: 1, destination: "discard" } },
     "광신의 채찍": { rank: 2, cost: 1, type: "attack", desc: "피부가 찢어진다! (피해 8) [상태이상: 상처]", job: "enemy", dmg: 8, statusAdd: { card: "상처", count: 1, destination: "discard" } },
     "저주의 할퀴기": { rank: 3, cost: 2, type: "attack", desc: "저주가 스민 손톱! (피해 9) [상태이상: 고통]", job: "enemy", dmg: 9, statusAdd: { card: "고통", count: 1, destination: "discard" } },
@@ -145,16 +145,16 @@ const CARD_DATA = {
     "쿠보탄 급소": { rank: 1, cost: 1, type: "attack", desc: "쿠보탄으로 급소를 찌른다! 적 HP -6 [관통]", dmg: 6, attr: "pierce", job: "equipment", noReward: true },
     "은빛 찌르기": { rank: 2, cost: 1, type: "attack", desc: "은 단검의 찌르기! 적 HP -7 [신성]", dmg: 7, attr: "holy", job: "equipment", noReward: true },
     "너클 강타": { rank: 1, cost: 1, type: "attack", desc: "스파이크 너클로 강타! 적 HP -6 [타격]", dmg: 6, attr: "strike", job: "equipment", noReward: true },
-    
-    "광신의 춤": { rank: 3, cost: 2, type: "skill", desc: "체력 회복 +20, 방어도 +10",job: "common", buff: {name:"활력", val:5}, block: 10 },
-    "정신 붕괴 파동": { rank: 3, cost: 2, type: "attack", desc: "전체 멘탈 공격 (SP 데미지)",job: "common", dmg: 10, type: "social", val: -20 }, // 소셜/배틀 하이브리드
-     "발톱 갈기": { rank: 2, cost: 2, type: "skill", desc: "발톱을 갈아 공격력을 올린다",job: "enemy", buff: {name:"강화", val:2}, target:"self"}, 
-    
-    "부하 호출": { 
-        rank: 3, 
-        cost: 2, 
-        type: "skill", 
-        desc: "불량배를 1명 호출하여 전투에 합류시킵니다.", 
+
+    "광신의 춤": { rank: 3, cost: 2, type: "skill", desc: "체력 회복 +20, 방어도 +10", job: "common", buff: { name: "활력", val: 5 }, block: 10 },
+    "정신 붕괴 파동": { rank: 3, cost: 2, type: "attack", desc: "전체 멘탈 공격 (SP 데미지)", job: "common", dmg: 10, type: "social", val: -20 }, // 소셜/배틀 하이브리드
+    "발톱 갈기": { rank: 2, cost: 2, type: "skill", desc: "발톱을 갈아 공격력을 올린다", job: "enemy", buff: { name: "강화", val: 2 }, target: "self" },
+
+    "부하 호출": {
+        rank: 3,
+        cost: 2,
+        type: "skill",
+        desc: "불량배를 1명 호출하여 전투에 합류시킵니다.",
         job: "common",
         special: "summon",      // 특수 기능 태그
         summonTarget: "불량배",   // 소환할 적의 ENEMY_DATA 키
@@ -181,7 +181,7 @@ const ENEMY_DATA = {
         name: "불량배",
         baseHp: 20,
         stats: { atk: 1, def: 0, spd: 3 }, // 기본 스탯
-        weakness : "strike", // 타격에 약함 (주먹)
+        weakness: "strike", // 타격에 약함 (주먹)
         growth: { hp: 4, atk: 0.5, def: 0, spd: 0.1 }, // 레벨당 성장 수치
         deckType: "custom",
         deck: ["타격", "타격", "수비", "쇠약 바늘"], // 사용하는 덱
@@ -192,7 +192,7 @@ const ENEMY_DATA = {
         name: "허수아비",
         baseHp: 30, // 조금 더 튼튼하게
         stats: { atk: 1, def: 1, spd: 2 }, // 
-        weakness : "fire",  // 불에 약함
+        weakness: "fire",  // 불에 약함
         growth: { hp: 5, atk: 0.5, def: 0.5, spd: 0.1 }, // 골고루 성장
         deckType: "player_like", // 타격5+수비4+2성1
         img: "https://placehold.co/100x100/f39c12/ffffff?text=Scarecrow"
@@ -202,7 +202,7 @@ const ENEMY_DATA = {
         name: "💀 개조된 불량배 대장",
         baseHp: 150, // 높은 체력
         stats: { atk: 3, def: 2, spd: 2 }, // 묵직한 스탯
-        weakness : "electric",
+        weakness: "electric",
         growth: { hp: 0, atk: 0, def: 0, spd: 0 }, // 보스는 레벨 스케일링을 따로 안 하거나 고정
         deckType: "custom", // 덱 생성 함수 안 쓰고 직접 지정
         deck: ["강철 분쇄", "철제 몽둥이 난타", "사냥꾼의 발차기", "부하 호출", "수비"], // 전용 덱
@@ -212,7 +212,7 @@ const ENEMY_DATA = {
         name: "💀 광신도 교주",
         baseHp: 100,
         stats: { atk: 2, def: 1, spd: 4 }, // 빠른 속도
-        weakness : "holy",
+        weakness: "holy",
         growth: { hp: 0, atk: 0, def: 0, spd: 0 },
         deckType: "custom",
         deck: ["광신의 춤", "독 뿌리기", "검은 연기", "광신의 비명", "광신의 채찍", "사격"], // 하이브리드 패턴
@@ -222,11 +222,11 @@ const ENEMY_DATA = {
         name: "💀 저주받은 인형",
         baseHp: 120,
         stats: { atk: 4, def: 0, spd: 1 }, // 공격력은 세지만 방어/속도가 낮음
-        weakness : "slash",
+        weakness: "slash",
         growth: { hp: 0, atk: 0, def: 0, spd: 0 },
         deckType: "custom",
         // 독을 걸거나 멘탈 공격(비명)을 섞어 쓰는 까다로운 패턴
-        deck: ["독 뿌리기", "독 뿌리기", "비명", "저주의 할퀴기", "핏빛 실", "저주 각인"], 
+        deck: ["독 뿌리기", "독 뿌리기", "비명", "저주의 할퀴기", "핏빛 실", "저주 각인"],
         img: "https://placehold.co/120x120/5e2a84/fff?text=DOLL",
         // [추가 데이터] 패시브/태그/전리품 힌트
         passive: {
@@ -289,7 +289,7 @@ const SOCIAL_CARD_DATA = {
     "논리적 반박": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 의지 -10", dmg: 10 },
     "비꼬기": { rank: 1, cost: 1, type: "social", subtype: "attack", desc: "적 의지 -15", dmg: 15 },
     "증거 제시": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 의지 -25", dmg: 25 },
-    "호통치기": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 의지 -15, 적 취약(2턴)", dmg: 15, buff: {name:"취약", val:2} },
+    "호통치기": { rank: 2, cost: 2, type: "social", subtype: "attack", desc: "적 의지 -15, 적 취약(2턴)", dmg: 15, buff: { name: "취약", val: 2 } },
 
     // [방어 계열] 내 의지 보호 (block 사용)
     "한귀로 흘리기": { rank: 1, cost: 1, type: "social", subtype: "defend", desc: "방어도 +10", block: 10 },
@@ -299,9 +299,9 @@ const SOCIAL_CARD_DATA = {
     // [회복/유틸 계열] 내 의지 회복 (heal 사용)
     "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 의지 +15 회복", heal: 15, target: "self" },
     "차 한잔": { rank: 2, cost: 1, type: "social", subtype: "skill", desc: "내 의지 +20 회복, 카드 1장 뽑기", heal: 20, target: "self", draw: 1 },
-    
+
     // [특수]
-    "매혹": { rank: 2, cost: 2, type: "social", subtype: "magic", desc: "적 공격력 감소(2턴), 의지 -10", dmg: 10, buff: {name:"약화", val:2} },
+    "매혹": { rank: 2, cost: 2, type: "social", subtype: "magic", desc: "적 공격력 감소(2턴), 의지 -10", dmg: 10, buff: { name: "약화", val: 2 } },
     "거짓말": { rank: 2, cost: 1, type: "social", subtype: "trick", desc: "성공 시 적 벽 -40, 실패 시 나 벽 -20", special: "gamble_lie" },
 
     // [파워 계열] 소셜 전투 동안 지속 효과
@@ -321,10 +321,10 @@ const NPC_DATA = {
         baseAtk: 2, baseDef: 0, baseSpd: 2,
         logicShield: "silence",
         // [수정] 덱을 새 카드로 교체 (침묵, 무시, 심호흡 등)
-        deck: ["침묵", "무시", "심호흡", "논리적 반박"], 
+        deck: ["침묵", "무시", "심호흡", "논리적 반박"],
         img: "https://placehold.co/100x100/7f8c8d/ffffff?text=Witness",
         desc: "무언가 끔찍한 것을 본 것 같다. 대화가 통할까?",
-        likes: ["drink", "food", "warm", "money"], 
+        likes: ["drink", "food", "warm", "money"],
         dislikes: ["weapon", "horror", "noise"],
         battle: { maxHp: 40, stats: { atk: 2, def: 0, spd: 4 }, deck: ["타격", "비명", "수비"] }
     },
@@ -337,7 +337,7 @@ const NPC_DATA = {
         deck: ["증거 제시", "비꼬기", "호통치기", "무시"],
         img: "https://placehold.co/100x100/2c3e50/ffffff?text=Police",
         desc: "돈 냄새를 맡고 왔다. 뇌물이면 통하겠지만, 장난감 같은 건 싫어한다.",
-        likes: ["money", "valuable", "alcohol"], 
+        likes: ["money", "valuable", "alcohol"],
         dislikes: ["toy", "trash", "paper"],
         battle: { maxHp: 80, stats: { atk: 4, def: 2, spd: 2 }, deck: ["타격", "방패 부수기", "수비", "사격"] }
     },
@@ -427,59 +427,59 @@ const TOOLTIPS = {
     "우울": "감정이 격해집니다. 멘탈 공격 스탯이 2배 증가합니다.",
     "흐트러짐": "약점 공략으로 자세가 흐트러졌습니다. 다음 약점 피격 시 기절합니다.",
     "기절": "다음 턴 행동이 불가능합니다."
-    
+
 };
 
 /* [CITY MAP] 세주시 전역 구역 데이터 (노드+링크 기반) */
 const CITY_MAP = {
     nodes: [
-        { 
-            id: "central_admin", 
-            name: "중앙 행정구", 
-            label: "세주시 중심", 
-            desc: "시청과 빌딩가, 백화점, 지하철역 지하상가, 백산 타워, 성 주드 아카데미, 대학 병원, 비정형관리국(UDRA)이 모여 있는 행정 중심.", 
-            vibe: "corporate", 
-            pos: { x: 50, y: 50 }, 
+        {
+            id: "central_admin",
+            name: "중앙 행정구",
+            label: "세주시 중심",
+            desc: "시청과 빌딩가, 백화점, 지하철역 지하상가, 백산 타워, 성 주드 아카데미, 대학 병원, 비정형관리국(UDRA)이 모여 있는 행정 중심.",
+            vibe: "corporate",
+            pos: { x: 50, y: 50 },
             tags: ["빌딩가", "백화점", "지하철역 지하상가", "백산 타워", "성 주드 아카데미", "대학 병원", "비정형관리국(UDRA)"],
             links: ["east_oldtown", "west_industrial", "south_coast", "north_mountain"]
         },
-        { 
-            id: "east_oldtown", 
-            name: "구시가지", 
-            label: "동쪽", 
-            desc: "영진 탐정 사무소와 카페 헤카테, 청운맨션, 재래시장, 사이버 벙커, 주택가, 성당이 모여 있는 오래된 거리.", 
-            vibe: "busy", 
-            pos: { x: 72, y: 50 }, 
+        {
+            id: "east_oldtown",
+            name: "구시가지",
+            label: "동쪽",
+            desc: "영진 탐정 사무소와 카페 헤카테, 청운맨션, 재래시장, 사이버 벙커, 주택가, 성당이 모여 있는 오래된 거리.",
+            vibe: "busy",
+            pos: { x: 72, y: 50 },
             tags: ["영진 탐정 사무소", "카페 헤카테", "청운맨션", "재래시장", "사이버 벙커", "주택가", "성당", "동문역"],
             links: ["central_admin"]
         },
-        { 
-            id: "west_industrial", 
-            name: "공업지대", 
-            label: "남쪽", 
-            desc: "폐공장 단지와 시 외곽으로 이어지는 국도, 클럽 Bad Sector가 숨어 있는 산업 구역.", 
-            vibe: "outskirts", 
-            pos: { x: 50, y: 78 }, 
+        {
+            id: "west_industrial",
+            name: "공업지대",
+            label: "남쪽",
+            desc: "폐공장 단지와 시 외곽으로 이어지는 국도, 클럽 Bad Sector가 숨어 있는 산업 구역.",
+            vibe: "outskirts",
+            pos: { x: 50, y: 78 },
             tags: ["폐공장", "외곽 국도", "화물 트럭", "클럽 Bad Sector", "뒷골목", "남산역"],
             links: ["central_admin"]
         },
-        { 
-            id: "south_coast", 
-            name: "해안 관광단지", 
-            label: "서쪽", 
-            desc: "바닷가와 놀이공원, 대형 마트, 호텔이 이어진 해안 관광 구역.", 
-            vibe: "water", 
-            pos: { x: 30, y: 62 }, 
+        {
+            id: "south_coast",
+            name: "해안 관광단지",
+            label: "서쪽",
+            desc: "바닷가와 놀이공원, 대형 마트, 호텔이 이어진 해안 관광 구역.",
+            vibe: "water",
+            pos: { x: 30, y: 62 },
             tags: ["바닷가", "놀이공원", "대형 마트", "해안 호텔", "서항역"],
             links: ["central_admin"]
         },
-        { 
-            id: "north_mountain", 
-            name: "성주산 구역", 
-            label: "북쪽", 
-            desc: "성주산 능선과 숲, 그 안에 숨겨진 폐연구소가 있는 산악 지대.", 
-            vibe: "calm", 
-            pos: { x: 50, y: 24 }, 
+        {
+            id: "north_mountain",
+            name: "성주산 구역",
+            label: "북쪽",
+            desc: "성주산 능선과 숲, 그 안에 숨겨진 폐연구소가 있는 산악 지대.",
+            vibe: "calm",
+            pos: { x: 50, y: 24 },
             tags: ["숲 입구", "폐연구소", "성주산역"],
             links: ["central_admin"]
         }
@@ -744,10 +744,10 @@ const CITY_AREA_DATA = {
                 tags: ["플랫폼", "스크린도어"],
                 icon: "🚆",
                 objects: [
-                    { 
-                        id: "screen_door", 
-                        name: "스크린도어", 
-                        icon: "🚪", 
+                    {
+                        id: "screen_door",
+                        name: "스크린도어",
+                        icon: "🚪",
                         action: "subway_transfer_select",
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
@@ -811,10 +811,10 @@ const CITY_AREA_DATA = {
                 tags: ["플랫폼", "동쪽"],
                 icon: "🚉",
                 objects: [
-                    { 
-                        id: "screen_door", 
-                        name: "스크린도어", 
-                        icon: "🚪", 
+                    {
+                        id: "screen_door",
+                        name: "스크린도어",
+                        icon: "🚪",
                         action: "subway_transfer_select",
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
@@ -846,10 +846,10 @@ const CITY_AREA_DATA = {
                 tags: ["플랫폼", "서쪽"],
                 icon: "🚉",
                 objects: [
-                    { 
-                        id: "screen_door", 
-                        name: "스크린도어", 
-                        icon: "🚪", 
+                    {
+                        id: "screen_door",
+                        name: "스크린도어",
+                        icon: "🚪",
                         action: "subway_transfer_select",
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
@@ -881,10 +881,10 @@ const CITY_AREA_DATA = {
                 tags: ["플랫폼", "남쪽"],
                 icon: "🚉",
                 objects: [
-                    { 
-                        id: "screen_door", 
-                        name: "스크린도어", 
-                        icon: "🚪", 
+                    {
+                        id: "screen_door",
+                        name: "스크린도어",
+                        icon: "🚪",
                         action: "subway_transfer_select",
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
@@ -916,10 +916,10 @@ const CITY_AREA_DATA = {
                 tags: ["플랫폼", "북쪽"],
                 icon: "🚉",
                 objects: [
-                    { 
-                        id: "screen_door", 
-                        name: "스크린도어", 
-                        icon: "🚪", 
+                    {
+                        id: "screen_door",
+                        name: "스크린도어",
+                        icon: "🚪",
                         action: "subway_transfer_select",
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
@@ -1350,7 +1350,7 @@ const CITY_DUNGEON_CONFIGS = {
         width: 6,
         height: 3,
         roomCount: 12,
-        data: {          
+        data: {
             battle: 4,
             box: 2,
             note: 2,
@@ -1363,67 +1363,67 @@ const CITY_DUNGEON_CONFIGS = {
 };
 
 const DISTRICTS = {
-      "slums": {
-          name: "뒷골목 슬럼",
-          desc: "범죄와 오물이 뒤섞인 곳. 불량배가 많지만 정보도 많다.",
-          danger: 1, 
-          color: "#c0392b", 
-          scenarios: ["tutorial"], 
-          facilities: ["shop_black_market"],
-          enemyPool: ["괴물 쥐", "불량배"],
-          dungeon: {
-          width: 6,        // 맵 길이
-          height: 3,       // 맵 높이
-          roomCount: 12,   // 총 방 개수
-          data: {          
-            "battle": 4,      // 전투방 3개
-            "box": 2,         // 📦 상자방 2개 (NEW)
-            "note": 2,        // 📄 쪽지방 2개 (NEW)
-            "bush": 2,        // 🌿 덤불방 2개 (NEW)
-            "shop": 1,        // 상점 1개
-            "heal": 1         // 회복 1개
-        }
-    },
+    "slums": {
+        name: "뒷골목 슬럼",
+        desc: "범죄와 오물이 뒤섞인 곳. 불량배가 많지만 정보도 많다.",
+        danger: 1,
+        color: "#c0392b",
+        scenarios: ["tutorial"],
+        facilities: ["shop_black_market"],
+        enemyPool: ["괴물 쥐", "불량배"],
+        dungeon: {
+            width: 6,        // 맵 길이
+            height: 3,       // 맵 높이
+            roomCount: 12,   // 총 방 개수
+            data: {
+                "battle": 4,      // 전투방 3개
+                "box": 2,         // 📦 상자방 2개 (NEW)
+                "note": 2,        // 📄 쪽지방 2개 (NEW)
+                "bush": 2,        // 🌿 덤불방 2개 (NEW)
+                "shop": 1,        // 상점 1개
+                "heal": 1         // 회복 1개
+            }
+        },
     },
     "downtown": {
         name: "네온 다운타운",
         desc: "화려한 네온사인 아래 부패한 경찰과 취객들이 넘쳐난다.",
-        danger: 2, 
-        color: "#8e44ad", 
-        scenarios: [], 
+        danger: 2,
+        color: "#8e44ad",
+        scenarios: [],
         facilities: ["shop_pharmacy"]
     },
     "plaza": {
         name: "기업 플라자",
         desc: "거대 기업들의 본사가 있는 곳. 보안이 삼엄하다.",
-        danger: 3, 
-        color: "#3498db", 
-        scenarios: [], 
+        danger: 3,
+        color: "#3498db",
+        scenarios: [],
         facilities: ["shop_high_end"],
         // ★ [추가] 플라자 순찰 설정
         dungeon: {
-            width: 6, 
-            height: 6, 
+            width: 6,
+            height: 6,
             roomCount: 15, // 넓고 방이 많음
-            data: { 
-                "battle": 3, 
+            data: {
+                "battle": 3,
                 "investigate": 5, // 조사가 많음
                 "shop": 2,        // 상점도 있음
-                "treasure": 3 
+                "treasure": 3
             }
         }
     },
-      "cult_hideout": {
-          name: "👁️ 교단 은신처",
-          desc: "음습한 기운이 느껴지는 폐쇄된 지하철역.",
-          danger: 3, 
-          color: "#8e44ad", 
-          hidden: true, 
-          // ★ [이 부분이 빠져 있었습니다!] 추가해주세요. ★
-          scenarios: ["cult_investigation"], 
-          facilities: [],
-          enemyPool: ["사교도"]
-      },
+    "cult_hideout": {
+        name: "👁️ 교단 은신처",
+        desc: "음습한 기운이 느껴지는 폐쇄된 지하철역.",
+        danger: 3,
+        color: "#8e44ad",
+        hidden: true,
+        // ★ [이 부분이 빠져 있었습니다!] 추가해주세요. ★
+        scenarios: ["cult_investigation"],
+        facilities: [],
+        enemyPool: ["사교도"]
+    },
     "abandoned_mansion": {
         name: "🏚️ 폐쇄된 저택",
         desc: "오랫동안 방치되어 잡초가 무성한 대저택. 기분 나쁜 시선이 느껴진다.",
@@ -1439,67 +1439,67 @@ const DISTRICTS = {
 const ITEM_DATA = {
     // --- 장비 아이템 (유물에서 분리) ---
     // bonusStats는 '원본 스탯'에 더해지는 값입니다. (예: +2 => 보정치(mod) +1)
-    "권총": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3000, icon: "🔫", desc: "탐정의 기본 무기. 장착 시 덱에 [사격(관통)] 카드가 추가됩니다.", grantCards: ["사격(관통)"], tags: ["weapon", "gun"], categories: ["general"]},
-    "쿠보탄": {type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (장착 효과) 장착 시 덱에 [쿠보탄 급소] 카드가 추가됩니다.", bonusStats: { str: 2 }, grantCards: ["쿠보탄 급소"], tags: ["weapon", "tool"], categories: ["general"]},
-    "강인함의 부적": {type: "item", usage: "equip", equipSlots: ["accessory1", "accessory2"], rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (장착 효과)", bonusStats: { con: 2 }, tags: ["charm", "accessory"], categories: ["occult"]},
-    "좋은 운동화": {type: "item", usage: "equip", equipSlots: ["legs"], rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (장착 효과)", bonusStats: { dex: 2 }, tags: ["clothes", "brand"], categories: ["general"]},
-    "울끈불끈 패딩": {type: "item", usage: "equip", equipSlots: ["body"], rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 (장착 효과)", bonusHp: 50, tags: ["clothes", "warm"], categories: ["general"]},
+    "권총": { type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3000, icon: "🔫", desc: "탐정의 기본 무기. 장착 시 덱에 [사격(관통)] 카드가 추가됩니다.", grantCards: ["사격(관통)"], tags: ["weapon", "gun"], categories: ["general"] },
+    "쿠보탄": { type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 2000, icon: "🥊", desc: "공격력 +1 (장착 효과) 장착 시 덱에 [쿠보탄 급소] 카드가 추가됩니다.", bonusStats: { str: 2 }, grantCards: ["쿠보탄 급소"], tags: ["weapon", "tool"], categories: ["general"] },
+    "강인함의 부적": { type: "item", usage: "equip", equipSlots: ["accessory1", "accessory2"], rank: 1, price: 2000, icon: "🧿", desc: "방어력 +1 (장착 효과)", bonusStats: { con: 2 }, tags: ["charm", "accessory"], categories: ["occult"] },
+    "좋은 운동화": { type: "item", usage: "equip", equipSlots: ["legs"], rank: 1, price: 2000, icon: "👟", desc: "속도 +1 (장착 효과)", bonusStats: { dex: 2 }, tags: ["clothes", "brand"], categories: ["general"] },
+    "울끈불끈 패딩": { type: "item", usage: "equip", equipSlots: ["body"], rank: 2, price: 3000, icon: "🧥", desc: "최대 HP +50 (장착 효과)", bonusHp: 50, tags: ["clothes", "warm"], categories: ["general"] },
     "은 단검": {
-        type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3500, icon: "⚔️", 
-        desc: "장착 시 덱에 [은빛 찌르기] 카드가 추가됩니다.", 
+        type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 2, price: 3500, icon: "⚔️",
+        desc: "장착 시 덱에 [은빛 찌르기] 카드가 추가됩니다.",
         grantCards: ["은빛 찌르기"], tags: ["weapon", "holy"], categories: ["occult"]
     },
     "스파이크 너클": {
-        type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 1500, icon: "🔨", 
-        desc: "장착 시 덱에 [너클 강타] 카드가 추가됩니다.", 
+        type: "item", usage: "equip", equipSlots: ["leftHand", "rightHand"], rank: 1, price: 1500, icon: "🔨",
+        desc: "장착 시 덱에 [너클 강타] 카드가 추가됩니다.",
         grantCards: ["너클 강타"], tags: ["weapon", "physical"], categories: ["general"]
     },
 
     // --- 유물 아이템 (수집/지속효과) ---
-    "황금 대타": {type: "item", usage: "passive", rank: 3, price: 4000, icon: "🏺", desc: "부활 1회 (보유 효과)", tags: ["magic", "valuable"], categories: ["occult"]},
-    
+    "황금 대타": { type: "item", usage: "passive", rank: 3, price: 4000, icon: "🏺", desc: "부활 1회 (보유 효과)", tags: ["magic", "valuable"], categories: ["occult"] },
+
 
     // --- 소모성 아이템 ---
-    "회복약": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복 (사용 시 소모)", effect: "heal", val: 25, target: "self", tags: ["drink", "alcohol"], categories: ["pharmacy"]},
-    "호신용 스프레이": {type: "item", usage: "consume", rank: 1, price: 1000, icon: "🧴", desc: "적 10 피해 (사용 시 소모)", effect: "damage", val: 10, target: "enemy", tags: ["weapon", "chemical"], categories: ["general"]},
+    "회복약": { type: "item", usage: "consume", rank: 1, price: 1000, icon: "🍷", desc: "HP 25 회복 (사용 시 소모)", effect: "heal", val: 25, target: "self", tags: ["drink", "alcohol"], categories: ["pharmacy"] },
+    "호신용 스프레이": { type: "item", usage: "consume", rank: 1, price: 1000, icon: "🧴", desc: "적 10 피해 (사용 시 소모)", effect: "damage", val: 10, target: "enemy", tags: ["weapon", "chemical"], categories: ["general"] },
     "해결사의 연락처": {
-    type: "item", 
-    usage: "consume", 
-    rank: 2, 
-    price: 1500, 
-    icon: "📱", 
-    desc: "즉시 던전을 탈출합니다. (전문 해결사 호출)", 
-    effect: "escape", // ★ 새로운 효과 정의
-    target: "self", 
-    tags: ["tool", "phone"],
-    categories: ["general"]
-},
-    "뇌물 봉투": {type: "item", usage: "consume", rank: 2, price: 1500, icon: "✉️", desc: "NPC 호감도 대폭 상승", effect: "none", target: "enemy", tags: ["money", "paper"], categories: ["general"]},
-    "공포 영화 포스터": {type: "item", usage: "consume", rank: 1, price: 500, icon: "👻", desc: "NPC 멘탈 감소", effect: "none", target: "enemy", tags: ["horror", "paper"], categories: ["general"]},
+        type: "item",
+        usage: "consume",
+        rank: 2,
+        price: 1500,
+        icon: "📱",
+        desc: "즉시 던전을 탈출합니다. (전문 해결사 호출)",
+        effect: "escape", // ★ 새로운 효과 정의
+        target: "self",
+        tags: ["tool", "phone"],
+        categories: ["general"]
+    },
+    "뇌물 봉투": { type: "item", usage: "consume", rank: 2, price: 1500, icon: "✉️", desc: "NPC 호감도 대폭 상승", effect: "none", target: "enemy", tags: ["money", "paper"], categories: ["general"] },
+    "공포 영화 포스터": { type: "item", usage: "consume", rank: 1, price: 500, icon: "👻", desc: "NPC 멘탈 감소", effect: "none", target: "enemy", tags: ["horror", "paper"], categories: ["general"] },
     "라이터": {
-        type: "item", usage: "consume", rank: 1, price: 2000, icon: "🔥", 
-        desc: "3턴 동안 공격에 [화염] 속성을 부여합니다.", 
+        type: "item", usage: "consume", rank: 1, price: 2000, icon: "🔥",
+        desc: "3턴 동안 공격에 [화염] 속성을 부여합니다.",
         effect: "buff_attr", val: "fire", duration: 3, target: "self",
         tags: ["tool", "fire"], categories: ["general"]
     },
     "성수": {
-      type: "item", usage: "consume", rank: 1, price: 500, icon: "💧", 
-        desc: "3턴 동안 공격에 [물]과 [신성] 속성을 부여합니다.", 
-        effect: "buff_attr", 
+        type: "item", usage: "consume", rank: 1, price: 500, icon: "💧",
+        desc: "3턴 동안 공격에 [물]과 [신성] 속성을 부여합니다.",
+        effect: "buff_attr",
         val: ["water", "holy"], // ★ 핵심: 배열로 정의
         duration: 3, target: "self",
         tags: ["holy", "water"], categories: ["occult"]
     },
     "숫돌": {
-        type: "item", usage: "consume", rank: 1, price: 300, icon: "🪨", 
-        desc: "3턴 동안 공격에 [참격] 속성을 부여합니다.", 
+        type: "item", usage: "consume", rank: 1, price: 300, icon: "🪨",
+        desc: "3턴 동안 공격에 [참격] 속성을 부여합니다.",
         effect: "buff_attr", val: "slash", duration: 3, target: "self", categories: ["general"]
     },
-    "한방차": {type: "item", usage: "consume", rank: 1, price: 1200, icon: "🍵", desc: "SP 15 회복 (한방)", effect: "heal", val: 0, target: "self", tags: ["herbal"], categories: ["herbal"], healSp: 15},
-    "보혈환": {type: "item", usage: "consume", rank: 2, price: 1800, icon: "🟢", desc: "HP 20, SP 10 회복 (한방)", effect: "heal", val: 20, target: "self", tags: ["herbal"], categories: ["herbal"], healSp: 10},
+    "한방차": { type: "item", usage: "consume", rank: 1, price: 1200, icon: "🍵", desc: "SP 15 회복 (한방)", effect: "heal", val: 0, target: "self", tags: ["herbal"], categories: ["herbal"], healSp: 15 },
+    "보혈환": { type: "item", usage: "consume", rank: 2, price: 1800, icon: "🟢", desc: "HP 20, SP 10 회복 (한방)", effect: "heal", val: 20, target: "self", tags: ["herbal"], categories: ["herbal"], healSp: 10 },
     // --- 특수 (패시브지만 소모품처럼 취급되었던 것들) ---
     // 대타 인형은 가지고 있으면 효과가 발동하고 사라지므로 'passive'에 가깝지만 로직상 특수 처리
-    "대타 인형": {type: "item", usage: "passive", rank: 3, price: 3000, icon: "🧸", desc: "사망 시 자동 소모하여 부활", effect: "revive", target: "passive", tags: ["doll", "toy"], categories: ["occult"]}
+    "대타 인형": { type: "item", usage: "passive", rank: 3, price: 3000, icon: "🧸", desc: "사망 시 자동 소모하여 부활", effect: "revive", target: "passive", tags: ["doll", "toy"], categories: ["occult"] }
 };
 
 /* [수정] 시나리오 데이터 (복귀 가능 여부 플래그 추가) */
@@ -1516,10 +1516,12 @@ const SCENARIOS = {
             { type: "talk", id: "client", name: "의뢰인", text: "탐정님... 제발 도와주세요." },
             { type: "talk", id: "client", name: "의뢰인", text: "제 동생이 배달을 나갔다가 3일째 돌아오지 않고 있어요." },
             { type: "talk", id: "none", name: "나", text: "(흠... 단순 가출일까, 아니면 사고일까.)" },
-            { type: "choice", options: [
-                { txt: "자세한 이야기를 듣는다", next: 6 },
-                { txt: "귀찮으니 돌려보낸다 (하지만 의뢰는 받아야 한다)", next: 6 }
-            ]},
+            {
+                type: "choice", options: [
+                    { txt: "자세한 이야기를 듣는다", next: 6 },
+                    { txt: "귀찮으니 돌려보낸다 (하지만 의뢰는 받아야 한다)", next: 6 }
+                ]
+            },
             { type: "talk", id: "client", name: "의뢰인", text: "마지막으로 연락된 곳이 '뒷골목' 근처였어요. 사례는 넉넉히 하겠습니다." },
             { type: "end" } // 스토리가 끝나면 자동으로 callback(의뢰 수락) 실행
         ],
@@ -1537,12 +1539,12 @@ const SCENARIOS = {
                 "heal": 1         // 회복방 1개
             }
         },
-        unlocks: [], 
+        unlocks: [],
         clueEvents: [{ text: "찢어진 전표 발견.", gain: 15 }, { text: "파편 발견.", gain: 20 }],
         reward: { gold: 500, xp: 100, itemRank: 1 },
-        
+
         // [NEW] 복귀 가능 여부 (켜고 끄기)
-        canRetreat: true 
+        canRetreat: true
     },
     "cult_investigation": {
         title: "기묘한 실종",
@@ -1551,48 +1553,57 @@ const SCENARIOS = {
         events: [{ type: "battle", chance: 0.4 }, { type: "text", chance: 0.3 }, { type: "nothing", chance: 0.3 }],
         enemyPool: ["괴물 쥐"],
         boss: "boss_cult_leader",
-        unlocks: ["cult_hideout"], 
+        unlocks: ["cult_hideout"],
         clueEvents: [{ text: "부적 발견.", gain: 10 }, { text: "제사 도구 발견.", gain: 25 }],
         reward: { gold: 1200, xp: 300, itemRank: 2 },
-        
+
         // [NEW] 복귀 가능 여부
         canRetreat: true
     },
     "cursed_antique": {
         title: "저주받은 골동품",
         desc: "한 골동품점에서 시작된 저주가 사람들을 위협하고 있다. 원흉을 찾아라.",
-        
+
         // 탐사 화면에서 이동할 장소들 (분위기용)
         locations: ["먼지 쌓인 응접실", "어두운 복도", "인형의 방"],
-        
+
         // 탐사 중 발생할 랜덤 이벤트 (기본 3종 세트)
         events: [
-            { type: "battle", chance: 0.4 }, 
-            { type: "text", chance: 0.3 }, 
+            { type: "battle", chance: 0.4 },
+            { type: "text", chance: 0.3 },
             { type: "nothing", chance: 0.3 }
         ],
-        
+
         // ★ 위에서 만든 보스 연결
         boss: "boss_cursed_doll",
-        
-        // ★ 의뢰 수락 시 해금될 구역 (위에서 만든 저택)
-        unlocks: ["abandoned_mansion"], 
-        
-       
-        
+
+        // [NEW] 던전 설정 (폐쇄된 저택 Map)
+        dungeon: {
+            width: 6,
+            height: 3,
+            roomCount: 14,
+            data: {
+                "battle": 5,
+                "investigate": 3,
+                "event": 2,
+                "treasure": 1,
+                "heal": 1
+            },
+            noClueLock: false // 단서 모아야 보스 진입 가능
+        },
+
         // 조사 성공 시 나오는 문구들
         clueEvents: [
             { text: "일기장의 찢어진 페이지를 발견했습니다.", gain: 15 },
             { text: "누군가를 노려보는 듯한 그림을 찾았습니다.", gain: 20 },
             { text: "바닥에 떨어진 핏방울을 따라갑니다.", gain: 25 }
         ],
-        
+
         // 클리어 보상
         reward: { gold: 2000, xp: 500, itemRank: 2 },
         canRetreat: true, // 도망 가능
     }
 };
-/* [data.js] EVENT_DATA 수정 (alert -> showPopup) */
 
 const EVENT_DATA = [
     {
@@ -1600,17 +1611,17 @@ const EVENT_DATA = [
         title: "⚡ 고장 난 자판기",
         desc: "골목길 구석에 네온사인이 깜빡이는 낡은 자판기가 있습니다.<br>안에 내용물이 들어있지만 전원이 불안정해 보입니다.",
         choices: [
-            { 
-                txt: "돈을 넣는다 (100원)", 
+            {
+                txt: "돈을 넣는다 (100원)",
                 func: () => {
-                    if(player.gold < 100) { 
-                        showPopup("잔액 부족", "돈이 부족합니다.", [{txt:"확인", func: closePopup}]); 
-                        return; 
+                    if (player.gold < 100) {
+                        showPopup("잔액 부족", "돈이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                        return;
                     }
-                    
+
                     player.gold -= 100;
                     let item = getRandomItem("consumable", { categories: ["general"] });
-                    
+
                     // 아이템 획득 시도 (성공 시 팝업 띄우고 종료)
                     addItem(item, () => {
                         showPopup("획득", `덜컹! [${item}]이(가) 나왔습니다.`, [
@@ -1619,10 +1630,10 @@ const EVENT_DATA = [
                     });
                 }
             },
-            { 
-                txt: "발로 찬다 (체력 -5, 50% 확률)", 
+            {
+                txt: "발로 찬다 (체력 -5, 50% 확률)",
                 func: () => {
-                    if(Math.random() < 0.5) {
+                    if (Math.random() < 0.5) {
                         let item = getRandomItem("consumable", { categories: ["general"] });
                         addItem(item, () => {
                             showPopup("성공!", `쾅! 충격으로 [${item}]이(가) 떨어졌습니다!`, [
@@ -1648,11 +1659,11 @@ const EVENT_DATA = [
         title: "🕶️ 수상한 거래",
         desc: "코트 깃을 세운 남자가 은밀하게 접근합니다.<br>\"좋은 물건이 있는데, 피를 좀 나눌 수 있나?\"",
         choices: [
-            { 
-                txt: "피를 판다 (HP -10, +500원)", 
+            {
+                txt: "피를 판다 (HP -10, +500원)",
                 func: () => {
                     takeDamage(player, 10);
-                    if(player.hp > 0) {
+                    if (player.hp > 0) {
                         player.gold += 500;
                         showPopup("거래 성사", "남자는 피를 뽑아가고 돈을 쥐어줍니다.<br>(HP -10, +500원)", [
                             { txt: "확인", func: () => { closePopup(); renderExploration(); } }
@@ -1660,8 +1671,8 @@ const EVENT_DATA = [
                     }
                 }
             },
-            { 
-                txt: "거절한다", 
+            {
+                txt: "거절한다",
                 func: () => {
                     showPopup("거절", "남자는 혀를 차며 사라졌습니다.", [
                         { txt: "확인", func: () => { closePopup(); renderExploration(); } }
@@ -1675,8 +1686,8 @@ const EVENT_DATA = [
         title: "🕯️ 기이한 제단",
         desc: "건물 지하에서 촛불이 켜진 작은 제단을 발견했습니다.<br>알 수 없는 속삭임이 들려옵니다.",
         choices: [
-            { 
-                txt: "기도한다 (SP +10, 위협 +10)", 
+            {
+                txt: "기도한다 (SP +10, 위협 +10)",
                 func: () => {
                     player.sp = Math.min(player.maxSp, player.sp + 10);
                     game.scenario.doom += 10;
@@ -1685,8 +1696,8 @@ const EVENT_DATA = [
                     ]);
                 }
             },
-            { 
-                txt: "제단을 부순다 (전투)", 
+            {
+                txt: "제단을 부순다 (전투)",
                 func: () => {
                     showPopup("전투 개시!", "제단을 걷어차자 숨어있던 광신도가 튀어나옵니다!", [
                         { txt: "전투!", func: () => { closePopup(); startBattle(false); } }
@@ -1701,8 +1712,8 @@ const EVENT_DATA = [
         title: "👛 떨어진 지갑",
         desc: "바닥에 두툼한 지갑이 떨어져 있습니다.",
         choices: [
-            { 
-                txt: "가진다 (+소지금, SP -3)", 
+            {
+                txt: "가진다 (+소지금, SP -3)",
                 func: () => {
                     let gain = 300 + Math.floor(Math.random() * 200);
                     player.gold += gain;
@@ -1712,8 +1723,8 @@ const EVENT_DATA = [
                     ]);
                 }
             },
-            { 
-                txt: "경찰서에 맡긴다 (SP +5)", 
+            {
+                txt: "경찰서에 맡긴다 (SP +5)",
                 func: () => {
                     player.sp = Math.min(player.maxSp, player.sp + 5);
                     showPopup("선행", "착한 일을 했다는 뿌듯함이 느껴집니다.<br>(SP +5)", [
@@ -1731,13 +1742,13 @@ const JOB_DATA = {
     "detective": {
         name: "사립 탐정",
         desc: "논리와 이성으로 사건을 해결합니다.",
-        baseStats: { str: 10, con: 9, dex: 12, int: 16, wil: 14, cha: 12 }, 
-        defaultTraits: ["sharp_eye"], 
+        baseStats: { str: 10, con: 9, dex: 12, int: 16, wil: 14, cha: 12 },
+        defaultTraits: ["sharp_eye"],
         starterDeck: ["조사", "조사", "조사", "회피", "회피", "조수 호출", "추리", "명령: 유인", "명령: 방호", "명령: 방호"],
         starterSocialDeck: ["논리적 반박", "논리적 반박", "증거 제시", "사실 확인", "심호흡"],
         starterEquipment: { rightHand: "권총" },
         // [NEW] 탐정 이미지
-       img: "assets/my_detective.png"
+        img: "assets/my_detective.png"
     },
     "fixer": {
         name: "해결사",
@@ -1784,25 +1795,25 @@ const TRAIT_DATA = {
         cost: 0,
         stats: { int: 2 }
     },
-    "genius": { 
-        name: "천재성", 
-        type: "positive", 
-        desc: "지능 +4, 경험치 +20%", 
+    "genius": {
+        name: "천재성",
+        type: "positive",
+        desc: "지능 +4, 경험치 +20%",
         cost: 4,
         stats: { int: 4 }, // [수정] +2 -> +4 (확실한 보너스)
         onGainXp: (val) => Math.floor(val * 1.2)
     },
-    "tough_body": { 
-        name: "강철 신체", 
-        type: "positive", 
-        desc: "건강 +4, 최대 HP 증가", 
+    "tough_body": {
+        name: "강철 신체",
+        type: "positive",
+        desc: "건강 +4, 최대 HP 증가",
         cost: 3,
-        stats: { con: 4 } 
+        stats: { con: 4 }
     },
     "rich": {
         name: "금수저",
-        type: "positive", 
-        desc: "시작금 +3000원", 
+        type: "positive",
+        desc: "시작금 +3000원",
         cost: 2,
         onAcquire: (p) => { p.gold += 3000; }
     },
@@ -1813,30 +1824,30 @@ const TRAIT_DATA = {
         cost: 2,
         stats: { cha: 4 }
     },
-    "weak_mind": { 
-        name: "유리 멘탈", 
-        type: "negative", 
-        desc: "정신 -4 (최대 SP 감소)", 
+    "weak_mind": {
+        name: "유리 멘탈",
+        type: "negative",
+        desc: "정신 -4 (최대 SP 감소)",
         cost: -3,
-        stats: { wil: -4 } 
+        stats: { wil: -4 }
     },
-    "clumsy": { 
-        name: "덜렁이", 
-        type: "negative", 
-        desc: "민첩 -4 (행동 순서 느림)", 
-        cost: -2, 
-        stats: { dex: -4 } 
+    "clumsy": {
+        name: "덜렁이",
+        type: "negative",
+        desc: "민첩 -4 (행동 순서 느림)",
+        cost: -2,
+        stats: { dex: -4 }
     },
     "debt": {
         name: "빚쟁이",
-        type: "negative", 
-        desc: "시작금 -1000원", 
+        type: "negative",
+        desc: "시작금 -1000원",
         cost: -1,
         onAcquire: (p) => { p.gold -= 1000; }
     },
     "frail": {
         name: "허약함",
-        type: "negative", 
+        type: "negative",
         desc: "건강 -4, 최대 HP 감소",
         cost: -3,
         stats: { con: -4 }

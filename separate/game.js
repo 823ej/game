@@ -283,7 +283,24 @@ function renderCityMap() {
 
     const lineLayer = mapEl.querySelector('.city-map-lines');
     const nodeLayer = mapEl.querySelector('.city-map-node-layer');
-    const nodes = (CITY_MAP && Array.isArray(CITY_MAP.nodes)) ? CITY_MAP.nodes : [];
+    // [Mod] const nodes -> let nodes for dynamic injection
+    let nodes = (CITY_MAP && Array.isArray(CITY_MAP.nodes)) ? [...CITY_MAP.nodes] : [];
+
+    // [Quest] 저주받은 골동품 진행 중일 때 '폐쇄된 저택' 노드 추가
+    if (game.activeScenarioId === 'cursed_antique' || (game.scenario && game.scenario.id === 'cursed_antique')) {
+        nodes.push({
+            id: "abandoned_mansion",
+            name: "폐쇄된 저택",
+            label: "의뢰 지역",
+            desc: "저주받은 기운이 느껴지는 저택. 의뢰의 목표 지점이다.",
+            vibe: "active", // violet/purple style if available, or just neutral
+            pos: { x: 72, y: 35 },
+            tags: ["의뢰", "던전"],
+            links: ["east_oldtown"],
+            isMissionNode: true,
+            scenarioId: "cursed_antique"
+        });
+    }
     const lookup = {};
     nodes.forEach(n => lookup[n.id] = n);
 
@@ -335,7 +352,20 @@ function renderCityMap() {
 /* [수정] 도시 거점 선택 (현재는 정보 패널만) */
 function enterDistrict(key, silentAreaOpen) {
     const nodes = (CITY_MAP && Array.isArray(CITY_MAP.nodes)) ? CITY_MAP.nodes : [];
-    const node = nodes.find(n => n.id === key);
+    let node = nodes.find(n => n.id === key);
+
+    // [Quest] 동적 노드 체크
+    if (!node && key === "abandoned_mansion") {
+        node = {
+            id: "abandoned_mansion",
+            name: "폐쇄된 저택",
+            desc: "저주받은 기운이 느껴지는 저택. 의뢰의 목표 지점이다.",
+            tags: ["의뢰", "던전"],
+            isMissionNode: true,
+            scenarioId: "cursed_antique"
+        };
+    }
+
     if (!node) return;
 
     game.selectedCityNode = key;
@@ -355,43 +385,79 @@ function enterDistrict(key, silentAreaOpen) {
     if (titleEl) titleEl.textContent = node.name;
     if (descEl) descEl.textContent = node.desc;
     if (tagsEl) {
-        const tags = (node.tags && node.tags.length > 0) ? node.tags : ["탐색 루트 배치 중"];
+        // [수정] 태그 렌더링 (일반 노드 vs 미션 노드)
         tagsEl.innerHTML = "";
-        const area = getCityArea(key);
-        const visibleArea = getVisibleCityArea(key);
-        const visibleSpots = (visibleArea && visibleArea.spots) ? visibleArea.spots : [];
-        const allSpots = (area && area.spots) ? area.spots : [];
-        tags.forEach(tag => {
-            const chip = document.createElement('button');
-            chip.type = "button";
-            chip.className = 'city-chip city-chip-action';
-            chip.textContent = tag;
+        const tags = (node.tags && node.tags.length > 0) ? node.tags : ["탐색 루트 배치 중"];
 
-            if (area) {
-                const visibleSpot = findSpotByTag({ spots: visibleSpots }, tag);
-                if (visibleSpot) {
-                    chip.onclick = () => quickTravelCitySpot(key, visibleSpot.id);
-                } else {
-                    const hiddenSpot = findSpotByTag({ spots: allSpots }, tag);
-                    if (hiddenSpot && hiddenSpot.requiresDiscovery) {
-                        chip.disabled = true;
-                        chip.title = "아직 발견되지 않은 장소입니다.";
+        if (node.isMissionNode) {
+            tags.forEach(tag => {
+                const chip = document.createElement('span');
+                chip.className = 'city-chip';
+                chip.textContent = tag;
+                tagsEl.appendChild(chip);
+            });
+        } else {
+            // ... Existing logic for normal areas ...
+            const area = getCityArea(key);
+            const visibleArea = getVisibleCityArea(key);
+            const visibleSpots = (visibleArea && visibleArea.spots) ? visibleArea.spots : [];
+            const allSpots = (area && area.spots) ? area.spots : [];
+            tags.forEach(tag => {
+                const chip = document.createElement('button');
+                chip.type = "button";
+                chip.className = 'city-chip city-chip-action';
+                chip.textContent = tag;
+
+                if (area) {
+                    const visibleSpot = findSpotByTag({ spots: visibleSpots }, tag);
+                    if (visibleSpot) {
+                        chip.onclick = () => quickTravelCitySpot(key, visibleSpot.id);
+                    } else {
+                        const hiddenSpot = findSpotByTag({ spots: allSpots }, tag);
+                        if (hiddenSpot && hiddenSpot.requiresDiscovery) {
+                            chip.disabled = true;
+                            chip.title = "아직 발견되지 않은 장소입니다.";
+                        }
                     }
                 }
-            }
-
-            tagsEl.appendChild(chip);
-        });
+                tagsEl.appendChild(chip);
+            });
+        }
     }
     const hasArea = CITY_AREA_DATA && CITY_AREA_DATA[key];
 
     if (statusEl) {
-        statusEl.textContent = hasArea
-            ? "이 구역은 내부 탐색이 가능합니다. 아래 버튼으로 진입하세요."
-            : "지금은 도시 지도만 확인할 수 있습니다. 추후 이 거점에서 탐색/던전 진입을 연결합니다.";
+        if (node.isMissionNode) {
+            statusEl.textContent = "⚠️ 의뢰 목표 구역입니다. 진입하면 작전이 시작됩니다.";
+        } else {
+            statusEl.textContent = hasArea
+                ? "이 구역은 내부 탐색이 가능합니다. 아래 버튼으로 진입하세요."
+                : "지금은 도시 지도만 확인할 수 있습니다. 추후 이 거점에서 탐색/던전 진입을 연결합니다.";
+        }
     }
     if (exploreBtn) {
-        if (hasArea) {
+        if (node.isMissionNode) {
+            exploreBtn.textContent = "작전 개시";
+            exploreBtn.disabled = false;
+            exploreBtn.onclick = () => {
+                const scData = SCENARIOS[node.scenarioId];
+                if (scData && scData.dungeon) {
+                    DungeonSystem.generateDungeon(scData.dungeon);
+                    // [Dungeon Mode Init]
+                    game.state = 'exploration';
+                    DungeonSystem.isCity = false;
+                    switchScene('exploration');
+                    showExplorationView(); // Assuming this shows the dungeon view
+                    log("⚠️ 폐쇄된 저택에 진입했습니다.");
+
+                    // 플레이어 이미지 업데이트
+                    const playerEl = document.getElementById('dungeon-player');
+                    if (playerEl) playerEl.src = player.img || "https://placehold.co/150x150/3498db/ffffff?text=Hero";
+                } else {
+                    showPopup("오류", "던전 데이터가 없습니다.", [{ txt: "확인", func: closePopup }]);
+                }
+            };
+        } else if (hasArea) {
             exploreBtn.textContent = "구역 진입";
             exploreBtn.disabled = false;
             exploreBtn.onclick = () => startCityExploration(key);
