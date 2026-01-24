@@ -6,11 +6,11 @@ function getEnemyDeck(type) {
     if (type === "basic") {
         // 불량배: 단순 공격 위주
         deck = ["타격", "타격", "수비"];
-    } 
+    }
     else if (type === "player_like") {
         // 허수아비: 플레이어 초기 덱 구성 (타격5, 수비4, 2성 1장)
-        for(let i=0; i<5; i++) deck.push("타격");
-        for(let i=0; i<4; i++) deck.push("수비");
+        for (let i = 0; i < 5; i++) deck.push("타격");
+        for (let i = 0; i < 4; i++) deck.push("수비");
         // 랜덤 2성 카드 1장 추가 (함수 재사용)
         let randomRank2 = getRandomCardByRank(2);
         deck.push(randomRank2);
@@ -269,7 +269,7 @@ function renderCityMap() {
     updateHomeUI();
     resetDungeonState();
     switchScene('city');
-    game.inputLocked = false; 
+    game.inputLocked = false;
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
 
     const mapEl = document.getElementById('city-map');
@@ -772,10 +772,10 @@ function startCityExploration(areaId, targetSpotId) {
         }
         DungeonSystem.loadCityArea(area);
         game.dungeonMap = true;
-    game.scenario = {
-        id: `city:${areaId}`,
-        title: area.name || "도시 탐사",
-        isCity: true,
+        game.scenario = {
+            id: `city:${areaId}`,
+            title: area.name || "도시 탐사",
+            isCity: true,
             canRetreat: true
         };
         syncCityDungeonPosition(initialSpot);
@@ -915,12 +915,12 @@ function exitShop(shopType) {
     if (game.dungeonMap) {
         closePopup();
         game.state = 'exploration';
-        
+
         // 탐사 화면 UI 복구
         switchScene('exploration');
         toggleBattleUI(false);
         showExplorationView();
-        
+
         // 던전 뷰 갱신 (오브젝트 위치 등)
         if (DungeonSystem && DungeonSystem.updateParallax) {
             DungeonSystem.updateParallax();
@@ -934,7 +934,7 @@ function exitShop(shopType) {
 /* [필수] 미션 시작 함수 */
 function beginMission() {
     closePopup();
-    
+
     if (!game.activeScenarioId || !SCENARIOS[game.activeScenarioId]) {
         showPopup("진행 중인 의뢰 정보를 찾을 수 없습니다.");
         return;
@@ -948,13 +948,13 @@ function beginMission() {
         id: game.activeScenarioId,
         title: scData.title,
         clues: prevScenario ? (prevScenario.clues || 0) : 0,
-        location: (prevScenario && prevScenario.location) ? prevScenario.location : scData.locations[0], 
+        location: (prevScenario && prevScenario.location) ? prevScenario.location : scData.locations[0],
         bossReady: prevScenario ? !!prevScenario.bossReady : false,
         isActive: true,
         enemyPool: prevScenario?.enemyPool || getEnemyPoolFromScenario(scData),
         returnToCity: prevScenario?.returnToCity
     };
-    
+
     renderExploration(true);
 }
 
@@ -962,12 +962,12 @@ function beginMission() {
 function startPatrol(districtKey) {
     closePopup();
     advanceTimeSlot("patrol");
-    
+
     // 1. 활성 시나리오 ID 제거 (순찰이므로)
     game.activeScenarioId = null;
-    
+
     // 2. 새로운 맵 생성을 위해 플래그 초기화 ★중요★
-    game.dungeonMap = false; 
+    game.dungeonMap = false;
 
     // 3. 순찰용 가짜 시나리오 데이터 생성
     // (districtKey를 저장해두어야 나중에 던전 설정을 불러옵니다)
@@ -982,7 +982,7 @@ function startPatrol(districtKey) {
         canRetreat: true,
         enemyPool: dist ? (dist.enemyPool || (dist.dungeon && dist.dungeon.enemyPool) || null) : null
     };
-    
+
     // 바로 전투를 붙이지 않고 탐사 화면을 먼저 보여준다
     renderExploration(true);
 }
@@ -990,7 +990,7 @@ function startPatrol(districtKey) {
 function applyTooltip(text) {
     let res = text;
     for (let key in TOOLTIPS) {
-        let regex = new RegExp(key, 'g'); 
+        let regex = new RegExp(key, 'g');
         res = res.replace(regex, `<span class="keyword">${key}<span class="tip-text">${TOOLTIPS[key]}</span></span>`);
     }
     return res;
@@ -1000,12 +1000,12 @@ function applyTooltip(text) {
 /* --- 상태 변수 --- */
 let battleCheckpoint = null; // 전투 시작 시점 저장용
 /* [수정] 플레이어 상태 (인벤토리 통합) */
-let player = { 
-// 기본 생명력/정신력 (현재값)
-    maxHp: 30, hp: 30, 
-    maxSp: 30, sp: 30, 
+let player = {
+    // 기본 생명력/정신력 (현재값)
+    maxHp: 30, hp: 30,
+    maxSp: 30, sp: 30,
     mental: 100, maxMental: 100, // 의지 (소셜용)
-    
+
     // [NEW] 6대 스탯 도입
     // 근력(Str): 물리 공격력
     // 건강(Con): 물리 방어력 & 최대 HP
@@ -1024,14 +1024,14 @@ let player = {
     gold: 0, ap: 3, maxAp: 3, xp: 0, maxXp: 100,
     // [NEW] 발견한 약점 도감 { "불량배": "strike", ... }
     discoveredWeaknesses: {},
-    
+
     // 덱 관련
     deck: [],       // 전투 덱 (Active)
     socialDeck: [], // 소셜 덱 (Active)
     storage: [],    // 보관함 (Inactive - 모든 타입 섞여 있음)
-    
+
     // 인벤토리 관련
-   inventory: [],      // 소모품
+    inventory: [],      // 소모품
     relics: [],         // 유물 (활성화됨)
     equipmentBag: [],   // 장비 (미장착 보관)
     equipment: {        // 장착 슬롯
@@ -1059,11 +1059,11 @@ let player = {
     powers: {},                       // { [powerId]: any } 전투 중 지속 효과
     // [NEW] 플레이어도 약점과 상태이상을 가짐
     // 기본 약점은 'none'이지만, 특정 갑옷을 입거나 저주에 걸리면 바뀔 수 있음
-    weakness: "none", 
-    isBroken: false, 
+    weakness: "none",
+    isBroken: false,
     isStunned: false
-     // 일시적 속성 버프 상태
-    
+    // 일시적 속성 버프 상태
+
 };
 
 const EQUIP_SLOT_META = {
@@ -1648,7 +1648,7 @@ function updatePlayerAttribute() {
     // 공격/방어 속성 분리
     let attackSet = new Set();
     let defenseSet = new Set();
-    
+
     // 1. 버프 속성 합치기 (기본: 공격 속성)
     if (player.attrBuff.turns > 0 && player.attrBuff.types.length > 0) {
         player.attrBuff.types.forEach(t => attackSet.add(t));
@@ -1706,14 +1706,14 @@ let tempTraits = [];
 let currentTP = 0;
 
 /* [수정] game 상태 변수 */
-let game = { 
-    level: 1, 
+let game = {
+    level: 1,
     // turnCount는 이제 '라운드'가 아니라 '누적 행동 횟수' 정도로 씁니다.
-    totalTurns: 0, 
+    totalTurns: 0,
     state: "char_creation", // [핵심] 초기에는 캐릭터 생성 화면
     started: false, // 캐릭터 생성 완료 여부
     doom: 0, // 글로벌 위험도
-    turnOwner: "none", 
+    turnOwner: "none",
     pendingLoot: null,
     winMsg: "",
     lastTurnOwner: "none", // [NEW] 직전 턴 주인 기록용
@@ -1793,7 +1793,7 @@ function getCurrentEnemyPool() {
 function triggerRandomEvent() {
     // 1. 랜덤 이벤트 선택
     let event = EVENT_DATA[Math.floor(Math.random() * EVENT_DATA.length)];
-    
+
     // 2. 선택지 버튼 생성
     // (showPopup 함수 형식이 [{txt, func}] 이므로 그대로 매핑)
     let buttons = event.choices.map(choice => {
@@ -1810,7 +1810,7 @@ function triggerRandomEvent() {
 
 /* --- 유틸리티 --- */
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-function shuffle(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } }
+function shuffle(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[array[i], array[j]] = [array[j], array[i]]; } }
 /* [game.js] log 함수 수정 (통합 로그창 사용) */
 function log(msg) {
     const box = document.getElementById('shared-log');
@@ -1819,7 +1819,7 @@ function log(msg) {
         // (가독성을 위해 전투/탐사 구분이 필요하다면 msg 앞에 아이콘을 붙여도 좋습니다)
         const html = (typeof applyTooltip === 'function') ? applyTooltip(String(msg)) : String(msg);
         box.innerHTML += `<div>${html}</div>`;
-        
+
         // 자동 스크롤 (맨 아래로)
         box.scrollTop = box.scrollHeight;
     }
@@ -1847,11 +1847,11 @@ function forwardClickThrough(e) {
 function showDamageText(target, msg, isCrit = false) {
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
     let targetEl = document.getElementById(targetId);
-    
+
     if (targetEl) {
         let el = document.createElement("div");
         el.className = "damage-number";
-        
+
         // [추가] 치명타일 경우 클래스 추가
         if (isCrit) {
             el.classList.add("crit-text");
@@ -1860,9 +1860,9 @@ function showDamageText(target, msg, isCrit = false) {
         } else {
             el.innerText = msg;
         }
-        
+
         targetEl.appendChild(el);
-        
+
         setTimeout(() => { el.remove(); }, 800);
     }
 }
@@ -1885,7 +1885,7 @@ function createBattleCheckpoint() {
 function createEnemyData(key, index) {
     let data = ENEMY_DATA[key];
     if (!data) return null;
-    
+
     let growthMult = game.level - 1;
     let maxHp = Math.floor(data.baseHp + (data.growth.hp * growthMult));
     let atk = Math.floor(data.stats.atk + (data.growth.atk * growthMult));
@@ -1893,12 +1893,12 @@ function createEnemyData(key, index) {
     let spd = Math.floor(data.stats.spd + (data.growth.spd * growthMult));
 
     return {
-       id: index,
-       enemyKey: key, // ★ [핵심 추가] 적의 원본 종류 키 저장 (도감 등록용)
+        id: index,
+        enemyKey: key, // ★ [핵심 추가] 적의 원본 종류 키 저장 (도감 등록용)
         name: `${data.name}${index > 0 ? ' ' + String.fromCharCode(65 + index) : ''}`,
         maxHp: maxHp, hp: maxHp,
         baseAtk: atk, baseDef: def, baseSpd: spd,
-        block: 0, buffs: {}, 
+        block: 0, buffs: {},
         thorns: 0,
         deck: (data.deckType === "custom") ? data.deck : getEnemyDeck(data.deckType),
         img: data.img,
@@ -1936,7 +1936,7 @@ function triggerSurrenderWin() {
 
     game.pendingLoot = null;
     if (Math.random() < 0.5) {
-            game.pendingLoot = getRandomItem(null, { categories: ["general"] }); 
+        game.pendingLoot = getRandomItem(null, { categories: ["general"] });
         game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`;
     }
 
@@ -1960,12 +1960,12 @@ function createNpcEnemyData(npcKey, index = 0) {
         npcKey,
         name: data.name,
         maxHp: 100, hp: 100, // 의지 게이지
-        baseAtk: data.baseAtk || 0, 
-        baseDef: data.baseDef || 0, 
+        baseAtk: data.baseAtk || 0,
+        baseDef: data.baseDef || 0,
         baseSpd: data.baseSpd || 2,
-        block: 0, buffs, 
+        block: 0, buffs,
         thorns: 0,
-        deck: data.deck || ["횡설수설"], 
+        deck: data.deck || ["횡설수설"],
         img: data.img,
         ag: 0,
         baseAp: 2,
@@ -2081,20 +2081,20 @@ function seedEnemyIntents(force = false) {
 }
 /* [NEW] 스탯 기반 파생 능력치 재계산 */
 function recalcStats() {
- // 보정치 계산
+    // 보정치 계산
     let conMod = Math.floor((player.stats.con - 10) / 2);
     let wilMod = Math.floor((player.stats.wil - 10) / 2);
 
     // [안전장치] 보정치가 마이너스여도 최소 HP/SP는 보장
     // 기본 30 + (보정치 * 5) -> 계수를 10에서 5로 줄이거나, 최소값을 10으로 고정 추천
     // 여기선 기존 10배수 유지하되 최소값 10 보장
-    
+
     player.maxHp = Math.max(10, 30 + (conMod * 10));
     if (player.hp > player.maxHp) player.hp = player.maxHp;
 
     player.maxSp = Math.max(10, 30 + (wilMod * 10));
     if (player.sp > player.maxSp) player.sp = player.maxSp;
-    
+
     // 소셜 HP (의지)
     player.maxMental = Math.max(50, 100 + (wilMod * 10));
 }
@@ -2124,9 +2124,9 @@ function getClientPos(e) {
 function initGame() {
     // 1. 모바일 자동 전체화면 트리거 (첫 터치 시 발동)
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
+
     if (isMobile) {
-        document.body.addEventListener('click', function() {
+        document.body.addEventListener('click', function () {
             // 아직 전체화면이 아니라면 요청
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(err => {
@@ -2165,12 +2165,12 @@ function autoSave() {
         if (SCENARIOS[id].cleared) clearedList.push(id);
     }
 
-   const saveData = {
+    const saveData = {
         version: "2.5",
         player: targetPlayer,
         enemies: targetEnemies,
         game: targetGame,
-        
+
         // ★ [추가] 던전 시스템의 상태도 함께 저장
         dungeon: {
             map: DungeonSystem.map,
@@ -2180,7 +2180,7 @@ function autoSave() {
             progress: DungeonSystem.progress,
             isCity: DungeonSystem.isCity
         },
-        
+
         clearedScenarios: clearedList,
         timestamp: new Date().toLocaleString()
     };
@@ -2227,7 +2227,7 @@ function loadGame() {
         ensureEquipmentFields(player);
         migrateLegacyEquipment(player);
         resyncEquipCardGrantsFromEquipped();
-        
+
         if (game.started === undefined) game.started = true;
         if (game.activeScenarioId === undefined) game.activeScenarioId = null;
         enemies = loadedData.enemies || [];
@@ -2237,7 +2237,7 @@ function loadGame() {
                 if (SCENARIOS[id]) SCENARIOS[id].cleared = true;
             });
         }
-        
+
         if (!player.img && player.job && JOB_DATA[player.job]) {
             player.img = JOB_DATA[player.job].img;
         }
@@ -2248,12 +2248,12 @@ function loadGame() {
         } else {
             // 저장된 던전이 없는데 탐사 중이라면 -> 강제로 맵 재생성 유도
             if (game.state === 'exploration') {
-                game.dungeonMap = false; 
+                game.dungeonMap = false;
             }
         }
         recalcStats();
         updatePlayerAttribute();
-        
+
         // [★수정] 화면 복구 로직: game.state를 최우선으로 확인합니다.
         switch (game.state) {
             case 'battle':
@@ -2272,7 +2272,7 @@ function loadGame() {
                 renderEnemies();
                 renderHand();
                 updateUI();
-                processTimeline(); 
+                processTimeline();
                 break;
 
             case 'city':
@@ -2281,18 +2281,18 @@ function loadGame() {
                 break;
 
             case 'exploration':
-        // ★ [수정] 복구 조건 완화
-        // 기존: if (game.activeScenarioId && game.scenario) 
-        // 변경: 의뢰 ID가 있거나, 또는 시나리오 데이터가 있고 그것이 '순찰(Patrol)'인 경우
-        if ((game.activeScenarioId || (game.scenario && game.scenario.isPatrol)) && game.scenario) {
-            renderExploration();
-        } else if (game.scenario && (game.scenario.isCity || (typeof game.scenario.id === "string" && game.scenario.id.startsWith("city:")))) {
-            renderExploration();
-        } else {
-            // 데이터가 깨졌거나 비정상 종료된 경우 안전하게 사무소로
-            renderHub(); 
-        }
-        break;
+                // ★ [수정] 복구 조건 완화
+                // 기존: if (game.activeScenarioId && game.scenario) 
+                // 변경: 의뢰 ID가 있거나, 또는 시나리오 데이터가 있고 그것이 '순찰(Patrol)'인 경우
+                if ((game.activeScenarioId || (game.scenario && game.scenario.isPatrol)) && game.scenario) {
+                    renderExploration();
+                } else if (game.scenario && (game.scenario.isCity || (typeof game.scenario.id === "string" && game.scenario.id.startsWith("city:")))) {
+                    renderExploration();
+                } else {
+                    // 데이터가 깨졌거나 비정상 종료된 경우 안전하게 사무소로
+                    renderHub();
+                }
+                break;
             case 'storage':
                 // 창고 화면 복구
                 openStorage();
@@ -2324,12 +2324,12 @@ function loadGame() {
 // [수정] confirmReset: confirm -> showPopup
 function confirmReset() {
     showPopup("⚠️ 데이터 초기화", "정말 모든 데이터를 삭제하고 처음부터 시작하시겠습니까?<br><span style='color:#e74c3c'>(되돌릴 수 없습니다)</span>", [
-        { 
-            txt: "예 (삭제)", 
-            func: () => { 
-                closePopup(); 
-                resetGameData(); 
-            } 
+        {
+            txt: "예 (삭제)",
+            func: () => {
+                closePopup();
+                resetGameData();
+            }
         },
         { txt: "아니오", func: closePopup }
     ]);
@@ -2362,7 +2362,7 @@ function startCharacterCreation() {
 function renderJobSelection() {
     const container = document.getElementById('char-creation-content');
     container.innerHTML = `<h2 style="color:#f1c40f">직업 선택</h2><div class="hub-grid" id="job-list"></div>`;
-    
+
     const list = document.getElementById('job-list');
     for (let key in JOB_DATA) {
         let job = JOB_DATA[key];
@@ -2385,17 +2385,17 @@ function renderJobSelection() {
 
 function selectJob(key) {
     tempJob = key;
-    
+
     // [NEW] 직업 변경 시 선택한 특성 초기화 및 기본 특성 장착
     tempTraits = [...JOB_DATA[key].defaultTraits];
-    
+
     // [NEW] 스탯 포인트 시스템 초기화 (기본 3 포인트 제공)
-    currentStatPoints = 3; 
-    tempBonusStats = { str:0, con:0, dex:0, int:0, wil:0, cha:0 };
+    currentStatPoints = 3;
+    tempBonusStats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
 
     // TP 초기화
     calculateTP();
-    
+
     renderTraitSelection();
 }
 
@@ -2411,7 +2411,7 @@ function recalcStats() {
     // 기본 공식: 30 + (보정치 * 10)
     player.maxHp = 30 + (conMod * 10) + (bonusDerived.hp || 0);
     player.maxSp = 30 + (wilMod * 10) + (bonusDerived.sp || 0);
-    
+
     // 소셜 HP (의지)
     player.maxMental = 100 + (wilMod * 10) + (bonusDerived.mental || 0);
 
@@ -2428,10 +2428,10 @@ function adjustStat(type, delta) {
     // [CASE 1] 스탯 올리기 (+)
     if (delta > 0) {
         if (currentStatPoints < 1) return; // 포인트 부족하면 중단
-        
+
         tempBonusStats[type] += 1;
         currentStatPoints -= 1;
-    } 
+    }
     // [CASE 2] 스탯 내리기 (-)
     else {
         // ★ 핵심: 현재 수치가 8 이하라면 더 이상 내릴 수 없음 (DnD 룰)
@@ -2447,7 +2447,7 @@ function adjustStat(type, delta) {
         tempBonusStats[type] -= 1;
         currentStatPoints += 1; // 포인트 반환
     }
-    
+
     // 화면 갱신하여 숫자 업데이트
     renderTraitSelection();
 }
@@ -2456,7 +2456,7 @@ function renderTraitSelection() {
     calculateTP(); // TP 계산
 
     const container = document.getElementById('char-creation-content');
-    
+
     // TP 상태 변수 및 UI 텍스트 설정
     let tpColor = currentTP >= 0 ? "#2ecc71" : "#e74c3c";
     let btnText = currentTP >= 0 ? "결정 완료 (게임 시작)" : `포인트 부족! (${currentTP})`;
@@ -2464,12 +2464,12 @@ function renderTraitSelection() {
 
     // 직업 기본 정보 가져오기
     let base = JOB_DATA[tempJob].baseStats;
-    const statLabels = {str:"💪근력", con:"❤️건강", dex:"⚡민첩", int:"🧠지능", wil:"👁️정신", cha:"💋매력"};
+    const statLabels = { str: "💪근력", con: "❤️건강", dex: "⚡민첩", int: "🧠지능", wil: "👁️정신", cha: "💋매력" };
     const statDesc = {
-        str:"물리 공격력", con:"체력/물리방어", dex:"행동 속도", 
-        int:"논리 방어(소셜)", wil:"이성/저항(소셜)", cha:"설득/공격(소셜)"
+        str: "물리 공격력", con: "체력/물리방어", dex: "행동 속도",
+        int: "논리 방어(소셜)", wil: "이성/저항(소셜)", cha: "설득/공격(소셜)"
     };
-    
+
     // --- [UI 1] 스탯 조정 패널 ---
     let statHtml = `
         <div class="hub-card" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#3498db;">
@@ -2480,9 +2480,9 @@ function renderTraitSelection() {
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
     `;
 
-    for(let k in tempBonusStats) {
+    for (let k in tempBonusStats) {
         let currentVal = base[k] + tempBonusStats[k];
-        
+
         let mod = Math.floor((currentVal - 10) / 2);
         let modSign = mod >= 0 ? "+" : "";
         let modText = `<span style="color:#888; font-size:0.8em; margin-left:2px;">(${modSign}${mod})</span>`;
@@ -2502,8 +2502,9 @@ function renderTraitSelection() {
     statHtml += `</div><div style="font-size:0.7em; color:#777; margin-top:5px; text-align:center;">최소 8, 기본 10점 기준. (괄호 안은 보정치)</div></div>`;
 
     // --- [UI 2] 특성 선택 패널 (디자인 변경됨) ---
+    // [FIX] 우측 패널 (특성 선택)
     let traitHtml = `
-        <div class="hub-card" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#9b59b6;">
+        <div class="hub-card" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#9b59b6; height: 100%;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <h3 style="margin:0; color:#9b59b6;">🧬 특성 선택</h3>
                 <div style="font-size:0.9em;">남은 포인트: <span style="color:${tpColor}; font-weight:bold; font-size:1.2em;">${currentTP}</span></div>
@@ -2511,20 +2512,31 @@ function renderTraitSelection() {
             <div style="font-size:0.7em; color:#aaa; margin-bottom:10px; text-align:center;">
                 부정적 특성을 선택하여 포인트를 얻으세요.
             </div>
+            <!-- 모바일 가로 모드에서는 max-height 해제 (CSS 제어) -->
             <div class="action-grid" id="trait-list" style="max-height:250px; overflow-y:auto; padding-right:5px;"></div>
         </div>
     `;
 
-    // --- [UI 3] 전체 조립 ---
+    // --- [UI 3] 전체 조립 (분할 레이아웃 적용) ---
+    // [FIX] Project Zomboid 스타일: 좌측(스탯+버튼) / 우측(특성목록)
     container.innerHTML = `
         <h2 style="color:#f1c40f">캐릭터 상세 설정</h2>
-        ${statHtml}
-        ${traitHtml}
-        
-        <button id="btn-finish-creation" class="action-btn" style="margin-top:10px; width:100%;" onclick="finishCreation()" ${btnDisabled}>
-            ${btnText}
-        </button>
-        <button class="action-btn" style="margin-top:8px; width:100%; background:#7f8c8d;" onclick="renderJobSelection()">← 돌아가기</button>
+        <div class="char-creation-split">
+            <div class="char-col-left">
+                ${statHtml}
+                
+                <div style="position:sticky; bottom:10px; z-index:10;">
+                    <button id="btn-finish-creation" class="action-btn" style="margin-top:10px; width:100%;" onclick="finishCreation()" ${btnDisabled}>
+                        ${btnText}
+                    </button>
+                    <button class="action-btn" style="margin-top:8px; width:100%; background:#7f8c8d;" onclick="renderJobSelection()">← 돌아가기</button>
+                </div>
+            </div>
+            
+            <div class="char-col-right">
+                ${traitHtml}
+            </div>
+        </div>
     `;
 
     // 특성 목록 생성 (기존 로직 유지)
@@ -2533,18 +2545,18 @@ function renderTraitSelection() {
 
     for (let key in TRAIT_DATA) {
         let t = TRAIT_DATA[key];
-        
+
         // 직업 전용 특성 필터링 (내 직업 거 아니면 숨김)
         if (t.type === 'job_unique') {
-            if (!tempTraits.includes(key)) continue; 
+            if (!tempTraits.includes(key)) continue;
         }
 
         let isSelected = tempTraits.includes(key);
         let isDefault = jobDefaults.includes(key);
-        
+
         let borderColor = "#444";
-        if (isSelected) borderColor = t.type === 'positive' ? "#2ecc71" : (t.type==='negative' ? "#e74c3c" : "#f1c40f");
-        
+        if (isSelected) borderColor = t.type === 'positive' ? "#2ecc71" : (t.type === 'negative' ? "#e74c3c" : "#f1c40f");
+
         let el = document.createElement('button');
         el.className = 'hub-card';
         el.style.border = `2px solid ${borderColor}`;
@@ -2558,7 +2570,7 @@ function renderTraitSelection() {
 
         el.innerHTML = `
             <div style="display:flex; justify-content:space-between;">
-                <b style="color:${isSelected?'#fff':'#aaa'}">${t.name}</b>
+                <b style="color:${isSelected ? '#fff' : '#aaa'}">${t.name}</b>
                 <span style="font-weight:bold;">${costText}</span>
             </div>
             <div style="font-size:0.75em; color:#ccc; margin-top:5px; text-align:left;">${t.desc}</div>
@@ -2570,7 +2582,7 @@ function renderTraitSelection() {
         } else {
             el.onclick = () => toggleTrait(key);
         }
-        
+
         list.appendChild(el);
     }
 }
@@ -2584,7 +2596,7 @@ function toggleTrait(key) {
         // 선택
         tempTraits.push(key);
     }
-    
+
     // 화면 갱신 (TP 재계산 포함)
     renderTraitSelection();
 }
@@ -2607,17 +2619,17 @@ function finishCreation() {
     player.job = tempJob;
     player.img = JOB_DATA[tempJob].img;
     player.traits = [...tempTraits];
-    
+
     // [STEP 1] 직업 기본 스탯 적용
     player.stats = { ...JOB_DATA[tempJob].baseStats };
 
     // [STEP 2] 보너스 스탯 합산 (스탯 포인트로 찍은 것)
-    for(let k in tempBonusStats) {
-        if(player.stats[k] !== undefined) {
+    for (let k in tempBonusStats) {
+        if (player.stats[k] !== undefined) {
             player.stats[k] += tempBonusStats[k];
         }
     }
-    
+
     // 직업 덱 지급
     player.deck = [...JOB_DATA[tempJob].starterDeck];
     player.socialDeck = [...JOB_DATA[tempJob].starterSocialDeck];
@@ -2634,7 +2646,7 @@ function finishCreation() {
         }
         resyncEquipCardGrantsFromEquipped();
     }
-    
+
     // [STEP 3] 특성(Trait) 효과 적용
     player.traits.forEach(tKey => {
         let t = TRAIT_DATA[tKey];
@@ -2656,13 +2668,13 @@ function finishCreation() {
     player.traits.forEach(tKey => ensureCurseCardForTrait(tKey));
 
     // [STEP 4] 스탯 재계산 및 유효성 검사
-    recalcStats(); 
+    recalcStats();
 
     // ★ [핵심] HP나 SP가 0 이하라면 생성 차단
-   if (player.maxHp <= 0 || player.maxSp <= 0) {
-        showPopup("⛔ 캐릭터 생성 불가", 
+    if (player.maxHp <= 0 || player.maxSp <= 0) {
+        showPopup("⛔ 캐릭터 생성 불가",
             `현재 세팅으로는 생존할 수 없습니다.<br>(최대 HP: ${player.maxHp}, 최대 SP: ${player.maxSp})<br><br>건강/정신 스탯을 높이거나, 페널티 특성을 해제해주세요.`,
-            [{txt: "확인", func: closePopup}]
+            [{ txt: "확인", func: closePopup }]
         );
         return;
     }
@@ -2670,7 +2682,7 @@ function finishCreation() {
     // 통과 시 체력 회복 및 게임 시작
     player.hp = player.maxHp;
     player.sp = player.maxSp;
-    
+
     renderHub();
     autoSave(); // [추가] 생성 직후 저장
 }
@@ -2770,17 +2782,17 @@ function renderHub() {
 /* [NEW] 거점 휴식 */
 function hubRest() {
     if (player.gold < 1900) {
-        showPopup("잔액 부족", "커피 사 마실 돈도 없습니다...", [{txt:"확인", func:closePopup}]);
+        showPopup("잔액 부족", "커피 사 마실 돈도 없습니다...", [{ txt: "확인", func: closePopup }]);
         return;
     }
-    
+
     player.gold -= 1900;
     player.hp = player.maxHp;
     player.sp = player.maxSp;
-    
+
     updateUI();
     advanceTimeSlot("rest");
-    showPopup("휴식", "따뜻한 커피를 마시며 안정을 찾았습니다.<br>(HP/SP 완전 회복)", [{txt:"확인", func:closePopup}]);
+    showPopup("휴식", "따뜻한 커피를 마시며 안정을 찾았습니다.<br>(HP/SP 완전 회복)", [{ txt: "확인", func: closePopup }]);
 }
 
 function openHospitalCure() {
@@ -2953,11 +2965,11 @@ function openDeckManager() {
 function switchDeckMode(mode) {
     currentDeckMode = mode;
     game.state = 'deck';
-    
+
     // 탭 스타일 갱신
     document.getElementById('tab-battle').style.opacity = (mode === 'battle') ? 1 : 0.5;
     document.getElementById('tab-social').style.opacity = (mode === 'social') ? 1 : 0.5;
-    
+
     renderDeckBuilder();
     switchScene('deck'); // 화면 전환 (html에 id="deck-scene" 추가 필수)
 }
@@ -2966,16 +2978,16 @@ function switchDeckMode(mode) {
 function renderDeckBuilder() {
     const activeList = document.getElementById('active-deck-list');
     const storageList = document.getElementById('storage-list');
-    
+
     activeList.innerHTML = "";
     storageList.innerHTML = "";
-    
+
     // 1. 현재 모드에 맞는 덱 가져오기
     let targetDeck = (currentDeckMode === 'battle') ? player.deck : player.socialDeck;
-    
+
     // 카운트 갱신
     document.getElementById('deck-count').innerText = targetDeck.length;
-    
+
     // --- 왼쪽: 장착 중인 덱 렌더링 ---
     targetDeck.forEach((cName, idx) => {
         let el = createBuilderCard(cName, () => moveCardToStorage(idx));
@@ -2986,22 +2998,22 @@ function renderDeckBuilder() {
     // 전투 모드면 -> 소셜 카드 제외하고 보여줌
     // 소셜 모드면 -> 소셜 카드만 보여줌 (혹은 공용)
     let filteredStorageIndices = [];
-    
+
     player.storage.forEach((cName, idx) => {
         let data = CARD_DATA[cName];
         let isSocialCard = (data.type === "social");
-        
+
         let show = false;
         if (currentDeckMode === 'battle' && !isSocialCard) show = true;
         if (currentDeckMode === 'social' && isSocialCard) show = true;
-        
+
         if (show) {
             // 클릭 시 index가 꼬이지 않게 원본 storage의 인덱스를 전달해야 함
             let el = createBuilderCard(cName, () => moveCardToDeck(idx));
             storageList.appendChild(el);
         }
     });
-    
+
     document.getElementById('storage-count').innerText = storageList.children.length;
 }
 
@@ -3013,7 +3025,7 @@ function createBuilderCard(cName, onClickFunc) {
     // 소셜/배틀 색상 구분
     if (data.type === 'social') el.style.borderColor = '#8e44ad';
     else if (data.type === 'attack') el.style.borderColor = '#c0392b';
-    
+
     el.innerHTML = `
         <div class="cost">${data.cost}</div>
         <b>${cName}</b>
@@ -3042,17 +3054,17 @@ function moveCardToStorage(deckIdx) {
 
     card = targetDeck.splice(deckIdx, 1)[0]; // 덱에서 제거
     player.storage.push(card); // 보관함에 추가
-    
+
     renderDeckBuilder(); // 재렌더링
 }
 
 /* [NEW] 카드 이동: 보관함 -> 덱 */
 function moveCardToDeck(storageIdx) {
     let targetDeck = (currentDeckMode === 'battle') ? player.deck : player.socialDeck;
-    
+
     let card = player.storage.splice(storageIdx, 1)[0]; // 보관함에서 제거
     targetDeck.push(card); // 덱에 추가
-    
+
     renderDeckBuilder(); // 재렌더링
 }
 
@@ -3062,19 +3074,19 @@ function startSocialBattle(npcKey, preserveEnemies = false) {
     game.state = "social";
     game.totalTurns = 0;
     game.isBossBattle = false;
-    game.turnOwner = "none";     
-    game.lastTurnOwner = "none"; 
+    game.turnOwner = "none";
+    game.lastTurnOwner = "none";
     game.profilingGauge = 0;
 
     // 1. 플레이어 상태 초기화 (소셜 전용 스탯 설정)
-    player.mental = 100; 
+    player.mental = 100;
     player.maxMental = 100;
-    
+
     // 덱 교체
     if (!Array.isArray(player.socialDeck)) player.socialDeck = [];
     const validSocial = player.socialDeck.filter(name => CARD_DATA[name]);
     player.socialDeck = (validSocial.length > 0) ? validSocial : ["논리적 반박", "심호흡"];
-    player.drawPile = [...player.socialDeck]; 
+    player.drawPile = [...player.socialDeck];
     shuffle(player.drawPile);
     player.discardPile = []; player.exhaustPile = []; player.hand = [];
     player.buffs = {}; player.block = 0; player.ag = 0;
@@ -3116,7 +3128,7 @@ function startSocialBattle(npcKey, preserveEnemies = false) {
     createBattleCheckpoint();
     autoSave();
 
-    switchScene('battle'); 
+    switchScene('battle');
     showBattleView();
 
     // 적 영역 업데이트 (프리뷰 모드 해제)
@@ -3131,7 +3143,7 @@ function startSocialBattle(npcKey, preserveEnemies = false) {
         renderEnemies();
         updateUI();
     }
-    
+
     processTimeline();
 }
 
@@ -3157,7 +3169,7 @@ function applySocialImpact(target, val) {
         if (target === player) {
             // NPC가 긍정적(양수)인 행동을 했든, 부정적(음수)인 행동을 했든
             // 플레이어는 '정신력(SP)'을 잃습니다.
-            
+
             target.sp -= effectiveVal; // 무조건 감소
 
             // 연출 분기
@@ -3170,7 +3182,7 @@ function applySocialImpact(target, val) {
                 log(`😱 정신적 충격을 받았습니다! (SP -${effectiveVal})`);
                 showDamageText(target, `💔-${effectiveVal}`);
             }
-        } 
+        }
         // [CASE B] 대상이 NPC일 때 (공략하는 입장)
         else {
             // 기존 로직 유지 (0이나 200으로 보냄)
@@ -3190,7 +3202,7 @@ function applySocialImpact(target, val) {
 function openCaseFiles() {
     // 팝업으로 시나리오 목록 보여주기
     let content = `<div style="display:flex; flex-direction:column; gap:10px;">`;
-    
+
     // SCENARIOS 데이터를 순회하며 버튼 생성
     for (let id in SCENARIOS) {
         let sc = SCENARIOS[id];
@@ -3204,7 +3216,7 @@ function openCaseFiles() {
     content += `</div>`;
 
     showPopup("📁 의뢰 목록", "해결할 사건을 선택하세요.", [
-        {txt: "닫기", func: closePopup}
+        { txt: "닫기", func: closePopup }
     ], content);
 }
 
@@ -3231,7 +3243,7 @@ function openActiveMissions() {
     }
 
     showPopup("📌 진행 중 의뢰", "현재 수락된 의뢰 정보입니다.", [
-        {txt: "닫기", func: closePopup}
+        { txt: "닫기", func: closePopup }
     ], content);
 }
 
@@ -3245,13 +3257,13 @@ function storeActiveScenarioState() {
 function startScenario(id) {
     console.log("시나리오 시작 시도:", id); // [확인용 로그]
     closePopup();
-    
+
     let scData = SCENARIOS[id];
     console.log("데이터 확인:", scData.introStory); // [확인용 로그]
 
     if (scData.introStory && scData.introStory.length > 0) {
         console.log("스토리 모드 진입!"); // [확인용 로그]
-        StoryEngine.start(scData.introStory, function() {
+        StoryEngine.start(scData.introStory, function () {
             acceptMission(id);
         });
     } else {
@@ -3302,16 +3314,16 @@ function startScenarioFromCity(id) {
 /* [NEW] 실제 의뢰 수락 로직 (기존 startScenario의 내용을 여기로 옮김) */
 function acceptMission(id) {
     let scData = SCENARIOS[id];
-    
+
     // 1. 현재 수행 중인 의뢰로 등록
-    game.activeScenarioId = id; 
-    
+    game.activeScenarioId = id;
+
     // 2. 게임 상태에 초기 데이터 세팅
     game.scenario = {
         id: id,
         title: scData.title,
         clues: 0,
-        location: scData.locations[0], 
+        location: scData.locations[0],
         bossReady: false,
         isActive: false,
         enemyPool: getEnemyPoolFromScenario(scData)
@@ -3326,7 +3338,7 @@ function acceptMission(id) {
             if (target) unlockCitySpot(target.areaId, target.key);
         });
     }
-    
+
     // 3. 알림 메시지 및 화면 복귀
     let targetDistrictName = "알 수 없는 곳";
     for (let dKey in DISTRICTS) {
@@ -3335,18 +3347,18 @@ function acceptMission(id) {
             break;
         }
     }
-    
+
     // 스토리가 끝난 후에는 'story-scene'에 있으므로, 다시 'hub'나 'city'로 보내줘야 함
     renderHub(); // 사무소 화면으로 복귀
 
     // 약간의 딜레이를 주어 화면 전환 후 알림이 뜨게 함
-   setTimeout(() => {
-        showPopup("✅ 의뢰 수락", 
-            `<b>[${scData.title}]</b><br><br>"${targetDistrictName}" 구역으로 이동하여 조사를 시작하세요.`, 
-            [{txt: "확인", func: closePopup}]
+    setTimeout(() => {
+        showPopup("✅ 의뢰 수락",
+            `<b>[${scData.title}]</b><br><br>"${targetDistrictName}" 구역으로 이동하여 조사를 시작하세요.`,
+            [{ txt: "확인", func: closePopup }]
         );
     }, 100);
-    
+
     updateUI();
 }
 
@@ -3388,7 +3400,7 @@ function addItem(name, onAcquireCallback = null) {
         if (onAcquireCallback) onAcquireCallback();
         return true;
     }
-    
+
     // [CASE B] 소모품 (기존과 동일)
     else {
         if (player.inventory.length < player.maxInventory) {
@@ -3416,16 +3428,16 @@ function openStorage() {
 /* [NEW] 창고 탭 전환 */
 function switchStorageMode(mode) {
     currentStorageMode = mode;
-    
+
     // 버튼 스타일 업데이트 (선택된 탭 밝게, 아니면 흐리게)
     document.getElementById('tab-storage-consume').style.opacity = (mode === 'consume') ? 1 : 0.5;
     document.getElementById('tab-storage-equip').style.opacity = (mode === 'equip') ? 1 : 0.5;
     document.getElementById('tab-storage-relic').style.opacity = (mode === 'relic') ? 1 : 0.5;
-    
+
     // 제목 업데이트
     document.getElementById('storage-bag-title').innerText =
         (mode === 'consume') ? "🎒 소모품" : (mode === 'equip' ? "🧰 장비" : "💍 유물");
-    
+
     renderStorage();
 }
 
@@ -3433,7 +3445,7 @@ function switchStorageMode(mode) {
 function renderStorage() {
     const bagList = document.getElementById('storage-bag-list');
     const warehouseList = document.getElementById('storage-warehouse-list');
-    
+
     bagList.innerHTML = "";
     warehouseList.innerHTML = "";
 
@@ -3465,7 +3477,7 @@ function renderStorage() {
         let data = ITEM_DATA[name];
         let isRelic = (data.usage === 'passive');
         let isEquip = (data.usage === 'equip');
-        
+
         // 필터링: 현재 탭과 타입이 맞지 않으면 건너뜀
         if (currentStorageMode === 'consume' && (isRelic || isEquip)) return;
         if (currentStorageMode === 'equip' && !isEquip) return;
@@ -3473,13 +3485,13 @@ function renderStorage() {
 
         // 아이템 생성 (클릭 시 originalIdx를 사용해 정확한 아이템을 가져옴)
         let el = createStorageItemEl(name, () => moveItemFromWarehouse(originalIdx));
-        
+
         // 창고에 있는 유물/장비는 효과 꺼짐 표시 (흐리게 + 회색 테두리)
         if (isRelic || isEquip) {
             el.style.opacity = "0.7";
             el.style.borderColor = "#7f8c8d";
         }
-        
+
         warehouseList.appendChild(el);
     });
 }
@@ -3491,7 +3503,7 @@ function createStorageItemEl(name, onClick) {
     el.className = 'shop-item'; // 기존 스타일 재사용
     el.style.width = "60px";
     el.style.margin = "5px";
-    
+
     el.innerHTML = `
         <div class="item-icon item-rank-${data.rank}" style="width:50px; height:50px; font-size:1.2em; pointer-events:none;">
             ${data.icon}
@@ -3515,11 +3527,11 @@ function moveItemToWarehouse(type, idx) {
         recalcStats();
         updatePlayerAttribute();
     }
-    
+
     player.warehouse.push(item);
-    
+
     renderStorage(); // 화면 갱신
-    updateUI(); 
+    updateUI();
     autoSave();
 }
 
@@ -3530,7 +3542,7 @@ function moveItemFromWarehouse(idx) {
 
     // 공간 확인 (소모품인 경우만)
     if (data.usage === 'consume' && player.inventory.length >= player.maxInventory) {
-        showPopup("공간 부족", "가방(소모품) 공간이 부족합니다!", [{txt: "확인", func: closePopup}]);
+        showPopup("공간 부족", "가방(소모품) 공간이 부족합니다!", [{ txt: "확인", func: closePopup }]);
         return;
     }
 
@@ -3550,7 +3562,7 @@ function moveItemFromWarehouse(idx) {
     }
 
     renderStorage(); // 화면 갱신
-    updateUI(); 
+    updateUI();
     autoSave();
 }
 
@@ -3558,7 +3570,7 @@ function moveItemFromWarehouse(idx) {
 function showSwapPopup(newItemName, onSuccess) {
     // 1. 현재 가방의 아이템들을 버튼으로 나열
     let content = `<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; padding:10px;">`;
-    
+
     player.inventory.forEach((itemName, idx) => {
         let item = ITEM_DATA[itemName];
         content += `
@@ -3576,18 +3588,18 @@ function showSwapPopup(newItemName, onSuccess) {
 
     // 3. 팝업 띄우기
     showPopup(
-        "🎒 가방 정리", 
-        `<span style='color:#2ecc71'>[${newItemName}]</span>을(를) 넣을 공간이 없습니다.<br>대신 버릴 아이템을 선택하세요.`, 
+        "🎒 가방 정리",
+        `<span style='color:#2ecc71'>[${newItemName}]</span>을(를) 넣을 공간이 없습니다.<br>대신 버릴 아이템을 선택하세요.`,
         [
-            { 
-                txt: "포기하기 (획득 취소)", 
-                func: () => { 
+            {
+                txt: "포기하기 (획득 취소)",
+                func: () => {
                     closePopup();
                     // ★ 핵심 수정: 전투 승리 상태라면 결과 화면을 다시 띄워줌 (닫힘 방지)
                     if (game.state === "win") {
                         setTimeout(() => renderWinPopup(), 100);
                     }
-                } 
+                }
             }
         ],
         content
@@ -3597,11 +3609,11 @@ function showSwapPopup(newItemName, onSuccess) {
 /* [NEW] 실제 교체 실행 함수 */
 function processItemSwap(idx, newItemName) {
     let oldItem = player.inventory[idx];
-    
+
     // 교체 (덮어쓰기)
     player.inventory[idx] = newItemName;
     log(`♻️ [${oldItem}] 버림 -> [${newItemName}] 획득`);
-    
+
     // UI 갱신
     updateInventoryUI();
     updateUI();
@@ -3616,12 +3628,12 @@ function processItemSwap(idx, newItemName) {
 // [NEW] 탭 전환 함수
 function switchInvTab(tab) {
     currentInvTab = tab;
-    
+
     // 버튼 스타일 갱신
     document.getElementById('tab-consume').className = (tab === 'consume' ? 'inv-tab active' : 'inv-tab');
     document.getElementById('tab-equip').className = (tab === 'equip' ? 'inv-tab active' : 'inv-tab');
     document.getElementById('tab-relic').className = (tab === 'relic' ? 'inv-tab active' : 'inv-tab');
-    
+
     updateInventoryUI();
 }
 // [수정] 아이템 사용 함수 (배열 인덱스 참조 문제 해결)
@@ -3633,9 +3645,9 @@ function useItem(index, target) {
     const data = ITEM_DATA[name];
     // 패시브 아이템은 직접 사용 불가 (단, 선물은 가능하게 할 수도 있음 - 아래 로직에서 처리)
     // 여기서는 기본적으로 '사용(consume)' 속성이 아니면 사용 불가로 처리하되, 소셜 모드 선물은 예외 허용
-    
+
     let isSocialGift = (game.state === "social" && target !== player);
-    
+
     // 사용 불가 조건: (소모품 아님) AND (선물하기도 아님)
     if (data.usage !== "consume" && !isSocialGift) {
         log(`🚫 [${name}]은(는) 가지고 있으면 효과를 발휘합니다.`);
@@ -3644,7 +3656,7 @@ function useItem(index, target) {
 
     // 전투 중 공격 아이템 체크
     if (data.effect === "damage" && (game.state !== "battle" || game.turnOwner !== "player") && !isSocialGift) {
-        log("🚫 전투 중 내 턴에만 가능합니다."); 
+        log("🚫 전투 중 내 턴에만 가능합니다.");
         return;
     }
 
@@ -3654,14 +3666,14 @@ function useItem(index, target) {
     // --- 1. 소셜 모드 선물하기 ---
     if (isSocialGift) {
         log(`🎁 [${name}] 아이템을 선물합니다.`);
-        
+
         // 1. 태그 매칭 계산
         let npcData = NPC_DATA[enemies[0].name]; // 현재 NPC 데이터 원본 가져오기 (취향 확인용)
         // NPC 이름 뒤에 ' A' 같은 게 붙어있을 수 있으므로 원본 이름을 찾아야 함. 
         // 편의상 현재 enemies[0]의 이름에서 ' A' 등을 떼거나, 
         // startSocialBattle에서 npcKey를 어딘가 저장해두는 게 좋지만, 
         // 여기서는 간단히 NPC_DATA를 순회해서 찾거나 태그를 확인합니다.
-        
+
         // (간단 구현: 현재 적 객체에 likes/dislikes가 없으므로 NPC_DATA에서 다시 찾음)
         let originalNPC = Object.values(NPC_DATA).find(n => target.name.startsWith(n.name));
         let likes = originalNPC ? (originalNPC.likes || []) : [];
@@ -3677,12 +3689,12 @@ function useItem(index, target) {
             score = 40; // 좋아하는 물건: 호감도 대폭 상승
             log(`🥰 효과가 굉장합니다! (취향 저격)`);
             playAnim(targetId, 'anim-bounce');
-        } 
+        }
         else if (isDislike) {
             score = -30; // 싫어하는 물건: 멘탈 타격 (공포/혐오)
             log(`😱 기겁합니다! (약점 공략)`);
             playAnim(targetId, 'anim-hit');
-        } 
+        }
         else {
             score = 10; // 그저 그런 물건: 소소한 호감
             log(`🙂 나쁘지 않은 반응입니다.`);
@@ -3692,24 +3704,24 @@ function useItem(index, target) {
         applySocialImpact(target, score);
         used = true;
     }
-    
+
     // --- 2. 일반 사용 ---
     else if (data.usage === "consume") {
         switch (data.effect) {
-           case "buff_attr":
-        // val이 배열이면 그대로, 문자열이면 배열로 감싸서 저장
-        let types = Array.isArray(data.val) ? data.val : [data.val];
-        
-        player.attrBuff = { types: types, turns: data.duration };
-        updatePlayerAttribute(); // 갱신
-        
-        // 로그 메시지 생성
-        let attrNames = types.map(t => ATTR_ICONS[t]).join(", ");
-        log(`✨ ${data.duration}턴 동안 [${attrNames}] 속성이 부여됩니다.`);
-        
-        playAnim("player-char", "anim-bounce");
-        used = true;
-        break;
+            case "buff_attr":
+                // val이 배열이면 그대로, 문자열이면 배열로 감싸서 저장
+                let types = Array.isArray(data.val) ? data.val : [data.val];
+
+                player.attrBuff = { types: types, turns: data.duration };
+                updatePlayerAttribute(); // 갱신
+
+                // 로그 메시지 생성
+                let attrNames = types.map(t => ATTR_ICONS[t]).join(", ");
+                log(`✨ ${data.duration}턴 동안 [${attrNames}] 속성이 부여됩니다.`);
+
+                playAnim("player-char", "anim-bounce");
+                used = true;
+                break;
             case "heal": {
                 let healAmt = Math.min(target.maxHp - target.hp, data.val);
                 target.hp += healAmt;
@@ -3729,11 +3741,11 @@ function useItem(index, target) {
                 takeDamage(target, data.val);
                 used = true;
                 break;
-                // ★ [추가] 탈출 아이템 효과 처리
+            // ★ [추가] 탈출 아이템 효과 처리
             case "escape":
                 log(`📱 [${name}] 사용! 해결사가 도착하여 당신을 호위합니다.`);
                 used = true;
-                
+
                 // 잠시 후 복귀 처리
                 setTimeout(() => {
                     showPopup("🚁 탈출 성공", "해결사의 도움으로 안전하게 복귀했습니다.", [
@@ -3766,10 +3778,10 @@ function useItem(index, target) {
                 used = true;
                 break;
         }
-        
+
     }
-   // 3. 소모 및 갱신
-   if (used) {
+    // 3. 소모 및 갱신
+    if (used) {
         player.inventory.splice(index, 1); // 소모품 배열에서 제거
         updateInventoryUI();
         updateUI();
@@ -3789,8 +3801,8 @@ function updateInventoryUI() {
     // 보여줄 배열 선택
     let targetArray =
         (currentInvTab === 'consume') ? player.inventory :
-        (currentInvTab === 'equip') ? player.equipmentBag :
-        player.relics;
+            (currentInvTab === 'equip') ? player.equipmentBag :
+                player.relics;
 
     // 장비 탭일 때만 장착 슬롯 패널 표시
     const equipPanel = document.getElementById('inventory-equipment-panel');
@@ -3825,11 +3837,10 @@ function updateInventoryUI() {
             ${data.icon}
             <span class="tooltip">
                 <b>${name}</b><br>
-                <span style="font-size:0.8em; color:#aaa;">${
-                    data.usage==="passive" ? "[유물/지속효과]" :
-                    data.usage==="equip" ? "[장비]" :
+                <span style="font-size:0.8em; color:#aaa;">${data.usage === "passive" ? "[유물/지속효과]" :
+                data.usage === "equip" ? "[장비]" :
                     "[소모품]"
-                }</span><br>
+            }</span><br>
                 ${data.desc}
             </span>
             ${data.usage === "consume" ? `
@@ -4580,7 +4591,7 @@ function confirmItemUse(e, idx) {
     let target = player;
     if (data.target === "enemy" && enemies.length > 0) target = enemies[0];
     useItem(idx, target);
-    
+
     // 메뉴 닫기
     document.querySelectorAll('.item-actions').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.item-icon').forEach(el => el.classList.remove('selected'));
@@ -4594,7 +4605,7 @@ function toggleItemSelect(e, idx) {
 
     let actions = document.getElementById(`item-actions-${idx}`);
     let icon = document.getElementById(`item-el-${idx}`);
-    
+
     if (actions.style.display === 'none') {
         actions.style.display = 'flex';
         icon.classList.add('selected');
@@ -4606,10 +4617,10 @@ function toggleItemSelect(e, idx) {
 function renderExploration(forceReset = false) {
     game.state = 'exploration';
     switchScene('exploration');
-// ★ [추가] 버튼/이동 잠금 해제
-    game.inputLocked = false; 
+    // ★ [추가] 버튼/이동 잠금 해제
+    game.inputLocked = false;
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
-    
+
     // 던전 생성 로직 (우선순위 적용)
     if (!game.dungeonMap) {
         let dungeonConfig = null;
@@ -4622,7 +4633,7 @@ function renderExploration(forceReset = false) {
         else if (game.activeScenarioId && SCENARIOS[game.activeScenarioId]) {
             dungeonConfig = SCENARIOS[game.activeScenarioId].dungeon;
         }
-        
+
         // [2순위] 순찰(Patrol) 중이라면 해당 구역의 던전 설정
         else if (game.scenario && game.scenario.isPatrol && game.scenario.districtKey) {
             let dist = DISTRICTS[game.scenario.districtKey];
@@ -4633,9 +4644,9 @@ function renderExploration(forceReset = false) {
 
         // [3순위] 설정이 없으면 기본값 (랜덤 생성)
         if (!dungeonConfig) {
-            dungeonConfig = { 
-                width: 5, height: 5, roomCount: 10, 
-                data: { "battle": 4, "event": 2, "treasure": 1 } 
+            dungeonConfig = {
+                width: 5, height: 5, roomCount: 10,
+                data: { "battle": 4, "event": 2, "treasure": 1 }
             };
         }
 
@@ -4649,7 +4660,7 @@ function renderExploration(forceReset = false) {
         if (game.scenario && game.scenario.isActive === false) {
             dungeonConfig.noBoss = true;
         }
-        
+
         // 던전 생성 실행
         DungeonSystem.generateDungeon(dungeonConfig);
         game.dungeonMap = true; // 생성 완료 플래그
@@ -4667,7 +4678,7 @@ function renderExploration(forceReset = false) {
         playerEl.src = player.img || "https://placehold.co/150x150/3498db/ffffff?text=Hero";
     }
 
-    showExplorationView(); 
+    showExplorationView();
     updateUI();
     autoSave();
     log(`<span style="color:#aaa">--- [${game.scenario.location}] ---</span>`);
@@ -4714,8 +4725,8 @@ function toggleBattleUI(isBattle) {
             DS.minimapInlineWasOpen = minimapInline ? !minimapInline.classList.contains('hidden') : false;
         }
         if (moveControls) moveControls.style.display = 'none';   // 이동 키 숨김
-        if(dungeonActions) dungeonActions.style.display = 'none'; // 조사 버튼 등 숨김
-        if(minimapBtn) minimapBtn.style.display = 'none'; // 전투 중 지도 금지
+        if (dungeonActions) dungeonActions.style.display = 'none'; // 조사 버튼 등 숨김
+        if (minimapBtn) minimapBtn.style.display = 'none'; // 전투 중 지도 금지
         if (minimapOverlay) minimapOverlay.classList.add('hidden'); // 큰 지도 자동 닫기
         if (minimapInline) minimapInline.classList.add('hidden');   // 상시 미니맵 닫기
 
@@ -4725,13 +4736,13 @@ function toggleBattleUI(isBattle) {
             el.style.display = '';
         });
 
-       
+
 
     } else {
         // [탐사 복귀]
         if (moveControls) moveControls.style.display = 'flex';   // 이동 키 복구
-        if(dungeonActions) dungeonActions.style.display = 'grid';
-        if(minimapBtn) {
+        if (dungeonActions) dungeonActions.style.display = 'grid';
+        if (minimapBtn) {
             minimapBtn.style.display = 'block'; // 버튼만 복구 (지도는 닫힌 상태 유지)
             minimapBtn.classList.remove('hidden'); // 상시 미니맵이 숨겼던 클래스도 제거
         }
@@ -4755,7 +4766,7 @@ function toggleBattleUI(isBattle) {
             el.style.display = 'none';
         });
 
-      
+
     }
 }
 /* [game.js] confirmRetreat 함수 수정 (탈출 제약 적용) */
@@ -4786,13 +4797,13 @@ function confirmRetreat() {
 
     // [CASE 2] 던전 깊은 곳일 때 -> 아이템 체크
     let itemIdx = player.inventory.indexOf("해결사의 연락처");
-    
+
     if (itemIdx !== -1) {
         // 아이템이 있다면 사용 권유
         showPopup("📞 긴급 탈출", "이곳에서 나가려면 해결사를 불러야 합니다.<br><b>[해결사의 연락처]</b>를 사용하시겠습니까?", [
-            { 
-                txt: "사용하기 (탈출)", 
-                func: () => { 
+            {
+                txt: "사용하기 (탈출)",
+                func: () => {
                     closePopup();
                     // 아이템 사용 함수 호출 (여기서 소모 및 탈출 처리)
                     useItem(itemIdx, player);
@@ -4836,32 +4847,32 @@ function exploreAction(action) {
     let scData = SCENARIOS[game.scenario.id];
 
     // --- [1] 조사하기 (전투 발생 가능) ---
-   if (action === 'investigate') {
+    if (action === 'investigate') {
         game.inputLocked = true;
         document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = true);
-        
+
         let roll = Math.random();
-        
+
         // 1. 전투 발생 (30%)
-        if (roll < 0.3) { 
+        if (roll < 0.3) {
             // 적 키 선택
             let enemyKeys = Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
             let key = enemyKeys[Math.floor(Math.random() * enemyKeys.length)];
-            let count = (Math.random() < 0.5) ? 2 : 1; 
+            let count = (Math.random() < 0.5) ? 2 : 1;
 
             // [핵심] 실제 적 데이터 미리 생성
             enemies = [];
-            for(let i=0; i<count; i++) {
+            for (let i = 0; i < count; i++) {
                 // (만약 적 종류를 섞고 싶다면 key를 다시 뽑으면 됨)
                 enemies.push(createEnemyData(key, i));
             }
 
             logBox.innerHTML = `<span style='color:#e74c3c; font-weight:bold;'>⚠️ 적 발견! 전투 태세!</span>`;
-            
+
             // [핵심] 프리뷰 모드로 렌더링 (HP바 숨김)
             const eArea = document.getElementById('dungeon-enemies');
             eArea.classList.add('preview-mode'); // CSS로 HP바 숨김
-            
+
             renderEnemies(); // 빈 div 생성
             updateUI();      // 이미지 채우기
 
@@ -4872,24 +4883,24 @@ function exploreAction(action) {
 
             // 플레이어 깜짝 놀람
             pArea.classList.add('anim-walk');
-            
+
             // 1초 뒤 자연스럽게 전투 시작 (Seamless)
-            setTimeout(() => { 
+            setTimeout(() => {
                 pArea.classList.remove('anim-walk');
-                game.inputLocked = false; 
-                
+                game.inputLocked = false;
+
                 // startBattle에 '이미 적이 있다(true)'는 플래그 전달
-                startBattle(false, null, true); 
+                startBattle(false, null, true);
             }, 1000);
         }
         // 2. 소셜 발생 (20%) - 동일한 Pop-up 연출
-        else if (roll < 0.5) { 
+        else if (roll < 0.5) {
             let keys = Object.keys(NPC_DATA);
             let npcKey = keys[Math.floor(Math.random() * keys.length)];
             let npcData = NPC_DATA[npcKey];
 
             logBox.innerHTML = `<span style='color:#3498db'>누군가 다가옵니다. 대화가 가능해 보입니다.</span>`;
-            
+
             // 적 데이터 미리 생성 후 프리뷰 렌더링
             enemies = [];
             let npc = createNpcEnemyData(npcKey, 0);
@@ -4897,23 +4908,23 @@ function exploreAction(action) {
 
             const eArea = document.getElementById('dungeon-enemies');
             if (eArea) {
-                eArea.classList.add('preview-mode'); 
-                renderEnemies(); 
-                updateUI();      
+                eArea.classList.add('preview-mode');
+                renderEnemies();
+                updateUI();
 
                 document.querySelectorAll('.enemy-unit').forEach(el => {
                     el.classList.add('anim-popup');
                 });
             }
 
-            setTimeout(() => { 
-                game.inputLocked = false; 
-                startSocialBattle(npcKey, true); 
+            setTimeout(() => {
+                game.inputLocked = false;
+                startSocialBattle(npcKey, true);
             }, 1000);
-        } 
+        }
         // 3. 랜덤 이벤트 / 파밍
         else {
-            if(roll < 0.75) {
+            if (roll < 0.75) {
                 logBox.innerHTML = "무언가 흥미로운 상황입니다...";
                 setTimeout(() => { game.inputLocked = false; triggerRandomEvent(); }, 600);
             } else {
@@ -4939,7 +4950,7 @@ function exploreAction(action) {
     // --- [2] 이동하기 (Move) ---
     else if (action === 'move') {
         game.inputLocked = true;
-        
+
         // [연출] 걷는 애니메이션 + 배경 줌 효과
         pArea.classList.add('anim-walk');
         bg.classList.add('anim-bg-move');
@@ -4952,7 +4963,7 @@ function exploreAction(action) {
 
             if (scData && scData.locations) {
                 let nextLoc = scData.locations[Math.floor(Math.random() * scData.locations.length)];
-                while(nextLoc === game.scenario.location && scData.locations.length > 1) {
+                while (nextLoc === game.scenario.location && scData.locations.length > 1) {
                     nextLoc = scData.locations[Math.floor(Math.random() * scData.locations.length)];
                 }
                 game.scenario.location = nextLoc;
@@ -4960,7 +4971,7 @@ function exploreAction(action) {
             } else {
                 logBox.innerHTML = "다른 골목으로 이동했습니다.";
             }
-            
+
             renderExploration();
         }, 1000); // 1초간 이동 연출
     }
@@ -4968,15 +4979,15 @@ function exploreAction(action) {
     else if (action === 'rest') {
         game.inputLocked = true;
         logBox.innerHTML = "잠시 휴식을 취합니다...";
-        
+
         setTimeout(() => {
             game.inputLocked = false;
             game.doom = Math.min(100, game.doom + 10);
-            
+
             let hpHeal = 5; let spHeal = 3;
             player.hp = Math.min(player.maxHp, player.hp + hpHeal);
             player.sp = Math.min(player.maxSp, player.sp + spHeal);
-            
+
             logBox.innerHTML = `<span style='color:#2ecc71'>체력을 회복했습니다. (+${hpHeal})</span>`;
             renderExploration();
         }, 800);
@@ -4993,11 +5004,11 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
         pImg.style.transform = ""; // 혹시 남아있을 인라인 스타일 제거
     }
     // 2. 전투 상태 설정
-    game.state = "battle"; 
-    game.totalTurns = 0; 
+    game.state = "battle";
+    game.totalTurns = 0;
     game.isBossBattle = isBoss;
-    game.turnOwner = "none";     
-    game.lastTurnOwner = "none"; 
+    game.turnOwner = "none";
+    game.lastTurnOwner = "none";
     game.surrenderOffered = false;
 
     // 3. 플레이어 상태 초기화
@@ -5008,16 +5019,16 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     if (!Array.isArray(player.deck)) player.deck = [];
     const validBattle = player.deck.filter(name => CARD_DATA[name]);
     player.deck = (validBattle.length > 0) ? validBattle : ["타격", "타격", "수비", "수비"];
-    player.drawPile = [...player.deck]; 
+    player.drawPile = [...player.deck];
     shuffle(player.drawPile);
-    player.discardPile = []; 
-    player.exhaustPile = []; 
-    player.hand = []; 
-    player.buffs = {}; 
+    player.discardPile = [];
+    player.exhaustPile = [];
+    player.hand = [];
+    player.buffs = {};
     migrateThornsFromBuff(player);
     ensureThornsField(player);
     player.thorns = 0;
-    player.block = 0; 
+    player.block = 0;
     player.isStunned = false;
     player.isBroken = false;
     player.ag = 0; // 행동 게이지 초기화
@@ -5039,7 +5050,7 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     // 4. UI 모드 전환 (이동 버튼 숨김, 전투 UI 표시)
     toggleBattleUI(true);
     switchScene('battle'); // 탐사 화면 재사용
-    showBattleView();      
+    showBattleView();
 
     // 5. 적 생성 로직
     if (!preserveEnemies) {
@@ -5061,14 +5072,14 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
             let picked = [];
             if (Array.isArray(enemyKeys) && enemyKeys.length > 0) picked = enemyKeys;
             else if (typeof enemyKeys === 'string') picked = [enemyKeys];
-              else {
-                  let count = (Math.random() < 0.5) ? 2 : 1; 
-                  const pool = getCurrentEnemyPool() || Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
-                  const filteredPool = pool.filter(k => ENEMY_DATA[k] && !k.startsWith("boss_"));
-                  const finalPool = (filteredPool.length > 0) ? filteredPool : Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
-                  for (let i = 0; i < count; i++) picked.push(finalPool[Math.floor(Math.random() * finalPool.length)]);
-              }
-            
+            else {
+                let count = (Math.random() < 0.5) ? 2 : 1;
+                const pool = getCurrentEnemyPool() || Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
+                const filteredPool = pool.filter(k => ENEMY_DATA[k] && !k.startsWith("boss_"));
+                const finalPool = (filteredPool.length > 0) ? filteredPool : Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
+                for (let i = 0; i < count; i++) picked.push(finalPool[Math.floor(Math.random() * finalPool.length)]);
+            }
+
             picked.forEach((key, idx) => {
                 let enemy = createEnemyData(key, idx);
                 if (enemy) {
@@ -5100,14 +5111,14 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
 
     // 7. UI 전체 갱신 (적 체력바, 플레이어 정보 등)
     updateUI();
-    
+
     // 8. 핸드 렌더링 (빈 상태로 시작)
     renderHand();
 
     // 9. 전투 체크포인트 저장 및 턴 시작
-    createBattleCheckpoint(); 
-    autoSave(); 
-    
+    createBattleCheckpoint();
+    autoSave();
+
     // [핵심] 턴 시뮬레이션 시작
     processTimeline();
     // 플레이어가 선턴인데 손패가 비어있으면 첫 턴 초기화가 누락된 것으로 간주
@@ -5128,7 +5139,7 @@ function startBossBattle() {
 function nextStepAfterWin() {
     closePopup();
 
-// [★추가] 전투 종료 시 상태이상 및 방어도 초기화
+    // [★추가] 전투 종료 시 상태이상 및 방어도 초기화
     player.buffs = {};
     migrateThornsFromBuff(player);
     ensureThornsField(player);
@@ -5136,7 +5147,7 @@ function nextStepAfterWin() {
     player.block = 0;
     enemies.forEach(e => { e.buffs = {}; migrateThornsFromBuff(e); ensureThornsField(e); e.thorns = 0; e.block = 0; });
     cleanupCombatTempCards(); // 전투 중 상태이상 카드 제거
-// ★ [추가] 속성 부여 버프도 즉시 초기화
+    // ★ [추가] 속성 부여 버프도 즉시 초기화
     player.attrBuff = { types: [], turns: 0 };
     updatePlayerAttribute(); // 속성 상태 갱신 (UI 반영)
     // 전투 종료 공통 처리: 적 초기화 및 전투 플래그 해제
@@ -5152,20 +5163,20 @@ function nextStepAfterWin() {
         // [수정] 보스전 승리 -> 결과 정산 화면으로 이동
         game.state = 'result';
         renderResultScreen();
-    } 
+    }
     else if (game.scenario && game.scenario.isPatrol) {
-       game.state = 'exploration';
+        game.state = 'exploration';
         player.gold += 100; // 순찰 보상
         // 적 유닛 제거
-   document.getElementById('dungeon-enemies').innerHTML = "";
-   
-   // UI 복구
-    toggleBattleUI(false); 
-    showExplorationView();
-    updateUI();
-    
-    // 자동 저장
-    autoSave();
+        document.getElementById('dungeon-enemies').innerHTML = "";
+
+        // UI 복구
+        toggleBattleUI(false);
+        showExplorationView();
+        updateUI();
+
+        // 자동 저장
+        autoSave();
     }
     else {
         // 일반 시나리오 전투 -> 탐사 화면 복귀
@@ -5179,8 +5190,8 @@ function nextStepAfterWin() {
         autoSave(); // [추가] 결과 저장
         // 탐사 화면 텍스트 업데이트
         const logBox = document.getElementById('shared-log');
-        if(logBox) {
-            logBox.innerHTML = 
+        if (logBox) {
+            logBox.innerHTML =
                 `<span style='color:#2ecc71'>적들을 제압하고 무사히 복귀했습니다.</span><br>` +
                 `<span style='color:#f1c40f'>단서를 일부 확보했습니다. (진척도 +${clueGain})</span>`;
         }
@@ -5196,7 +5207,7 @@ async function processTimeline() {
     // 1. 현재 턴을 잡을 수 있는 후보 찾기 (AG >= 1000)
     // 후보가 여러 명이면 AG가 가장 높은 순서대로 (오버플로우 고려)
     let candidates = [];
-    
+
     // 플레이어 체크
     if (player.ag >= game.AG_MAX) candidates.push({ unit: player, type: 'player', ag: player.ag });
     // 적 체크
@@ -5219,12 +5230,12 @@ async function processTimeline() {
     // 모든 유닛의 AG에 자신의 속도(Spd)를 더함
     // 시각적 연출을 위해 조금씩 더하는 게 좋지만, 로직 단순화를 위해 한 번에 계산
     // "가장 빠른 녀석이 목표에 도달할 때까지" 시간을 점프시킵니다.
-    
+
     // (1) 현재 가장 AG가 높은 비율을 계산해서 한 번에 점프할 수도 있지만,
     // 간단하게 Tick 단위(예: 속도의 10%)로 반복해서 더함
     while (true) {
         let anyoneReady = false;
-        
+
         // 플레이어 AG 증가
         let pSpd = getStat(player, 'spd');
         player.ag += pSpd;
@@ -5250,28 +5261,28 @@ async function processTimeline() {
 /* [game.js] startTurn 함수 수정 (현재 행동 주체 기록 시점 변경) */
 async function startTurn(unit, type) {
     // [NEW] 턴 넘기기 전에, 방금 누가 했는지 기록
-    game.lastTurnOwner = game.turnOwner; 
+    game.lastTurnOwner = game.turnOwner;
     game.turnOwner = type;
     game.totalTurns++;
-    
+
     // 인내심 처리 (소셜 모드 & 적 턴일 때)
     if (game.state === "social" && type === "enemy") {
         if (unit.patience !== undefined) {
             let decrement = unit.buffs["분노"] ? 2 : 1;
             unit.patience -= decrement;
-            
+
             if (unit.patience <= 0) {
                 updateUI();
                 showPopup("🖐️ 대화 결렬", `"${unit.name}"이(가) 더 이상 당신의 말을 듣지 않습니다.<br>협상이 불가능해졌습니다.`, [
-                    { txt: "무력 행사 (전투 돌입)", func: () => { closePopup(); forcePhysicalBattle(); }},
-                    { txt: "도망치기 (패널티)", func: () => { closePopup(); escapeSocialBattle(); }}
+                    { txt: "무력 행사 (전투 돌입)", func: () => { closePopup(); forcePhysicalBattle(); } },
+                    { txt: "도망치기 (패널티)", func: () => { closePopup(); escapeSocialBattle(); } }
                 ]);
                 return; // 턴 진행 중단
             }
         }
     }
 
-    tickBuffs(unit); 
+    tickBuffs(unit);
     decrementBuffs(unit);
     if (game.state === "battle" && isDetectiveJob()) {
         const mgr = ensureAssistantManager();
@@ -5285,11 +5296,11 @@ async function startTurn(unit, type) {
             mgr.heal(2);
         }
     }
-    
+
     if (checkGameOver()) return;
-    if (unit.hp <= 0 && game.state !== 'social') { 
-        processTimeline(); 
-        return; 
+    if (unit.hp <= 0 && game.state !== 'social') {
+        processTimeline();
+        return;
     }
 
     unit.ag -= game.AG_MAX;
@@ -5312,21 +5323,21 @@ async function startTurn(unit, type) {
 /* [game.js] renderEnemies 함수 수정 (최종) */
 function renderEnemies() {
     const wrapper = document.getElementById('dungeon-enemies');
-    if (!wrapper) return; 
-    
+    if (!wrapper) return;
+
     wrapper.innerHTML = ""; // 초기화
 
     enemies.forEach(e => {
         let el = document.createElement('div');
         el.className = 'enemy-unit';
-        el.id = `enemy-unit-${e.id}`; 
-        
+        el.id = `enemy-unit-${e.id}`;
+
         // 이미지 주소 안전장치
         let imgSrc = e.img;
         if (!imgSrc || imgSrc === "") {
             imgSrc = "https://placehold.co/100x100/555/fff?text=Enemy";
         }
-        
+
         // [핵심] 뼈대를 만들 때 이미지 태그를 반드시 포함 (타겟팅 인식용)
         el.innerHTML = `
             <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name}</div>
@@ -5335,7 +5346,7 @@ function renderEnemies() {
             <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%"></div></div>
             <div style="font-size:0.8em;">HP: ${e.hp}/${e.maxHp}</div>
         `;
-        
+
         wrapper.appendChild(el);
     });
 }
@@ -5349,16 +5360,16 @@ function startPlayerTurnLogic() {
     if (player.isStunned) {
         log("😵 <b>기절 상태입니다! 아무것도 할 수 없습니다.</b>");
         showDamageText(player, "STUNNED...");
-        
+
         // 상태 회복
         player.isStunned = false;
         player.isBroken = false; // 기절 풀리면 브레이크도 해제
-        
+
         // 턴 강제 종료 (약간의 딜레이 후)
         setTimeout(() => {
-            endPlayerTurn(); 
+            endPlayerTurn();
         }, 1000);
-        
+
         updateUI();
         return; // 아래 로직(카드 뽑기 등) 실행 안 함
     }
@@ -5372,7 +5383,7 @@ function startPlayerTurnLogic() {
     // 즉, 적이 행동하고 내 차례가 되면 방어도가 사라지지만,
     // 내가 행동하고 또 바로 내 차례가 오면(속도 차이) 방어도가 유지됨.
     if (game.lastTurnOwner !== 'player') {
-        player.block = 0; 
+        player.block = 0;
         const mgr = ensureAssistantManager();
         if (mgr) mgr.block = 0;
     } else {
@@ -5412,19 +5423,19 @@ function startPlayerTurnLogic() {
     if (game.state === 'battle') triggerAfterDrawPowers();
     else if (game.state === 'social') triggerSocialAfterDrawPowers();
 
-   const endBtn = document.getElementById('end-turn-btn');
-    if(endBtn) endBtn.disabled = false;
+    const endBtn = document.getElementById('end-turn-btn');
+    if (endBtn) endBtn.disabled = false;
     // [수정] turn-info 요소가 사라졌으므로, 에러가 안 나게 체크합니다.
     const turnInfo = document.getElementById('turn-info');
     if (turnInfo) {
         turnInfo.innerText = `나의 턴 (AP: ${player.ap})`;
     }
-   // ★ [수정] player-char 대신 dungeon-player 사용
+    // ★ [수정] player-char 대신 dungeon-player 사용
     const pImg = document.getElementById('dungeon-player');
-    if(pImg) pImg.classList.add('turn-active'); 
-    
+    if (pImg) pImg.classList.add('turn-active');
+
     document.querySelectorAll('.enemy-unit').forEach(e => e.classList.remove('turn-active'));
-    updateTurnOrderList(); 
+    updateTurnOrderList();
     // 1. 속성 버프 턴 차감
     if (player.attrBuff.turns > 0) {
         player.attrBuff.turns--;
@@ -5434,7 +5445,7 @@ function startPlayerTurnLogic() {
         }
         updatePlayerAttribute(); // 갱신
     }
-    
+
     // UI 업데이트 (내 속성 아이콘 표시)
     updateUI();
 }
@@ -5442,9 +5453,9 @@ function startPlayerTurnLogic() {
 /* [수정] 플레이어 턴 종료 버튼 클릭 시 */
 function endPlayerTurn() {
     document.getElementById('end-turn-btn').disabled = true;
-    
+
     // 패 버리기
-    if (player.hand.length > 0) { 
+    if (player.hand.length > 0) {
         const toDiscard = [];
         const toExhaust = [];
         player.hand.forEach(cName => {
@@ -5460,11 +5471,11 @@ function endPlayerTurn() {
         player.hand = [];
         if (player.handCostOverride) player.handCostOverride = [];
     }
-    renderHand(); 
+    renderHand();
 
     const pImg = document.getElementById('dungeon-player');
-    if(pImg) pImg.classList.remove('turn-active');
-    
+    if (pImg) pImg.classList.remove('turn-active');
+
     // ★ 중요: 내 행동이 끝났으니 다시 타임라인을 돌립니다.
     // 만약 내 속도가 압도적이라 AG가 1000 이상 남았다면? processTimeline이 즉시 나를 다시 호출함 (연속 턴)
     processTimeline();
@@ -5472,9 +5483,9 @@ function endPlayerTurn() {
 
 /* [game.js] startEnemyTurnLogic 함수 수정 (안전장치 추가) */
 async function startEnemyTurnLogic(actor) {
-    actor.block = 0; 
-    actor.ap = actor.baseAp || 2; 
-    
+    actor.block = 0;
+    actor.ap = actor.baseAp || 2;
+
     let el = document.getElementById(`enemy-unit-${actor.id}`);
     if (!Array.isArray(actor.intentQueue) || actor.intentQueue.length === 0) {
         setEnemyIntentQueue(actor, actor.ap || actor.baseAp || 2);
@@ -5483,18 +5494,18 @@ async function startEnemyTurnLogic(actor) {
     // 1. 기절(Stun) 체크
     if (actor.isStunned) {
         log(`😵 <b>${actor.name}</b>은(는) 기절하여 움직일 수 없습니다!`);
-        
+
         let el = document.getElementById(`enemy-unit-${actor.id}`);
-        if(el) {
+        if (el) {
             el.classList.remove('stunned'); // 기절 표시 제거
             el.classList.add('recovering'); // 회복 모션
             setTimeout(() => el.classList.remove('recovering'), 500);
         }
 
         // 상태 회복
-        actor.isStunned = false; 
-        actor.isBroken = false; 
-        
+        actor.isStunned = false;
+        actor.isBroken = false;
+
         await sleep(1000);
         updateUI();
         processTimeline(); // 턴 패스
@@ -5506,10 +5517,10 @@ async function startEnemyTurnLogic(actor) {
         log(`🛡️ <b>${actor.name}</b>이(가) 자세를 바로잡습니다.`);
         actor.isBroken = false;
         let el = document.getElementById(`enemy-unit-${actor.id}`);
-        if(el) el.classList.remove('broken');
+        if (el) el.classList.remove('broken');
     }
-    if(el) el.classList.add('turn-active');
-    
+    if (el) el.classList.add('turn-active');
+
     try {
         while (actor.ap > 0) {
             if (game.state === "social") {
@@ -5536,21 +5547,21 @@ async function startEnemyTurnLogic(actor) {
                 cData = CARD_DATA["타격"];
             }
 
-            if (game.state === "battle" && cData.type === "social") cName = "타격"; 
-            else if (game.state === "social" && cData.type !== "social") cName = "횡설수설"; 
+            if (game.state === "battle" && cData.type === "social") cName = "타격";
+            else if (game.state === "social" && cData.type !== "social") cName = "횡설수설";
 
-            actor.ap--; 
-            useCard(actor, player, cName); 
+            actor.ap--;
+            useCard(actor, player, cName);
             if (actor.ap > 0 && actor.hp > 0 && (!actor.intentQueue || actor.intentQueue.length === 0)) {
                 setEnemyIntentQueue(actor, actor.ap);
             }
-            updateUI(); 
-            if (checkGameOver()) return; 
+            updateUI();
+            if (checkGameOver()) return;
         }
     } catch (err) {
         console.error("적 턴 에러:", err);
     } finally {
-        if(el) el.classList.remove('turn-active');
+        if (el) el.classList.remove('turn-active');
         await sleep(500);
         processTimeline();
     }
@@ -5705,23 +5716,23 @@ function useCard(user, target, cardName) {
                 addStatusCardToCombat(data.statusAdd.card, data.statusAdd.count || 1, data.statusAdd.destination || 'discard');
             }
         }
-            if (data.heal) {
-                if (user === player) {
-                    user.mental = Math.min(100, user.mental + data.heal);
-                    log(`🌿 의지 회복 +${data.heal}`);
-                    showDamageText(user, `💚+${data.heal}`);
-                } else {
-                    user.hp = Math.min(100, user.hp + data.heal);
-                }
-                updateUI(); 
+        if (data.heal) {
+            if (user === player) {
+                user.mental = Math.min(100, user.mental + data.heal);
+                log(`🌿 의지 회복 +${data.heal}`);
+                showDamageText(user, `💚+${data.heal}`);
+            } else {
+                user.hp = Math.min(100, user.hp + data.heal);
             }
+            updateUI();
+        }
         if (data.special === "gamble_lie") {
             if (Math.random() < 0.5) {
                 log("🎲 거짓말 성공! 상대가 크게 동요합니다.");
                 takeDamage(target, 40);
             } else {
                 log("💦 거짓말을 들켰습니다! 망신살이 뻗칩니다.");
-                takeDamage(user, 20); 
+                takeDamage(user, 20);
             }
         }
         if (game.state === "social" && user === player && data.profilingGain && !data.block) {
@@ -5732,7 +5743,7 @@ function useCard(user, target, cardName) {
         if (data.special === "summon") {
             if (user === player) {
                 log("🚫 플레이어는 부하를 부를 수 없습니다.");
-                return; 
+                return;
             } else {
                 playAnim(userId, 'anim-bounce');
                 summonMinion(data.summonTarget);
@@ -5915,7 +5926,7 @@ function useCard(user, target, cardName) {
                 }
             }
         }
-        
+
         if (data.special === "cure_anger") {
             if (target.buffs["분노"]) { delete target.buffs["분노"]; log("😌 상대가 분노를 가라앉혔습니다."); }
             if (target.buffs["우울"]) { delete target.buffs["우울"]; log("😐 상대가 평정심을 찾았습니다."); }
@@ -5923,12 +5934,12 @@ function useCard(user, target, cardName) {
     }
 
     if (data.block) {
-      let statType = (game.state === "social") ? 'socialDef' : 'def';
+        let statType = (game.state === "social") ? 'socialDef' : 'def';
         let finalBlock = data.block + getStat(user, statType);
         user.block += finalBlock;
         let defenseText = (game.state === "social") ? "논리 방어" : "방어도";
         log(`🛡️ ${defenseText} +${finalBlock}`);
-        updateUI(); 
+        updateUI();
         if (game.state === "social" && user === player) {
             const gain = Number(data.profilingGain || 5);
             addProfiling(gain);
@@ -5937,17 +5948,17 @@ function useCard(user, target, cardName) {
 
     if (data.buff) {
         let buffName = data.buff.name;
-        let buffTarget = (data.target === "self" || ["강화","건강","쾌속","활력","가시"].includes(buffName)) ? user : target;
+        let buffTarget = (data.target === "self" || ["강화", "건강", "쾌속", "활력", "가시"].includes(buffName)) ? user : target;
         applyBuff(buffTarget, buffName, data.buff.val);
     }
     if (Array.isArray(data.buffs)) {
         data.buffs.forEach(b => {
             if (!b || !b.name) return;
-            let buffTarget = (data.target === "self" || ["강화","건강","쾌속","활력","가시"].includes(b.name)) ? user : target;
+            let buffTarget = (data.target === "self" || ["강화", "건강", "쾌속", "활력", "가시"].includes(b.name)) ? user : target;
             applyBuff(buffTarget, b.name, b.val);
         });
     }
-    
+
     if (data.draw && user === player) {
         drawCards(data.draw);
         log(`🃏 카드를 ${data.draw}장 뽑았습니다.`);
@@ -6102,7 +6113,7 @@ function summonMinion(enemyKey) {
         name: `${data.name} (증원)`, // 이름 뒤에 표식 추가
         maxHp: maxHp, hp: maxHp,
         baseAtk: atk, baseDef: def, baseSpd: spd,
-        block: 0, buffs: {}, 
+        block: 0, buffs: {},
         deck: getEnemyDeck(data.deckType), // 덱 생성
         img: data.img,
         ag: 0 // 행동 게이지 0부터 시작 (바로 턴 잡지 않음)
@@ -6118,13 +6129,13 @@ function summonMinion(enemyKey) {
     el.id = `enemy-unit-${newId}`;
     wrapper.appendChild(el);
 
-    updateUI(); 
-    
+    updateUI();
+
     // 등장 효과
     setTimeout(() => {
         let createdEl = document.getElementById(`enemy-unit-${newId}`);
-        if(createdEl) {
-           createdEl.style.transform = "scale(1.1)";
+        if (createdEl) {
+            createdEl.style.transform = "scale(1.1)";
             setTimeout(() => createdEl.style.transform = "scale(1)", 200);
             showDamageText(newEnemy, "APPEAR!");
         }
@@ -6173,18 +6184,18 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
             }
         }
     }
-    
+
     // 1. 방어(멘탈 방어) 계산
     if (target.block > 0) {
         if (target.block >= dmg) {
             blocked = dmg;
             target.block -= dmg;
-            dmg = 0; 
+            dmg = 0;
             showDamageText(target, "BLOCK");
         } else {
             blocked = target.block;
             dmg -= target.block;
-            target.block = 0; 
+            target.block = 0;
         }
     }
 
@@ -6193,7 +6204,7 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
     if (dmg > 0) {
         let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
         playAnim(targetId, 'anim-hit');
-        
+
         if (game.state === "social") {
             // [변경] 소셜 모드: 'mental'(플레이어) 또는 'hp'(NPC)를 깎음
             if (target === player) {
@@ -6206,9 +6217,9 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
                 showDamageText(target, `💢-${dmg}`);
             }
         } else {
-          // [수정] 전투 데미지: 치명타 시 로그 및 텍스트 변경
+            // [수정] 전투 데미지: 치명타 시 로그 및 텍스트 변경
             target.hp -= dmg;
-            
+
             if (isCrit) {
                 log(`⚡ <b>치명타 적중!</b> 💥${dmg} 피해! (HP: ${target.hp})`);
                 showDamageText(target, `⚡CRIT! -${dmg}`, true); // true = 치명타 스타일 적용
@@ -6218,7 +6229,7 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
             }
         }
     }
-    
+
     // 2.5 가시/반사: 공격받으면 반격 (전투 전용)
     const isAttackHit = !!(meta && meta.isAttack);
     if (game.state === "battle" && source && target?.buffs && isAttackHit && !(meta && (meta.isThorns || meta.isReflect))) {
@@ -6243,11 +6254,11 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
     // 3. 사망/패배 체크 (즉시 호출하지 않고 checkGameOver가 턴 루프에서 감지하게 함)
     // 단, 플레이어 주마등 처리는 즉시 해야 함
     if (game.state !== "social" && target === player && target.hp <= 0) {
-        if (!target.jumadeung) { 
-            target.hp=1; 
-            target.jumadeung=true; 
-            log("⚡ [주마등] 버티기!"); 
-            updateUI(); 
+        if (!target.jumadeung) {
+            target.hp = 1;
+            target.jumadeung = true;
+            log("⚡ [주마등] 버티기!");
+            updateUI();
         } else {
             // 보스전 등에서 사망 처리가 누락되는 경우를 방지하기 위해 즉시 체크
             checkGameOver();
@@ -6262,13 +6273,13 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
 }
 /* [수정] 승패 판정 로직 (전체 코드) */
 function checkGameOver() {
-// 0. 이미 게임오버 상태라면 중복 실행 방지
+    // 0. 이미 게임오버 상태라면 중복 실행 방지
     if (game.state === "gameover") return true;
     // 승리 상태면 추가 진행 중단
     if (game.state === "win") return true;
 
     // 1. [물리적 사망] HP 0
-    if (player.hp <= 0) { 
+    if (player.hp <= 0) {
         const reviveItem = consumeReviveItem();
         if (reviveItem) {
             player.hp = Math.max(1, Math.floor(player.maxHp * 0.4));
@@ -6283,42 +6294,42 @@ function checkGameOver() {
         game.state = "gameover"; // 상태 잠금
         showPopup("💀 사망", "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.", [
             {
-                txt: "다시 하기 (초기화)", 
+                txt: "다시 하기 (초기화)",
                 func: () => {
                     // [핵심 수정] 세이브 파일을 지우고 새로고침해야 처음으로 돌아갑니다.
-                    localStorage.removeItem('midnight_rpg_save'); 
-                    location.reload(); 
-                }
-            }
-        ]); 
-        return true; 
-    }
-    
-    // 2. [정신적 사망] SP 0
-    if (player.sp <= 0) {
-        game.state = "gameover"; // 상태 잠금
-        showPopup("🤪 발광(Insanity)", "공포를 견디지 못하고 정신이 붕괴되었습니다.<br>당신은 어둠 속으로 사라집니다...", [
-            {
-                txt: "다시 하기 (초기화)", 
-                func: () => {
-                    // [핵심 수정] 세이브 파일을 지우고 새로고침
-                    localStorage.removeItem('midnight_rpg_save'); 
-                    location.reload(); 
+                    localStorage.removeItem('midnight_rpg_save');
+                    location.reload();
                 }
             }
         ]);
         return true;
     }
-if (game.state === "social") {
+
+    // 2. [정신적 사망] SP 0
+    if (player.sp <= 0) {
+        game.state = "gameover"; // 상태 잠금
+        showPopup("🤪 발광(Insanity)", "공포를 견디지 못하고 정신이 붕괴되었습니다.<br>당신은 어둠 속으로 사라집니다...", [
+            {
+                txt: "다시 하기 (초기화)",
+                func: () => {
+                    // [핵심 수정] 세이브 파일을 지우고 새로고침
+                    localStorage.removeItem('midnight_rpg_save');
+                    location.reload();
+                }
+            }
+        ]);
+        return true;
+    }
+    if (game.state === "social") {
         let npc = enemies[0];
 
         // 1. [승리] NPC의 의지이 0이 됨 -> 정보 획득
-        if (npc.hp <= 0) { 
+        if (npc.hp <= 0) {
             game.winMsg = `<span style='color:#3498db'>🤝 설득 성공!</span><br>${npc.name}의 의지을 허물었습니다.`;
             endSocialBattle(true);
             return true;
-        } 
-        
+        }
+
         // 2. [패배] 내 의지이 0이 됨 -> 선택지 발생
         if (player.mental <= 0) {
             // 게임 오버가 아님! 선택지 팝업 호출
@@ -6350,47 +6361,47 @@ if (game.state === "social") {
         // 안전장치: enemies가 비어있거나 정의되지 않은 경우도 승리 처리
         if (!enemies || enemies.length === 0 || aliveEnemies.length === 0) {
             // 중복 승리 처리 방지
-            if(game.state === "win") return true; 
-            
+            if (game.state === "win") return true;
+
             game.state = "win";
-            
+
             // --- 보상 계산 ---
             // 1. 골드 (럭키피스 카드 효과가 있다면 2배)
-            let rewardGold = 1000 * (player.lucky ? 2 : 1); 
-            player.gold += rewardGold; 
-            
+            let rewardGold = 1000 * (player.lucky ? 2 : 1);
+            player.gold += rewardGold;
+
             // 2. 경험치 (기본 40 + 레벨당 10)
             let gainXp = 40 + (game.level * 10);
             player.xp += gainXp;
-            
+
             // 승리 메시지 생성
-            game.winMsg = `승리! <span style="color:#f1c40f">${rewardGold}원</span>, <span style="color:#3498db">${gainXp} XP</span> 획득.`; 
+            game.winMsg = `승리! <span style="color:#f1c40f">${rewardGold}원</span>, <span style="color:#3498db">${gainXp} XP</span> 획득.`;
             if (player.lucky) game.winMsg += " (🍀럭키피스 효과!)";
-            
+
             // 3. 전리품(아이템) 드랍 (확률 50%)
             game.pendingLoot = null;
-            if (Math.random() < 0.5) { 
-                game.pendingLoot = getRandomItem(null, { categories: ["general"] }); 
-                game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`; 
+            if (Math.random() < 0.5) {
+                game.pendingLoot = getRandomItem(null, { categories: ["general"] });
+                game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`;
             }
-            
-            updateUI(); 
+
+            updateUI();
             renderWinPopup(); // 승리 팝업 호출
             return true;
         }
     }
-    
+
     return false; // 게임이 아직 끝나지 않음
 }
 /* [NEW] 소셜 배틀 종료 처리 */
 function endSocialBattle(success) {
     if (game.state === "win") return;
     game.state = "win";
-    
+
     // 보상: 대량의 단서
     let clueGain = 25;
     game.scenario.clues = Math.min(100, game.scenario.clues + clueGain);
-    
+
     // UI 갱신 후 팝업
     updateUI();
     showPopup("대화 종료", game.winMsg + `<br><br><b>단서 획득 (+${clueGain})</b>`, [
@@ -6408,18 +6419,18 @@ function showSocialLossPopup(npcName) {
     `;
 
     showPopup("💬 협상 실패", msg, [
-        { 
-            txt: "👊 무력 행사 (전투 돌입)", 
-            func: () => { 
-                closePopup(); 
+        {
+            txt: "👊 무력 행사 (전투 돌입)",
+            func: () => {
+                closePopup();
                 // 체력 페널티 없이 바로 전투 시작? 아니면 약간의 불리함?
                 // 여기선 '기습 실패'로 간주하여 적의 턴게이지를 채워주는 식으로 구현 가능
-                forcePhysicalBattle(); 
+                forcePhysicalBattle();
             }
         },
-        { 
-            txt: "🏃 포기하고 떠나기", 
-            func: () => { 
+        {
+            txt: "🏃 포기하고 떠나기",
+            func: () => {
                 closePopup();
                 log("패배를 인정하고 물러납니다...");
                 // 보상 없이 복귀
@@ -6432,7 +6443,7 @@ function showSocialLossPopup(npcName) {
 /* [NEW] 무력 행사 확인 팝업 */
 function confirmForceBattle() {
     showPopup("👊 무력 행사", "대화를 중단하고 공격하시겠습니까?<br><span style='color:#e74c3c; font-size:0.8em;'>※ 적이 전투 태세를 갖춥니다.</span>", [
-        { txt: "공격 개시!", func: () => { closePopup(); forcePhysicalBattle(); }},
+        { txt: "공격 개시!", func: () => { closePopup(); forcePhysicalBattle(); } },
         { txt: "취소", func: closePopup }
     ]);
 }
@@ -6445,17 +6456,17 @@ function forcePhysicalBattle() {
     // NPC 원본 데이터 찾기
     // (이름으로 매칭. 만약 '부패 경찰 A' 처럼 변형되었다면 split 필요하지만 소셜은 보통 1:1이라 이름 그대로 씀)
     let npcData = NPC_DATA[currentEnemy.name];
-    
+
     if (!npcData || !npcData.battle) {
         log("🚫 전투 데이터가 없는 NPC입니다.");
         return;
     }
 
     log("⚔️ <b>협상 결렬! 적이 무기를 꺼내 듭니다!</b>");
-    
+
     // 1. 모드 변경
     game.state = "battle";
-    
+
     // 2. 플레이어 덱 복구 (전투 덱으로)
     player.drawPile = [...player.deck];
     shuffle(player.drawPile);
@@ -6463,29 +6474,29 @@ function forcePhysicalBattle() {
     player.exhaustPile = [];
     player.hand = [];
     player.block = 0; // 방어도 초기화
-    renderHand(); 
+    renderHand();
 
     // 3. [핵심] 적 상태를 '전투 모드'로 변신
     let bData = npcData.battle;
-    
+
     currentEnemy.maxHp = bData.maxHp;
     currentEnemy.hp = bData.maxHp;
-    
+
     currentEnemy.baseAtk = bData.stats.atk;
     currentEnemy.baseDef = bData.stats.def;
     currentEnemy.baseSpd = bData.stats.spd;
-    
+
     currentEnemy.deck = bData.deck; // 전투용 덱 장착
-    
+
     // 소셜 속성 제거 (깔끔하게)
     delete currentEnemy.maxSp;
-    delete currentEnemy.patience; 
-    
+    delete currentEnemy.patience;
+
     // 4. UI 갱신 및 전투 재개
     updateUI();
-    
+
     // 플레이어 선공 보너스 (기습)
-    player.ag = game.AG_MAX; 
+    player.ag = game.AG_MAX;
     processTimeline();
 }
 
@@ -6494,7 +6505,7 @@ function forcePhysicalBattle() {
 function runRandomEvent() {
     if (game.forceRest) {
         game.forceRest = false;
-        
+
         game.hasRested = false; // [NEW] 휴식 여부 초기화
         renderRestScreen();
         return;
@@ -6514,7 +6525,7 @@ function runRandomEvent() {
 function renderRestScreen() {
     switchScene('event');
     const container = document.getElementById('event-content-box');
-    
+
     const restNpcKey = "사무소 조수";
     const restNpc = (typeof NPC_DATA !== "undefined" && NPC_DATA) ? NPC_DATA[restNpcKey] : null;
     const restNpcName = restNpc?.name || "조수";
@@ -6564,22 +6575,22 @@ function restAction() {
     let maxHeal = Math.floor(player.maxHp / 2); // 체력 50%
     let missingHp = player.maxHp - player.hp;
     let actualHeal = Math.min(maxHeal, missingHp);
-    
+
     // [수정] 이성(SP) 회복량 조정 (30 -> 10)
-    let spHeal = 10; 
+    let spHeal = 10;
     player.sp = Math.min(player.maxSp, player.sp + spHeal);
-    
+
     player.hp += actualHeal;
-    game.hasRested = true; 
-    
+    game.hasRested = true;
+
     updateUI();
-    
+
     showPopup("휴식 완료", `체력이 ${actualHeal}, 이성이 ${spHeal}만큼 회복되었습니다.<br>이제 출발 준비가 되셨나요?`, [
         {
-            txt: "확인", 
+            txt: "확인",
             func: () => {
                 closePopup();
-                renderRestScreen(); 
+                renderRestScreen();
             }
         }
     ]);
@@ -6597,7 +6608,7 @@ function exitRestArea() {
 /* [game.js] renderShopScreen 함수 전체 교체 */
 function renderShopScreen(shopType = "shop_black_market") {
     switchScene('event');
-    
+
     // [핵심] 상점 전용 와이드 스타일 적용
     const container = document.getElementById('event-content-box');
     container.classList.add('shop-mode');
@@ -6605,25 +6616,25 @@ function renderShopScreen(shopType = "shop_black_market") {
     // 1. 상점 설정
     let shopTitle = "상점";
     let shopDesc = "물건을 보고 가세요.";
-    let poolRank = 1; 
+    let poolRank = 1;
     let cardCount = 3;
     let itemCount = 2;
     let itemCategories = null;
-    
+
     if (shopType === "shop_black_market") {
         shopTitle = "💀 뒷골목 암시장";
         shopDesc = "출처는 묻지 마쇼. 싸게 넘길 테니.";
-        poolRank = 1; 
+        poolRank = 1;
         itemCategories = ["general"];
     } else if (shopType === "shop_pharmacy") {
         shopTitle = "💊 24시 드럭스토어";
         shopDesc = "회복약과 생필품이 있습니다.";
-        poolRank = 1; 
+        poolRank = 1;
         itemCategories = ["pharmacy"];
     } else if (shopType === "shop_high_end") {
         shopTitle = "💎 아라사카 부티크";
         shopDesc = "최고급 장비만을 취급합니다.";
-        poolRank = 2; 
+        poolRank = 2;
         itemCategories = ["general"];
     } else if (shopType === "shop_occult") {
         shopTitle = "🪔 도깨비 만물상";
@@ -6678,7 +6689,7 @@ function renderShopScreen(shopType = "shop_black_market") {
         itemsForSale.push(candidate);
     }
 
-    let removeCost = 200 + (player.deck.length * 10); 
+    let removeCost = 200 + (player.deck.length * 10);
 
     // 3. HTML 구조 생성 (3단 레이아웃 + 우하단 버튼)
     container.innerHTML = `
@@ -6723,8 +6734,8 @@ function renderShopScreen(shopType = "shop_black_market") {
     const cardContainer = document.getElementById('shop-cards');
     cardsForSale.forEach(cName => {
         let data = getEffectiveCardData(cName) || CARD_DATA[cName];
-        let price = data.rank * 150 + Math.floor(Math.random()*50);
-        if (shopType === "shop_high_end") price *= 2; 
+        let price = data.rank * 150 + Math.floor(Math.random() * 50);
+        if (shopType === "shop_high_end") price *= 2;
         if (shopType === "shop_black_market") price = Math.floor(price * 0.8);
         if (shopType === "shop_occult") price = Math.floor(price * 1.2);
         if (shopType === "shop_herbal") price = Math.floor(price * 1.1);
@@ -6757,7 +6768,7 @@ function renderShopScreen(shopType = "shop_black_market") {
     itemsForSale.forEach(iName => {
         let data = ITEM_DATA[iName];
         let price = data.price;
-        if (shopType === "shop_black_market") price = Math.floor(price * 0.7); 
+        if (shopType === "shop_black_market") price = Math.floor(price * 0.7);
         if (shopType === "shop_high_end") price = Math.floor(price * 1.5);
         if (shopType === "shop_occult") price = Math.floor(price * 1.2);
         if (shopType === "shop_herbal") price = Math.floor(price * 1.1);
@@ -6794,31 +6805,31 @@ function addCardToAppropriateDeck(cardName) {
 // [수정] buyShopItem: alert -> showPopup
 function buyShopItem(el, type, name, cost) {
     if (el.classList.contains('sold-out')) return;
-    
+
     // [수정] 잔액 부족 알림
-    if (player.gold < cost) { 
-        showPopup("잔액 부족", "소지금이 부족합니다.", [{txt: "확인", func: closePopup}]); 
-        return; 
+    if (player.gold < cost) {
+        showPopup("잔액 부족", "소지금이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+        return;
     }
 
     if (type === 'card') {
         player.gold -= cost;
         const deckLabel = addCardToAppropriateDeck(name);
-        
+
         // [수정] 구매 완료 알림
-        showPopup("구매 성공", `[${name}] 구매 완료!<br>${deckLabel}에 바로 추가되었습니다.`, [{txt: "확인", func: closePopup}]);
-        
+        showPopup("구매 성공", `[${name}] 구매 완료!<br>${deckLabel}에 바로 추가되었습니다.`, [{ txt: "확인", func: closePopup }]);
+
         el.classList.add('sold-out');
         el.style.opacity = 0.5;
         updateUI();
         autoSave();
-    } 
+    }
     else {
         const onBuySuccess = () => {
             player.gold -= cost;
             // [수정] 구매 완료 알림
-            showPopup("구매 성공", `[${name}] 구매 완료!`, [{txt: "확인", func: closePopup}]);
-            
+            showPopup("구매 성공", `[${name}] 구매 완료!`, [{ txt: "확인", func: closePopup }]);
+
             el.classList.add('sold-out');
             el.style.opacity = 0.5;
             updateUI();
@@ -6826,7 +6837,7 @@ function buyShopItem(el, type, name, cost) {
         };
 
         let result = addItem(name, onBuySuccess);
-        
+
         if (result === false) {
             let data = ITEM_DATA[name];
             // [수정] 중복 알림
@@ -6834,7 +6845,7 @@ function buyShopItem(el, type, name, cost) {
                 showPopup(
                     "중복 불가",
                     data.usage === 'equip' ? "이미 보유하고 있는 장비입니다." : "이미 보유하고 있는 유물입니다.",
-                    [{txt: "확인", func: closePopup}]
+                    [{ txt: "확인", func: closePopup }]
                 );
             }
         }
@@ -6843,24 +6854,24 @@ function buyShopItem(el, type, name, cost) {
 // [수정] processCardRemoval: alert -> showPopup
 function processCardRemoval(idx, cost) {
     if (player.deck.length <= 5) {
-        showPopup("불가", "최소 5장의 카드는 남겨야 합니다.", [{txt: "확인", func: closePopup}]);
+        showPopup("불가", "최소 5장의 카드는 남겨야 합니다.", [{ txt: "확인", func: closePopup }]);
         return;
     }
 
     let removed = player.deck.splice(idx, 1)[0];
     player.gold -= cost;
-    
+
     // 팝업 닫고 알림 (여기서 closePopup은 카드 선택 팝업을 닫는 용도)
-    closePopup(); 
-    
+    closePopup();
+
     // [수정] 제거 완료 알림
     setTimeout(() => {
-        showPopup("제거 완료", `[${removed}] 카드를 태워버렸습니다.`, [{txt: "확인", func: closePopup}]);
+        showPopup("제거 완료", `[${removed}] 카드를 태워버렸습니다.`, [{ txt: "확인", func: closePopup }]);
     }, 100);
-    
+
     updateUI();
     autoSave();
-    
+
     // 상점 리로드 (임시)
     const container = document.getElementById('event-content-box');
     if (container && container.classList.contains('shop-mode')) {
@@ -6877,10 +6888,10 @@ function processCardRemoval(idx, cost) {
 
     let removed = player.deck.splice(idx, 1)[0];
     player.gold -= cost;
-    
+
     closePopup();
     showPopup(`[${removed}] 카드를 태워버렸습니다.`);
-    
+
     // 상점 화면 갱신 (돈 줄어든 거 반영)
     // 현재 상점 타입을 알기 어려우므로 간단히 다시 렌더링하거나 UI만 업데이트
     updateUI();
@@ -6896,11 +6907,11 @@ function switchScene(sceneName) {
     if (eventBox) eventBox.classList.remove('shop-mode');
     // [핵심] 플레이어가 죽었거나 게임오버 상태면 화면 전환 금지 (캐릭터 생성 화면 제외)
     if (sceneName !== 'char-creation' && (game.state === "gameover" || player.hp <= 0 || player.sp <= 0)) {
-        return; 
+        return;
     }
     // 1. 모든 장면 숨기기
     const scenes = [
-        'hub-scene', 'city-scene', 'exploration-scene', 
+        'hub-scene', 'city-scene', 'exploration-scene',
         'event-scene', 'deck-scene', 'storage-scene',
         'result-scene', 'story-scene',
         'char-creation-scene'
@@ -6912,24 +6923,24 @@ function switchScene(sceneName) {
     });
 
     document.getElementById('popup-layer').style.display = 'none';
-    
+
     // 2. 선택된 장면만 보여주기
     if (sceneName === 'battle') sceneName = 'exploration';
-    
+
     let targetId = sceneName + '-scene';
     let targetEl = document.getElementById(targetId);
-    
+
     // [★수정] 대상 화면이 없는 경우(캐시 문제 등) 에러 방지
     if (targetEl) {
         targetEl.classList.remove('hidden');
-        
+
         // [NEW] 인벤토리 버튼 제어 (캐릭터 생성 중에는 숨김)
         const invBtn = document.getElementById('btn-main-inventory');
         const statsBtn = document.getElementById('btn-player-stats');
         const btnVisible = sceneName !== 'char-creation';
-        
+
         if (invBtn) invBtn.style.display = btnVisible ? 'inline-block' : 'none';
-        
+
         const cardBtn = document.getElementById('btn-card-collection');
         if (cardBtn) cardBtn.style.display = btnVisible ? 'inline-block' : 'none';
         if (statsBtn) statsBtn.style.display = btnVisible ? 'inline-block' : 'none';
@@ -6939,17 +6950,17 @@ function switchScene(sceneName) {
         console.error(`[Error] 화면을 찾을 수 없습니다: ${targetId}`);
         showPopup("화면 로딩 실패! 페이지를 새로고침 해주세요.\n(브라우저 캐시 문제일 수 있습니다.)");
         // 강제로 허브로 보내거나 재시도
-        if(sceneName !== 'hub') switchScene('hub');
+        if (sceneName !== 'hub') switchScene('hub');
     }
 }
 /* [game.js] renderResultScreen 수정 */
 function renderResultScreen() {
-    game.state = "result"; 
+    game.state = "result";
     switchScene('result');
-    
+
     const scId = (game.scenario && game.scenario.id) || game.activeScenarioId;
     let rewardData = (scId && SCENARIOS[scId]) ? SCENARIOS[scId].reward : { gold: 100, xp: 50, itemRank: 1 };
-    
+
     let finalGold = rewardData.gold;
     let finalXp = rewardData.xp;
     if (player.lucky) finalGold = Math.floor(finalGold * 1.5);
@@ -6975,11 +6986,11 @@ function renderResultScreen() {
             itemReward = newItem;
         }
     }
-    
+
     document.getElementById('res-gold').innerText = `+${finalGold} 원`;
     document.getElementById('res-xp').innerText = `+${finalXp} XP`;
     document.getElementById('res-item').innerText = itemReward;
-    
+
     if (scId && SCENARIOS[scId]) {
         SCENARIOS[scId].cleared = true;
     }
@@ -6990,7 +7001,7 @@ function returnToHub() {
     // 상태 초기화
     game.activeScenarioId = null;
     game.scenario = null;
-    
+
     // 레벨업 체크 (보상으로 경험치를 받았으므로)
     if (player.xp >= player.maxXp) {
         processLevelUp(); // 레벨업 팝업 띄우고, 닫으면 허브로 가도록 유도
@@ -7010,7 +7021,7 @@ function calculateTP() {
         let t = TRAIT_DATA[tKey];
         if (t) usedPoints += t.cost;
     });
-    
+
     // 시작 포인트 0 - 사용한 포인트
     // (부정적 특성은 cost가 음수이므로 빼면 더해짐 => 포인트 획득)
     currentTP = 0 - usedPoints;
@@ -7019,13 +7030,13 @@ function calculateTP() {
 /* [game.js] getStat 함수 전면 수정 (6대 스탯 기반 상태이상 분리) */
 function getStat(entity, type) {
     let val = 0;
-    
+
     // [1] 플레이어: 스탯 기반 보정치 계산
     if (entity === player) {
         let rawVal = 0;
         const activeItems = getActivePassiveItemNames();
         const bonusStats = getTotalBonusStats(activeItems);
-        
+
         switch (type) {
             case 'atk': rawVal = player.stats.str; break; // 물리공격 <- 근력
             case 'def': rawVal = player.stats.con; break; // 물리방어 <- 건강
@@ -7053,7 +7064,7 @@ function getStat(entity, type) {
         } else {
             val = mod; // 공격/방어는 음수 가능 (패널티)
         }
-    } 
+    }
     // [2] 적: 기본 스탯 사용
     else {
         if (type === 'socialAtk') val = entity.baseAtk;
@@ -7064,29 +7075,29 @@ function getStat(entity, type) {
     }
 
     // [3] 상태이상(버프/디버프) 적용 - ★ 핵심 수정 파트
-    
+
     // 1. 물리 공격력 (근력 기반)
-    if (type === 'atk') { 
+    if (type === 'atk') {
         if (entity.buffs["강화"]) val = Math.floor(val * 1.5) + 2; // 50% 증가 + 2
         if (entity.buffs["약화"]) val = Math.floor(val * 0.5);     // 50% 감소
-    } 
-    
+    }
+
     // 2. 물리 방어력 (건강 기반)
-    else if (type === 'def') { 
-        if (entity.buffs["건강"]) val = Math.floor(val * 1.5) + 2; 
-        if (entity.buffs["취약"]) val = Math.floor(val * 0.5); 
-    } 
-    
+    else if (type === 'def') {
+        if (entity.buffs["건강"]) val = Math.floor(val * 1.5) + 2;
+        if (entity.buffs["취약"]) val = Math.floor(val * 0.5);
+    }
+
     // 3. 속도 (민첩 기반)
-    else if (type === 'spd') { 
-        if (entity.buffs["쾌속"]) val = Math.floor(val * 1.5) + 1; 
-        if (entity.buffs["마비"]) val = Math.floor(val * 0.5); 
+    else if (type === 'spd') {
+        if (entity.buffs["쾌속"]) val = Math.floor(val * 1.5) + 1;
+        if (entity.buffs["마비"]) val = Math.floor(val * 0.5);
     }
 
     // 4. 소셜 공격력 (매력 기반) - ★ 물리 버프 영향 제외
     else if (type === 'socialAtk') {
         // '우울'은 감정이 격해져 공격성이 늘어나는 컨셉
-        if (entity.buffs["우울"]) val = Math.floor(val * 1.5) + 2; 
+        if (entity.buffs["우울"]) val = Math.floor(val * 1.5) + 2;
         // '약화'는 물리적이므로 소셜엔 영향 없음 (혹은 미미하게)
     }
 
@@ -7096,7 +7107,7 @@ function getStat(entity, type) {
         if (entity.buffs["헤롱헤롱"]) val = Math.floor(val * 0.5);
         // '건강' 버프는 몸이 튼튼한 거지 멘탈이 센 게 아니므로 제외
     }
-    
+
     return val;
 }
 // [game.js] 특성 추가/제거 함수(이벤트용)
@@ -7105,21 +7116,21 @@ function getStat(entity, type) {
 function addTrait(key) {
     if (player.traits.includes(key)) return;
     player.traits.push(key);
-    
+
     let t = TRAIT_DATA[key];
     if (t.onAcquire) t.onAcquire(player);
     ensureCurseCardForTrait(key);
-    
+
     recalcStats();
-    showPopup("특성 획득", `[${t.name}]<br>${t.desc}`, [{txt: "확인", func: closePopup}]);
+    showPopup("특성 획득", `[${t.name}]<br>${t.desc}`, [{ txt: "확인", func: closePopup }]);
 }
 
 function removeTrait(key) {
     if (!player.traits.includes(key)) return;
     player.traits = player.traits.filter(k => k !== key);
-    
+
     recalcStats();
-    showPopup("특성 제거", `${TRAIT_DATA[key].name} 특성이 사라졌습니다.`, [{txt: "확인", func: closePopup}]);
+    showPopup("특성 제거", `${TRAIT_DATA[key].name} 특성이 사라졌습니다.`, [{ txt: "확인", func: closePopup }]);
 }
 
 function applyBuff(entity, name, dur) {
@@ -7127,12 +7138,12 @@ function applyBuff(entity, name, dur) {
     if (name === "가시") {
         ensureThornsField(entity);
         entity.thorns = (entity.thorns || 0) + Number(dur || 0);
-        log(`✨ ${entity===player?"나":"적"}에게 [${name}] 적용`);
+        log(`✨ ${entity === player ? "나" : "적"}에게 [${name}] 적용`);
         return;
     }
     if (name === "독" || name === "활력" || name === "반사") entity.buffs[name] = (entity.buffs[name] || 0) + dur;
     else entity.buffs[name] = dur;
-    log(`✨ ${entity===player?"나":"적"}에게 [${name}] 적용`);
+    log(`✨ ${entity === player ? "나" : "적"}에게 [${name}] 적용`);
 }
 function tickBuffs(entity) {
     if (entity.buffs["독"]) { let dmg = entity.buffs["독"]; log(`☠️ 독 피해 ${dmg}!`); takeDamage(entity, dmg); }
@@ -7145,33 +7156,33 @@ function decrementBuffs(entity) {
     }
 }
 /* [수정] 특정 랭크 카드 추가 (소셜 카드 제외) */
-function addRandomCard(rank) { 
-    let pool = Object.keys(CARD_DATA).filter(k => 
-        CARD_DATA[k].rank === rank && 
+function addRandomCard(rank) {
+    let pool = Object.keys(CARD_DATA).filter(k =>
+        CARD_DATA[k].rank === rank &&
         CARD_DATA[k].type !== "social" && // ★ 핵심: 소셜 카드 제외
         isCardRewardableForPlayer(k, { onlyJob: true })
-    ); 
-    if(pool.length > 0) {
-        player.deck.push(pool[Math.floor(Math.random() * pool.length)]); 
+    );
+    if (pool.length > 0) {
+        player.deck.push(pool[Math.floor(Math.random() * pool.length)]);
     }
 }
 /* [수정] 랜덤 카드 획득 (소셜 카드 제외) */
-function getRandomCard() { 
-    let r = Math.random() * 100; 
-    let rank = (r < 70) ? 1 : (r < 95) ? 2 : 3; 
-    
-    let pool = Object.keys(CARD_DATA).filter(k => 
-        CARD_DATA[k].rank === rank && 
+function getRandomCard() {
+    let r = Math.random() * 100;
+    let rank = (r < 70) ? 1 : (r < 95) ? 2 : 3;
+
+    let pool = Object.keys(CARD_DATA).filter(k =>
+        CARD_DATA[k].rank === rank &&
         CARD_DATA[k].type !== "social" && // ★ 핵심: 소셜 카드 제외
         isCardRewardableForPlayer(k, { onlyJob: true })
-    ); 
-    
+    );
+
     // 만약 풀이 비었다면 기본 카드 반환
-    if(pool.length === 0) return "타격";
-    
-    return pool[Math.floor(Math.random() * pool.length)]; 
+    if (pool.length === 0) return "타격";
+
+    return pool[Math.floor(Math.random() * pool.length)];
 }
-function getRandomItem(filter, opts = null) { 
+function getRandomItem(filter, opts = null) {
     const options = opts || {};
     const excludeOwnedEquip = !!options.excludeOwnedEquip;
     const excludeNames = options.excludeNames instanceof Set ? options.excludeNames : null;
@@ -7182,7 +7193,7 @@ function getRandomItem(filter, opts = null) {
 
     if (filter) {
         const normalized = filter.toLowerCase();
-        
+
         // allow filtering by either item.type or usage(consume/passive/equip)
         pool = pool.filter(key => {
             const item = ITEM_DATA[key];
@@ -7191,7 +7202,7 @@ function getRandomItem(filter, opts = null) {
             const typeMatch = item.type && item.type.toLowerCase() === normalized;
             const usageMatch = item.usage && item.usage.toLowerCase() === normalized;
             const consumeAlias = (normalized === "consumable" || normalized === "consume") && item.usage === "consume";
-            
+
             return typeMatch || usageMatch || consumeAlias;
         });
 
@@ -7224,17 +7235,17 @@ function getRandomItem(filter, opts = null) {
     }
 
     if (pool.length === 0) return null;
-    
+
     let chosenRank = fixedRank;
     if (!Number.isFinite(chosenRank)) {
-        let r = Math.random() * 100; 
-        chosenRank = (r < 70) ? 1 : (r < 90) ? 2 : 3; 
+        let r = Math.random() * 100;
+        chosenRank = (r < 70) ? 1 : (r < 90) ? 2 : 3;
     }
-    
-    let rankPool = pool.filter(k => ITEM_DATA[k].rank === chosenRank); 
-    if (rankPool.length === 0) rankPool = pool; 
-    
-    return rankPool[Math.floor(Math.random() * rankPool.length)]; 
+
+    let rankPool = pool.filter(k => ITEM_DATA[k].rank === chosenRank);
+    if (rankPool.length === 0) rankPool = pool;
+
+    return rankPool[Math.floor(Math.random() * rankPool.length)];
 }
 
 /* --- UI Render Helpers --- */
@@ -7286,21 +7297,21 @@ function drawCards(n) {
     const MAX_HAND_SIZE = 10; // 최대 핸드 매수
     ensureCardSystems(player);
 
-    for(let i=0; i<n; i++) {
+    for (let i = 0; i < n; i++) {
         // 1. 덱 리필 확인
         if (player.drawPile.length === 0) {
-            if (player.discardPile.length > 0) { 
-                log("🔄 덱을 섞습니다!"); 
-                player.drawPile = [...player.discardPile]; 
-                player.discardPile = []; 
-                shuffle(player.drawPile); 
+            if (player.discardPile.length > 0) {
+                log("🔄 덱을 섞습니다!");
+                player.drawPile = [...player.discardPile];
+                player.discardPile = [];
+                shuffle(player.drawPile);
             }
             else {
                 // 덱도 없고 버린 카드도 없으면 아예 뽑을 수 없음
-                break; 
+                break;
             }
         }
-        
+
         // 2. 일단 카드를 뽑음
         let card = player.drawPile.pop();
 
@@ -7315,13 +7326,13 @@ function drawCards(n) {
             // 공간이 없으면 바로 버림 패로 이동 (카드가 타버림)
             player.discardPile.push(card);
             log(`🔥 손패가 꽉 차서 [${card}] 카드가 버려졌습니다!`);
-            
+
             // 시각적 효과 (버림 카드 더미가 흔들림)
             playAnim('btn-discard-pile-floating', 'anim-bounce');
         }
     }
-    
-    renderHand(); 
+
+    renderHand();
     updateUI();
 }
 
@@ -7332,20 +7343,20 @@ function updateUI() {
 
     // 1. 상단 플레이어 정보
     const infoEl = document.getElementById('game-info');
-      if (infoEl) {
-          if (!game.started) {
-              infoEl.textContent = "";
-              infoEl.classList.add('hidden');
-          } else {
-              ensureTimeState();
-              infoEl.classList.remove('hidden');
-              infoEl.textContent = `${getTimeLabel()} | Lv.${game.level} | ${player.gold}G | HP ${player.hp}/${player.maxHp} | SP ${player.sp}/${player.maxSp}`;
-          }
-      }
+    if (infoEl) {
+        if (!game.started) {
+            infoEl.textContent = "";
+            infoEl.classList.add('hidden');
+        } else {
+            ensureTimeState();
+            infoEl.classList.remove('hidden');
+            infoEl.textContent = `${getTimeLabel()} | Lv.${game.level} | ${player.gold}G | HP ${player.hp}/${player.maxHp} | SP ${player.sp}/${player.maxSp}`;
+        }
+    }
 
     // 2. [NEW] 상단 시나리오 정보 (진척도/위협도)
     const topScInfo = document.getElementById('top-scenario-info');
-    
+
     // 활성화된 시나리오나 진행 중인 상태(탐사, 전투)일 때만 표시
     if (topScInfo) {
         if (game.started && game.scenario && game.scenario.isActive && (game.state === 'exploration' || game.state === 'battle' || game.state === 'social')) {
@@ -7366,13 +7377,13 @@ function updateUI() {
             doomPill.classList.add('hidden');
         }
     }
-// [★추가] 플로팅 AP 인디케이터 갱신
+    // [★추가] 플로팅 AP 인디케이터 갱신
     const apIndicator = document.getElementById('ap-indicator');
     if (apIndicator) {
         // 값 갱신
         document.getElementById('ap-val').innerText = player.ap;
         document.getElementById('ap-max').innerText = player.maxAp || 3;
-        
+
         // 시각 효과: AP가 없으면 회색으로 변함
         if (player.ap <= 0) {
             apIndicator.classList.add('low-ap');
@@ -7383,13 +7394,13 @@ function updateUI() {
         }
     }
     updatePileButtons();
-   // 3. ★ [핵심 수정] 플레이어 전투 정보 (HUD) 업데이트
+    // 3. ★ [핵심 수정] 플레이어 전투 정보 (HUD) 업데이트
     const pHud = document.getElementById('player-hud');
     if (pHud) {
         // 전투/소셜 모드일 때만 상세 정보 표시
         if (game.state === 'battle' || game.state === 'social') {
             let hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
-            
+
             // 소셜 모드일 경우 (멘탈 바)
             if (game.state === 'social') {
                 hpPct = Math.max(0, (player.mental / 100) * 100);
@@ -7409,7 +7420,7 @@ function updateUI() {
                         <div class="hud-value">${gauge}%</div>
                     </div>
                 `;
-            } 
+            }
             // 일반 전투 모드 (체력 바)
             else {
                 pHud.innerHTML = `
@@ -7419,7 +7430,7 @@ function updateUI() {
                     <div style="font-size:0.8em; color:#fff;">HP: ${player.hp} <span style="color:#f1c40f">🛡️${player.block}</span></div>
                 `;
             }
-            
+
             // 버프 표시 (툴팁 적용) + 가시(thorns) 별도 표기
             ensureThornsField(player);
             const entries = Object.entries(player.buffs || {});
@@ -7431,7 +7442,7 @@ function updateUI() {
                 const buffHtml = (typeof applyTooltip === 'function') ? applyTooltip(buffText) : buffText;
                 pHud.innerHTML += `<div class="status-effects" style="font-size:0.7em; color:#2ecc71; pointer-events:auto;" onclick="forwardClickThrough(event)" onmousedown="forwardClickThrough(event)">${buffHtml}</div>`;
             }
-            
+
         } else {
             // 탐사 모드일 때는 이름만 깔끔하게
             pHud.innerHTML = `<div style="font-size:0.9em; color:#aaa;">탐색 중...</div>`;
@@ -7483,104 +7494,104 @@ function updateUI() {
                 assistantHud.innerHTML = '';
             }
         }
-    // 내 현재 속성 아이콘들 표시 (공격/방어 분리)
-    const atkAttrs = getAttackAttrs(player) || [];
-    const defAttrs = getDefenseAttrs(player) || [];
+        // 내 현재 속성 아이콘들 표시 (공격/방어 분리)
+        const atkAttrs = getAttackAttrs(player) || [];
+        const defAttrs = getDefenseAttrs(player) || [];
 
-    const atkIconsHtml = atkAttrs.map(attr => {
-        return `<div class="player-attr-icon" title="공격 속성: ${attr}">${ATTR_ICONS[attr] || attr}</div>`;
-    }).join("");
-    const defIconsHtml = defAttrs.map(attr => {
-        return `<div class="player-attr-icon" style="border-color:#3498db;" title="방어 속성: ${attr}">${ATTR_ICONS[attr] || attr}</div>`;
-    }).join("");
+        const atkIconsHtml = atkAttrs.map(attr => {
+            return `<div class="player-attr-icon" title="공격 속성: ${attr}">${ATTR_ICONS[attr] || attr}</div>`;
+        }).join("");
+        const defIconsHtml = defAttrs.map(attr => {
+            return `<div class="player-attr-icon" style="border-color:#3498db;" title="방어 속성: ${attr}">${ATTR_ICONS[attr] || attr}</div>`;
+        }).join("");
 
-    if (atkIconsHtml || defIconsHtml) {
-        pHud.innerHTML += `
+        if (atkIconsHtml || defIconsHtml) {
+            pHud.innerHTML += `
             <div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:4px; align-items:center;">
                 ${atkIconsHtml ? `<span style="font-size:0.75em; color:#f1c40f; margin-right:4px;">⚔️</span>${atkIconsHtml}` : ""}
                 ${defIconsHtml ? `<span style="font-size:0.75em; color:#3498db; margin-left:8px; margin-right:4px;">🛡️</span>${defIconsHtml}` : ""}
             </div>
         `;
-    }
+        }
     }
     /* [game.js] updateUI 함수 내 적 렌더링 부분 수정 */
 
-// 4. 적 UI 업데이트
-if (enemies && enemies.length > 0) {
-    
-    enemies.forEach(e => {
-      
-        let el = document.getElementById(`enemy-unit-${e.id}`);
-        
-        // 요소가 없으면 renderEnemies를 통해 다시 생성 시도 (안전장치)
-        if (!el) {
-            renderEnemies();
-            el = document.getElementById(`enemy-unit-${e.id}`);
-            if (!el) return;
-        }
+    // 4. 적 UI 업데이트
+    if (enemies && enemies.length > 0) {
 
-        if (e.hp <= 0 && game.state !== "social") {
-            el.classList.add('dead');
-            el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
-            return;
-        } else {
-                el.classList.remove('dead');
-        }
-        el.classList.add('enemy-unit');
-        
-        let isSocialEnemy = (game.state === "social"); 
-        let hpPct = isSocialEnemy ? Math.min(100, Math.max(0, e.hp)) : Math.max(0, (e.hp / e.maxHp) * 100);
-        let barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
+        enemies.forEach(e => {
 
-        let intentIconsHtml = `<span class="intent-icon" title="행동 준비 중">💤</span>`;
-        if (e.intentQueue && e.intentQueue.length > 0) {
-            intentIconsHtml = e.intentQueue.map((intObj, idx) => {
-                const icon = intObj.icon || "❓";
-                const tip = intObj.tooltip || "준비 중";
-                const dmgText = intObj.damageText ? `<span class="intent-dmg">${intObj.damageText}</span>` : "";
-                return `<span class="intent-icon" title="${tip}" data-int-idx="${idx}">${icon}${dmgText}</span>`;
-            }).join(" ");
-        } else if (e.intent && e.intent.icon) {
-            const tip = e.intent.tooltip || "행동 준비 중";
-            const dmgText = e.intent.damageText ? `<span class="intent-dmg">${e.intent.damageText}</span>` : "";
-            intentIconsHtml = `<span class="intent-icon" title="${tip}">${e.intent.icon}${dmgText}</span>`;
-        }
-        
-        // 버프 텍스트 툴팁 적용 + 가시(thorns) 별도 표기
-        ensureThornsField(e);
-        const eEntries = Object.entries(e.buffs || {});
-        if ((e.thorns || 0) > 0) eEntries.push(["가시", e.thorns]);
-        const clueStacks = clueDebuff.getStacks(e);
-        if (clueStacks > 0) eEntries.push(["단서", clueStacks]);
-        if (e.isStunned) eEntries.push(["기절", 1]);
-        else if (e.isBroken) eEntries.push(["흐트러짐", 1]);
-        let buffTextRaw = eEntries.map(([k, v]) => `${k}(${v})`).join(', ');
-        let buffText = (typeof applyTooltip === 'function') ? applyTooltip(buffTextRaw) : buffTextRaw;
-        
-        // ★ [핵심 수정] 이미지 소스 안전 처리 (기본값 + 에러 핸들러)
-        let imgSrc = e.img;
-        if (!imgSrc || imgSrc === "") imgSrc = "https://placehold.co/100x100/555/fff?text=Enemy";
+            let el = document.getElementById(`enemy-unit-${e.id}`);
 
-        // 약점/상태 아이콘 처리
-        let weakIcon = "";
-        let statusIcon = "";
-        if (e.isStunned) statusIcon = "😵";
-        else if (e.isBroken) statusIcon = "💔";
-        // 1. 적의 종류(Key)를 확인
-        if (e.enemyKey) {
-            // 2. 플레이어가 이 적의 약점을 이미 발견했는지 확인
-            let knownWeakness = player.discoveredWeaknesses[e.enemyKey];
-            
-            // 3. 발견했다면 아이콘 표시, 아니면 빈 문자열(물음표 등으로 대체 가능)
-            if (knownWeakness && typeof ATTR_ICONS !== 'undefined') {
-                weakIcon = ATTR_ICONS[knownWeakness] || "";
-            } else {
-                // (선택사항) 아직 모를 때 '?'로 표시하고 싶다면 아래 주석 해제
-                weakIcon = "❓"; 
+            // 요소가 없으면 renderEnemies를 통해 다시 생성 시도 (안전장치)
+            if (!el) {
+                renderEnemies();
+                el = document.getElementById(`enemy-unit-${e.id}`);
+                if (!el) return;
             }
-        }
-        // HTML 덮어쓰기 (onerror 추가)
-        el.innerHTML = `
+
+            if (e.hp <= 0 && game.state !== "social") {
+                el.classList.add('dead');
+                el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
+                return;
+            } else {
+                el.classList.remove('dead');
+            }
+            el.classList.add('enemy-unit');
+
+            let isSocialEnemy = (game.state === "social");
+            let hpPct = isSocialEnemy ? Math.min(100, Math.max(0, e.hp)) : Math.max(0, (e.hp / e.maxHp) * 100);
+            let barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
+
+            let intentIconsHtml = `<span class="intent-icon" title="행동 준비 중">💤</span>`;
+            if (e.intentQueue && e.intentQueue.length > 0) {
+                intentIconsHtml = e.intentQueue.map((intObj, idx) => {
+                    const icon = intObj.icon || "❓";
+                    const tip = intObj.tooltip || "준비 중";
+                    const dmgText = intObj.damageText ? `<span class="intent-dmg">${intObj.damageText}</span>` : "";
+                    return `<span class="intent-icon" title="${tip}" data-int-idx="${idx}">${icon}${dmgText}</span>`;
+                }).join(" ");
+            } else if (e.intent && e.intent.icon) {
+                const tip = e.intent.tooltip || "행동 준비 중";
+                const dmgText = e.intent.damageText ? `<span class="intent-dmg">${e.intent.damageText}</span>` : "";
+                intentIconsHtml = `<span class="intent-icon" title="${tip}">${e.intent.icon}${dmgText}</span>`;
+            }
+
+            // 버프 텍스트 툴팁 적용 + 가시(thorns) 별도 표기
+            ensureThornsField(e);
+            const eEntries = Object.entries(e.buffs || {});
+            if ((e.thorns || 0) > 0) eEntries.push(["가시", e.thorns]);
+            const clueStacks = clueDebuff.getStacks(e);
+            if (clueStacks > 0) eEntries.push(["단서", clueStacks]);
+            if (e.isStunned) eEntries.push(["기절", 1]);
+            else if (e.isBroken) eEntries.push(["흐트러짐", 1]);
+            let buffTextRaw = eEntries.map(([k, v]) => `${k}(${v})`).join(', ');
+            let buffText = (typeof applyTooltip === 'function') ? applyTooltip(buffTextRaw) : buffTextRaw;
+
+            // ★ [핵심 수정] 이미지 소스 안전 처리 (기본값 + 에러 핸들러)
+            let imgSrc = e.img;
+            if (!imgSrc || imgSrc === "") imgSrc = "https://placehold.co/100x100/555/fff?text=Enemy";
+
+            // 약점/상태 아이콘 처리
+            let weakIcon = "";
+            let statusIcon = "";
+            if (e.isStunned) statusIcon = "😵";
+            else if (e.isBroken) statusIcon = "💔";
+            // 1. 적의 종류(Key)를 확인
+            if (e.enemyKey) {
+                // 2. 플레이어가 이 적의 약점을 이미 발견했는지 확인
+                let knownWeakness = player.discoveredWeaknesses[e.enemyKey];
+
+                // 3. 발견했다면 아이콘 표시, 아니면 빈 문자열(물음표 등으로 대체 가능)
+                if (knownWeakness && typeof ATTR_ICONS !== 'undefined') {
+                    weakIcon = ATTR_ICONS[knownWeakness] || "";
+                } else {
+                    // (선택사항) 아직 모를 때 '?'로 표시하고 싶다면 아래 주석 해제
+                    weakIcon = "❓";
+                }
+            }
+            // HTML 덮어쓰기 (onerror 추가)
+            el.innerHTML = `
             <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">
                 ${statusIcon} ${e.name} ${intentIconsHtml}
             </div>
@@ -7594,31 +7605,31 @@ if (enemies && enemies.length > 0) {
             </div>
             <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
         `;
-    });
-}
+        });
+    }
 
-function updatePileButtons() {
-    const drawBtn = document.getElementById('btn-draw-pile-floating');
-    const exhaustBtn = document.getElementById('btn-exhaust-pile-floating');
-    const discardBtn = document.getElementById('btn-discard-pile-floating');
-    if (!drawBtn && !exhaustBtn && !discardBtn) return;
+    function updatePileButtons() {
+        const drawBtn = document.getElementById('btn-draw-pile-floating');
+        const exhaustBtn = document.getElementById('btn-exhaust-pile-floating');
+        const discardBtn = document.getElementById('btn-discard-pile-floating');
+        if (!drawBtn && !exhaustBtn && !discardBtn) return;
 
-    const inCombat = (game.state === 'battle' || game.state === 'social');
-    const drawCount = inCombat ? (player.drawPile?.length || 0) : 0;
-    const exhaustCount = inCombat ? (player.exhaustPile?.length || 0) : 0;
-    const discardCount = inCombat ? (player.discardPile?.length || 0) : 0;
+        const inCombat = (game.state === 'battle' || game.state === 'social');
+        const drawCount = inCombat ? (player.drawPile?.length || 0) : 0;
+        const exhaustCount = inCombat ? (player.exhaustPile?.length || 0) : 0;
+        const discardCount = inCombat ? (player.discardPile?.length || 0) : 0;
 
-    if (drawBtn) drawBtn.textContent = `덱(${drawCount})`;
-    if (exhaustBtn) exhaustBtn.textContent = `소멸(${exhaustCount})`;
-    if (discardBtn) discardBtn.textContent = `버림(${discardCount})`;
-}
+        if (drawBtn) drawBtn.textContent = `덱(${drawCount})`;
+        if (exhaustBtn) exhaustBtn.textContent = `소멸(${exhaustCount})`;
+        if (discardBtn) discardBtn.textContent = `버림(${discardCount})`;
+    }
 
     if (typeof updateTurnOrderList === "function") updateTurnOrderList();
 
     // 5. 추가 버튼 (무력행사/도망치기) 로직
-    let btnGroup = document.getElementById('btn-group-right'); 
-let extraBtn = document.getElementById('extra-action-btn');
-if (extraBtn) extraBtn.remove();
+    let btnGroup = document.getElementById('btn-group-right');
+    let extraBtn = document.getElementById('extra-action-btn');
+    if (extraBtn) extraBtn.remove();
 
     if (game.turnOwner === "player") {
         let btnHTML = "";
@@ -7627,7 +7638,7 @@ if (extraBtn) extraBtn.remove();
 
         if (game.state === "social") {
             btnHTML = "👊<br>무력행사";
-            btnColor = "#c0392b"; 
+            btnColor = "#c0392b";
             btnFunc = () => confirmForceBattle();
         }
         else if (game.state === "battle" && !game.isBossBattle) {
@@ -7643,16 +7654,16 @@ if (extraBtn) extraBtn.remove();
             extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
             extraBtn.innerHTML = btnHTML;
             extraBtn.onclick = btnFunc;
-           // ★ [핵심] 턴 종료 버튼(end-turn-btn) 앞에 삽입
-        let endBtn = document.getElementById('end-turn-btn');
-        btnGroup.insertBefore(extraBtn, endBtn);
+            // ★ [핵심] 턴 종료 버튼(end-turn-btn) 앞에 삽입
+            let endBtn = document.getElementById('end-turn-btn');
+            btnGroup.insertBefore(extraBtn, endBtn);
         }
     }
 }
 /* [NEW] 도망치기 확인 팝업 */
 function confirmRunAway() {
     showPopup("🏃 도망치기", "전투를 포기하고 도망치시겠습니까?<br><span style='color:#e74c3c; font-size:0.8em;'>(패널티: HP -5, 위협도 증가)</span>", [
-        { txt: "도망친다!", func: () => { closePopup(); escapePhysicalBattle(); }},
+        { txt: "도망친다!", func: () => { closePopup(); escapePhysicalBattle(); } },
         { txt: "취소", func: closePopup }
     ]);
 }
@@ -7660,16 +7671,16 @@ function confirmRunAway() {
 /* [수정] 전투 도주 처리 함수 (사망 체크 추가) */
 function escapePhysicalBattle() {
     log("🏃 허겁지겁 도망칩니다!");
-    
+
     // 1. 패널티 적용 (HP -5)
     // takeDamage 함수 내부에서 HP 감소 및 사망 시 팝업 처리를 수행함
-    takeDamage(player, 5); 
-    
+    takeDamage(player, 5);
+
     // 2. [핵심] 도망치다 죽었으면 중단!
     // 이 체크가 없으면 죽었는데도 탐사 화면으로 이동해버려서 게임이 꼬입니다.
     if (player.hp <= 0) {
         checkGameOver(); // 확실하게 게임 오버 처리
-        return; 
+        return;
     }
     // [전투 종료 처리] 상태 전환 및 타임라인 관련 값 초기화
     game.state = 'exploration';
@@ -7689,26 +7700,26 @@ function escapePhysicalBattle() {
 
     // 3. 살았다면 패널티 적용 후 복귀
     game.doom = Math.min(100, game.doom + 5); // 글로벌 위협도 증가
-    
-   // ★ [핵심] 탐사 화면으로 UI 복구
+
+    // ★ [핵심] 탐사 화면으로 UI 복구
     const wrapper = document.getElementById('dungeon-enemies');
-    if(wrapper) wrapper.innerHTML = ""; // 적 삭제
-    
+    if (wrapper) wrapper.innerHTML = ""; // 적 삭제
+
     enemies = []; // 남아있는 적 데이터 정리
 
     toggleBattleUI(false); // 이동 버튼 다시 표시
-    
-   log("<span style='color:#e74c3c; font-weight:bold;'>🏃 허겁지겁 도망쳤습니다!</span>");
+
+    log("<span style='color:#e74c3c; font-weight:bold;'>🏃 허겁지겁 도망쳤습니다!</span>");
     renderExploration();
 }
 
 /* [game.js] renderHand 함수 수정 (PC/모바일 로직 분리) */
 function renderHand() {
-    const container = document.getElementById('hand-container'); 
+    const container = document.getElementById('hand-container');
     if (!container) return;
     container.innerHTML = "";
     ensureCardSystems(player);
-    
+
     // [1] PC/가로 모드용 로직: 8장 이상이면 겹쳐서 보여줌 (기존 기능 복구)
     if (player.hand.length >= 8) container.classList.add('compact');
     else container.classList.remove('compact');
@@ -7724,11 +7735,11 @@ function renderHand() {
             console.warn(`Missing card data for ${cName}`);
             return;
         }
-        let el = document.createElement('div'); 
+        let el = document.createElement('div');
         el.className = 'card';
         el.id = `card-el-${idx}`;
         el.style.pointerEvents = "auto";
-     
+
         const isUnplayable = !!data.unplayable;
         const assistantRequired = !!data.requireAssistant;
         const assistantAlive = assistantRequired ? (ensureAssistantManager()?.isAlive?.() || false) : true;
@@ -7738,7 +7749,7 @@ function renderHand() {
         const groupLabel = getCardGroupLabel(data);
         const typeLabel = getCardTypeLabel(data);
         const badges = `${typeLabel ? `<div class="card-group-badge">[${typeLabel}]</div>` : ""}${groupLabel ? `<div class="card-group-badge">[${groupLabel}]</div>` : ""}`;
-        
+
         el.innerHTML = `
             <div class="card-cost">${cost}</div>
             <div class="card-rank">${"★".repeat(data.rank)}</div>
@@ -7746,7 +7757,7 @@ function renderHand() {
             ${badges}
             <div class="card-desc">${applyTooltip(data.desc)}</div>
         `;
-        
+
         if (isUnplayable) {
             el.onclick = () => log(`🚫 [${cName}]은(는) 사용할 수 없습니다.`);
         }
@@ -7759,7 +7770,7 @@ function renderHand() {
         } else {
             el.onclick = () => log("🚫 행동력이 부족하거나 사용할 수 없습니다.");
         }
-        
+
         container.appendChild(el);
     });
 }
@@ -7768,13 +7779,13 @@ function renderHand() {
 function openPileView(type) {
     const title = document.getElementById('popup-title'); const content = document.getElementById('popup-content'); const btns = document.getElementById('popup-buttons');
     content.innerHTML = ""; btns.innerHTML = "<button class='action-btn' onclick='closePopup()'>닫기</button>";
-    
+
     let sourceArray;
     if (type === 'draw') sourceArray = [...player.drawPile].sort();
     else if (type === 'discard') sourceArray = player.discardPile;
     else if (type === 'exhaust') sourceArray = player.exhaustPile;
 
-    let typeText = (type==='draw')?'남은 덱':(type==='discard')?'버린 카드':'소멸된 카드';
+    let typeText = (type === 'draw') ? '남은 덱' : (type === 'discard') ? '버린 카드' : '소멸된 카드';
     title.innerText = `${typeText} (${sourceArray.length}장)`;
     document.getElementById('popup-desc').innerText = "카드 목록을 확인합니다.";
     if (sourceArray.length === 0) content.innerHTML = "<div style='padding:20px; color:#777;'>비어있음</div>";
@@ -7784,7 +7795,7 @@ function openPileView(type) {
             let data = getEffectiveCardData(cName) || CARD_DATA[cName]; let el = document.createElement('div'); el.className = 'mini-card';
             const groupLabel = getCardGroupLabel(data);
             const typeLabel = getCardTypeLabel(data);
-            
+
             // [수정] 미니 카드에도 별 추가
             el.innerHTML = `
                 <div>${data.cost} <span style="color:#f1c40f">${"★".repeat(data.rank)}</span></div>
@@ -7792,7 +7803,7 @@ function openPileView(type) {
                 ${typeLabel ? `<div style="font-size:0.9em; color:#95a5a6;">[${typeLabel}]</div>` : ""}
                 ${groupLabel ? `<div style="font-size:0.9em; color:#7f8c8d;">[${groupLabel}]</div>` : ""}
                 <div>${applyTooltip(data.desc)}</div>
-            `; 
+            `;
             listDiv.appendChild(el);
         }); content.appendChild(listDiv);
     }
@@ -7828,9 +7839,9 @@ function showChoice(title, desc, options = [], contentHTML = "") {
 
 /* [누락된 함수 추가] 팝업 닫기 기능 */
 function closePopup() {
-   // [핵심] 게임오버 상태일 때는 팝업을 절대 닫지 않음 (새로고침만 가능하게)
+    // [핵심] 게임오버 상태일 때는 팝업을 절대 닫지 않음 (새로고침만 가능하게)
     if (game.state === "gameover") return;
-    
+
     document.getElementById('popup-layer').style.display = 'none';
 }
 
@@ -7848,9 +7859,9 @@ function addCardToHand(cardName) {
     if (!player.hand) player.hand = [];
 
     if (player.hand.length >= MAX_HAND_SIZE) {
-    player.discardPile.push(cardName);
-    log(`🔥 손패가 꽉 차서 [${cardName}] 카드가 버려졌습니다!`);
-    playAnim('btn-discard-pile-floating', 'anim-bounce');
+        player.discardPile.push(cardName);
+        log(`🔥 손패가 꽉 차서 [${cardName}] 카드가 버려졌습니다!`);
+        playAnim('btn-discard-pile-floating', 'anim-bounce');
         return false;
     }
 
@@ -7934,11 +7945,11 @@ function showLevelUp() {
 function applyStatUp(type) {
     player.stats[type]++; // 해당 스탯 증가
     recalcStats();        // 파생 스탯(HP/SP) 재계산 (최대치 증가분 반영)
-    
+
     // 만약 건강/정신을 찍어서 최대치가 늘었다면, 현재 수치도 소폭 회복시켜주는 센스
-    if(type === 'con') player.hp += 10;
-    if(type === 'wil') player.sp += 10;
-    
+    if (type === 'con') player.hp += 10;
+    if (type === 'wil') player.sp += 10;
+
     closePopup();
     getCardReward(); // 카드 보상으로 이어짐
 }
@@ -7962,11 +7973,11 @@ function applyAssistantStatUp(type) {
 }
 /* [수정] 카드 보상 획득 로직 (화면 이동 강제 제거) */
 function getCardReward() {
-    let newCard = getRandomCard(); 
+    let newCard = getRandomCard();
     let data = getEffectiveCardData(newCard) || CARD_DATA[newCard];
     const typeLabel = getCardTypeLabel(data);
     const groupLabel = getCardGroupLabel(data);
-    
+
     let cardHTML = `
     <div style="display:flex; justify-content:center; margin:10px;">
         <div class="card">
@@ -7980,7 +7991,7 @@ function getCardReward() {
             <div class="card-desc">${applyTooltip(data.desc)}</div>
         </div>
     </div>`;
-    
+
     // [핵심 변경] 카드를 고른 후의 동작 정의
     const finishReward = () => {
         // 1. 전투 승리 화면에서 레벨업을 한 경우
@@ -7988,7 +7999,7 @@ function getCardReward() {
             // 다시 승리 팝업을 띄워준다 (그래야 '떠나기' 버튼을 누를 수 있음)
             // (이미 XP를 소모했으므로 레벨업 버튼은 사라진 상태로 나옴)
             renderWinPopup();
-        } 
+        }
         // 2. 그 외 (엔딩 화면, 이벤트 등)
         else {
             // 그냥 팝업만 닫고 가만히 있는다. (원래 화면 유지)
@@ -7999,15 +8010,15 @@ function getCardReward() {
 
     showPopup("🎁 카드 보상", "획득하시겠습니까?", [
         {
-            txt: "받기", 
-            func: ()=>{
+            txt: "받기",
+            func: () => {
                 const deckLabel = addCardToAppropriateDeck(newCard);
                 log(`🃏 [${newCard}]을(를) ${deckLabel}에 추가했습니다.`);
                 finishReward(); // 제자리 유지
             }
-        }, 
+        },
         {
-            txt: "건너뛰기", 
+            txt: "건너뛰기",
             func: () => {
                 finishReward(); // 제자리 유지
             }
@@ -8019,13 +8030,13 @@ function getCardReward() {
 function processLevelUp() {
     player.xp -= player.maxXp; // 경험치 차감 (오버플로우 된 경험치는 유지됨)
     game.level++;
-    
+
     // [NEW] 다음 레벨 필요 경험치 공식 (레벨 * 100)
     // 예: 1->2 (100xp), 2->3 (200xp), 3->4 (300xp) ...
     player.maxXp = game.level * 100;
-    
+
     // 기존 스탯 선택 팝업 호출
-    showLevelUp(); 
+    showLevelUp();
 }
 
 /* [추가] 애니메이션 실행 함수 */
@@ -8067,7 +8078,7 @@ function playAnim(elementId, animClass) {
 /* [game.js] renderWinPopup 함수 (안전성 보완) */
 function renderWinPopup() {
     // 팝업이 닫혀버리는 문제 방지를 위해 상태 재확인
-    game.state = "win"; 
+    game.state = "win";
 
     let btns = [];
     let contentHTML = "";
@@ -8076,7 +8087,7 @@ function renderWinPopup() {
     if (game.pendingLoot) {
         let loot = game.pendingLoot;
         let lData = ITEM_DATA[loot];
-        
+
         if (lData) {
             contentHTML = `
                 <div style="display:flex; justify-content:center; margin-top:15px;">
@@ -8087,10 +8098,10 @@ function renderWinPopup() {
                 </div>
                 <div style="margin-top:5px; font-size:0.9em; color:#aaa;">${loot}</div>
             `;
-            
-            btns.push({ 
-                txt: "🖐️ 아이템 줍기", 
-                func: () => getLoot() 
+
+            btns.push({
+                txt: "🖐️ 아이템 줍기",
+                func: () => getLoot()
             });
         } else {
             // 데이터 에러 시 전리품 삭제
@@ -8100,16 +8111,16 @@ function renderWinPopup() {
 
     // 2. [레벨업 버튼]
     if (player.xp >= player.maxXp) {
-        btns.push({ 
-            txt: "🆙 레벨업!", 
-            func: () => processLevelUp() 
+        btns.push({
+            txt: "🆙 레벨업!",
+            func: () => processLevelUp()
         });
     }
 
     // 3. [떠나기 버튼]
-    btns.push({ 
-        txt: "떠나기", 
-        func: () => nextStepAfterWin() 
+    btns.push({
+        txt: "떠나기",
+        func: () => nextStepAfterWin()
     });
 
     // 메시지에 레벨업 알림 추가
@@ -8131,12 +8142,12 @@ function getLoot() {
                 game.winMsg = game.winMsg.replace("<br>✨", ""); // 아이콘 잔여물 제거
             }
             game.winMsg += `<br><span style="color:#2ecc71">✔ [${game.pendingLoot}] 획득함.</span>`;
-            
+
             game.pendingLoot = null; // 바닥에서 삭제
-            
+
             // ★ 핵심: 획득 후 즉시 결과 화면을 다시 그려서 '레벨업' 버튼 등이 유지되게 함
             setTimeout(() => {
-                renderWinPopup(); 
+                renderWinPopup();
             }, 50);
         };
 
@@ -8147,13 +8158,13 @@ function getLoot() {
         // 가방이 꽉 찬 경우는 addItem 내부에서 showSwapPopup을 호출하므로 제외
         if (result === false) {
             let itemData = ITEM_DATA[game.pendingLoot];
-            
+
             // 소모품이 꽉 찬 게 아니라, '중복 불가 유물/장비'라서 실패한 경우
             if (itemData.usage === 'passive' || itemData.usage === 'equip') {
                 const label = (itemData.usage === 'equip') ? "장비" : "유물";
                 showPopup("획득 불가", `이미 보유하고 있는 ${label}([${game.pendingLoot}])입니다.<br>전리품을 포기합니다.`, [
-                    { 
-                        txt: "확인", 
+                    {
+                        txt: "확인",
                         func: () => {
                             game.pendingLoot = null; // 포기 처리
                             renderWinPopup(); // 결과 화면 복귀
@@ -8171,45 +8182,45 @@ let drag = { active: false, cardIdx: -1, cardName: "", startX: 0, startY: 0, ori
 
 /* [수정] 드래그 시작 함수 (텍스트 즉시 변환 제거) */
 function startDrag(e, idx, name, type = 'card') {
-  // 마우스 우클릭 방지 (터치는 button 속성이 없음)
-    if (e.type === 'mousedown' && e.button !== 0) return; 
+    // 마우스 우클릭 방지 (터치는 button 속성이 없음)
+    if (e.type === 'mousedown' && e.button !== 0) return;
     if (e.target.tagName === 'BUTTON') return;
 
     drag.active = true;
-    drag.type = type; 
-    drag.idx = idx;   
-    drag.name = name; 
+    drag.type = type;
+    drag.idx = idx;
+    drag.name = name;
     drag.moved = false;
-    
+
     let elId = (type === 'card') ? `card-el-${idx}` : `item-el-${idx}`;
     let dragEl = document.getElementById(elId);
-    
-    dragEl.style.pointerEvents = "none"; 
-    
+
+    dragEl.style.pointerEvents = "none";
+
     let rect = dragEl.getBoundingClientRect();
     drag.startX = rect.left + rect.width / 2;
     drag.startY = rect.top + rect.height / 2;
-    
+
     // --- [핵심] 클릭 순간에는 무조건 원본 텍스트로 초기화 ---
     if (type === 'card') {
         // 데이터에서 원본 설명을 가져옴
         drag.originalDesc = applyTooltip(CARD_DATA[name].desc);
-        
+
         // ★ 화면의 텍스트를 강제로 원본으로 되돌림 ★
         // 이렇게 하면 클릭하는 순간은 무조건 '하얀색' 글씨가 됩니다.
         dragEl.querySelector('.card-desc').innerHTML = drag.originalDesc;
-        
+
     } else {
-        drag.originalDesc = ""; 
+        drag.originalDesc = "";
     }
     // ---------------------------------------
 
     document.getElementById('drag-layer').style.display = 'block';
- // [핵심 변경] 마우스와 터치 이동/종료 이벤트 모두 연결
+    // [핵심 변경] 마우스와 터치 이동/종료 이벤트 모두 연결
     // { passive: false } 옵션은 모바일 스크롤 방지를 위해 중요함
     document.addEventListener('mousemove', onDragMove);
     document.addEventListener('mouseup', onDragEnd);
-    
+
     document.addEventListener('touchmove', onDragMove, { passive: false });
     document.addEventListener('touchend', onDragEnd);
 }
@@ -8218,7 +8229,7 @@ function startDrag(e, idx, name, type = 'card') {
 /* [수정] onDragMove: 소셜 카드도 적 타겟팅 허용 */
 function onDragMove(e) {
     if (!drag.active) return;
-    if(e.cancelable) e.preventDefault();
+    if (e.cancelable) e.preventDefault();
 
     const pos = getClientPos(e);
     let endX = pos.x; let endY = pos.y;
@@ -8243,8 +8254,8 @@ function onDragMove(e) {
 
     let targetInfo = getTargetUnderMouse(e);
     let data = (drag.type === 'card') ? (getEffectiveCardData(drag.name) || CARD_DATA[drag.name]) : ITEM_DATA[drag.name];
-    let dragEl = document.getElementById((drag.type==='card')?`card-el-${drag.idx}`:`item-el-${drag.idx}`);
-    
+    let dragEl = document.getElementById((drag.type === 'card') ? `card-el-${drag.idx}` : `item-el-${drag.idx}`);
+
     document.querySelectorAll('.enemy-unit').forEach(el => el.classList.remove('selected-target'));
     const playerEl = document.getElementById('player-char') || document.getElementById('dungeon-player');
     if (playerEl) playerEl.classList.remove('selected-target');
@@ -8254,7 +8265,7 @@ function onDragMove(e) {
 
     if (targetInfo) {
         if (data.targetType === 'all' || data.target === 'all') {
-            enemies.forEach(en => { 
+            enemies.forEach(en => {
                 if (en.hp > 0) {
                     const el = document.getElementById(`enemy-unit-${en.id}`);
                     if (el) el.classList.add('selected-target');
@@ -8298,7 +8309,7 @@ function onDragMove(e) {
         }
     }
     if (dragEl) {
-        if (validTarget) { dragEl.style.transform = "scale(1.1)"; dragEl.style.zIndex = "1000"; } 
+        if (validTarget) { dragEl.style.transform = "scale(1.1)"; dragEl.style.zIndex = "1000"; }
         else { dragEl.style.transform = "scale(1.0)"; dragEl.style.zIndex = "auto"; }
     }
 }
@@ -8306,24 +8317,24 @@ function onDragMove(e) {
 /* [수정] onDragEnd: 소셜 카드 타겟팅 로직 반영 */
 function onDragEnd(e) {
     if (!drag.active) return;
-    
+
     document.removeEventListener('mousemove', onDragMove);
     document.removeEventListener('mouseup', onDragEnd);
     document.removeEventListener('touchmove', onDragMove);
     document.removeEventListener('touchend', onDragEnd);
 
     document.getElementById('drag-layer').style.display = 'none';
-    
+
     let elId = (drag.type === 'card') ? `card-el-${drag.idx}` : `item-el-${drag.idx}`;
     let dragEl = document.getElementById(elId);
     if (dragEl) {
-        dragEl.style.pointerEvents = "auto"; 
+        dragEl.style.pointerEvents = "auto";
         dragEl.style.transform = "scale(1.0)";
         dragEl.style.zIndex = "auto";
         if (drag.type === 'card') dragEl.querySelector('.card-desc').innerHTML = drag.originalDesc;
     }
-    
-        document.querySelectorAll('.enemy-unit').forEach(el => el.classList.remove('selected-target'));
+
+    document.querySelectorAll('.enemy-unit').forEach(el => el.classList.remove('selected-target'));
     const playerElEnd = document.getElementById('player-char') || document.getElementById('dungeon-player');
     if (playerElEnd) playerElEnd.classList.remove('selected-target');
 
@@ -8393,7 +8404,7 @@ function onDragEnd(e) {
             finalTargets.forEach(target => useCard(player, target, drag.name));
             renderHand();
         } else {
-            useItem(drag.idx, finalTargets[0]); 
+            useItem(drag.idx, finalTargets[0]);
         }
         updateUI();
         checkGameOver();
@@ -8436,7 +8447,7 @@ function getTargetUnderMouse(e) {
         const handRect = handArea.getBoundingClientRect();
         if (x >= handRect.left && x <= handRect.right &&
             y >= handRect.top && y <= handRect.bottom) {
-            return null; 
+            return null;
         }
     }
 
@@ -8457,8 +8468,8 @@ function calcPreview(cardName, user) {
     const data = getEffectiveCardData(cardName) || base;
     if (!data) return "";
     // 툴팁 등 기본 설명 가져오기
-    let desc = applyTooltip(data.desc); 
-    
+    let desc = applyTooltip(data.desc);
+
     // 공격력/방어력 스탯 가져오기 (버프/디버프가 이미 적용된 수치)
     let atk = getStat(user, 'atk');
     let def = getStat(user, 'def');
@@ -8467,12 +8478,12 @@ function calcPreview(cardName, user) {
     if (typeof data.dmg === 'number' && typeof base?.dmg === 'number') {
         // 기본 공식: (카드 데미지 + 플레이어 공격력)
         // ※ 실제 게임에서는 (기본뎀 + 힘) * 배율 등이지만, 여기선 단순 합산으로 구현
-        let finalDmg = data.dmg + atk; 
-        
+        let finalDmg = data.dmg + atk;
+
         // 색상 결정 (기본값보다 높으면 초록, 낮으면 빨강)
-        let colorClass = (finalDmg > data.dmg) ? "mod-val-buff" : 
-                         (finalDmg < data.dmg) ? "mod-val-debuff" : "";
-        
+        let colorClass = (finalDmg > data.dmg) ? "mod-val-buff" :
+            (finalDmg < data.dmg) ? "mod-val-debuff" : "";
+
         // 텍스트 교체 (예: "HP -5" -> "HP -<span class='...'>7</span>")
         // 정규식: 설명 텍스트 내의 '기본 데미지 숫자'를 찾아서 '계산된 숫자'로 교체
         let regex = new RegExp(base.dmg, "g");
@@ -8483,10 +8494,10 @@ function calcPreview(cardName, user) {
     if (typeof data.block === 'number' && typeof base?.block === 'number') {
         // 기본 공식: (카드 방어도 + 플레이어 방어력)
         let finalBlock = data.block + def;
-        
-        let colorClass = (finalBlock > data.block) ? "mod-val-buff" : 
-                         (finalBlock < data.block) ? "mod-val-debuff" : "";
-                         
+
+        let colorClass = (finalBlock > data.block) ? "mod-val-buff" :
+            (finalBlock < data.block) ? "mod-val-debuff" : "";
+
         let regex = new RegExp(base.block, "g");
         desc = desc.replace(regex, `<span class="${colorClass}">${finalBlock}</span>`);
     }
@@ -8495,7 +8506,7 @@ function calcPreview(cardName, user) {
 }
 
 function updateTurnOrderList() {
-    let predictedOrder = []; 
+    let predictedOrder = [];
     const MAX_PREDICT = 5;
 
     // ★ [수정] p-img -> dungeon-player 로 변경 (이미지 소스 안전하게 가져오기)
@@ -8544,15 +8555,15 @@ function updateTurnOrderList() {
         let node = document.createElement('div');
         node.className = `timeline-node ${unit.type === 'player' ? 'node-player' : 'node-enemy'}`;
         node.innerHTML = `<img src="${unit.img}" class="timeline-img" alt="Unit">`;
-        
+
         if (index === 0 && unit.isCurrent) {
-            node.style.animation = `fadeInScale 0.2s ease forwards`; 
+            node.style.animation = `fadeInScale 0.2s ease forwards`;
             node.style.borderWidth = "3px";
             node.style.zIndex = "10";
         } else {
             node.style.animation = `fadeIn 0.2s ease forwards ${index * 0.1}s`;
         }
-        node.style.opacity = "0"; 
+        node.style.opacity = "0";
 
         timelineContainer.appendChild(node);
     });
@@ -8612,14 +8623,14 @@ let currentCollectionTab = 'battle';
 /* [수정] 카드 컬렉션 열기 */
 function openAllCards() {
     if (!game.started) return;
-    
+
     currentCollectionTab = 'battle'; // 기본은 전투 덱
     document.getElementById('card-collection-overlay').classList.remove('hidden');
-    
+
     // 탭 UI 초기화
     document.getElementById('tab-col-battle').className = 'inv-tab active';
     document.getElementById('tab-col-social').className = 'inv-tab';
-    
+
     renderCardCollection();
 }
 
@@ -8631,11 +8642,11 @@ function closeCardCollection() {
 /* [NEW] 탭 전환 */
 function switchCollectionTab(tab) {
     currentCollectionTab = tab;
-    
+
     // 버튼 스타일
     document.getElementById('tab-col-battle').className = (tab === 'battle' ? 'inv-tab active' : 'inv-tab');
     document.getElementById('tab-col-social').className = (tab === 'social' ? 'inv-tab active' : 'inv-tab');
-    
+
     renderCardCollection();
 }
 
@@ -8669,10 +8680,10 @@ function renderCardCollection() {
         const typeLabel = getCardTypeLabel(data);
         const groupLabel = getCardGroupLabel(data);
         let el = document.createElement('div');
-        
+
         // 기존 card 클래스 사용하여 디자인 통일 + 컬렉션 전용 클래스 추가
         el.className = 'card collection-card-view';
-        
+
         // 카드 내용 HTML 구성 (기존 renderHand와 동일한 구조)
         el.innerHTML = `
             <div class="card-cost">${data.cost}</div>
@@ -8684,7 +8695,7 @@ function renderCardCollection() {
             </div>` : ""}
             <div class="card-desc">${applyTooltip(data.desc)}</div>
         `;
-        
+
         list.appendChild(el);
     });
 }
