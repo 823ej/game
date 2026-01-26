@@ -6647,3 +6647,94 @@ body {
         opacity: 0.3 !important;
         filter: grayscale(100%);
     }
+
+    /* Start Screen Styles */
+    .start-scene {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://placehold.co/1280x720/1a1a2e/ffffff?text=Midnight+City');
+        background-size: cover;
+        background-position: center;
+    }
+
+    .start-content {
+        text-align: center;
+        padding: 40px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid #444;
+        border-radius: 10px;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(5px);
+        border-top: 3px solid #f1c40f;
+        animation: fadeIn 1s ease-out;
+    }
+
+    .game-title {
+        font-size: 3em;
+        color: #f1c40f;
+        margin-bottom: 5px;
+        text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+        letter-spacing: 2px;
+    }
+
+    .game-subtitle {
+        color: #bdc3c7;
+        font-size: 1.2em;
+        margin-bottom: 40px;
+        font-style: italic;
+    }
+
+    .start-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        width: 250px;
+        margin: 0 auto;
+    }
+
+    .start-menu .action-btn {
+        width: 100%;
+        padding: 15px;
+        font-size: 1.1em;
+        background: #2c3e50;
+        border: 1px solid #45a049;
+        box-shadow: 0 4px 0 #1e2b38;
+    }
+
+    .start-menu .action-btn#btn-infinite-mode {
+        background: #8e44ad;
+        border: 1px solid #9b59b6;
+        box-shadow: 0 4px 0 #6c3483;
+    }
+
+    .start-menu .action-btn:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+    }
+
+    .start-menu .action-btn:active {
+        transform: translateY(2px);
+        box-shadow: none;
+    }
+
+    .version-info {
+        margin-top: 30px;
+        color: #555;
+        font-size: 0.8em;
+    }
+
+    /* Infinite Mode Specifics */
+    .infinite-stage-hud {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        padding: 5px 15px;
+        border-radius: 20px;
+        border: 1px solid #f39c12;
+        color: #f39c12;
+        font-weight: bold;
+        z-index: 1000;
+    }

@@ -101,7 +101,7 @@ const CARD_DATA = {
     "추리": { rank: 2, cost: 1, type: "attack", desc: "적 HP -6, 단서 5 이상이면 카드 1장 뽑기", dmg: 6, drawOnClue: { threshold: 5, draw: 1 }, job: "detective" },
     "잠복 근무": { rank: 1, cost: 1, type: "skill", desc: "방어도 +8, 다음 턴 카드 1장 추가 드로우", block: 8, nextTurnDraw: 1, job: "detective" },
     "조수 호출": { rank: 1, cost: 1, type: "skill", desc: "조수 회복 +5", assistantHeal: 5, job: "detective" },
-    "명령: 눈길 끌기": { rank: 2, cost: 0, type: "skill", desc: "이번 턴 적의 공격을 조수가 대신 받음, 조수 방어도 +15", assistantTauntTurns: 1, assistantBlock: 15, requireAssistant: true, job: "detective" },
+    "명령: 눈길 끌기": { rank: 2, cost: 1, type: "skill", desc: "이번 턴 적의 공격을 조수가 대신 받음, 조수 방어도 +15", assistantTauntTurns: 1, assistantBlock: 15, requireAssistant: true, job: "detective" },
     "고찰": { rank: 2, cost: 1, type: "skill", desc: "적 전체 단서 3, 손패 공격 카드 비용 0 (이번 턴)", addClueAll: 3, reduceAttackCostThisTurn: true, job: "detective" },
     "비정한 결단": { rank: 3, cost: 0, type: "skill", desc: "조수 HP 절반 감소, 감소 HP 2당 AP +1", assistantSacrifice: true, job: "detective" },
     "직감": { rank: 3, cost: 2, type: "power", desc: "매 턴 시작 시 무작위 적에게 단서 3", power: { clueOnTurnStart: 3 }, job: "detective" },
@@ -1744,7 +1744,7 @@ const JOB_DATA = {
         desc: "논리와 이성으로 사건을 해결합니다.",
         baseStats: { str: 10, con: 9, dex: 12, int: 16, wil: 14, cha: 12 },
         defaultTraits: ["sharp_eye"],
-        starterDeck: ["조사", "조사", "조사", "회피", "회피", "조수 호출", "추리", "명령: 유인", "명령: 방호", "명령: 방호"],
+        starterDeck: ["조사", "조사", "조사",  "조사", "회피", "조수 호출", "추리", "명령: 유인", "명령: 유인", "명령: 방호"],
         starterSocialDeck: ["논리적 반박", "논리적 반박", "증거 제시", "사실 확인", "심호흡"],
         starterEquipment: { rightHand: "권총" },
         // [NEW] 탐정 이미지

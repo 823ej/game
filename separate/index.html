@@ -33,6 +33,20 @@
     </div>
 
     <div class="container">
+        <div id="start-scene" class="scene hidden start-scene">
+            <div class="start-content">
+                <h1 class="game-title">MIDNIGHT DETECTIVE</h1>
+                <p class="game-subtitle">The City of Shadows</p>
+
+                <div class="start-menu">
+                    <button id="btn-continue" class="action-btn hidden" onclick="loadGame()">이어하기</button>
+                    <button id="btn-new-game" class="action-btn" onclick="startCharacterCreation()">새 게임</button>
+                    <button id="btn-infinite-mode" class="action-btn" onclick="startInfiniteJobSelection()">무한 모드
+                        (Infinite)</button>
+                </div>
+                <div class="version-info">Ver 2.5</div>
+            </div>
+        </div>
         <div id="char-creation-scene" class="scene hidden char-creation-scene">
             <div id="char-creation-content" class="char-creation-content">
             </div>

@@ -967,7 +967,14 @@ function interactCitySpot() {
     setCitySpotStatus(`(${spot.name}) 내부 진입/상호작용은 추후 구현 예정`);
 }
 /* [game.js] 상점 나가기 핸들러 (상황별 복귀) */
+/* [game.js] 상점 나가기 핸들러 (상황별 복귀) */
 function exitShop(shopType) {
+    // [Infinite Mode] Check
+    if (game.mode === 'infinite') {
+        nextInfiniteStage();
+        return;
+    }
+
     // 인터넷 쇼핑이면 무조건 허브로
     if (shopType === 'shop_internet') {
         renderHub();
@@ -975,9 +982,7 @@ function exitShop(shopType) {
     }
 
     // [핵심] 현재 게임 상태가 '탐사(exploration)' 중이었다면 던전으로 복귀
-    // (상점 진입 시 switchScene('event')를 했지만 game.state는 유지했거나, 여기서 확인 가능)
-    // 보통 던전에서 상점을 열면 game.state가 'exploration'인 상태에서 화면만 바뀝니다.
-    // 하지만 안전하게 '던전 맵이 생성되어 있는지'로 판단합니다.
+    // ... (rest of the logic)
     if (game.dungeonMap) {
         closePopup();
         game.state = 'exploration';
@@ -2203,12 +2208,7 @@ function initGame() {
         }, { once: true }); // ★ 딱 한 번만 실행되고 사라짐
     }
 
-    // 2. 기존 저장 데이터 확인 로직
-    if (localStorage.getItem('midnight_rpg_save')) {
-        loadGame();
-    } else {
-        startCharacterCreation();
-    }
+    renderStartScreen();
 }
 
 // [2] 자동 저장 함수 (알림 없이 조용히 저장)
@@ -2698,7 +2698,16 @@ function finishCreation() {
     game.started = true;
     game.day = 1;
     game.timeIndex = 0;
-    game.state = 'hub';
+
+    // [Infinite Mode Check]
+    if (tempGameMode === 'infinite') {
+        game.mode = 'infinite';
+        game.state = 'battle'; // 바로 전투 준비로 진입
+    } else {
+        game.mode = 'normal';
+        game.state = 'hub';
+    }
+
     game.activeScenarioId = null;
     game.scenario = null;
 
@@ -2770,8 +2779,12 @@ function finishCreation() {
     player.hp = player.maxHp;
     player.sp = player.maxSp;
 
-    renderHub();
-    autoSave(); // [추가] 생성 직후 저장
+    if (game.mode === 'infinite') {
+        startInfiniteLoop();
+    } else {
+        renderHub();
+        autoSave(); // [추가] 생성 직후 저장
+    }
 }
 
 /* [NEW] 거점 화면 렌더링 */
@@ -5251,6 +5264,10 @@ function nextStepAfterWin() {
         game.state = 'result';
         renderResultScreen();
     }
+    // [Infinite Mode] 무한 모드 승리 처리
+    else if (game.mode === 'infinite') {
+        handleInfiniteWin();
+    }
     else if (game.scenario && game.scenario.isPatrol) {
         game.state = 'exploration';
         player.gold += 100; // 순찰 보상
@@ -6810,9 +6827,9 @@ function renderShopScreen(shopType = "shop_black_market") {
                 </div>
             </div>
         </div>
-<div class="shop-footer-area">
+        <div class="shop-footer-area">
             <button class="action-btn" onclick="exitShop('${shopType}')" style="background:#7f8c8d; padding: 10px 30px; font-size:1.1em;">
-                🚪 나가기
+                🚪 ${game.mode === 'infinite' ? '다음 스테이지로' : '나가기'}
             </button>
         </div>
     `;
@@ -7001,7 +7018,7 @@ function switchScene(sceneName) {
         'hub-scene', 'city-scene', 'exploration-scene',
         'event-scene', 'deck-scene', 'storage-scene',
         'result-scene', 'story-scene',
-        'char-creation-scene'
+        'char-creation-scene', 'start-scene'
     ];
 
     scenes.forEach(id => {
@@ -7024,7 +7041,7 @@ function switchScene(sceneName) {
         // [NEW] 인벤토리 버튼 제어 (캐릭터 생성 중에는 숨김)
         const invBtn = document.getElementById('btn-main-inventory');
         const statsBtn = document.getElementById('btn-player-stats');
-        const btnVisible = sceneName !== 'char-creation';
+        const btnVisible = (sceneName !== 'char-creation' && sceneName !== 'start');
 
         if (invBtn) invBtn.style.display = btnVisible ? 'inline-block' : 'none';
 
@@ -8785,6 +8802,239 @@ function renderCardCollection() {
 
         list.appendChild(el);
     });
+}
+
+
+/* ============================================================
+   [NEW] Start Screen & Infinite Mode Logic
+   ============================================================ */
+
+let tempGameMode = 'normal'; // 'normal' or 'infinite'
+let infiniteStage = 1;
+
+function renderStartScreen() {
+    game.state = 'start';
+    switchScene('start');
+
+    // Check save data for "Continue" button
+    const hasSave = !!localStorage.getItem('midnight_rpg_save');
+    const btnContinue = document.getElementById('btn-continue');
+    if (btnContinue) {
+        if (hasSave) btnContinue.classList.remove('hidden');
+        else btnContinue.classList.add('hidden');
+    }
+}
+
+function startInfiniteJobSelection() {
+    tempGameMode = 'infinite';
+    startCharacterCreation();
+}
+
+function startInfiniteLoop() {
+    infiniteStage = 1;
+    game.state = 'battle';
+    game.mode = 'infinite';
+
+    // Initial healing / setup
+    player.hp = player.maxHp;
+    player.sp = player.maxSp;
+
+    startInfiniteStage();
+}
+
+function startInfiniteStage() {
+    // Stage HUD
+    let stageHud = document.getElementById('infinite-stage-hud');
+    if (!stageHud) {
+        stageHud = document.createElement('div');
+        stageHud.id = 'infinite-stage-hud';
+        stageHud.className = 'infinite-stage-hud';
+        document.body.appendChild(stageHud);
+    }
+    stageHud.innerText = `STAGE ${infiniteStage}`;
+    stageHud.style.display = 'block';
+
+    // Enemy Scaling
+    let enemyCount = 1;
+    if (infiniteStage >= 3) enemyCount = 2;
+    if (infiniteStage >= 6) enemyCount = 3;
+
+    // Every 5th stage is a Boss
+    let isBoss = (infiniteStage % 5 === 0);
+
+    // Start Battle
+    switchScene('battle');
+
+    if (isBoss) {
+        // Find a boss
+        let bossKeys = Object.keys(ENEMY_DATA).filter(k => k.startsWith('boss_'));
+        let bossKey = bossKeys[Math.floor(Math.random() * bossKeys.length)] || "boss_gang_leader";
+        startBattle(true, bossKey);
+        log(`💀 <b>STAGE ${infiniteStage} (BOSS)</b> 시작!`);
+    } else {
+        // Random enemies (Count logic is inside startBattle if we pass null/array, 
+        // but let's customize it or rely on random. 
+        // startBattle(false) spawns 1 or 2 enemies randomly.
+        // Let's force count if we want scaling.)
+
+        // Construct array of random keys
+        let pool = Object.keys(ENEMY_DATA).filter(k => !k.startsWith("boss_"));
+        let picked = [];
+        for (let i = 0; i < enemyCount; i++) {
+            picked.push(pool[Math.floor(Math.random() * pool.length)]);
+        }
+        startBattle(false, picked);
+        log(`⚔️ <b>STAGE ${infiniteStage}</b> 시작!`);
+    }
+}
+
+function handleInfiniteWin() {
+    closePopup();
+    showInfiniteIntermissionChoices();
+}
+
+function showInfiniteIntermissionChoices() {
+    game.state = 'intermission';
+
+    let html = `
+        <div style="text-align:center; padding:20px;">
+            <h2 style="color:#f1c40f;">STAGE ${infiniteStage} CLEAR</h2>
+            <p style="color:#bdc3c7; margin-bottom:20px;">다음 여정을 선택하세요.</p>
+            
+            <div style="display:flex; flex-direction:column; gap:15px; width:100%;">
+                <button class="action-btn" style="background:#27ae60;" onclick="handleInfiniteRest()">
+                    <div style="font-size:1.3em;">🔥 휴식</div>
+                    <div style="font-size:0.8em; color:#ddd;">체력/정신력 회복</div>
+                </button>
+                
+                <button class="action-btn" style="background:#d35400;" onclick="handleInfiniteShop()">
+                    <div style="font-size:1.3em;">🛒 상점</div>
+                    <div style="font-size:0.8em; color:#ddd;">아이템 및 카드 구매</div>
+                </button>
+                
+                <button class="action-btn" style="background:#8e44ad;" onclick="handleInfiniteRandom()">
+                    <div style="font-size:1.3em;">🎲 랜덤 이벤트</div>
+                    <div style="font-size:0.8em; color:#ddd;">무슨 일이 일어날지 모릅니다</div>
+                </button>
+            </div>
+
+             <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+                <button class="action-btn" onclick="openAllCards()" style="font-size:0.9em; padding:8px 15px;">🃏 덱 관리</button>
+                <button class="action-btn" onclick="openPlayerStats()" style="font-size:0.9em; padding:8px 15px;">📊 스탯 확인</button>
+            </div>
+        </div>
+    `;
+
+    showPopup("전투 승리", "다음 행동을 선택하세요.", [], html);
+}
+
+function handleInfiniteRest() {
+    closePopup();
+
+    // HP 30% / SP 30% Heal
+    let hpHeal = Math.floor(player.maxHp * 0.3);
+    let spHeal = Math.floor(player.maxSp * 0.3);
+
+    player.hp = Math.min(player.maxHp, player.hp + hpHeal);
+    player.sp = Math.min(player.maxSp, player.sp + spHeal);
+
+    showPopup("모닥불", `
+        <div style="text-align:center;">
+            <div style="font-size:3em; margin-bottom:10px;">🔥</div>
+            <p>따뜻한 모닥불 곁에서 잠시 휴식을 취했습니다.</p>
+            <p style="color:#2ecc71; font-weight:bold; margin-top:10px;">
+                HP +${hpHeal} / SP +${spHeal}
+            </p>
+        </div>
+    `, [{
+        txt: "다음 스테이지로",
+        func: () => {
+            closePopup();
+            nextInfiniteStage();
+        }
+    }]);
+}
+
+function handleInfiniteShop() {
+    closePopup();
+    const shopTypes = ["shop_black_market", "shop_high_end", "shop_occult", "shop_herbal"];
+    const type = shopTypes[Math.floor(Math.random() * shopTypes.length)];
+    renderShopScreen(type);
+}
+
+function handleInfiniteRandom() {
+    closePopup();
+
+    const events = [
+        {
+            title: "버려진 보급품",
+            desc: "길가에 버려진 보급 상자를 발견했습니다.",
+            icon: "📦",
+            effect: () => {
+                let foundItem = getRandomItem(null, { categories: ["general", "medicine"] });
+                addItem(foundItem);
+                return `<span style='color:#2ecc71'>[${foundItem}]</span>을(를) 획득했습니다!`;
+            }
+        },
+        {
+            title: "수상한 상인",
+            desc: "지나가던 상인이 물건을 강매합니다. (500G 지불)",
+            icon: "💰",
+            effect: () => {
+                if (player.gold >= 500) {
+                    player.gold -= 500;
+                    let item = getRandomItem(null, { rank: 2 });
+                    addItem(item);
+                    return `500G를 내고 <span style='color:#f1c40f'>[${item}]</span>을(를) 얻었습니다.`;
+                } else {
+                    return "돈이 없어 무시하고 지나갑니다.";
+                }
+            }
+        },
+        {
+            title: "기습적인 깨달음",
+            desc: "전투의 경험이 머릿속을 스치고 지나갑니다.",
+            icon: "💡",
+            effect: () => {
+                player.xp += 100;
+                return `경험치를 <span style='color:#3498db'>100 XP</span> 획득했습니다.`;
+            }
+        },
+        {
+            title: "함정!",
+            desc: "이런! 발을 헛디뎠습니다.",
+            icon: "⚠️",
+            effect: () => {
+                let dmg = Math.floor(player.maxHp * 0.1);
+                player.hp = Math.max(1, player.hp - dmg);
+                return `체력이 <span style='color:#e74c3c'>${dmg}</span> 감소했습니다.`;
+            }
+        }
+    ];
+
+    let evt = events[Math.floor(Math.random() * events.length)];
+    let resultText = evt.effect();
+
+    showPopup(evt.title, `
+        <div style="text-align:center;">
+             <div style="font-size:3em; margin-bottom:10px;">${evt.icon}</div>
+             <p>${evt.desc}</p>
+             <p style="margin-top:10px; font-weight:bold;">${resultText}</p>
+        </div>
+    `, [{
+        txt: "다음 스테이지로",
+        func: () => {
+            closePopup();
+            nextInfiniteStage();
+        }
+    }]);
+}
+
+
+function nextInfiniteStage() {
+    closePopup();
+    infiniteStage++;
+    startInfiniteStage();
 }
 
 window.onload = initGame;
