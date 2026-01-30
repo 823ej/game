@@ -7775,6 +7775,9 @@ function updateUI() {
 
             // 1. 적의 종류(Key)를 확인
             if (e.enemyKey) {
+                // [FIX] discoveredWeaknesses 안전 접근
+                if (!player.discoveredWeaknesses) player.discoveredWeaknesses = {};
+
                 // 2. 플레이어가 이 적의 약점을 이미 발견했는지 확인
                 let knownWeakness = player.discoveredWeaknesses[e.enemyKey];
                 // 3. 발견했다면 아이콘 표시
@@ -7797,59 +7800,58 @@ function updateUI() {
             `;
         });
     }
-}
 
-function updatePileButtons() {
-    const drawBtn = document.getElementById('btn-draw-pile-floating');
-    const exhaustBtn = document.getElementById('btn-exhaust-pile-floating');
-    const discardBtn = document.getElementById('btn-discard-pile-floating');
-    if (!drawBtn && !exhaustBtn && !discardBtn) return;
+    function updatePileButtons() {
+        const drawBtn = document.getElementById('btn-draw-pile-floating');
+        const exhaustBtn = document.getElementById('btn-exhaust-pile-floating');
+        const discardBtn = document.getElementById('btn-discard-pile-floating');
+        if (!drawBtn && !exhaustBtn && !discardBtn) return;
 
-    const inCombat = (game.state === 'battle' || game.state === 'social');
-    const drawCount = inCombat ? (player.drawPile?.length || 0) : 0;
-    const exhaustCount = inCombat ? (player.exhaustPile?.length || 0) : 0;
-    const discardCount = inCombat ? (player.discardPile?.length || 0) : 0;
+        const inCombat = (game.state === 'battle' || game.state === 'social');
+        const drawCount = inCombat ? (player.drawPile?.length || 0) : 0;
+        const exhaustCount = inCombat ? (player.exhaustPile?.length || 0) : 0;
+        const discardCount = inCombat ? (player.discardPile?.length || 0) : 0;
 
-    if (drawBtn) drawBtn.textContent = `덱(${drawCount})`;
-    if (exhaustBtn) exhaustBtn.textContent = `소멸(${exhaustCount})`;
-    if (discardBtn) discardBtn.textContent = `버림(${discardCount})`;
-}
-
-if (typeof updateTurnOrderList === "function") updateTurnOrderList();
-
-// 5. 추가 버튼 (무력행사/도망치기) 로직
-let btnGroup = document.getElementById('btn-group-right');
-let extraBtn = document.getElementById('extra-action-btn');
-if (extraBtn) extraBtn.remove();
-
-if (game.turnOwner === "player") {
-    let btnHTML = "";
-    let btnFunc = null;
-    let btnColor = "";
-
-    if (game.state === "social") {
-        btnHTML = "👊<br>무력행사";
-        btnColor = "#c0392b";
-        btnFunc = () => confirmForceBattle();
-    }
-    else if (game.state === "battle" && !game.isBossBattle) {
-        btnHTML = "🏃<br>도망치기";
-        btnColor = "#7f8c8d";
-        btnFunc = () => confirmRunAway();
+        if (drawBtn) drawBtn.textContent = `덱(${drawCount})`;
+        if (exhaustBtn) exhaustBtn.textContent = `소멸(${exhaustCount})`;
+        if (discardBtn) discardBtn.textContent = `버림(${discardCount})`;
     }
 
-    if (btnHTML) {
-        extraBtn = document.createElement('button');
-        extraBtn.id = 'extra-action-btn';
-        extraBtn.className = 'action-btn';
-        extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
-        extraBtn.innerHTML = btnHTML;
-        extraBtn.onclick = btnFunc;
-        // ★ [핵심] 턴 종료 버튼(end-turn-btn) 앞에 삽입
-        let endBtn = document.getElementById('end-turn-btn');
-        btnGroup.insertBefore(extraBtn, endBtn);
+    if (typeof updateTurnOrderList === "function") updateTurnOrderList();
+
+    // 5. 추가 버튼 (무력행사/도망치기) 로직
+    let btnGroup = document.getElementById('btn-group-right');
+    let extraBtn = document.getElementById('extra-action-btn');
+    if (extraBtn) extraBtn.remove();
+
+    if (game.turnOwner === "player") {
+        let btnHTML = "";
+        let btnFunc = null;
+        let btnColor = "";
+
+        if (game.state === "social") {
+            btnHTML = "👊<br>무력행사";
+            btnColor = "#c0392b";
+            btnFunc = () => confirmForceBattle();
+        }
+        else if (game.state === "battle" && !game.isBossBattle) {
+            btnHTML = "🏃<br>도망치기";
+            btnColor = "#7f8c8d";
+            btnFunc = () => confirmRunAway();
+        }
+
+        if (btnHTML) {
+            extraBtn = document.createElement('button');
+            extraBtn.id = 'extra-action-btn';
+            extraBtn.className = 'action-btn';
+            extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
+            extraBtn.innerHTML = btnHTML;
+            extraBtn.onclick = btnFunc;
+            // ★ [핵심] 턴 종료 버튼(end-turn-btn) 앞에 삽입
+            let endBtn = document.getElementById('end-turn-btn');
+            btnGroup.insertBefore(extraBtn, endBtn);
+        }
     }
-}
 }
 /* [NEW] 도망치기 확인 팝업 */
 function confirmRunAway() {
