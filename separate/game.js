@@ -154,9 +154,24 @@ function getClueMultiplier() {
 function addClueStacks(target, count) {
     const base = Math.max(0, Number(count || 0));
     if (!target || base <= 0) return clueDebuff.getStacks(target);
+
+    const prevStacks = clueDebuff.getStacks(target);
     const mult = getClueMultiplier();
     const total = Math.max(0, Math.floor(base * mult));
-    return clueDebuff.addStacks(target, total);
+    const nextStacks = clueDebuff.addStacks(target, total);
+
+    // [New] 탐정 전용: 단서 10개 달성 시 [결정적 논증] 생성
+    if (isDetectiveJob() && prevStacks < 10 && nextStacks >= 10) {
+        if (!Array.isArray(player.combatTempCards)) player.combatTempCards = [];
+        player.hand.push("결정적 논증");
+        player.combatTempCards.push("결정적 논증"); // 전투 종료 후 사라지게 하려면
+        // 즉시 손패 렌더링이 필요할 수 있음
+        renderHand();
+        log("💡 <b>단서 10개 포착!</b> [결정적 논증]이 생성되었습니다!");
+        playAnim(player, 'anim-success'); // 시각적 피드백
+    }
+
+    return nextStacks;
 }
 
 function CardEffect_CheckClue(target, threshold = 10) {
@@ -198,9 +213,28 @@ function ensureAssistantManager() {
 function initAssistantForDetective() {
     if (!isDetectiveJob()) return;
     const mgr = ensureAssistantManager();
-    const base = Math.max(10, Math.floor(player.maxHp * 3));
+
+    // [FIX] 조수 체력 설정 (유저 요청: 탐정 초기 체력 + 20 고정)
+    if (!mgr.baseMaxHp || mgr.baseMaxHp <= 0) {
+        // 1. 스탯 동기화 (탐정과 동일한 스탯으로 시작)
+        mgr.stats.con = player.stats.con || 10;
+
+        // 2. 목표 HP 설정: (탐정 HP + 20)
+        const targetHp = player.maxHp + 20;
+
+        // 3. 현재 스탯에 의한 보너스 계산
+        const currentBonus = (mgr.stats.con * 2);
+
+        // 4. 역산하여 BaseMaxHp 설정
+        // 최종 HP = Base + Bonus 이므로, Base = 최종 - Bonus
+        mgr.baseMaxHp = targetHp - currentBonus;
+    }
+
     const bonus = Math.max(0, Number(mgr.stats?.con || 0) * 2);
-    const maxHp = base + bonus;
+    // [보정] baseMaxHp가 음수가 되어도 최종 합산은 맞도록 함 (단, 최소 1은 보장)
+    let maxHp = mgr.baseMaxHp + bonus;
+    maxHp = Math.max(1, maxHp);
+
     mgr.reset(maxHp);
 }
 
@@ -2427,7 +2461,13 @@ function startCharacterCreation() {
 // 1. 직업 선택 UI
 function renderJobSelection() {
     const container = document.getElementById('char-creation-content');
-    container.innerHTML = `<h2 style="color:#f1c40f">직업 선택</h2><div class="hub-grid" id="job-list"></div>`;
+    container.innerHTML = `
+        <h2 style="color:#f1c40f">직업 선택</h2>
+        <div class="hub-grid" id="job-list"></div>
+        <div style="margin-top:20px; text-align:center;">
+             <button class="action-btn" style="background:#7f8c8d; width:200px;" onclick="renderStartScreen()">← 이전 화면</button>
+        </div>
+    `;
 
     const list = document.getElementById('job-list');
     for (let key in JOB_DATA) {
@@ -4002,6 +4042,16 @@ function showGameMenuHome() {
     if (home) home.classList.remove('hidden');
     if (content) content.classList.add('hidden');
     if (backBtn) backBtn.classList.add('hidden');
+
+    // [New] 시작 전에는 옵션, 초기화, 전체화면만 노출
+    const tilesToHide = ['menu-tile-status', 'menu-tile-inventory', 'menu-tile-cards', 'menu-tile-missions'];
+    tilesToHide.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (game.started) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        }
+    });
 }
 
 let gameMenuInventoryTab = 'consume';
@@ -4872,6 +4922,12 @@ function toggleBattleUI(isBattle) {
 /* [game.js] confirmRetreat 함수 수정 (탈출 제약 적용) */
 function confirmRetreat() {
     const DS = typeof DungeonSystem !== 'undefined' ? DungeonSystem : null;
+
+    // [Infinite Mode Check]
+    if (game.mode === 'infinite' || (typeof tempGameMode !== 'undefined' && tempGameMode === 'infinite')) {
+        showPopup("🚫 탈출 불가", "무한의 구렁렁텅이에서 도망칠 수 없습니다...<br>이곳은 오직 죽음만이 끝입니다.", [{ txt: "확인", func: closePopup }]);
+        return;
+    }
 
     // [도시 모드] 언제든 전역 지도로 복귀
     if (DS && DS.isCity) {
@@ -5940,6 +5996,12 @@ function useCard(user, target, cardName) {
             // 공격 실행 (방어 상성은 takeDamage에서 처리)
             const res = takeDamage(atkTarget, finalDmg, isCrit, attackAttrs, user, { isAttack: true });
 
+            // [FIX] 피격 애니메이션 강제 적용 (불량배 외 다른 적/플레이어도 반응하도록)
+            if (res && res.dealt >= 0) {
+                const targetId = (atkTarget === player) ? "dungeon-player" : `enemy-unit-${atkTarget.id}`;
+                playAnim(targetId, 'anim-hit');
+            }
+
             // 상태이상(전투 중 임시 카드): 카드에 statusAdd가 명시된 경우만 추가
             if (game.state === 'battle' && user !== player && atkTarget === player && data.statusAdd) {
                 addStatusCardToCombat(data.statusAdd.card, data.statusAdd.count || 1, data.statusAdd.destination || 'discard');
@@ -6487,6 +6549,14 @@ function checkGameOver() {
             if (Math.random() < 0.5) {
                 game.pendingLoot = getRandomItem(null, { categories: ["general"] });
                 game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`;
+            }
+
+            // [NEW] 조수 회복 특성: 전투 종료 시 HP 6 회복
+            if (isDetectiveJob() && player.assistantManager) {
+                const healed = player.assistantManager.heal(6);
+                if (healed > 0) {
+                    game.winMsg += `<br>🩹 조수가 숨을 고르며 체력을 회복합니다. (+${healed})`;
+                }
             }
 
             updateUI();
@@ -7541,11 +7611,27 @@ function updateUI() {
             if ((player.thorns || 0) > 0) entries.push(["가시", player.thorns]);
             if (player.isStunned) entries.push(["기절", 1]);
             else if (player.isBroken) entries.push(["흐트러짐", 1]);
-            let buffText = entries.map(([k, v]) => `${k}(${v})`).join(', ');
-            if (buffText) {
-                const buffHtml = (typeof applyTooltip === 'function') ? applyTooltip(buffText) : buffText;
-                pHud.innerHTML += `<div class="status-effects" style="font-size:0.7em; color:#2ecc71; pointer-events:auto;" onclick="forwardClickThrough(event)" onmousedown="forwardClickThrough(event)">${buffHtml}</div>`;
+
+            // [FIX] 플레이어 상태이상도 머리 위로 (status-overhead)
+            // wrapper 찾기
+            const pWrapper = document.getElementById('dungeon-player-wrapper');
+            if (pWrapper) {
+                // 기존 오버헤드 제거
+                const old = pWrapper.querySelector('.status-overhead');
+                if (old) old.remove();
+
+                if (entries.length > 0) {
+                    const badges = entries.map(([k, v]) => `<div class="status-badge">${k} ${v}</div>`).join("");
+                    const overhead = document.createElement('div');
+                    overhead.className = 'status-overhead';
+                    overhead.innerHTML = badges;
+                    // 이미지 앞에 삽입
+                    const img = document.getElementById('dungeon-player');
+                    if (img) pWrapper.insertBefore(overhead, img);
+                    else pWrapper.prepend(overhead);
+                }
             }
+            // pHud에서는 제거됨
 
         } else {
             // 탐사 모드일 때는 이름만 깔끔하게
@@ -7590,6 +7676,7 @@ function updateUI() {
                         <div class="hp-bar-fill" style="width:${pct}%"></div>
                     </div>
                     <div style="font-size:0.8em; color:#fff;">HP: ${cur} <span style="color:#f1c40f">🛡️${assistantBlock}</span></div>
+                    ${(game.assistantTauntTurns > 0) ? '<div style="font-size:0.8em; color:#e74c3c; font-weight:bold; margin-top:2px;">🎯 어그로 (Taunt)</div>' : ""}
                     ${aBuffHtml ? `<div class="status-effects" style="font-size:0.7em; color:#2ecc71; pointer-events:auto;" onclick="forwardClickThrough(event)" onmousedown="forwardClickThrough(event)">${aBuffHtml}</div>` : ""}
                 `;
                 assistantWrapper.style.display = '';
@@ -7661,7 +7748,7 @@ function updateUI() {
                 intentIconsHtml = `<span class="intent-icon" title="${tip}">${e.intent.icon}${dmgText}</span>`;
             }
 
-            // 버프 텍스트 툴팁 적용 + 가시(thorns) 별도 표기
+            // [FIX] 상태이상을 머리 위로 이동 (status-overhead)
             ensureThornsField(e);
             const eEntries = Object.entries(e.buffs || {});
             if ((e.thorns || 0) > 0) eEntries.push(["가시", e.thorns]);
@@ -7669,8 +7756,12 @@ function updateUI() {
             if (clueStacks > 0) eEntries.push(["단서", clueStacks]);
             if (e.isStunned) eEntries.push(["기절", 1]);
             else if (e.isBroken) eEntries.push(["흐트러짐", 1]);
-            let buffTextRaw = eEntries.map(([k, v]) => `${k}(${v})`).join(', ');
-            let buffText = (typeof applyTooltip === 'function') ? applyTooltip(buffTextRaw) : buffTextRaw;
+
+            let overheadHTML = "";
+            if (eEntries.length > 0) {
+                const badges = eEntries.map(([k, v]) => `<div class="status-badge">${k} ${v}</div>`).join("");
+                overheadHTML = `<div class="status-overhead">${badges}</div>`;
+            }
 
             // ★ [핵심 수정] 이미지 소스 안전 처리 (기본값 + 에러 핸들러)
             let imgSrc = e.img;
@@ -7679,90 +7770,86 @@ function updateUI() {
             // 약점/상태 아이콘 처리
             let weakIcon = "";
             let statusIcon = "";
-            if (e.isStunned) statusIcon = "😵";
-            else if (e.isBroken) statusIcon = "💔";
+            if (e.isStunned) statusIcon = `<div class="status-icon-overlay">😵</div>`;
+            else if (e.isBroken) statusIcon = `<div class="status-icon-overlay">💔</div>`;
+
             // 1. 적의 종류(Key)를 확인
             if (e.enemyKey) {
                 // 2. 플레이어가 이 적의 약점을 이미 발견했는지 확인
                 let knownWeakness = player.discoveredWeaknesses[e.enemyKey];
-
-                // 3. 발견했다면 아이콘 표시, 아니면 빈 문자열(물음표 등으로 대체 가능)
-                if (knownWeakness && typeof ATTR_ICONS !== 'undefined') {
-                    weakIcon = ATTR_ICONS[knownWeakness] || "";
-                } else {
-                    // (선택사항) 아직 모를 때 '?'로 표시하고 싶다면 아래 주석 해제
-                    weakIcon = "❓";
-                }
+                // 3. 발견했다면 아이콘 표시
+                if (knownWeakness) weakIcon = `<div class="weakness-icon" title="약점: ${knownWeakness}">${ATTR_ICONS[knownWeakness] || knownWeakness}</div>`;
             }
-            // HTML 덮어쓰기 (onerror 추가)
+
+            // [FIX] 적 HTML 구조 변경: status-overhead 추가
             el.innerHTML = `
-            <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">
-                ${statusIcon} ${e.name} ${intentIconsHtml}
-            </div>
-            <img src="${imgSrc}" alt="${e.name}" class="char-img"
-                 onerror="this.src='https://placehold.co/100x100/555/fff?text=No+Img';">
-            ${barHTML} 
-            <div style="font-size:0.8em;">
-                ${isSocialEnemy ? "의지" : "HP"}: ${e.hp}${isSocialEnemy ? "" : `/${e.maxHp}`} 
-                ${typeof showBlock !== 'undefined' && showBlock && e.block > 0 ? `<span class="block-icon">🛡️${e.block}</span>` : ""}
-                ${weakIcon ? `<span title="약점: ${e.weakness}" style="margin-left:5px; cursor:help;">${weakIcon}</span>` : ""}
-            </div>
-            <div class="status-effects" style="font-size:0.7em; min-height:15px; color:#f39c12; margin-top:2px;">${buffText}</div>
-        `;
+                ${intentIconsHtml}
+                <div class="enemy-main-content">
+                    ${overheadHTML}
+                    <div style="position:relative; display:inline-block;">
+                        <img class="char-img" src="${imgSrc}" loading="lazy" onerror="this.src='https://placehold.co/100x100/555/fff?text=No+Img';">
+                        ${statusIcon}
+                    </div>
+                    <div class="enemy-stats">${e.name}</div>
+                    ${barHTML}
+                </div>
+                ${weakIcon}
+            `;
         });
     }
+}
 
-    function updatePileButtons() {
-        const drawBtn = document.getElementById('btn-draw-pile-floating');
-        const exhaustBtn = document.getElementById('btn-exhaust-pile-floating');
-        const discardBtn = document.getElementById('btn-discard-pile-floating');
-        if (!drawBtn && !exhaustBtn && !discardBtn) return;
+function updatePileButtons() {
+    const drawBtn = document.getElementById('btn-draw-pile-floating');
+    const exhaustBtn = document.getElementById('btn-exhaust-pile-floating');
+    const discardBtn = document.getElementById('btn-discard-pile-floating');
+    if (!drawBtn && !exhaustBtn && !discardBtn) return;
 
-        const inCombat = (game.state === 'battle' || game.state === 'social');
-        const drawCount = inCombat ? (player.drawPile?.length || 0) : 0;
-        const exhaustCount = inCombat ? (player.exhaustPile?.length || 0) : 0;
-        const discardCount = inCombat ? (player.discardPile?.length || 0) : 0;
+    const inCombat = (game.state === 'battle' || game.state === 'social');
+    const drawCount = inCombat ? (player.drawPile?.length || 0) : 0;
+    const exhaustCount = inCombat ? (player.exhaustPile?.length || 0) : 0;
+    const discardCount = inCombat ? (player.discardPile?.length || 0) : 0;
 
-        if (drawBtn) drawBtn.textContent = `덱(${drawCount})`;
-        if (exhaustBtn) exhaustBtn.textContent = `소멸(${exhaustCount})`;
-        if (discardBtn) discardBtn.textContent = `버림(${discardCount})`;
+    if (drawBtn) drawBtn.textContent = `덱(${drawCount})`;
+    if (exhaustBtn) exhaustBtn.textContent = `소멸(${exhaustCount})`;
+    if (discardBtn) discardBtn.textContent = `버림(${discardCount})`;
+}
+
+if (typeof updateTurnOrderList === "function") updateTurnOrderList();
+
+// 5. 추가 버튼 (무력행사/도망치기) 로직
+let btnGroup = document.getElementById('btn-group-right');
+let extraBtn = document.getElementById('extra-action-btn');
+if (extraBtn) extraBtn.remove();
+
+if (game.turnOwner === "player") {
+    let btnHTML = "";
+    let btnFunc = null;
+    let btnColor = "";
+
+    if (game.state === "social") {
+        btnHTML = "👊<br>무력행사";
+        btnColor = "#c0392b";
+        btnFunc = () => confirmForceBattle();
+    }
+    else if (game.state === "battle" && !game.isBossBattle) {
+        btnHTML = "🏃<br>도망치기";
+        btnColor = "#7f8c8d";
+        btnFunc = () => confirmRunAway();
     }
 
-    if (typeof updateTurnOrderList === "function") updateTurnOrderList();
-
-    // 5. 추가 버튼 (무력행사/도망치기) 로직
-    let btnGroup = document.getElementById('btn-group-right');
-    let extraBtn = document.getElementById('extra-action-btn');
-    if (extraBtn) extraBtn.remove();
-
-    if (game.turnOwner === "player") {
-        let btnHTML = "";
-        let btnFunc = null;
-        let btnColor = "";
-
-        if (game.state === "social") {
-            btnHTML = "👊<br>무력행사";
-            btnColor = "#c0392b";
-            btnFunc = () => confirmForceBattle();
-        }
-        else if (game.state === "battle" && !game.isBossBattle) {
-            btnHTML = "🏃<br>도망치기";
-            btnColor = "#7f8c8d";
-            btnFunc = () => confirmRunAway();
-        }
-
-        if (btnHTML) {
-            extraBtn = document.createElement('button');
-            extraBtn.id = 'extra-action-btn';
-            extraBtn.className = 'action-btn';
-            extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
-            extraBtn.innerHTML = btnHTML;
-            extraBtn.onclick = btnFunc;
-            // ★ [핵심] 턴 종료 버튼(end-turn-btn) 앞에 삽입
-            let endBtn = document.getElementById('end-turn-btn');
-            btnGroup.insertBefore(extraBtn, endBtn);
-        }
+    if (btnHTML) {
+        extraBtn = document.createElement('button');
+        extraBtn.id = 'extra-action-btn';
+        extraBtn.className = 'action-btn';
+        extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
+        extraBtn.innerHTML = btnHTML;
+        extraBtn.onclick = btnFunc;
+        // ★ [핵심] 턴 종료 버튼(end-turn-btn) 앞에 삽입
+        let endBtn = document.getElementById('end-turn-btn');
+        btnGroup.insertBefore(extraBtn, endBtn);
     }
+}
 }
 /* [NEW] 도망치기 확인 팝업 */
 function confirmRunAway() {
@@ -8839,6 +8926,13 @@ function startInfiniteLoop() {
     player.hp = player.maxHp;
     player.sp = player.maxSp;
 
+    // [FIX] 조수 일러스트나 플레이어 일러스트가 기본값으로 뜨는 문제 해결
+    // Infinite Mode에서도 캐릭터 생성 시 선택한 직업 이미지가 뜨도록 강제 설정
+    const pImg = document.getElementById('dungeon-player');
+    if (pImg) {
+        pImg.src = player.img || "assets/player.png";
+    }
+
     startInfiniteStage();
 }
 
@@ -8937,6 +9031,8 @@ function handleInfiniteRest() {
 
     player.hp = Math.min(player.maxHp, player.hp + hpHeal);
     player.sp = Math.min(player.maxSp, player.sp + spHeal);
+
+    updateUI(); // [CI] UI 갱신 추가
 
     showPopup("모닥불", `
         <div style="text-align:center;">

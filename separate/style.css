@@ -2610,6 +2610,16 @@ body {
         /* 살짝 커지는 효과 */
     }
 
+    /* [NEW] 플레이어 타겟팅 효과 */
+    #dungeon-player.selected-target,
+    #player-char.selected-target {
+        border-color: #3498db !important;
+        box-shadow: 0 0 20px rgba(52, 152, 219, 0.6) !important;
+        outline: 3px solid #3498db !important;
+        transform: scale(1.05);
+        z-index: 100;
+    }
+
     .hp-bar-bg {
         height: 8px;
         margin: 2px 0;
@@ -5984,8 +5994,64 @@ body {
         gap: 6px;
     }
 
-    .city-spot-actions .action-btn {
-        width: 100%;
+    /* [NEW] 피격 애니메이션 */
+    @keyframes shakeRed {
+        0% {
+            transform: translate(0, 0);
+            filter: brightness(1);
+        }
+
+        25% {
+            transform: translate(-5px, 0);
+            filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5);
+        }
+
+        50% {
+            transform: translate(5px, 0);
+            filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5);
+        }
+
+        75% {
+            transform: translate(-5px, 0);
+            filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5);
+        }
+
+        100% {
+            transform: translate(0, 0);
+            filter: brightness(1);
+        }
+    }
+
+    .anim-hit {
+        animation: shakeRed 0.4s ease-out;
+    }
+
+    /* [NEW] 상태이상 오버헤드 표시 */
+    .status-overhead {
+        position: absolute;
+        bottom: 100%;
+        /* 캐릭터 머리 위 */
+        left: 50%;
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: 200px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 2px;
+        pointer-events: none;
+        z-index: 50;
+        margin-bottom: 5px;
+        text-shadow: 0 1px 2px #000;
+    }
+
+    .status-badge {
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px solid #777;
+        border-radius: 4px;
+        padding: 2px 4px;
+        font-size: 0.75em;
+        color: #fff;
     }
 
     @media (max-width: 860px) {
