@@ -1,3 +1,8 @@
+const CHARACTER_IMAGES = {
+    detective: "assets/my_detective.png",
+    assistant: "assets/my_assistant.png"
+};
+
 const CARD_DATA = {
     // [공용] 누구나 사용 가능
     "테스트용": { rank: 1, cost: 0, type: "attack", desc: "테스트용, 적 HP -50", dmg: 50, job: "common" },
@@ -386,7 +391,7 @@ const NPC_DATA = {
         baseAtk: 3, baseDef: 2, baseSpd: 3,
         logicShield: "silence",
         deck: ["논리적 반박", "증거 제시", "심호흡"],
-        img: "assets/my_detective.png",
+        img: CHARACTER_IMAGES.detective,
         desc: "사무소를 지키며 의뢰를 정리하는 베테랑 탐정.",
         likes: ["paper", "tool", "warm"],
         dislikes: ["noise", "trash"],
@@ -399,7 +404,7 @@ const NPC_DATA = {
         baseAtk: 2, baseDef: 1, baseSpd: 4,
         logicShield: "silence",
         deck: ["관찰", "심호흡", "무시"],
-        img: "https://placehold.co/100x100/2c3e50/ffffff?text=Assistant",
+        img: CHARACTER_IMAGES.assistant,
         desc: "의뢰 목록을 관리하고 의뢰인과 연락을 담당한다.",
         likes: ["paper", "money"],
         dislikes: ["noise", "weapon"],
@@ -1748,7 +1753,7 @@ const JOB_DATA = {
         starterSocialDeck: ["논리적 반박", "논리적 반박", "증거 제시", "사실 확인", "심호흡"],
         starterEquipment: { rightHand: "권총" },
         // [NEW] 탐정 이미지
-        img: "assets/my_detective.png"
+        img: CHARACTER_IMAGES.detective
     },
     "fixer": {
         name: "해결사",

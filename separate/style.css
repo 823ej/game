@@ -1561,7 +1561,7 @@ body {
     }
 
     #dungeon-player {
-        height: 170px;
+        height: 100px;
     }
 
     #assistant-player {
@@ -1579,13 +1579,13 @@ body {
     }
 
     .enemy-unit {
-        width: clamp(90px, 18vw, 140px);
-        padding: 6px;
+        width: clamp(55px, 10vw, 85px);
+        padding: 4px;
     }
 
     .char-img {
-        width: clamp(60px, 12vw, 90px);
-        height: clamp(60px, 12vw, 90px);
+        width: clamp(35px, 7vw, 55px);
+        height: clamp(35px, 7vw, 55px);
     }
 
     .btn-end-turn-side {
@@ -1685,7 +1685,7 @@ body {
     }
 
     #dungeon-player {
-        height: 170px;
+        height: 100px;
     }
 
     #assistant-player {
@@ -1703,8 +1703,8 @@ body {
     }
 
     .enemy-unit {
-        width: clamp(100px, 12vw, 150px);
-        padding: 6px;
+        width: clamp(60px, 7vw, 90px);
+        padding: 4px;
     }
 }
 
@@ -1821,7 +1821,7 @@ body {
     }
 
     #dungeon-player {
-        height: 150px;
+        height: 90px;
     }
 
     #assistant-player {
@@ -1839,13 +1839,13 @@ body {
     }
 
     .enemy-unit {
-        width: clamp(84px, 18vw, 120px);
-        padding: 5px;
+        width: clamp(50px, 10vw, 70px);
+        padding: 4px;
     }
 
     .char-img {
-        width: clamp(56px, 12vw, 80px);
-        height: clamp(56px, 12vw, 80px);
+        width: clamp(32px, 7vw, 48px);
+        height: clamp(32px, 7vw, 48px);
     }
 
     .btn-end-turn-side {
@@ -1947,7 +1947,7 @@ body {
     }
 
     #dungeon-player {
-        height: 130px;
+        height: 75px;
     }
 
     #assistant-player {
@@ -1987,13 +1987,13 @@ body {
     }
 
     .enemy-unit {
-        width: clamp(72px, 18vw, 100px);
-        padding: 5px;
+        width: clamp(40px, 10vw, 60px);
+        padding: 3px;
     }
 
     .char-img {
-        width: clamp(50px, 12vw, 70px);
-        height: clamp(50px, 12vw, 70px);
+        width: clamp(30px, 7vw, 42px);
+        height: clamp(30px, 7vw, 42px);
     }
 
     .btn-end-turn-side {
@@ -2586,8 +2586,8 @@ body {
     /* 4. 전투(Battle) 화면 - 가장 중요 */
     /* 적 유닛 스타일 (테두리 영역 확장) */
     .enemy-unit {
-        width: clamp(100px, 14vw, 140px);
-        padding: clamp(6px, 1.2vw, 10px);
+        width: clamp(60px, 8vw, 85px);
+        padding: clamp(4px, 0.8vw, 6px);
         box-sizing: border-box;
         /* 패딩이 너비에 포함되도록 설정 */
         border-radius: 12px;
@@ -2846,7 +2846,7 @@ body {
     }
 
     #dungeon-player {
-        height: 140px;
+        height: 85px;
     }
 
     #assistant-player {
@@ -3090,17 +3090,23 @@ body {
 /* 기존 .character 스타일이 flex width %로 되어 있어서 수정 필요 */
 #dungeon-player {
     /* [수정] 너비를 조금 줄이거나, 높이를 기준으로 맞춤 */
-    height: 220px;
+    height: 120px;
+    /* [수정] 너비를 조금 줄이거나, 높이를 기준으로 맞춤 */
+
     /* 스테이지 높이(340px)에 맞춰 적당한 높이 고정 */
     width: auto;
     /* 높이에 맞춰 너비 자동 조절 (비율 유지) */
 
     transition: transform 0.2s;
-    filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5));
-    /* 그림자 추가로 선명함 강조 */
+    /* filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5)); REMOVED for skewed shadow */
+    pointer-events: none;
+    /* filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5)); REMOVED for skewed shadow */
     pointer-events: none;
     /* 클릭은 뒤의 상호작용 오브젝트가 받도록 */
+    /* 클릭은 뒤의 상호작용 오브젝트가 받도록 */
 }
+
+
 
 /* [style.css] 플레이어 배치 영역 수정 (자신에게 버프 걸 때 필요) */
 #dungeon-player-wrapper {
@@ -3167,8 +3173,14 @@ body {
     height: 220px;
     width: auto;
     transition: transform 0.2s;
-    filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5));
+    /* filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5)); REMOVED */
+    /* filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5)); REMOVED */
     pointer-events: none;
+}
+
+#assistant-shadow {
+    height: 220px;
+    width: auto;
 }
 
 /* 걷는 모션 (좌우 반전 등) */
@@ -3198,9 +3210,83 @@ body {
     background: rgba(255, 193, 7, 0.9);
     border: 3px solid #fff;
     font-size: 2em;
+    color: #fff;
     font-weight: bold;
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.1s;
+}
+
+/* [NEW] 캐릭터 그림자 (Skewed Shadow) */
+.char-shadow {
+    position: absolute;
+    bottom: 8px;
+    /* 발보다 조금 아래 -> 위로 올림 */
+    left: 0;
+    /* width: 100% 이므로 left:0으로 부모와 일치시킴 */
+    width: 100%;
+    /* 높이도 부모에 맞추되, 원본 비율 유지가 관건 */
+
+    /* 그림자 변형의 핵심 */
+    transform-origin: bottom center;
+    /* 세로 1/8 축소 (0.125), 좌측으로 눕힘 (각도 30 -> 50deg로 증가) */
+    transform: skewX(50deg) scaleY(0.125);
+
+    /* 완전 검은색 + 투명도 (0.4로 복귀) */
+    filter: brightness(0) opacity(0.4);
+
+    /* 렌더링 품질 개선 시도 */
+    /* 렌더링 품질 개선 시도 */
+    image-rendering: auto;
+
+    /* 클릭 통과 */
+    z-index: -1;
+    /* 캐릭터 뒤로 */
+}
+
+/* [NEW] 그림자 애니메이션 동기화 */
+/* 1. 플레이어가 왼쪽을 보고 있을 때 (flip) */
+/* [NEW] 그림자 애니메이션 동기화 */
+/* 1. 플레이어가 왼쪽을 보고 있을 때 (flip) */
+/* class 'facing-left'는 #dungeon-player 엘리먼트에 직접 붙음. 형제 선택자(~) 사용 */
+#dungeon-player.facing-left~.char-shadow,
+#dungeon-player.walking-left~.char-shadow {
+    /* [FIX] left:0으로 변경했으므로 translateX 불필요. 
+       - scaleX(-1)로 반전하고, skew 방향만 반대로(-50deg) 잡아주면 됨 */
+    transform: skewX(-50deg) scaleY(0.125) scaleX(-1);
+}
+
+/* 2. 플레이어가 통통 튈 때 (anim-walk) */
+/* [FIX] 형제 선택자 대신 일반 선택자 사용하여 DOM 구조와 무관하게 동작 */
+#dungeon-player.anim-walk~.char-shadow,
+#assistant-player.anim-walk~#assistant-shadow {
+    animation: shadowBob 0.6s ease-in-out infinite;
+}
+
+@keyframes shadowBob {
+
+    /* [FIX] 캐릭터가 위로 뛸 때 그림자는 땅에 가까워짐 (bottom값 감소) */
+    0%,
+    100% {
+        bottom: 12px;
+        /* 캐릭터가 아래에 있을 때 그림자는 멀리 */
+    }
+
+    50% {
+        bottom: 8px;
+        /* 캐릭터가 위로 뛸 때 그림자는 가까이 (땅에 붙음) */
+    }
+}
+
+/* 적 캐릭터 그림자 */
+.enemy-unit .char-shadow {
+    width: auto;
+    height: 100px;
+    /* .char-img max-height와 유사하게 설정 필요 */
+    max-height: 100%;
 }
 
 .move-btn:active {
@@ -6804,3 +6890,4 @@ body {
         font-weight: bold;
         z-index: 1000;
     }
+}

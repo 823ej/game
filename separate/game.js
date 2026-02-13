@@ -5997,7 +5997,7 @@ function useCard(user, target, cardName) {
             const res = takeDamage(atkTarget, finalDmg, isCrit, attackAttrs, user, { isAttack: true });
 
             // [FIX] 피격 애니메이션 강제 적용 (불량배 외 다른 적/플레이어도 반응하도록)
-            if (res && res.dealt >= 0) {
+            if (res && res.dealt >= 0 && !res.redirectedToAssistant) {
                 const targetId = (atkTarget === player) ? "dungeon-player" : `enemy-unit-${atkTarget.id}`;
                 playAnim(targetId, 'anim-hit');
             }
@@ -6329,9 +6329,11 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
                 const flat = Math.max(0, Number(getTotalPowerValue('assistantDamageReductionFlat') || 0));
                 if (flat > 0) assistantDmg = Math.max(0, assistantDmg - flat);
                 const dealt = mgr.takeDamage(assistantDmg);
+                // [FIX] 조수가 피격 시 조수에게만 애니메이션 표시 (탐정에게 표시되지 않도록)
+                playAnim('assistant-player', 'anim-hit');
                 log(`🛡️ 조수가 피해를 대신 받았습니다. (-${dealt})`);
                 updateUI();
-                return { raw: rawDmg, blocked: 0, dealt };
+                return { raw: rawDmg, blocked: 0, dealt, redirectedToAssistant: true };
             }
         }
         if (mgr && !mgr.isAlive()) {
@@ -7579,7 +7581,7 @@ function updateUI() {
             if (game.state === 'social') {
                 hpPct = Math.max(0, (player.mental / 100) * 100);
                 pHud.innerHTML = `
-                    <div class="hp-bar-bg" style="background:#222; border:1px solid #3498db; height:8px; margin:2px 0;">
+                    <div class="hp-bar-bg" style="width:80px; background:#222; border:1px solid #3498db; height:8px; margin:2px auto;">
                         <div class="hp-bar-fill" style="width:${hpPct}%; background:#3498db;"></div>
                     </div>
                     <div style="font-size:0.8em; color:#fff;">의지: ${player.mental} <span style="color:#f1c40f">🛡️${player.block}</span></div>
@@ -7598,7 +7600,7 @@ function updateUI() {
             // 일반 전투 모드 (체력 바)
             else {
                 pHud.innerHTML = `
-                    <div class="hp-bar-bg" style="height:8px; margin:2px 0;">
+                    <div class="hp-bar-bg" style="width:80px; height:8px; margin:2px auto;">
                         <div class="hp-bar-fill" style="width:${hpPct}%"></div>
                     </div>
                     <div style="font-size:0.8em; color:#fff;">HP: ${player.hp} <span style="color:#f1c40f">🛡️${player.block}</span></div>
@@ -7616,6 +7618,25 @@ function updateUI() {
             // wrapper 찾기
             const pWrapper = document.getElementById('dungeon-player-wrapper');
             if (pWrapper) {
+                // [NEW] 플레이어 그림자 업데이트
+                // 플레이어 이미지가 없거나(초기화 전), 기본 이미지(assets/player.png)라면 직업 이미지로 강제 보정 시도
+                let currentImg = player.img;
+                if ((!currentImg || currentImg.includes("assets/player.png")) && player.job && JOB_DATA[player.job]) {
+                    currentImg = JOB_DATA[player.job].img;
+                }
+
+                if (currentImg) {
+                    const shadow = document.getElementById('dungeon-player-shadow');
+                    // 그림자 소스가 현재 이미지와 다르면 즉시 동기화
+                    if (shadow && shadow.src !== currentImg) {
+                        shadow.src = currentImg;
+                    }
+
+                    const pImg = document.getElementById('dungeon-player');
+                    if (pImg && pImg.src !== currentImg) {
+                        pImg.src = currentImg;
+                    }
+                }
                 // 기존 오버헤드 제거
                 const old = pWrapper.querySelector('.status-overhead');
                 if (old) old.remove();
@@ -7637,18 +7658,73 @@ function updateUI() {
             // 탐사 모드일 때는 이름만 깔끔하게
             pHud.innerHTML = `<div style="font-size:0.9em; color:#aaa;">탐색 중...</div>`;
         }
+
+
+        // [FIX] 조수 및 플레이어 그림자 위치 보정 (컨테이너 분리)
         const assistantWrapper = document.getElementById('assistant-wrapper') || (() => {
             const wrapper = document.getElementById('dungeon-player-wrapper');
             if (!wrapper) return null;
+
+            // 1. 플레이어 이미지 + 그림자 컨테이너 생성
+            // 이미 생성되었는지 확인
+            let pContainer = document.getElementById('player-img-container');
+            if (!pContainer) {
+                pContainer = document.createElement('div');
+                pContainer.id = 'player-img-container';
+                pContainer.style.position = 'relative';
+                pContainer.style.display = 'inline-block';
+                pContainer.style.zIndex = '20';
+                pContainer.style.pointerEvents = 'none';
+
+                // 기존 플레이어 이미지 이동
+                const existingPlayerImg = document.getElementById('dungeon-player');
+                if (existingPlayerImg) {
+                    // 그림자 생성
+                    const playerShadow = document.createElement('img');
+                    playerShadow.id = 'dungeon-player-shadow';
+                    playerShadow.className = 'char-shadow';
+                    playerShadow.src = existingPlayerImg.src || "assets/player.png";
+
+                    // 순서: [플레이어] -> [그림자] 순으로 넣어야 CSS 형제 선택자(+)가 먹힘
+                    // z-index로 레이어 순서는 제어 (그림자 -1)
+                    pContainer.appendChild(existingPlayerImg);
+                    pContainer.appendChild(playerShadow);
+
+                    // wrapper의 맨 앞에 컨테이너 삽입 (HUD, 오버헤드보다 안쪽일 수 있으니 주의)
+                    const pHud = document.getElementById('player-hud');
+                    // 오버헤드가 있다면 그 뒤에, 아니면 맨 앞? 
+                    // 단순하게 HUD 앞에 넣고, 오버헤드는 updateUI에서 처리됨
+                    if (pHud) wrapper.insertBefore(pContainer, pHud);
+                    else wrapper.appendChild(pContainer);
+                }
+            }
+
+            // 2. 조수 래퍼 생성
             const el = document.createElement('div');
             el.id = 'assistant-wrapper';
+
+            // 조수 이미지 + 그림자 컨테이너
+            const aContainer = document.createElement('div');
+            aContainer.style.position = 'relative';
+            aContainer.style.display = 'inline-block';
+
             const img = document.createElement('img');
             img.id = 'assistant-player';
             img.alt = '조수';
+
+            const shadow = document.createElement('img');
+            shadow.id = 'assistant-shadow';
+            shadow.className = 'char-shadow';
+
+            aContainer.appendChild(shadow);
+            aContainer.appendChild(img);
+
             const hud = document.createElement('div');
             hud.id = 'assistant-hud';
-            el.appendChild(img);
-            el.appendChild(hud);
+
+            el.appendChild(aContainer); // 이미지 그룹
+            el.appendChild(hud);        // HUD는 이미지 그룹 아래
+
             wrapper.appendChild(el);
             return el;
         })();
@@ -7661,23 +7737,55 @@ function updateUI() {
                     : null;
                 const assistantImg = assistantMeta?.img || "https://placehold.co/220x220/2c3e50/ffffff?text=Assistant";
                 assistantImgEl.src = assistantImg;
+
+                // [NEW] 조수 그림자 소스 동기화
+                const assistantShadow = document.getElementById('assistant-shadow');
+                if (assistantShadow) {
+                    assistantShadow.src = assistantImg;
+                }
                 const mgr = ensureAssistantManager();
                 const cur = Math.max(0, Number(mgr?.hp || 0));
                 const max = Math.max(0, Number(mgr?.maxHp || 0));
                 const pct = max > 0 ? Math.max(0, Math.min(100, Math.round((cur / max) * 100))) : 0;
                 const assistantBlock = Math.max(0, Number(mgr?.block || 0));
+
+                // [FIX] 조수 상태이상/어그로 -> status-overhead로 이동
                 const aEntries = [];
+                if (game.assistantTauntTurns > 0) aEntries.push(["🎯어그로", ""]); // 어그로 표시
+
+                // 버프/디버프 처리
+                if (mgr.buffs) {
+                    Object.entries(mgr.buffs).forEach(([k, v]) => {
+                        aEntries.push([k, v]);
+                    });
+                }
+
                 if (mgr.isStunned) aEntries.push(["기절", 1]);
                 else if (mgr.isBroken) aEntries.push(["흐트러짐", 1]);
-                const aBuffText = aEntries.map(([k, v]) => `${k}(${v})`).join(', ');
-                const aBuffHtml = aBuffText ? ((typeof applyTooltip === 'function') ? applyTooltip(aBuffText) : aBuffText) : "";
+
+                // 기존 오버헤드 제거 및 새로 생성
+                const oldOverhead = assistantWrapper.querySelector('.status-overhead');
+                if (oldOverhead) oldOverhead.remove();
+
+                if (aEntries.length > 0) {
+                    const badges = aEntries.map(([k, v]) => {
+                        const valStr = v ? ` ${v}` : "";
+                        return `<div class="status-badge">${k}${valStr}</div>`;
+                    }).join("");
+                    const overhead = document.createElement('div');
+                    overhead.className = 'status-overhead';
+                    overhead.innerHTML = badges;
+                    // [FIX] assistantImgEl은 aContainer 안에 있으므로, 부모(aContainer)에 insertBefore 해야 함
+                    if (assistantImgEl.parentNode) {
+                        assistantImgEl.parentNode.insertBefore(overhead, assistantImgEl);
+                    }
+                }
+
                 assistantHud.innerHTML = `
                     <div class="hp-bar-bg" style="height:8px; margin:2px 0;">
                         <div class="hp-bar-fill" style="width:${pct}%"></div>
                     </div>
                     <div style="font-size:0.8em; color:#fff;">HP: ${cur} <span style="color:#f1c40f">🛡️${assistantBlock}</span></div>
-                    ${(game.assistantTauntTurns > 0) ? '<div style="font-size:0.8em; color:#e74c3c; font-weight:bold; margin-top:2px;">🎯 어그로 (Taunt)</div>' : ""}
-                    ${aBuffHtml ? `<div class="status-effects" style="font-size:0.7em; color:#2ecc71; pointer-events:auto;" onclick="forwardClickThrough(event)" onmousedown="forwardClickThrough(event)">${aBuffHtml}</div>` : ""}
                 `;
                 assistantWrapper.style.display = '';
             } else {
@@ -7732,7 +7840,7 @@ function updateUI() {
 
             let isSocialEnemy = (game.state === "social");
             let hpPct = isSocialEnemy ? Math.min(100, Math.max(0, e.hp)) : Math.max(0, (e.hp / e.maxHp) * 100);
-            let barHTML = `<div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
+            let barHTML = `<div class="hp-bar-bg" style="width:80px; height:8px; margin:2px auto;"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
 
             let intentIconsHtml = `<span class="intent-icon" title="행동 준비 중">💤</span>`;
             if (e.intentQueue && e.intentQueue.length > 0) {
@@ -7790,11 +7898,13 @@ function updateUI() {
                 <div class="enemy-main-content">
                     ${overheadHTML}
                     <div style="position:relative; display:inline-block;">
+                        <img class="char-shadow" src="${imgSrc}">
                         <img class="char-img" src="${imgSrc}" loading="lazy" onerror="this.src='https://placehold.co/100x100/555/fff?text=No+Img';">
                         ${statusIcon}
                     </div>
                     <div class="enemy-stats">${e.name}</div>
                     ${barHTML}
+                    <div style="font-size:0.8em; color:#fff;">HP: ${e.hp} <span style="color:#f1c40f">🛡️${e.block}</span></div>
                 </div>
                 ${weakIcon}
             `;
@@ -8250,11 +8360,14 @@ function playAnim(elementId, animClass) {
     // 적 유닛은 updateUI가 innerHTML을 자주 갱신하므로(이미지 노드 교체),
     // 내부 이미지에 애니메이션을 걸면 즉시 사라질 수 있어 래퍼에 적용한다.
     const img = el.querySelector?.('.char-img');
-    const target = (isEnemyUnit ? el : (img || el));
+    const elId = el?.id;
+    const hasShadow = !!(el?.parentElement && el.parentElement.querySelector?.('.char-shadow'));
+    const shouldAnimateGroup = !isEnemyUnit && hasShadow && (elId === 'dungeon-player' || elId === 'assistant-player');
+    const target = shouldAnimateGroup ? el.parentElement : (isEnemyUnit ? el : (img || el));
 
     // 기존 애니메이션 클래스가 있다면 제거 (연속 재생을 위해)
-    el.classList.remove('anim-atk-p', 'anim-atk-e', 'anim-hit', 'anim-bounce');
-    if (img) img.classList.remove('anim-atk-p', 'anim-atk-e', 'anim-hit', 'anim-bounce');
+    const animTargets = new Set([el, img, target].filter(Boolean));
+    animTargets.forEach(node => node.classList.remove('anim-atk-p', 'anim-atk-e', 'anim-hit', 'anim-bounce'));
 
     // 강제 리플로우 (브라우저가 변경사항을 즉시 인식하게 함)
     void target.offsetWidth;
