@@ -1,6 +1,7 @@
 :root {
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --battle-char-height: 132px;
 }
 
 html,
@@ -1449,6 +1450,9 @@ body {
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+    :root {
+        --battle-char-height: 110px;
+    }
     body {
         font-size: 14px;
     }
@@ -1560,14 +1564,6 @@ body {
         font-size: 0.86em;
     }
 
-    #dungeon-player {
-        height: 100px;
-    }
-
-    #assistant-player {
-        height: 170px;
-    }
-
     #assistant-wrapper {
         margin-left: 12px;
     }
@@ -1605,6 +1601,9 @@ body {
 }
 
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 900px) {
+    :root {
+        --battle-char-height: 110px;
+    }
     .is-battle .bottom-ui-stack {
         flex-direction: row;
         align-items: center;
@@ -1684,14 +1683,6 @@ body {
         margin: 0;
     }
 
-    #dungeon-player {
-        height: 100px;
-    }
-
-    #assistant-player {
-        height: 170px;
-    }
-
     #assistant-wrapper {
         margin-left: 10px;
     }
@@ -1709,6 +1700,9 @@ body {
 }
 
 @media (max-height: 460px) and (orientation: landscape) {
+    :root {
+        --battle-char-height: 100px;
+    }
     body {
         font-size: 13px;
     }
@@ -1820,14 +1814,6 @@ body {
         font-size: 0.8em;
     }
 
-    #dungeon-player {
-        height: 90px;
-    }
-
-    #assistant-player {
-        height: 150px;
-    }
-
     #assistant-wrapper {
         margin-left: 10px;
     }
@@ -1875,6 +1861,9 @@ body {
 }
 
 @media (max-height: 360px) and (orientation: landscape) {
+    :root {
+        --battle-char-height: 95px;
+    }
     body {
         font-size: 12px;
     }
@@ -1944,14 +1933,6 @@ body {
     .character.turn-active {
         border: 1px solid #f1c40f;
         box-shadow: 0 0 8px rgba(241, 196, 15, 0.3);
-    }
-
-    #dungeon-player {
-        height: 75px;
-    }
-
-    #assistant-player {
-        height: 130px;
     }
 
     #assistant-wrapper {
@@ -2436,6 +2417,9 @@ body {
 
 
 @media (max-height: 420px) and (orientation: landscape) {
+    :root {
+        --battle-char-height: 95px;
+    }
 
     /* 1. 전체 레이아웃 압축 */
     body {
@@ -2845,14 +2829,6 @@ body {
         padding: 6px;
     }
 
-    #dungeon-player {
-        height: 85px;
-    }
-
-    #assistant-player {
-        height: 140px;
-    }
-
     #assistant-wrapper {
         margin-left: 8px;
     }
@@ -3090,7 +3066,7 @@ body {
 /* 기존 .character 스타일이 flex width %로 되어 있어서 수정 필요 */
 #dungeon-player {
     /* [수정] 너비를 조금 줄이거나, 높이를 기준으로 맞춤 */
-    height: 120px;
+    height: var(--battle-char-height);
     /* [수정] 너비를 조금 줄이거나, 높이를 기준으로 맞춤 */
 
     /* 스테이지 높이(340px)에 맞춰 적당한 높이 고정 */
@@ -3170,7 +3146,7 @@ body {
 }
 
 #assistant-player {
-    height: 220px;
+    height: var(--battle-char-height);
     width: auto;
     transition: transform 0.2s;
     /* filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5)); REMOVED */
@@ -3179,7 +3155,7 @@ body {
 }
 
 #assistant-shadow {
-    height: 220px;
+    height: var(--battle-char-height);
     width: auto;
 }
 

@@ -147,6 +147,7 @@ const CARD_DATA = {
 
     // --- 장비 전용 카드 (장비 장착 시 덱에 추가, 해제 시 제거) ---
     "권총 사격": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
+    "사격(관통)": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
     "쿠보탄 급소": { rank: 1, cost: 1, type: "attack", desc: "쿠보탄으로 급소를 찌른다! 적 HP -6 [관통]", dmg: 6, attr: "pierce", job: "equipment", noReward: true },
     "은빛 찌르기": { rank: 2, cost: 1, type: "attack", desc: "은 단검의 찌르기! 적 HP -7 [신성]", dmg: 7, attr: "holy", job: "equipment", noReward: true },
     "너클 강타": { rank: 1, cost: 1, type: "attack", desc: "스파이크 너클로 강타! 적 HP -6 [타격]", dmg: 6, attr: "strike", job: "equipment", noReward: true },
@@ -273,6 +274,17 @@ const ENEMY_DATA = {
         deck: ["타격", "수비", "발톱 갈기", "타격"],
         img: "https://placehold.co/100x100/5d4037/ffffff?text=Rat",
         tags: ["beast"]
+    },
+    "좀비": {
+        name: "좀비",
+        baseHp: 32,
+        stats: { atk: 2, def: 1, spd: 1 },
+        weakness: "fire",
+        growth: { hp: 5, atk: 0.4, def: 0.2, spd: 0.1 },
+        deckType: "custom",
+        deck: ["타격", "타격", "쇠약 바늘", "독 뿌리기", "수비"],
+        img: "https://placehold.co/100x100/556b2f/ffffff?text=Zombie",
+        tags: ["undead", "cursed"]
     },
     "폭주족": {
         name: "폭주족",
@@ -1424,7 +1436,6 @@ const DISTRICTS = {
         danger: 3,
         color: "#8e44ad",
         hidden: true,
-        // ★ [이 부분이 빠져 있었습니다!] 추가해주세요. ★
         scenarios: ["cult_investigation"],
         facilities: [],
         enemyPool: ["사교도"]
@@ -1617,14 +1628,14 @@ const EVENT_DATA = [
         desc: "골목길 구석에 네온사인이 깜빡이는 낡은 자판기가 있습니다.<br>안에 내용물이 들어있지만 전원이 불안정해 보입니다.",
         choices: [
             {
-                txt: "돈을 넣는다 (100원)",
+                txt: "돈을 넣는다 (800원)",
                 func: () => {
-                    if (player.gold < 100) {
+                    if (player.gold < 800) {
                         showPopup("잔액 부족", "돈이 부족합니다.", [{ txt: "확인", func: closePopup }]);
                         return;
                     }
 
-                    player.gold -= 100;
+                    player.gold -= 800;
                     let item = getRandomItem("consumable", { categories: ["general"] });
 
                     // 아이템 획득 시도 (성공 시 팝업 띄우고 종료)
@@ -1665,12 +1676,12 @@ const EVENT_DATA = [
         desc: "코트 깃을 세운 남자가 은밀하게 접근합니다.<br>\"좋은 물건이 있는데, 피를 좀 나눌 수 있나?\"",
         choices: [
             {
-                txt: "피를 판다 (HP -10, +500원)",
+                txt: "피를 판다 (HP -10, +5000원)",
                 func: () => {
                     takeDamage(player, 10);
                     if (player.hp > 0) {
-                        player.gold += 500;
-                        showPopup("거래 성사", "남자는 피를 뽑아가고 돈을 쥐어줍니다.<br>(HP -10, +500원)", [
+                        player.gold += 5000;
+                        showPopup("거래 성사", "남자는 피를 뽑아가고 돈을 쥐어줍니다.<br>(HP -10, +5000원)", [
                             { txt: "확인", func: () => { closePopup(); renderExploration(); } }
                         ]);
                     }
@@ -1720,7 +1731,7 @@ const EVENT_DATA = [
             {
                 txt: "가진다 (+소지금, SP -3)",
                 func: () => {
-                    let gain = 300 + Math.floor(Math.random() * 200);
+                    let gain = 3000 + Math.floor(Math.random() * 200);
                     player.gold += gain;
                     player.sp -= 3;
                     showPopup("획득", `죄책감이 들지만 지갑은 두둑합니다.<br>(+${gain}원, SP -3)`, [
