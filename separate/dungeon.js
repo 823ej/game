@@ -18,13 +18,12 @@ const DungeonSystem = {
 
     /* [dungeon.js] generateDungeon 함수 교체 */
 
-    /* [dungeon.js] generateDungeon 수정 (다키스트 던전 스타일 + config.data 반영) */
+    /* [dungeon.js] generateDungeon 수정 (나뭇가지형 루트 + 재접속) */
     generateDungeon: function (config) {
         this.isCity = false;
         if (typeof game !== 'undefined') game.hasRested = false;
 
         // 1. 방 덱(Deck) 구성하기
-        // config.data에 정의된 방들을 리스트에 모두 담습니다.
         let roomDeck = [];
         if (config.data) {
             for (let type in config.data) {
@@ -33,29 +32,28 @@ const DungeonSystem = {
             }
         }
 
-        // 목표 방 개수보다 설정된 방이 적다면, 나머지는 'battle'이나 'empty'로 채웁니다.
         let targetCount = config.roomCount || 12;
         while (roomDeck.length < targetCount) {
             roomDeck.push(Math.random() < 0.6 ? "battle" : "empty");
         }
 
-        // 덱 섞기 (Fisher-Yates Shuffle)
         for (let i = roomDeck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [roomDeck[i], roomDeck[j]] = [roomDeck[j], roomDeck[i]];
         }
 
-        // 덱에서 방을 하나씩 꺼내는 헬퍼 함수
         const popRoom = () => {
             if (roomDeck.length > 0) return roomDeck.pop();
-            return Math.random() < 0.5 ? "battle" : "empty"; // 덱이 동나면 랜덤
+            return Math.random() < 0.5 ? "battle" : "empty";
         };
 
         // 2. 맵 크기 설정
-        // 방을 다 배치할 수 있을 만큼 충분히 길게 잡습니다.
-        // (메인 경로에 절반, 곁가지에 절반 정도 들어간다고 가정)
-        this.width = Math.max(config.width || 8, Math.ceil(targetCount * 0.7) + 2);
-        this.height = 3; // 위/중앙/아래 고정
+        this.width = Math.max(config.width || 8, Math.ceil(targetCount * 0.65) + 2);
+        this.height = Math.max(3, config.height || 5);
+        const midY = Math.floor(this.height / 2);
+
+        const inBounds = (x, y) => (x >= 0 && x < this.width && y >= 0 && y < this.height);
+        const isWall = (x, y) => inBounds(x, y) && this.map[y][x].type === "wall";
 
         // 맵 배열 초기화
         this.map = Array.from({ length: this.height }, () =>
@@ -64,70 +62,138 @@ const DungeonSystem = {
             }))
         );
 
+        const placeRoom = (x, y, type) => {
+            if (!inBounds(x, y)) return false;
+            if (!isWall(x, y)) return false;
+            this.map[y][x] = { type: type, visited: false, exits: [], events: null };
+            if (type === "boss" && !config.noClueLock) this.map[y][x].locked = true;
+            return true;
+        };
+
         // ---------------------------------------------------------
         // [STEP 1] 척추 생성 (중앙 경로)
         // ---------------------------------------------------------
-        let startY = 1;
-        let placedCount = 0;
-
         for (let x = 0; x < this.width; x++) {
             let type;
 
             if (x === 0) type = "start";
-            else if (x === this.width - 1) {
-                type = config.noBoss ? popRoom() : "boss";
-            } else {
-                // ★ 여기서 덱에서 뽑습니다.
-                // 단, 너무 중요한 방(상점, 회복)이 메인 경로에만 몰리면 재미 없으므로
-                // 50% 확률로 메인 경로에 배치하고, 아니면 곁가지 배치를 위해 아껴둡니다.
-                // (덱이 많이 남았으면 배치, 얼마 안 남았으면 무조건 배치)
-
-                if (roomDeck.length > (this.width - x) && Math.random() < 0.5) {
-                    // 아껴두기 (빈 복도로 만듦) -> 곁가지에서 쓰임
+            else if (x === this.width - 1) type = config.noBoss ? popRoom() : "boss";
+            else {
+                if (roomDeck.length > (this.width - x) && Math.random() < 0.45) {
                     type = "empty";
                 } else {
                     type = popRoom();
                 }
             }
 
-            this.map[startY][x] = { type: type, visited: false, exits: [], events: null };
-            if (type === "boss") {
-                if (!config.noClueLock) this.map[startY][x].locked = true;
-            }
+            this.map[midY][x] = { type: type, visited: false, exits: [], events: null };
+            if (type === "boss" && !config.noClueLock) this.map[midY][x].locked = true;
 
             if (x === 0) {
-                this.currentPos = { x: 0, y: startY };
-                this.map[startY][x].visited = true;
+                this.currentPos = { x: 0, y: midY };
+                this.map[midY][x].visited = true;
             } else {
-                this._connectRooms(x - 1, startY, x, startY);
+                this._connectRooms(x - 1, midY, x, midY);
             }
         }
 
         // ---------------------------------------------------------
-        // [STEP 2] 갈비뼈 생성 (곁가지 방) - 남은 덱 털기
+        // [STEP 2] 가지 생성 (상/하 분기 + 가끔 재접속)
         // ---------------------------------------------------------
-        // 메인 경로의 각 방(x)에서 위/아래로 방을 뚫어 남은 roomDeck을 배치합니다.
+        const maxBranchLen = Math.max(1, Math.min(
+            (Number.isInteger(config.branchMaxLen) ? config.branchMaxLen : 3),
+            this.height - 1
+        ));
+        const branchChance = (typeof config.branchChance === "number") ? config.branchChance : 0.55;
+        const branchDirChance = (typeof config.branchDirChance === "number") ? config.branchDirChance : 0.6;
+        const reconnectChance = (typeof config.reconnectChance === "number") ? config.reconnectChance : 0.65;
+        const tryBranch = (baseX, baseY, dir) => {
+            if (roomDeck.length === 0) return 0;
+            let made = 0;
+            let lastX = baseX;
+            let lastY = baseY;
+            const len = 1 + Math.floor(Math.random() * maxBranchLen);
 
-        for (let x = 1; x < this.width - 1; x++) {
-            // 덱이 비었으면 더 이상 무리해서 만들지 않음 (확률적 중단)
-            if (roomDeck.length === 0 && Math.random() < 0.8) continue;
-
-            // 위쪽 방 (0, x)
-            if (Math.random() < 0.4 || (roomDeck.length > 0 && Math.random() < 0.6)) {
-                let type = popRoom();
-                this.map[0][x] = { type: type, visited: false, exits: [], events: null };
-                this._connectRooms(x, 1, x, 0);
+            for (let i = 1; i <= len; i++) {
+                const y = baseY + (dir * i);
+                if (!isWall(baseX, y)) break;
+                placeRoom(baseX, y, popRoom());
+                this._connectRooms(lastX, lastY, baseX, y);
+                lastX = baseX;
+                lastY = y;
+                made++;
             }
 
-            // 아래쪽 방 (2, x)
-            // 위쪽을 안 만들었으면 아래쪽은 만들 확률을 높임
-            if (Math.random() < 0.4 || (roomDeck.length > 0 && Math.random() < 0.7)) {
-                // 이미 위쪽을 만들었고 덱도 비었으면 패스
-                if (this.map[0][x].type !== 'wall' && roomDeck.length === 0) continue;
+            if (made === 0) return 0;
 
-                let type = popRoom();
-                this.map[2][x] = { type: type, visited: false, exits: [], events: null };
-                this._connectRooms(x, 1, x, 2);
+            // 가지 끝에서 오른쪽으로 이어지며 재접속 시도
+            if (Math.random() < reconnectChance) {
+                const driftMax = Math.min(4, this.width - lastX - 1);
+                const driftLen = 1 + Math.floor(Math.random() * Math.max(1, driftMax));
+                let x = lastX;
+                for (let i = 1; i <= driftLen; i++) {
+                    const nx = x + 1;
+                    if (!inBounds(nx, lastY)) break;
+                    if (!isWall(nx, lastY)) {
+                        this._connectRooms(x, lastY, nx, lastY);
+                        break;
+                    }
+                    placeRoom(nx, lastY, popRoom());
+                    this._connectRooms(x, lastY, nx, lastY);
+                    x = nx;
+                    made++;
+                }
+            }
+            return made;
+        };
+
+        for (let x = 1; x < this.width - 1; x++) {
+            if (roomDeck.length === 0 && Math.random() < 0.75) continue;
+
+            if (Math.random() < branchChance) {
+                if (Math.random() < branchDirChance) tryBranch(x, midY, -1);
+                if (Math.random() < branchDirChance) tryBranch(x, midY, 1);
+            }
+        }
+
+        // ---------------------------------------------------------
+        // [STEP 3] 남은 방 분산 배치 (가지 확장)
+        // ---------------------------------------------------------
+        let roomList = [];
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (this.map[y][x].type !== "wall") roomList.push({ x, y });
+            }
+        }
+
+        const dirs = [
+            { dx: 1, dy: 0 },
+            { dx: -1, dy: 0 },
+            { dx: 0, dy: 1 },
+            { dx: 0, dy: -1 }
+        ];
+        const loopChance = (typeof config.loopChance === "number") ? config.loopChance : 0.25;
+        let guard = 0;
+        while (roomDeck.length > 0 && guard < 5000 && roomList.length > 0) {
+            guard++;
+            const src = roomList[Math.floor(Math.random() * roomList.length)];
+            const dir = dirs[Math.floor(Math.random() * dirs.length)];
+            const nx = src.x + dir.dx;
+            const ny = src.y + dir.dy;
+            if (!isWall(nx, ny)) continue;
+            placeRoom(nx, ny, popRoom());
+            this._connectRooms(src.x, src.y, nx, ny);
+            roomList.push({ x: nx, y: ny });
+
+            // 가끔 이웃 방과 추가 연결해 루프 생성
+            if (Math.random() < loopChance) {
+                for (let d of dirs) {
+                    const ax = nx + d.dx;
+                    const ay = ny + d.dy;
+                    if (!inBounds(ax, ay)) continue;
+                    if (this.map[ay][ax].type === "wall") continue;
+                    this._connectRooms(nx, ny, ax, ay);
+                }
             }
         }
 

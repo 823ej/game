@@ -1,0 +1,20 @@
+던전 기본값 범위 가이드
+아래처럼 잡으면 밸런스가 무난합니다. 숫자는 확률(0~1) 기준.
+
+권장 범위
+
+branchMaxLen: 2 ~ 5
+branchChance: 0.35 ~ 0.75
+branchDirChance: 0.4 ~ 0.8
+reconnectChance: 0.4 ~ 0.9
+loopChance: 0.1 ~ 0.4
+느낌별 추천 세트
+
+깔끔/선형:
+branchMaxLen: 2, branchChance: 0.4, branchDirChance: 0.5, reconnectChance: 0.45, loopChance: 0.15
+
+기본/균형:
+branchMaxLen: 3, branchChance: 0.55, branchDirChance: 0.6, reconnectChance: 0.65, loopChance: 0.25
+
+복잡/미로형:
+branchMaxLen: 4, branchChance: 0.7, branchDirChance: 0.75, reconnectChance: 0.8, loopChance: 0.35

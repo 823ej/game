@@ -104,6 +104,10 @@ const CARD_DATA = {
     "명령: 제압": { rank: 2, cost: 2, type: "attack", desc: "조수가 돌진해 피해 12, 적 약점 피격 1회 (조수 생존 시)", dmg: 12, requireAssistant: true, forceWeaknessHit: true, job: "detective" },
     "파고들기": { rank: 2, cost: 1, type: "attack", desc: "적의 단서 수치만큼 피해 (단서 유지)", dmgByClue: true, job: "detective" },
     "추리": { rank: 2, cost: 1, type: "attack", desc: "적 HP -6, 단서 5 이상이면 카드 1장 뽑기", dmg: 6, drawOnClue: { threshold: 5, draw: 1 }, job: "detective" },
+    "정황 재구성": { rank: 2, cost: 1, type: "attack", desc: "적 HP -4, 단서 모두 소모: 소모된 단서 x3 추가 피해. 단서 3 이상이면 약점 공략", dmg: 4, consumeClueForDamage: { mult: 3, triggerWeaknessHitAt: 3 }, job: "detective" },
+    "감정 분석": { rank: 1, cost: 0, type: "skill", target: "enemy", desc: "적에게 단서 1, 다음 공격에 [관통] 부여", addClue: 1, grantNextAttackAttrs: ["pierce"], job: "detective" },
+    "증언 채집": { rank: 2, cost: 1, type: "skill", target: "self", desc: "[반응] 다음 적 공격 시 피해 2 감소, 공격자에게 단서 2", reaction: { trigger: "onEnemyAttack", reduceDmgFlat: 2, addClue: 2, expiresOnPlayerTurnStart: true }, job: "detective" },
+    "현장 교란": { rank: 2, cost: 1, type: "skill", target: "self", desc: "[반응] 다음 적 공격 시 피해 40% 감소, 공격자 약화(1턴)", reaction: { trigger: "onEnemyAttack", reduceDmgPct: 0.4, debuff: { name: "약화", val: 1 }, expiresOnPlayerTurnStart: true }, job: "detective" },
     "잠복 근무": { rank: 1, cost: 1, type: "skill", desc: "방어도 +8, 다음 턴 카드 1장 추가 드로우", block: 8, nextTurnDraw: 1, job: "detective" },
     "조수 호출": { rank: 1, cost: 1, type: "skill", desc: "조수 회복 +5", assistantHeal: 5, job: "detective" },
     "명령: 눈길 끌기": { rank: 2, cost: 1, type: "skill", desc: "이번 턴 적의 공격을 조수가 대신 받음, 조수 방어도 +15", assistantTauntTurns: 1, assistantBlock: 15, requireAssistant: true, job: "detective" },
@@ -1370,7 +1374,6 @@ const CITY_DUNGEON_CONFIGS = {
         data: {
             battle: 4,
             box: 2,
-            note: 2,
             bush: 2,
             shop: 1,
             heal: 1
@@ -1395,7 +1398,6 @@ const DISTRICTS = {
             data: {
                 "battle": 4,      // 전투방 3개
                 "box": 2,         // 📦 상자방 2개 (NEW)
-                "note": 2,        // 📄 쪽지방 2개 (NEW)
                 "bush": 2,        // 🌿 덤불방 2개 (NEW)
                 "shop": 1,        // 상점 1개
                 "heal": 1         // 회복 1개

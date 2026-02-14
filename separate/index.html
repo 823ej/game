@@ -82,10 +82,10 @@
             <div class="game-menu-panel" onclick="event.stopPropagation()">
                 <div class="game-menu-header">
                     <div class="game-menu-title">GAME MENU</div>
-                    <div class="game-menu-controls">
-                        <button id="game-menu-back" class="small-btn hidden" onclick="showGameMenuHome()">←</button>
-                        <button class="small-btn" onclick="closeGameMenu()">✖</button>
-                    </div>
+                </div>
+                <div class="game-menu-nav-row">
+                    <button id="game-menu-prev" class="small-btn hidden" onclick="showGameMenuPrev()">←</button>
+                    <button id="game-menu-next" class="small-btn hidden" onclick="showGameMenuNext()">→</button>
                 </div>
                 <div class="game-menu-body">
                     <div id="game-menu-home" class="game-menu-grid menu-home-vertical">
@@ -126,6 +126,10 @@
                         </button>
                     </div>
                     <div id="game-menu-content" class="game-menu-content hidden"></div>
+                </div>
+                <div class="game-menu-footer">
+                    <button id="game-menu-back" class="small-btn hidden" onclick="showGameMenuHome()">←</button>
+                    <button class="small-btn" onclick="closeGameMenu()">✖</button>
                 </div>
             </div>
         </div>
