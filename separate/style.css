@@ -477,7 +477,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    text-align: center;
+    text-align: left;
     padding: clamp(10px, 2vw, 15px);
     /* [MOD] 내부 패딩 축소 */
     box-sizing: border-box;
@@ -486,14 +486,38 @@ body {
 /* [ADDED] 캐릭터 생성 분할 레이아웃 */
 .char-creation-split {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    flex-direction: row;
+    gap: 14px;
     width: 100%;
+    align-items: stretch;
 }
 
 .char-col-left,
 .char-col-right {
     width: 100%;
+}
+
+.char-col-left {
+    flex: 0 0 340px;
+    max-width: 380px;
+    min-width: 280px;
+}
+
+.char-col-right {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+@media (max-width: 980px) {
+    .char-creation-split {
+        flex-direction: column;
+    }
+    .char-col-left,
+    .char-col-right {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+    }
 }
 
 /* [ADDED] 호버 움직임 강제 제거 클래스 */
@@ -510,7 +534,7 @@ body {
     position: sticky;
     bottom: calc(var(--safe-bottom) + 10px);
     width: 100%;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    box-shadow: none;
     z-index: 5;
 }
 

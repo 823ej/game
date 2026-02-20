@@ -1160,6 +1160,7 @@ let player = {
     attrBuff: { types: [], turns: 0 },
     nextAttackAttrs: [],             // [NEW] 다음 공격에만 부여되는 속성 (소모됨)
     pendingReactions: [],            // [NEW] 반응 카드 대기열
+    persistentReactions: [],         // [NEW] 계획(전투 종료까지 유지되는 반응)
     handCostOverride: [],             // 이번 전투/턴 임시 코스트 오버라이드 (손패 인덱스 기준)
     nextTurnDraw: 0,                  // 다음 턴 추가 드로우
     permanentCardGrowth: {},          // { [cardName]: { dmg?: number, block?: number } } 영구 누적
@@ -1395,6 +1396,7 @@ function getCardGroupLabel(cardData) {
 
 function getCardTypeLabel(cardData) {
     if (!cardData || !cardData.type) return "";
+    if (cardData.stakeout) return "계획";
     if (cardData.reaction) return "반응";
     if (cardData.type === "attack" || (typeof cardData.type === "string" && cardData.type.includes("attack"))) return "공격";
     if (cardData.type === "skill") return "스킬";
@@ -1421,6 +1423,7 @@ function ensureReactionSystems(p) {
     if (!p) return;
     if (!Array.isArray(p.pendingReactions)) p.pendingReactions = [];
     if (!Array.isArray(p.nextAttackAttrs)) p.nextAttackAttrs = [];
+    if (!Array.isArray(p.persistentReactions)) p.persistentReactions = [];
 }
 
 function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
@@ -1429,15 +1432,10 @@ function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
     if (!source || source === player || target !== player) return incomingDmg;
 
     let dmg = incomingDmg;
-    const keep = [];
 
-    player.pendingReactions.forEach(r => {
-        if (!r || r.trigger !== "onEnemyAttack") {
-            keep.push(r);
-            return;
-        }
-
-        const name = r.name ? `[${r.name}]` : "반응";
+    const applyReaction = (r, label) => {
+        if (!r || r.trigger !== "onEnemyAttack") return dmg;
+        const name = label || (r.name ? `[${r.name}]` : "반응");
         if (r.block) {
             const val = Math.max(0, Number(r.block || 0));
             if (val > 0) {
@@ -1472,12 +1470,27 @@ function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
             const b = r.debuff;
             if (b.name) applyBuff(source, b.name, b.val);
         }
+        return dmg;
+    };
 
+    const keep = [];
+    player.pendingReactions.forEach(r => {
+        if (!r || r.trigger !== "onEnemyAttack") {
+            keep.push(r);
+            return;
+        }
+        applyReaction(r, r.name ? `[${r.name}]` : "반응");
         const remaining = Math.max(0, Number(r.remaining ?? 1) - 1);
         if (remaining > 0) keep.push({ ...r, remaining });
     });
-
     player.pendingReactions = keep;
+
+    if (Array.isArray(player.persistentReactions) && player.persistentReactions.length > 0) {
+        player.persistentReactions.forEach(r => {
+            applyReaction(r, r.name ? `[${r.name}]` : "계획");
+        });
+    }
+
     return dmg;
 }
 
@@ -1581,6 +1594,19 @@ function triggerTurnStartPowers() {
             const picked = alive[Math.floor(Math.random() * alive.length)];
             const next = addClueStacks(picked, clueOnTurnStart);
             log(`🔍 [직감] ${picked.name} 단서 +${clueOnTurnStart} (현재 ${next})`);
+        }
+    }
+
+    const assistantClueOnTurnStart = Math.max(0, Number(getTotalPowerValue('assistantClueOnTurnStart') || 0));
+    if (assistantClueOnTurnStart > 0) {
+        const mgr = ensureAssistantManager();
+        if (mgr && mgr.isAlive()) {
+            const alive = enemies.filter(e => e && e.hp > 0);
+            if (alive.length > 0) {
+                const picked = alive[Math.floor(Math.random() * alive.length)];
+                const next = addClueStacks(picked, assistantClueOnTurnStart);
+                log(`🧾 [조수 보고] ${picked.name} 단서 +${assistantClueOnTurnStart} (현재 ${next})`);
+            }
         }
     }
 }
@@ -2720,16 +2746,16 @@ function renderTraitSelection() {
     // --- [UI 3] 전체 조립 ---
     // [Request] Removed text-shadow from h2
     container.innerHTML = `
-        <h2 style="color:#f1c40f; margin-bottom:15px;">캐릭터 상세 설정</h2>
+        <h2 style="color:#111; margin-bottom:15px;">캐릭터 상세 설정</h2>
         <div class="char-creation-split">
             <div class="char-col-left">
                 ${statHtml}
                 
                 <div style="position:sticky; bottom:10px; z-index:10;">
-                    <button id="btn-finish-creation" class="action-btn" style="margin-top:10px; width:100%; height:50px; font-size:1.1em;" onclick="finishCreation()" ${btnDisabled}>
+                    <button id="btn-finish-creation" class="action-btn" style="margin-top:10px; width:100%; height:50px; font-size:1.1em; background:#ffffff; border:1px solid #111; box-shadow:none;" onclick="finishCreation()" ${btnDisabled}>
                         ${btnText}
                     </button>
-                    <button class="action-btn" style="margin-top:8px; width:100%; background:#7f8c8d;" onclick="renderJobSelection()">← 돌아가기</button>
+                    <button class="action-btn" style="margin-top:8px; width:100%; background:#ffffff; border:1px solid #111; box-shadow:none;" onclick="renderJobSelection()">← 돌아가기</button>
                 </div>
             </div>
             
@@ -5324,6 +5350,7 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     player.powers = {};
     player.pendingReactions = [];
     player.nextAttackAttrs = [];
+    player.persistentReactions = [];
     game.combatCardGrowth = {}; // 전투 중 성장(이번 전투 한정)
     game.innateDrawn = false;
     game.assistantDamageReductionPct = 0;
@@ -5944,6 +5971,29 @@ function useCard(user, target, cardName) {
             expiresOnPlayerTurnStart: cfg.expiresOnPlayerTurnStart !== false
         });
         log(`⏳ [${cardName}] 반응 준비`);
+        updateUI();
+        return;
+    }
+
+    // [계획] 전투 종료까지 유지되는 반응
+    if (user === player && data.stakeout) {
+        if (game.state !== "battle") {
+            log("🚫 전투 중에만 계획 카드를 사용할 수 있습니다.");
+            return;
+        }
+        ensureReactionSystems(player);
+        const cfg = data.stakeout || {};
+        player.persistentReactions.push({
+            name: cardName,
+            trigger: cfg.trigger || "onEnemyAttack",
+            block: cfg.block,
+            assistantBlock: cfg.assistantBlock,
+            reduceDmgPct: cfg.reduceDmgPct,
+            reduceDmgFlat: cfg.reduceDmgFlat,
+            addClue: cfg.addClue,
+            debuff: cfg.debuff
+        });
+        log(`🕵️ [${cardName}] 계획 설정`);
         updateUI();
         return;
     }
