@@ -479,7 +479,7 @@ const DungeonSystem = {
             case 'boss': icon = room.locked ? "🔒" : "👹"; label = room.locked ? "잠긴 문" : "보스"; break;
             case 'box': icon = "📦"; label = "낡은 상자"; break;
             case 'note': icon = "📄"; label = "떨어진 쪽지"; break;
-            case 'bush': icon = "🌿"; label = "수상한 덤불"; break;
+            case 'bush': icon = "❔"; label = "무언가 있다"; break;
         }
 
         if (room.cleared && !this.isCity) {
@@ -776,6 +776,9 @@ const DungeonSystem = {
             return;
         }
 
+        // [호환] 기존 덤불방은 이벤트방으로 처리
+        if (room.type === 'bush') room.type = 'event';
+
         // 이벤트 실행 분기
         if (room.type === 'treasure') {
             room.cleared = true;
@@ -822,27 +825,6 @@ const DungeonSystem = {
             this.checkObjectVisibility();
         }
 
-        // 3. [덤불] 기습 전투 (경고 후 전투)
-        else if (room.type === 'bush') {
-            showPopup("⚠️ 경고", "덤불 속에서 부스럭거리는 소리가 들립니다.<br>(전투가 발생할 수 있습니다)", [
-                {
-                    txt: "살펴본다",
-                    func: () => {
-                        closePopup();
-                        room.cleared = true;
-                        // 적이 튀어나오는 연출 후 전투
-                        showPopup("기습!", "덤불 속에 숨어있던 적이 튀어나왔습니다!", [{
-                            txt: "전투 개시",
-                            func: () => {
-                                closePopup();
-                                startBattle(); // 일반 전투 시작
-                            }
-                        }]);
-                    }
-                },
-                { txt: "건드리지 않는다", func: closePopup }
-            ]);
-        }
         else if (room.type === 'boss') {
             const discovery = game.scenario && game.scenario.customDungeon && game.scenario.customDungeon.discoverCitySpot;
             if (discovery && !room.cleared) {

@@ -2006,20 +2006,52 @@ function getCurrentEnemyPool() {
 /* [NEW] 랜덤 이벤트 실행기 */
 function triggerRandomEvent() {
     // 1. 랜덤 이벤트 선택
+    if (!EVENT_DATA.length) return;
     let event = EVENT_DATA[Math.floor(Math.random() * EVENT_DATA.length)];
 
-    // 2. 선택지 버튼 생성
-    // (showPopup 함수 형식이 [{txt, func}] 이므로 그대로 매핑)
-    let buttons = event.choices.map(choice => {
-        return {
+    // 2. 선택지 버튼 생성 (choices 우선, 없으면 effect 기반 단일 버튼)
+    let buttons = [];
+    if (Array.isArray(event.choices) && event.choices.length > 0) {
+        buttons = event.choices.map(choice => ({
             txt: choice.txt,
             func: choice.func
-        };
-    });
+        }));
 
-    // 3. 팝업 표시
-    // (이미지는 있으면 넣고 없으면 생략하는 로직 추가 가능)
-    showPopup(event.title, event.desc, buttons);
+        // 3. 팝업 표시
+        showPopup(event.title, event.desc, buttons);
+        return;
+    }
+
+    if (typeof event.effect === "function") {
+        const resultText = event.effect();
+        const icon = event.icon || "";
+        const desc = event.desc || "";
+        const btnLabel = (game.mode === "infinite") ? "다음 스테이지로" : "확인";
+
+        buttons = [{
+            txt: btnLabel,
+            func: () => finishEvent((game.mode === "infinite") ? "infinite" : "exploration")
+        }];
+
+        showPopup(event.title || "이벤트", `
+            <div style="text-align:center;">
+                ${icon ? `<div style="font-size:3em; margin-bottom:10px;">${icon}</div>` : ""}
+                ${desc ? `<p>${desc}</p>` : ""}
+                <p style="margin-top:10px; font-weight:bold;">${resultText || ""}</p>
+            </div>
+        `, buttons);
+    }
+}
+
+function finishEvent(resume = "exploration") {
+    closePopup();
+    if (resume === "infinite") {
+        nextInfiniteStage();
+        return;
+    }
+    if (resume === "exploration" && typeof renderExploration === "function") {
+        renderExploration();
+    }
 }
 
 /* --- 유틸리티 --- */
@@ -2453,6 +2485,7 @@ function loadGame() {
         // ★ [수정] 저장된 던전 데이터 복구 로직 강화
         if (loadedData.dungeon && loadedData.dungeon.map.length > 0) {
             Object.assign(DungeonSystem, loadedData.dungeon);
+            migrateDungeonRoomTypes(DungeonSystem.map);
             game.dungeonMap = true; // [중요] 맵이 이미 있음을 표시 (재생성 방지)
         } else {
             // 저장된 던전이 없는데 탐사 중이라면 -> 강제로 맵 재생성 유도
@@ -9479,70 +9512,20 @@ function handleInfiniteShop() {
 
 function handleInfiniteRandom() {
     closePopup();
+    triggerRandomEvent();
+}
 
-    const events = [
-        {
-            title: "버려진 보급품",
-            desc: "길가에 버려진 보급 상자를 발견했습니다.",
-            icon: "📦",
-            effect: () => {
-                let foundItem = getRandomItem(null, { categories: ["general", "medicine"] });
-                addItem(foundItem);
-                return `<span style='color:#2ecc71'>[${foundItem}]</span>을(를) 획득했습니다!`;
-            }
-        },
-        {
-            title: "수상한 상인",
-            desc: "지나가던 상인이 물건을 강매합니다. (500G 지불)",
-            icon: "💰",
-            effect: () => {
-                if (player.gold >= 500) {
-                    player.gold -= 500;
-                    let item = getRandomItem(null, { rank: 2 });
-                    addItem(item);
-                    return `500G를 내고 <span style='color:#f1c40f'>[${item}]</span>을(를) 얻었습니다.`;
-                } else {
-                    return "돈이 없어 무시하고 지나갑니다.";
-                }
-            }
-        },
-        {
-            title: "기습적인 깨달음",
-            desc: "전투의 경험이 머릿속을 스치고 지나갑니다.",
-            icon: "💡",
-            effect: () => {
-                player.xp += 100;
-                return `경험치를 <span style='color:#3498db'>100 XP</span> 획득했습니다.`;
-            }
-        },
-        {
-            title: "함정!",
-            desc: "이런! 발을 헛디뎠습니다.",
-            icon: "⚠️",
-            effect: () => {
-                let dmg = Math.floor(player.maxHp * 0.1);
-                player.hp = Math.max(1, player.hp - dmg);
-                return `체력이 <span style='color:#e74c3c'>${dmg}</span> 감소했습니다.`;
-            }
+function migrateDungeonRoomTypes(map) {
+    if (!Array.isArray(map)) return;
+    for (let y = 0; y < map.length; y++) {
+        const row = map[y];
+        if (!Array.isArray(row)) continue;
+        for (let x = 0; x < row.length; x++) {
+            const room = row[x];
+            if (!room || typeof room !== "object") continue;
+            if (room.type === "bush") room.type = "event";
         }
-    ];
-
-    let evt = events[Math.floor(Math.random() * events.length)];
-    let resultText = evt.effect();
-
-    showPopup(evt.title, `
-        <div style="text-align:center;">
-             <div style="font-size:3em; margin-bottom:10px;">${evt.icon}</div>
-             <p>${evt.desc}</p>
-             <p style="margin-top:10px; font-weight:bold;">${resultText}</p>
-        </div>
-    `, [{
-        txt: "다음 스테이지로",
-        func: () => {
-            closePopup();
-            nextInfiniteStage();
-        }
-    }]);
+    }
 }
 
 

@@ -123,7 +123,7 @@ const CARD_DATA = {
     "방탄 코트": { rank: 2, cost: 1, type: "power", desc: "조수가 받는 모든 피해 3 감소", power: { assistantDamageReductionFlat: 3 }, job: "detective" },
     "연쇄 작용": { rank: 3, cost: 3, type: "power", desc: "단서 부여량 2배", power: { clueMultiplier: 2 }, job: "detective" },
     "결론": { rank: 2, cost: 2, type: "attack", desc: "적 HP -6, 단서 10 이상이면 강력한 결론", dmg: 6, solveCase: { threshold: 10, bonusDmg: 50, consume: true }, job: "detective" },
-    "조수 치료": { rank: 1, cost: 1, type: "skill", desc: "조수 회복 +10 (내 HP -5)", assistantHeal: 10, assistantHpCost: 5, job: "detective" },
+    "조수 치료": { rank: 1, cost: 0, type: "skill", desc: "조수 회복 +10 (내 HP -5)", assistantHeal: 10, assistantHpCost: 5, job: "detective" },
     "사격": { rank: 3, cost: 1, type: "attack", desc: "나 강화(2턴), 적 HP -8", buff: { name: "강화", val: 2 }, target: "self", job: "detective", dmg: 8 },
 
 
@@ -154,18 +154,9 @@ const CARD_DATA = {
     "쇠약 바늘": { rank: 2, cost: 1, type: "attack", desc: "녹슨 바늘로 찌릅니다. (피해 5) [상태이상: 상처]", job: "enemy", dmg: 5, statusAdd: { card: "상처", count: 1, destination: "discard" } },
     "검은 연기": { rank: 2, cost: 1, type: "skill", desc: "검은 연기를 뿜어 시야를 흐립니다. [상태이상: 혼란 1장 뽑을 카드에 섞음]", job: "enemy", statusAdd: { card: "혼란", count: 1, destination: "draw" } },
     "저주 각인": { rank: 3, cost: 2, type: "skill", desc: "주술 각인을 새깁니다. [상태이상: 고통 1장 손으로]", job: "enemy", statusAdd: { card: "고통", count: 1, destination: "hand" } },
-
-    // --- 장비 전용 카드 (장비 장착 시 덱에 추가, 해제 시 제거) ---
-    "권총 사격": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
-    "사격(관통)": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
-    "쿠보탄 급소": { rank: 1, cost: 1, type: "attack", desc: "쿠보탄으로 급소를 찌른다! 적 HP -6 [관통]", dmg: 6, attr: "pierce", job: "equipment", noReward: true },
-    "은빛 찌르기": { rank: 2, cost: 1, type: "attack", desc: "은 단검의 찌르기! 적 HP -7 [신성]", dmg: 7, attr: "holy", job: "equipment", noReward: true },
-    "너클 강타": { rank: 1, cost: 1, type: "attack", desc: "스파이크 너클로 강타! 적 HP -6 [타격]", dmg: 6, attr: "strike", job: "equipment", noReward: true },
-
     "광신의 춤": { rank: 3, cost: 2, type: "skill", desc: "체력 회복 +20, 방어도 +10", job: "common", buff: { name: "활력", val: 5 }, block: 10 },
     "정신 붕괴 파동": { rank: 3, cost: 2, type: "attack", desc: "전체 멘탈 공격 (SP 데미지)", job: "common", dmg: 10, type: "social", val: -20 }, // 소셜/배틀 하이브리드
     "발톱 갈기": { rank: 2, cost: 2, type: "skill", desc: "발톱을 갈아 공격력을 올린다", job: "enemy", buff: { name: "강화", val: 2 }, target: "self" },
-
     "부하 호출": {
         rank: 3,
         cost: 2,
@@ -176,6 +167,15 @@ const CARD_DATA = {
         summonTarget: "불량배",   // 소환할 적의 ENEMY_DATA 키
         playerDesc: "(사용 불가) 적 전용 스킬입니다." // 나중에 플레이어용 효과 구현 시 대체될 텍스트
     },
+
+    // --- 장비 전용 카드 (장비 장착 시 덱에 추가, 해제 시 제거) ---
+    "권총 사격": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
+    "사격(관통)": { rank: 2, cost: 1, type: "attack", desc: "권총 사격! 적 HP -8 [관통]", dmg: 8, attr: "pierce", job: "equipment", noReward: true },
+    "쿠보탄 급소": { rank: 1, cost: 1, type: "attack", desc: "쿠보탄으로 급소를 찌른다! 적 HP -6 [관통]", dmg: 6, attr: "pierce", job: "equipment", noReward: true },
+    "은빛 찌르기": { rank: 2, cost: 1, type: "attack", desc: "은 단검의 찌르기! 적 HP -7 [신성]", dmg: 7, attr: "holy", job: "equipment", noReward: true },
+    "너클 강타": { rank: 1, cost: 1, type: "attack", desc: "스파이크 너클로 강타! 적 HP -6 [타격]", dmg: 6, attr: "strike", job: "equipment", noReward: true },
+
+   
 
     // --- 패널티 카드 (Slay the Spire 스타일) ---
     // group: 'status'는 전투 중 일시적으로만 추가되는 카드군 (전투 종료 시 제거)
@@ -1380,7 +1380,7 @@ const CITY_DUNGEON_CONFIGS = {
         data: {
             battle: 4,
             box: 2,
-            bush: 2,
+            event: 2,
             shop: 1,
             heal: 1
         },
@@ -1404,7 +1404,7 @@ const DISTRICTS = {
             data: {
                 "battle": 4,      // 전투방 3개
                 "box": 2,         // 📦 상자방 2개 (NEW)
-                "bush": 2,        // 🌿 덤불방 2개 (NEW)
+                "event": 2,       // ❔ 이벤트방 2개 (NEW)
                 "shop": 1,        // 상점 1개
                 "heal": 1         // 회복 1개
             }
@@ -1649,7 +1649,7 @@ const EVENT_DATA = [
                     // 아이템 획득 시도 (성공 시 팝업 띄우고 종료)
                     addItem(item, () => {
                         showPopup("획득", `덜컹! [${item}]이(가) 나왔습니다.`, [
-                            { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                            { txt: "확인", func: () => { finishEvent("exploration"); } }
                         ]);
                     });
                 }
@@ -1661,7 +1661,7 @@ const EVENT_DATA = [
                         let item = getRandomItem("consumable", { categories: ["general"] });
                         addItem(item, () => {
                             showPopup("성공!", `쾅! 충격으로 [${item}]이(가) 떨어졌습니다!`, [
-                                { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                                { txt: "확인", func: () => { finishEvent("exploration"); } }
                             ]);
                         });
                     } else {
@@ -1669,13 +1669,13 @@ const EVENT_DATA = [
                         // 사망 체크는 takeDamage -> checkGameOver에서 처리되지만, 생존 시 팝업
                         if (player.hp > 0) {
                             showPopup("실패", "쾅! 자판기가 쓰러지며 발을 찧었습니다.<br>(체력 -5)", [
-                                { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                                { txt: "확인", func: () => { finishEvent("exploration"); } }
                             ]);
                         }
                     }
                 }
             },
-            { txt: "무시한다", func: () => { closePopup(); renderExploration(); } }
+            { txt: "무시한다", func: () => { finishEvent("exploration"); } }
         ]
     },
     {
@@ -1690,7 +1690,7 @@ const EVENT_DATA = [
                     if (player.hp > 0) {
                         player.gold += 5000;
                         showPopup("거래 성사", "남자는 피를 뽑아가고 돈을 쥐어줍니다.<br>(HP -10, +5000원)", [
-                            { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                            { txt: "확인", func: () => { finishEvent("exploration"); } }
                         ]);
                     }
                 }
@@ -1699,7 +1699,7 @@ const EVENT_DATA = [
                 txt: "거절한다",
                 func: () => {
                     showPopup("거절", "남자는 혀를 차며 사라졌습니다.", [
-                        { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                        { txt: "확인", func: () => { finishEvent("exploration"); } }
                     ]);
                 }
             }
@@ -1716,7 +1716,7 @@ const EVENT_DATA = [
                     player.sp = Math.min(player.maxSp, player.sp + 10);
                     game.scenario.doom += 10;
                     showPopup("기도", "마음이 차분해지지만, 시간이 많이 흘렀습니다.<br>(SP +10, 위협도 +10)", [
-                        { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                        { txt: "확인", func: () => { finishEvent("exploration"); } }
                     ]);
                 }
             },
@@ -1728,7 +1728,7 @@ const EVENT_DATA = [
                     ]);
                 }
             },
-            { txt: "지나친다", func: () => { closePopup(); renderExploration(); } }
+            { txt: "지나친다", func: () => { finishEvent("exploration"); } }
         ]
     },
     {
@@ -1743,7 +1743,7 @@ const EVENT_DATA = [
                     player.gold += gain;
                     player.sp -= 3;
                     showPopup("획득", `죄책감이 들지만 지갑은 두둑합니다.<br>(+${gain}원, SP -3)`, [
-                        { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                        { txt: "확인", func: () => { finishEvent("exploration"); } }
                     ]);
                 }
             },
@@ -1752,11 +1752,76 @@ const EVENT_DATA = [
                 func: () => {
                     player.sp = Math.min(player.maxSp, player.sp + 5);
                     showPopup("선행", "착한 일을 했다는 뿌듯함이 느껴집니다.<br>(SP +5)", [
-                        { txt: "확인", func: () => { closePopup(); renderExploration(); } }
+                        { txt: "확인", func: () => { finishEvent("exploration"); } }
                     ]);
                 }
             }
         ]
+    },
+    {
+        id: "suspicious_bush",
+        title: "🌿 수상한 덤불",
+        desc: "덤불 속에서 부스럭거리는 소리가 들립니다.<br>(전투가 발생할 수 있습니다)",
+        choices: [
+            {
+                txt: "살펴본다",
+                func: () => {
+                    showPopup("기습!", "덤불 속에 숨어있던 적이 튀어나왔습니다!", [{
+                        txt: "전투 개시",
+                        func: () => {
+                            closePopup();
+                            startBattle();
+                        }
+                    }]);
+                }
+            },
+            { txt: "건드리지 않는다", func: () => { finishEvent("exploration"); } }
+        ]
+    },
+
+    {
+        title: "버려진 보급품",
+        desc: "길가에 버려진 보급 상자를 발견했습니다.",
+        icon: "📦",
+        effect: () => {
+            let foundItem = getRandomItem(null, { categories: ["general", "medicine"] });
+            addItem(foundItem);
+            return `<span style='color:#2ecc71'>[${foundItem}]</span>을(를) 획득했습니다!`;
+        }
+    },
+    {
+        title: "수상한 상인",
+        desc: "지나가던 상인이 물건을 강매합니다. (500G 지불)",
+        icon: "💰",
+        effect: () => {
+            if (player.gold >= 500) {
+                player.gold -= 500;
+                let item = getRandomItem(null, { rank: 2 });
+                addItem(item);
+                return `500G를 내고 <span style='color:#f1c40f'>[${item}]</span>을(를) 얻었습니다.`;
+            } else {
+                return "돈이 없어 무시하고 지나갑니다.";
+            }
+        }
+    },
+    {
+        title: "기습적인 깨달음",
+        desc: "전투의 경험이 머릿속을 스치고 지나갑니다.",
+        icon: "💡",
+        effect: () => {
+            player.xp += 100;
+            return `경험치를 <span style='color:#3498db'>100 XP</span> 획득했습니다.`;
+        }
+    },
+    {
+        title: "함정!",
+        desc: "이런! 발을 헛디뎠습니다.",
+        icon: "⚠️",
+        effect: () => {
+            let dmg = Math.floor(player.maxHp * 0.1);
+            player.hp = Math.max(1, player.hp - dmg);
+            return `체력이 <span style='color:#e74c3c'>${dmg}</span> 감소했습니다.`;
+        }
     }
 ];
 /* [data.js] JOB_DATA 수정 */
