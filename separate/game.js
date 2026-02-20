@@ -8166,7 +8166,8 @@ function updateUI() {
             extraBtn = document.createElement('button');
             extraBtn.id = 'extra-action-btn';
             extraBtn.className = 'action-btn';
-            extraBtn.style.cssText = `background:${btnColor}; width:80px; font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
+            extraBtn.dataset.actionType = (game.state === "social") ? "force" : "run";
+            extraBtn.style.cssText = `font-size:0.9em; padding:5px; line-height:1.2; word-break:keep-all; font-weight:bold;`;
             extraBtn.innerHTML = btnHTML;
             extraBtn.onclick = btnFunc;
             // ★ [핵심] 턴 종료 버튼(end-turn-btn) 앞에 삽입
@@ -8228,7 +8229,7 @@ function escapePhysicalBattle() {
     renderExploration();
 }
 
-/* [game.js] renderHand 함수 수정 (PC/모바일 로직 분리) */
+/* [game.js] renderHand 함수 수정 (STS 스타일 부채꼴 핸드) */
 function renderHand() {
     const container = document.getElementById('hand-container');
     if (!container) return;
@@ -8243,6 +8244,17 @@ function renderHand() {
     // (이 클래스는 CSS 미디어 쿼리 안에서만 작동하므로 PC엔 영향 없음)
     if (player.hand.length >= 4) container.classList.add('mobile-multi-row');
     else container.classList.remove('mobile-multi-row');
+
+    const total = player.hand.length;
+    // STS 스타일 fan 파라미터
+    const MAX_FAN_ANGLE = 20;   // 전체 부채꼴 각도 범위 (deg)
+    const ARC_DEPTH = 18;       // 양끝 카드가 아래로 내려가는 곡선 깊이 (px)
+    const HOVER_SCALE = 1.22;   // 호버 시 카드 배율
+    const HOVER_RISE = 60;      // 호버 시 카드가 위로 올라가는 거리 (px)
+
+    // 모바일 여부: pointer:coarse 이거나 세로 화면이면 fan 효과 비활성화
+    const isMobile = window.matchMedia('(max-width: 600px) and (orientation: portrait)').matches
+        || window.matchMedia('(pointer: coarse) and (max-height: 600px)').matches;
 
     player.hand.forEach((cName, idx) => {
         const data = getEffectiveCardData(cName) || CARD_DATA[cName];
@@ -8272,6 +8284,36 @@ function renderHand() {
             ${badges}
             <div class="card-desc">${applyTooltip(data.desc)}</div>
         `;
+
+        // --- STS Fan 레이아웃 ---
+        if (!isMobile && total > 1) {
+            el.classList.add('fan-card');
+            // 0→1 사이의 정규화 위치 (가운데 0.5)
+            const t = total === 1 ? 0.5 : idx / (total - 1);
+            const angle = (t - 0.5) * MAX_FAN_ANGLE;   // 음수=왼쪽, 양수=오른쪽
+            // 포물선: 가운데가 가장 올라옴, 양끝이 내려감
+            const arcOffset = ARC_DEPTH * (4 * t * t - 4 * t + 1); // (2t-1)^2 * ARC_DEPTH
+            const baseTransform = `rotate(${angle}deg) translateY(${arcOffset}px)`;
+            el.style.transform = baseTransform;
+            el.style.zIndex = idx + 1;
+            el.style.margin = "0 -8px"; // 약간 겹치게
+
+            // 호버: 수직 + 확대 + 위로 솟음
+            el.addEventListener('mouseenter', () => {
+                el.style.transform = `rotate(0deg) translateY(-${HOVER_RISE}px) scale(${HOVER_SCALE})`;
+                el.style.zIndex = 200;
+                el.style.borderColor = '#f1c40f';
+                el.style.boxShadow = 'none';
+                el.style.margin = "0 6px";
+            });
+            el.addEventListener('mouseleave', () => {
+                el.style.transform = baseTransform;
+                el.style.zIndex = idx + 1;
+                el.style.borderColor = '';
+                el.style.boxShadow = '';
+                el.style.margin = "0 -8px";
+            });
+        }
 
         if (isUnplayable) {
             el.onclick = () => log(`🚫 [${cName}]은(는) 사용할 수 없습니다.`);
