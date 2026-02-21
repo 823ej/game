@@ -708,6 +708,8 @@ const DungeonSystem = {
                     if (typeof openHospitalCure === 'function') openHospitalCure();
                 } else if (action === 'open_occult_shop') {
                     if (typeof renderShopScreen === 'function') renderShopScreen("shop_occult");
+                } else if (action === 'open_black_market') {
+                    if (typeof renderShopScreen === 'function') renderShopScreen("shop_black_market");
                 } else if (action === 'open_sauna') {
                     if (typeof openSaunaRest === 'function') openSaunaRest();
                 } else if (action === 'open_occult_clinic') {
@@ -733,7 +735,15 @@ const DungeonSystem = {
                 } else if (action === 'npc_dialogue' && obj.npcKey) {
                     const npc = (typeof NPC_DATA !== 'undefined') ? NPC_DATA[obj.npcKey] : null;
                     const title = npc?.name || "해결사";
-                    const desc = npc?.desc || "말을 건다.";
+                    let desc = npc?.desc || "말을 건다.";
+                    const flag = npc?.flagOnTalk;
+                    if (flag && typeof hasGameFlag === 'function' && typeof setGameFlag === 'function') {
+                        const was = hasGameFlag(flag);
+                        if (!was) {
+                            setGameFlag(flag);
+                            desc += "<br><br><span style='color:#c0392b;'>새로운 단서를 얻었다.</span>";
+                        }
+                    }
                     if (typeof showChoice === 'function') {
                         showChoice(title, desc, [{ txt: "대화 종료", func: closePopup }]);
                     } else {

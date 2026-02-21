@@ -379,7 +379,19 @@ const NPC_DATA = {
         likes: ["drink", "tool"],
         dislikes: ["noise", "horror"],
         icon: "🧥",
-        tags: ["fixer"]
+        tags: ["fixer"],
+        dialogue: {
+            start: "intro",
+            nodes: {
+                intro: {
+                    speaker: "라거 트레이스",
+                    text: "조용히 커피를 마시며 의뢰를 기다리고 있다.",
+                    choices: [
+                        { text: "대화 종료", action: "close" }
+                    ]
+                }
+            }
+        }
     },
     "진서 루멘": {
         name: "진서 루멘",
@@ -392,7 +404,19 @@ const NPC_DATA = {
         likes: ["paper", "valuable"],
         dislikes: ["trash", "noise"],
         icon: "🧤",
-        tags: ["fixer"]
+        tags: ["fixer"],
+        dialogue: {
+            start: "intro",
+            nodes: {
+                intro: {
+                    speaker: "진서 루멘",
+                    text: "날카로운 시선으로 주변을 훑으며 상황을 읽는다.",
+                    choices: [
+                        { text: "대화 종료", action: "close" }
+                    ]
+                }
+            }
+        }
     },
     "도카 벨": {
         name: "도카 벨",
@@ -405,7 +429,45 @@ const NPC_DATA = {
         likes: ["weapon", "valuable"],
         dislikes: ["toy", "trash"],
         icon: "🧢",
-        tags: ["fixer"]
+        tags: ["fixer"],
+        dialogue: {
+            start: "intro",
+            nodes: {
+                intro: {
+                    speaker: "도카 벨",
+                    text: "벽에 기대 서서 대화할 상대를 살핀다.",
+                    choices: [
+                        { text: "대화 종료", action: "close" }
+                    ]
+                }
+            }
+        }
+    },
+    "레이디 헤카테": {
+        name: "레이디 헤카테",
+        maxSp: 100, sp: 85,
+        baseAtk: 2, baseDef: 2, baseSpd: 3,
+        logicShield: "silence",
+        deck: ["심호흡", "논리적 반박", "무시"],
+        img: "https://placehold.co/100x100/8e44ad/ffffff?text=Hecate",
+        desc: "카페 헤카테의 사장. 해결사들을 관리한다.",
+        likes: ["coffee", "paper", "warm"],
+        dislikes: ["noise", "trash"],
+        icon: "👑",
+        tags: ["npc", "hecate"],
+        dialogue: {
+            start: "intro",
+            nodes: {
+                intro: {
+                    speaker: "레이디 헤카테",
+                    text: "의뢰가 필요하면 말만 해요.",
+                    choices: [
+                        { text: "의뢰 목록 보기", action: "open_casefiles" },
+                        { text: "대화 종료", action: "close" }
+                    ]
+                }
+            }
+        }
     },
     "영진 탐정": {
         name: "영진 탐정",
@@ -432,6 +494,20 @@ const NPC_DATA = {
         dislikes: ["noise", "weapon"],
         icon: "📋",
         tags: ["assistant"]
+    },
+    "성당 신부": {
+        name: "성당 신부",
+        maxSp: 100, sp: 80,
+        baseAtk: 2, baseDef: 2, baseSpd: 2,
+        logicShield: "silence",
+        deck: ["침묵", "심호흡", "사실 확인"],
+        img: "https://placehold.co/100x100/6c7a89/ffffff?text=Priest",
+        desc: "사라진 사람들에 대한 소문을 알고 있다.",
+        likes: ["holy", "water", "paper"],
+        dislikes: ["profane", "noise"],
+        icon: "⛪",
+        tags: ["npc", "priest"],
+        flagOnTalk: "npc:priest:met"
     }
 };
 
@@ -518,25 +594,28 @@ const CITY_AREA_DATA = {
     central_admin: {
         name: "중앙 행정구 내부",
         desc: "행정 중심을 이루는 주요 건물과 시설들을 직접 걸어서 둘러보거나 퀵 이동할 수 있습니다.",
+        bg: "https://placehold.co/1400x900/f3f3f3/333?text=%EC%A4%91%EC%95%99+%ED%96%89%EC%A0%95%EA%B5%AC",
         start: "central_plaza",
         spots: [
             {
                 id: "central_plaza",
                 name: "중앙 광장",
                 desc: "세주시의 중심. 모든 시설이 이 광장을 둘러싸고 있다.",
+                bg: "https://placehold.co/1400x900/f6f6f6/333?text=%EC%A4%91%EC%95%99+%EA%B4%91%EC%9E%A5",
                 pos: { x: 50, y: 50 },
                 grid: { x: 1, y: 1 },
                 links: ["baeksan_tower", "subway_gate", "st_jude_academy", "university_hospital", "silence_clinic", "bs_convenience", "udra_annex"],
                 tags: ["집결지", "기점"],
                 icon: "🧭",
                 objects: [
-                    { id: "white_cube", name: "화이트 큐브", icon: "⬜", action: "enter_dungeon", dungeonId: "white_cube_beyond" }
+                    { id: "white_cube", name: "화이트 큐브", icon: "⬜", action: "enter_dungeon", dungeonId: "white_cube_beyond", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "baeksan_tower",
                 name: "백산 타워",
                 desc: "세주시 스카이라인을 장식하는 고층 타워.",
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%EB%B0%B1%EC%82%B0+%ED%83%80%EC%9B%8C",
                 pos: { x: 70, y: 22 },
                 grid: { x: 1, y: 0 },
                 links: ["central_plaza"],
@@ -547,58 +626,63 @@ const CITY_AREA_DATA = {
                 id: "subway_gate",
                 name: "지하철역 입구",
                 desc: "도심 지하철과 연결되는 입구. 사람들의 발길이 끊이지 않는다.",
+                bg: "https://placehold.co/1400x900/f1f1f1/333?text=%EC%A7%80%ED%95%98%EC%B2%A0+%EC%9E%85%EA%B5%AC",
                 pos: { x: 54, y: 82 },
                 grid: { x: 1, y: 2 },
                 links: ["central_plaza"],
                 tags: ["교통", "만남의 장소", "지하철역 지하상가"],
                 icon: "🚇",
                 objects: [
-                    { id: "to_subway_market", name: "지하철역 지하상가", icon: "🛍️", action: "enter_city_area", areaId: "central_subway_market" }
+                    { id: "to_subway_market", name: "지하철역 지하상가", icon: "🛍️", action: "enter_city_area", areaId: "central_subway_market", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "st_jude_academy",
                 name: "성 주드 아카데미",
                 desc: "명문 교육기관. 밤이 되면 연구동에 불이 켜진다.",
+                bg: "https://placehold.co/1400x900/f2f2f2/333?text=%EC%84%B1+%EC%A3%BC%EB%93%9C+%EC%95%84%EC%B9%B4%EB%8D%B0%EB%AF%B8",
                 pos: { x: 28, y: 66 },
                 grid: { x: 0, y: 1 },
                 links: ["central_plaza"],
                 tags: ["교육", "연구"],
                 icon: "🏫",
                 objects: [
-                    { id: "academy_entry", name: "아카데미 내부", icon: "🚪", action: "enter_city_area", areaId: "st_jude_academy_interior", spotId: "academy_courtyard" }
+                    { id: "academy_entry", name: "아카데미 내부", icon: "🚪", action: "enter_city_area", areaId: "st_jude_academy_interior", spotId: "academy_courtyard", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "university_hospital",
                 name: "대학 병원",
                 desc: "의료 연구와 진료가 함께 이뤄지는 대형 병원.",
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%EB%8C%80%ED%95%99+%EB%B3%91%EC%9B%90",
                 pos: { x: 30, y: 30 },
                 grid: { x: 0, y: 0 },
                 links: ["central_plaza"],
                 tags: ["의료", "진료"],
                 icon: "🏥",
                 objects: [
-                    { id: "hospital_cure", name: "저주 치료", icon: "💊", action: "hospital_cure" }
+                    { id: "hospital_cure", name: "저주 치료", icon: "💊", action: "hospital_cure", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "silence_clinic",
                 name: "힐링 클리닉 사일런스",
                 desc: "조용한 상담과 맞춤 치료를 제공하는 고급 클리닉.",
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%ED%9E%90%EB%A7%81+%ED%81%B4%EB%A6%AC%EB%8B%89",
                 pos: { x: 70, y: 40 },
                 grid: { x: 2, y: 0 },
                 links: ["central_plaza"],
                 tags: ["고급 의료", "회복"],
                 icon: "🩺",
                 objects: [
-                    { id: "healing_clinic", name: "힐링 클리닉 사일런스", icon: "🩺", action: "open_healing_clinic" }
+                    { id: "healing_clinic", name: "힐링 클리닉 사일런스", icon: "🩺", action: "open_healing_clinic", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "bs_convenience",
                 name: "BS편의점",
                 desc: "도심 한가운데 있는 24시 편의점. 탐정들의 임시 보급소.",
+                bg: "https://placehold.co/1400x900/f5f5f5/333?text=BS+%ED%8E%B8%EC%9D%98%EC%A0%90",
                 pos: { x: 76, y: 70 },
                 grid: { x: 2, y: 2 },
                 links: ["central_plaza"],
@@ -609,19 +693,21 @@ const CITY_AREA_DATA = {
                 id: "udra_annex",
                 name: "정부 합동 청사 별관",
                 desc: "비정형재난대응국이 위장한 부서가 입주해 있다. 허가받은 사람만 드나든다.",
+                bg: "https://placehold.co/1400x900/f2f2f2/333?text=%EC%A0%95%EB%B6%80+%EB%B3%84%EA%B4%80",
                 pos: { x: 22, y: 32 },
                 grid: { x: 2, y: 1 },
                 links: ["central_plaza", "udra_hq"],
                 tags: ["정부", "보안", "국가표준지표산정실"],
                 icon: "🏢",
                 objects: [
-                    { id: "udra_basement", name: "국가표준지표산정실", icon: "🗂️", action: "enter_city_area", areaId: "udra_basement" }
+                    { id: "udra_basement", name: "국가표준지표산정실", icon: "🗂️", action: "enter_city_area", areaId: "udra_basement", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "udra_hq",
                 name: "정부 합동 청사 별관",
                 desc: "비정형재난대응국이 위장한 부서.",
+                bg: "https://placehold.co/1400x900/f2f2f2/333?text=UDRA+%EB%B3%84%EA%B4%80",
                 pos: { x: 70, y: 18 },
                 grid: { x: 2, y: 0 },
                 links: ["udra_annex"],
@@ -633,45 +719,49 @@ const CITY_AREA_DATA = {
     st_jude_academy_interior: {
         name: "성 주드 아카데미",
         desc: "성 주드 아카데미 내부 구역. 기숙사와 동아리실이 모여 있다.",
+        bg: "https://placehold.co/1400x900/f3f3f3/333?text=%EC%84%B1+%EC%A3%BC%EB%93%9C+%EC%95%84%EC%B9%B4%EB%8D%B0%EB%AF%B8+%EB%82%B4%EB%B6%80",
         start: "academy_courtyard",
         spots: [
             {
                 id: "academy_courtyard",
                 name: "중앙 중정",
                 desc: "아카데미 중심의 조용한 중정.",
+                bg: "https://placehold.co/1400x900/f6f6f6/333?text=%EC%A4%91%EC%95%99+%EC%A4%91%EC%A0%95",
                 pos: { x: 50, y: 50 },
                 grid: { x: 1, y: 1 },
                 links: ["academy_dormitory", "academy_clubroom"],
                 tags: ["중정", "캠퍼스"],
                 icon: "🌿",
                 objects: [
-                    { id: "academy_exit", name: "밖으로 나가기", icon: "🚪", action: "enter_city_area", areaId: "central_admin", spotId: "st_jude_academy" }
+                    { id: "academy_exit", name: "밖으로 나가기", icon: "🚪", action: "enter_city_area", areaId: "central_admin", spotId: "st_jude_academy", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "academy_dormitory",
                 name: "기숙사",
                 desc: "학생들이 생활하는 조용한 기숙사.",
+                bg: "https://placehold.co/1400x900/f5f5f5/333?text=%EA%B8%B0%EC%88%99%EC%82%AC",
                 pos: { x: 22, y: 68 },
                 grid: { x: 0, y: 2 },
                 links: ["academy_courtyard"],
                 tags: ["생활", "휴식"],
                 icon: "🛏️",
                 objects: [
-                    { id: "dorm_return", name: "기숙사로 복귀", icon: "🏠", action: "return_hub" }
+                    { id: "dorm_return", name: "기숙사로 복귀", icon: "🏠", action: "return_hub", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "academy_clubroom",
                 name: "동아리실",
                 desc: "아카데미 동아리 활동을 진행하는 공간.",
+                bg: "https://placehold.co/1400x900/f5f5f5/333?text=%EB%8F%99%EC%95%84%EB%A6%AC%EC%8B%A4",
                 pos: { x: 78, y: 62 },
                 grid: { x: 2, y: 1 },
                 links: ["academy_courtyard"],
                 tags: ["동아리", "의뢰"],
                 icon: "📚",
                 objects: [
-                    { id: "club_leader", name: "동아리 부장", icon: "🧑‍🏫", action: "open_casefiles" }
+                    { id: "club_leader", name: "동아리 부장", icon: "🧑‍🏫", action: "open_casefiles", pos: { x: 55, y: 60 } }
                 ]
             }
         ]
@@ -679,12 +769,14 @@ const CITY_AREA_DATA = {
     udra_basement: {
         name: "국가표준지표산정실",
         desc: "정부 부서로 위장한 비정형재난대응국의 내부 구역.",
+        bg: "https://placehold.co/1400x900/f2f2f2/333?text=%EA%B5%AD%EA%B0%80%ED%91%9C%EC%A4%80%EC%A7%80%ED%91%9C%EC%82%B0%EC%A0%95%EC%8B%A4",
         start: "udra_core",
         spots: [
             {
                 id: "udra_core",
                 name: "국가표준지표산정실",
                 desc: "형식상 정부 부서로 보이지만, 깊숙한 곳에 비정형재난대응국이 자리한다.",
+                bg: "https://placehold.co/1400x900/f6f6f6/333?text=UDRA",
                 pos: { x: 50, y: 50 },
                 grid: { x: 0, y: 0 },
                 links: [],
@@ -696,12 +788,14 @@ const CITY_AREA_DATA = {
     central_subway_market: {
         name: "지하철역 지하상가",
         desc: "지하로 내려온 상가 구역. 상점과 개찰구가 이어진다.",
+        bg: "https://placehold.co/1400x900/f2f2f2/333?text=%EC%A7%80%ED%95%98%EC%83%81%EA%B0%80",
         start: "market_hall",
         spots: [
             {
                 id: "market_hall",
                 name: "상가 통로",
                 desc: "사람들과 간판이 빽빽한 지하 통로.",
+                bg: "https://placehold.co/1400x900/f6f6f6/333?text=%EC%83%81%EA%B0%80+%ED%86%B5%EB%A1%9C",
                 pos: { x: 50, y: 52 },
                 grid: { x: 1, y: 1 },
                 links: ["snack_stall", "convenience_kiosk", "ticket_gate", "surface_exit"],
@@ -732,26 +826,28 @@ const CITY_AREA_DATA = {
                 id: "ticket_gate",
                 name: "개찰구",
                 desc: "플랫폼으로 내려가는 개찰구.",
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%EA%B0%9C%EC%B0%B0%EA%B5%AC",
                 pos: { x: 50, y: 84 },
                 grid: { x: 1, y: 2 },
                 links: ["market_hall"],
                 tags: ["개찰", "플랫폼"],
                 icon: "🎫",
                 objects: [
-                    { id: "to_platform", name: "플랫폼으로", icon: "⬇️", action: "enter_city_area", areaId: "central_subway_platform" }
+                    { id: "to_platform", name: "플랫폼으로", icon: "⬇️", action: "enter_city_area", areaId: "central_subway_platform", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "surface_exit",
                 name: "지상 출구",
                 desc: "지상으로 올라가는 출구.",
+                bg: "https://placehold.co/1400x900/ededed/333?text=%EC%A7%80%EC%83%81+%EC%B6%9C%EA%B5%AC",
                 pos: { x: 50, y: 22 },
                 grid: { x: 1, y: 0 },
                 links: ["market_hall"],
                 tags: ["출구", "지상"],
                 icon: "⬆️",
                 objects: [
-                    { id: "to_surface", name: "지상으로", icon: "⬆️", action: "enter_city_area", areaId: "central_admin", spotId: "subway_gate" }
+                    { id: "to_surface", name: "지상으로", icon: "⬆️", action: "enter_city_area", areaId: "central_admin", spotId: "subway_gate", pos: { x: 55, y: 60 } }
                 ]
             }
         ]
@@ -759,12 +855,14 @@ const CITY_AREA_DATA = {
     central_subway_platform: {
         name: "세주중앙역 플랫폼",
         desc: "플랫폼 한 칸. 스크린도어 너머로 선로가 이어진다.",
+        bg: "https://placehold.co/1400x900/f1f1f1/333?text=%EC%A4%91%EC%95%99%EC%97%AD+%ED%94%8C%EB%9E%AB%ED%8F%BC",
         start: "platform",
         spots: [
             {
                 id: "platform",
                 name: "플랫폼",
                 desc: "기차가 도착하는 플랫폼.",
+                bg: "https://placehold.co/1400x900/f4f4f4/333?text=%ED%94%8C%EB%9E%AB%ED%8F%BC",
                 pos: { x: 50, y: 50 },
                 grid: { x: 0, y: 0 },
                 links: [],
@@ -776,6 +874,7 @@ const CITY_AREA_DATA = {
                         name: "스크린도어",
                         icon: "🚪",
                         action: "subway_transfer_select",
+                        pos: { x: 55, y: 58 },
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
                             { label: "동문역", areaId: "subway_east_station", spotId: "east_platform" },
@@ -784,7 +883,7 @@ const CITY_AREA_DATA = {
                             { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
-                    { id: "back_to_market", name: "상가로 올라가기", icon: "⬆️", action: "enter_city_area", areaId: "central_subway_market", spotId: "market_hall" }
+                    { id: "back_to_market", name: "상가로 올라가기", icon: "⬆️", action: "enter_city_area", areaId: "central_subway_market", spotId: "market_hall", pos: { x: 78, y: 62 } }
                 ]
             }
         ]
@@ -792,25 +891,28 @@ const CITY_AREA_DATA = {
     subway_transfer_hall: {
         name: "지하철 환승 구역",
         desc: "중앙역에서 동서남북으로 갈 수 있는 환승 통로.",
+        bg: "https://placehold.co/1400x900/f3f3f3/333?text=%ED%99%98%EC%8A%B9+%EA%B5%AC%EC%97%AD",
         start: "subway_central",
         spots: [
             {
                 id: "subway_central",
                 name: "세주중앙역",
                 desc: "중앙 환승 지점.",
+                bg: "https://placehold.co/1400x900/f6f6f6/333?text=%EC%A4%91%EC%95%99+%ED%99%98%EC%8A%B9",
                 pos: { x: 50, y: 50 },
                 grid: { x: 1, y: 1 },
                 links: ["cult_hideout_track"],
                 tags: ["환승", "중앙"],
                 icon: "🧭",
                 objects: [
-                    { id: "to_platform", name: "중앙역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "central_subway_platform", spotId: "platform" }
+                    { id: "to_platform", name: "중앙역 플랫폼", icon: "⬇️", action: "enter_city_area", areaId: "central_subway_platform", spotId: "platform", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "cult_hideout_track",
                 name: "선로로 내려가기",
                 desc: "선로를 따라 은신처로 갈 수 있다.",
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%EC%84%A0%EB%A1%9C",
                 pos: { x: 78, y: 84 },
                 grid: { x: 2, y: 2 },
                 links: ["subway_central"],
@@ -818,7 +920,7 @@ const CITY_AREA_DATA = {
                 icon: "🛤️",
                 requiresDiscovery: "cult_hideout",
                 objects: [
-                    { id: "to_hideout", name: "교단 은신처로", icon: "🕯️", action: "enter_city_area", areaId: "cult_hideout" }
+                    { id: "to_hideout", name: "교단 은신처로", icon: "🕯️", action: "enter_city_area", areaId: "cult_hideout", pos: { x: 55, y: 60 } }
                 ]
             }
         ]
@@ -826,12 +928,14 @@ const CITY_AREA_DATA = {
     subway_east_station: {
         name: "동문역",
         desc: "동쪽 구시가지로 이어지는 지하철역.",
+        bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EB%8F%99%EB%AC%B8%EC%97%AD",
         start: "east_platform",
         spots: [
             {
                 id: "east_platform",
                 name: "동문역 플랫폼",
                 desc: "동쪽 방면 열차가 정차한다.",
+                bg: "https://placehold.co/1400x900/f7f7f7/333?text=%EB%8F%99%EB%AC%B8%EC%97%AD+%ED%94%8C%EB%9E%AB%ED%8F%BC",
                 pos: { x: 50, y: 50 },
                 grid: { x: 0, y: 0 },
                 links: [],
@@ -843,6 +947,7 @@ const CITY_AREA_DATA = {
                         name: "스크린도어",
                         icon: "🚪",
                         action: "subway_transfer_select",
+                        pos: { x: 55, y: 58 },
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
                             { label: "세주중앙역", areaId: "central_subway_platform", spotId: "platform" },
@@ -852,8 +957,8 @@ const CITY_AREA_DATA = {
                             { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
-                    { id: "east_exit_oldtown", name: "동문역 출구", icon: "⬆️", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station" },
-                    { id: "east_exit_market", name: "재래시장 방면", icon: "🧺", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_market" }
+                    { id: "east_exit_oldtown", name: "동문역 출구", icon: "⬆️", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station", pos: { x: 78, y: 62 } },
+                    { id: "east_exit_market", name: "재래시장 방면", icon: "🧺", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_market", pos: { x: 35, y: 65 } }
                 ]
             }
         ]
@@ -861,12 +966,14 @@ const CITY_AREA_DATA = {
     subway_west_station: {
         name: "서항역",
         desc: "서쪽 해안으로 이어지는 지하철역.",
+        bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EC%84%9C%ED%95%AD%EC%97%AD",
         start: "west_platform",
         spots: [
             {
                 id: "west_platform",
                 name: "서항역 플랫폼",
                 desc: "서쪽 방면 열차가 정차한다.",
+                bg: "https://placehold.co/1400x900/f7f7f7/333?text=%EC%84%9C%ED%95%AD%EC%97%AD+%ED%94%8C%EB%9E%AB%ED%8F%BC",
                 pos: { x: 50, y: 50 },
                 grid: { x: 0, y: 0 },
                 links: [],
@@ -878,6 +985,7 @@ const CITY_AREA_DATA = {
                         name: "스크린도어",
                         icon: "🚪",
                         action: "subway_transfer_select",
+                        pos: { x: 55, y: 58 },
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
                             { label: "세주중앙역", areaId: "central_subway_platform", spotId: "platform" },
@@ -887,8 +995,8 @@ const CITY_AREA_DATA = {
                             { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
-                    { id: "west_exit_station", name: "서항역 출구", icon: "⬆️", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station" },
-                    { id: "west_exit_boardwalk", name: "해안 산책로 방면", icon: "🌊", action: "enter_city_area", areaId: "south_coast", spotId: "coast_boardwalk" }
+                    { id: "west_exit_station", name: "서항역 출구", icon: "⬆️", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station", pos: { x: 78, y: 62 } },
+                    { id: "west_exit_boardwalk", name: "해안 산책로 방면", icon: "🌊", action: "enter_city_area", areaId: "south_coast", spotId: "coast_boardwalk", pos: { x: 35, y: 65 } }
                 ]
             }
         ]
@@ -896,12 +1004,14 @@ const CITY_AREA_DATA = {
     subway_south_station: {
         name: "남산역",
         desc: "남쪽 공업지대로 이어지는 지하철역.",
+        bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EB%82%A8%EC%82%B0%EC%97%AD",
         start: "south_platform",
         spots: [
             {
                 id: "south_platform",
                 name: "남산역 플랫폼",
                 desc: "남쪽 방면 열차가 정차한다.",
+                bg: "https://placehold.co/1400x900/f7f7f7/333?text=%EB%82%A8%EC%82%B0%EC%97%AD+%ED%94%8C%EB%9E%AB%ED%8F%BC",
                 pos: { x: 50, y: 50 },
                 grid: { x: 0, y: 0 },
                 links: [],
@@ -913,6 +1023,7 @@ const CITY_AREA_DATA = {
                         name: "스크린도어",
                         icon: "🚪",
                         action: "subway_transfer_select",
+                        pos: { x: 55, y: 58 },
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
                             { label: "세주중앙역", areaId: "central_subway_platform", spotId: "platform" },
@@ -922,8 +1033,8 @@ const CITY_AREA_DATA = {
                             { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
-                    { id: "south_exit_station", name: "남산역 출구", icon: "⬆️", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station" },
-                    { id: "south_exit_alley", name: "뒷골목 방면", icon: "🌒", action: "enter_city_area", areaId: "west_industrial", spotId: "back_alley" }
+                    { id: "south_exit_station", name: "남산역 출구", icon: "⬆️", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station", pos: { x: 78, y: 62 } },
+                    { id: "south_exit_alley", name: "뒷골목 방면", icon: "🌒", action: "enter_city_area", areaId: "west_industrial", spotId: "back_alley", pos: { x: 35, y: 65 } }
                 ]
             }
         ]
@@ -931,12 +1042,14 @@ const CITY_AREA_DATA = {
     subway_north_station: {
         name: "성주산역",
         desc: "북쪽 산길로 이어지는 지하철역.",
+        bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EC%84%B1%EC%A3%BC%EC%82%B0%EC%97%AD",
         start: "north_platform",
         spots: [
             {
                 id: "north_platform",
                 name: "성주산역 플랫폼",
                 desc: "북쪽 방면 열차가 정차한다.",
+                bg: "https://placehold.co/1400x900/f7f7f7/333?text=%EC%84%B1%EC%A3%BC%EC%82%B0%EC%97%AD+%ED%94%8C%EB%9E%AB%ED%8F%BC",
                 pos: { x: 50, y: 50 },
                 grid: { x: 0, y: 0 },
                 links: [],
@@ -948,6 +1061,7 @@ const CITY_AREA_DATA = {
                         name: "스크린도어",
                         icon: "🚪",
                         action: "subway_transfer_select",
+                        pos: { x: 55, y: 58 },
                         options: [
                             { label: "환승 구역", areaId: "subway_transfer_hall", spotId: "subway_central" },
                             { label: "세주중앙역", areaId: "central_subway_platform", spotId: "platform" },
@@ -957,8 +1071,8 @@ const CITY_AREA_DATA = {
                             { label: "성주산역", areaId: "subway_north_station", spotId: "north_platform" }
                         ]
                     },
-                    { id: "north_exit_station", name: "성주산역 출구", icon: "⬆️", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station" },
-                    { id: "north_exit_forest", name: "숲 입구 방면", icon: "🌲", action: "enter_city_area", areaId: "north_mountain", spotId: "forest_entry" }
+                    { id: "north_exit_station", name: "성주산역 출구", icon: "⬆️", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station", pos: { x: 78, y: 62 } },
+                    { id: "north_exit_forest", name: "숲 입구 방면", icon: "🌲", action: "enter_city_area", areaId: "north_mountain", spotId: "forest_entry", pos: { x: 35, y: 65 } }
                 ]
             }
         ]
@@ -966,20 +1080,22 @@ const CITY_AREA_DATA = {
     cult_hideout: {
         name: "교단 은신처",
         desc: "음습한 분위기의 폐쇄된 지하철역 구역.",
+        bg: "https://placehold.co/1400x900/f1f1f1/333?text=%EA%B5%90%EB%8B%A8+%EC%9D%80%EC%8B%A0%EC%B2%98",
         start: "hideout_entrance",
         spots: [
             {
                 id: "hideout_entrance",
                 name: "은신처 입구",
                 desc: "축축한 공기와 촛농 냄새가 감도는 입구.",
+                bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EC%9D%80%EC%8B%A0%EC%B2%98+%EC%9E%85%EA%B5%AC",
                 pos: { x: 50, y: 50 },
                 grid: { x: 0, y: 0 },
                 links: [],
                 tags: ["교단", "지하"],
                 icon: "🕯️",
                 objects: [
-                    { id: "start_cult_investigation", name: "은신처 조사", icon: "🔍", action: "enter_scenario", scenarioId: "cult_investigation" },
-                    { id: "back_to_tracks", name: "선로로 돌아가기", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central" }
+                    { id: "start_cult_investigation", name: "은신처 조사", icon: "🔍", action: "enter_scenario", scenarioId: "cult_investigation", pos: { x: 55, y: 60 } },
+                    { id: "back_to_tracks", name: "선로로 돌아가기", icon: "↩️", action: "enter_city_area", areaId: "subway_transfer_hall", spotId: "subway_central", pos: { x: 78, y: 70 } }
                 ]
             }
         ]
@@ -987,52 +1103,57 @@ const CITY_AREA_DATA = {
     east_oldtown: {
         name: "구시가지 내부",
         desc: "낡은 거리와 생활권이 촘촘하게 이어진 구역. 걸어서 둘러보며 동선을 잡을 수 있습니다.",
+        bg: "https://placehold.co/1400x900/f2f2f2/333?text=%EA%B5%AC%EC%8B%9C%EA%B0%80%EC%A7%80",
         start: "oldtown_market",
         spots: [
             {
                 id: "oldtown_market",
                 name: "재래시장",
                 desc: "손때 묻은 상점과 가판대가 줄지어 있는 시장.",
+                bg: "https://placehold.co/1400x900/f6f6f6/333?text=%EC%9E%AC%EB%9E%98%EC%8B%9C%EC%9E%A5",
                 pos: { x: 50, y: 52 },
                 grid: { x: 1, y: 1 },
                 links: ["youngjin_office", "hecate_cafe", "chungwoon_mansion", "cyber_bunker", "residential_block", "cathedral", "oldtown_station"],
                 tags: ["먹거리", "소문", "생활"],
                 icon: "🧺",
                 objects: [
-                    { id: "goblin_shop", name: "도깨비 만물상 (구 씨 아저씨)", icon: "🪔", action: "open_occult_shop" },
-                    { id: "to_oldtown_station", name: "동문역 출구", icon: "🚇", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station" }
+                    { id: "goblin_shop", name: "도깨비 만물상 (구 씨 아저씨)", icon: "🪔", action: "open_occult_shop", pos: { x: 45, y: 60 } },
+                    { id: "to_oldtown_station", name: "동문역 출구", icon: "🚇", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_station", pos: { x: 70, y: 62 } }
                 ]
             },
             {
                 id: "youngjin_office",
                 name: "영진 탐정 사무소",
                 desc: "오래된 간판이 걸려 있는 작은 탐정 사무소.",
+                bg: "https://placehold.co/1400x900/f7f7f7/333?text=%ED%83%90%EC%A0%95+%EC%82%AC%EB%AC%B4%EC%86%8C",
                 pos: { x: 22, y: 50 },
                 grid: { x: 0, y: 1 },
                 links: ["oldtown_market", "hecate_cafe", "residential_block"],
                 tags: ["사무소", "의뢰"],
                 icon: "🕵️",
                 objects: [
-                    { id: "return_office", name: "사무소로 복귀", icon: "🏠", action: "return_hub" }
+                    { id: "return_office", name: "사무소로 복귀", icon: "🏠", action: "return_hub", pos: { x: 55, y: 60 } }
                 ]
             },
             {
                 id: "hecate_cafe",
                 name: "카페 헤카테",
                 desc: "진한 커피 향과 함께 비밀 이야기가 오간다.",
+                bg: "https://placehold.co/1400x900/f5f5f5/333?text=%EC%B9%B4%ED%8E%98+%ED%97%A4%EC%B9%B4%ED%85%8C",
                 pos: { x: 20, y: 22 },
                 grid: { x: 0, y: 0 },
                 links: ["oldtown_market", "youngjin_office", "chungwoon_mansion"],
                 tags: ["카페", "휴식"],
                 icon: "☕",
                 objects: [
-                    { id: "enter_hecate", name: "카페 헤카테 내부", icon: "☕", action: "enter_city_area", areaId: "hecate_cafe_interior" }
+                    { id: "enter_hecate", name: "카페 헤카테 내부", icon: "☕", action: "enter_city_area", areaId: "hecate_cafe_interior", pos: { x: 55, y: 60 }, hideOnMap: true }
                 ]
             },
             {
                 id: "chungwoon_mansion",
                 name: "청운맨션",
                 desc: "낡았지만 규모가 있는 공동주택.",
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%EC%B2%AD%EC%9A%B4%EB%A7%A8%EC%85%98",
                 pos: { x: 76, y: 22 },
                 grid: { x: 2, y: 0 },
                 links: ["oldtown_market", "hecate_cafe", "cyber_bunker"],
@@ -1042,50 +1163,57 @@ const CITY_AREA_DATA = {
             {
                 id: "cyber_bunker",
                 name: "사이버 벙커",
-                desc: "조용한 골목 깊숙한 곳의 불법 네트워크 거점.",
+                desc: "해커 동료들이 모이는 네트워크 거점.",
+                bg: "https://placehold.co/1400x900/f1f1f1/333?text=%EC%82%AC%EC%9D%B4%EB%B2%84+%EB%B2%99%EC%BB%A4",
                 pos: { x: 78, y: 52 },
                 grid: { x: 2, y: 1 },
                 links: ["oldtown_market", "chungwoon_mansion", "cathedral"],
-                tags: ["네트워크", "암시장"],
+                tags: ["네트워크", "해커"],
                 icon: "🛰️"
             },
             {
                 id: "residential_block",
                 name: "주택가",
                 desc: "오래된 주택들이 빼곡하게 들어선 생활 구역.",
+                bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EC%A3%BC%ED%83%9D%EA%B0%80",
                 pos: { x: 22, y: 84 },
                 grid: { x: 0, y: 2 },
                 links: ["oldtown_market", "youngjin_office", "oldtown_station"],
                 tags: ["생활", "거주"],
                 icon: "🏠",
                 objects: [
-                    { id: "yonggung_sauna", name: "용궁 사우나", icon: "♨️", action: "open_sauna" },
-                    { id: "jesaengdang", name: "한의원 제생당 (마고 원장님)", icon: "🌿", action: "open_occult_clinic" }
+                    { id: "yonggung_sauna", name: "용궁 사우나", icon: "♨️", action: "open_sauna", pos: { x: 45, y: 60 } },
+                    { id: "jesaengdang", name: "한의원 제생당 (마고 원장님)", icon: "🌿", action: "open_occult_clinic", pos: { x: 70, y: 62 } }
                 ]
             },
             {
                 id: "cathedral",
                 name: "성당",
                 desc: "낡은 종탑이 구시가지의 밤을 지킨다.",
+                bg: "https://placehold.co/1400x900/efefef/333?text=%EC%84%B1%EB%8B%B9",
                 pos: { x: 78, y: 84 },
                 grid: { x: 2, y: 2 },
                 links: ["oldtown_market", "cyber_bunker"],
                 tags: ["성지", "기도"],
-                icon: "⛪"
+                icon: "⛪",
+                objects: [
+                    { id: "cathedral_priest", name: "신부님", icon: "💬", action: "npc_dialogue", npcKey: "성당 신부", pos: { x: 55, y: 60 } }
+                ]
             },
             {
                 id: "oldtown_station",
                 name: "동문역",
                 desc: "구시가지와 이어진 지하철역 출구.",
+                bg: "https://placehold.co/1400x900/ededed/333?text=%EB%8F%99%EB%AC%B8%EC%97%AD",
                 pos: { x: 50, y: 92 },
                 grid: { x: 1, y: 3 },
                 links: ["oldtown_market", "residential_block"],
                 tags: ["역", "지하철"],
                 icon: "🚉",
                 objects: [
-                    { id: "to_east_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_east_station", spotId: "east_platform" },
-                    { id: "to_oldtown_market", name: "재래시장 방면", icon: "🧺", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_market" },
-                    { id: "to_residential_block", name: "주택가 방면", icon: "🏠", action: "enter_city_area", areaId: "east_oldtown", spotId: "residential_block" }
+                    { id: "to_east_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_east_station", spotId: "east_platform", pos: { x: 55, y: 60 } },
+                    { id: "to_oldtown_market", name: "재래시장 방면", icon: "🧺", action: "enter_city_area", areaId: "east_oldtown", spotId: "oldtown_market", pos: { x: 35, y: 65 } },
+                    { id: "to_residential_block", name: "주택가 방면", icon: "🏠", action: "enter_city_area", areaId: "east_oldtown", spotId: "residential_block", pos: { x: 75, y: 65 } }
                 ]
             }
         ]
@@ -1093,6 +1221,12 @@ const CITY_AREA_DATA = {
     hecate_cafe_interior: {
         name: "카페 헤카테",
         desc: "잔잔한 조명 아래 해결사들이 모여드는 카페.",
+        bg: "https://placehold.co/1400x900/f7f7f7/333?text=%ED%97%A4%EC%B9%B4%ED%85%8C+%EC%B9%B4%ED%8E%98",
+        parentAreaId: "east_oldtown",
+        parentSpotId: "hecate_cafe",
+        parentLabel: "구시가지로",
+        hideNodes: true,
+        showNpcObjects: true,
         start: "hecate_counter",
         randomNpcPool: ["라거 트레이스", "진서 루멘", "도카 벨"],
         npcSpotIds: ["hecate_counter"],
@@ -1100,8 +1234,9 @@ const CITY_AREA_DATA = {
         spots: [
             {
                 id: "hecate_counter",
-                name: "레이디 헤카테",
-                desc: "카페의 사장. 해결사 의뢰를 관리한다.",
+                name: "카페 헤카테",
+                desc: "조용한 카운터에서 해결사들이 이야기를 나눈다.",
+                bg: "https://placehold.co/1400x900/f9f9f9/333?text=%ED%97%A4%EC%B9%B4%ED%85%8C+%EC%B9%B4%EC%9A%B4%ED%84%B0",
                 pos: { x: 50, y: 52 },
                 grid: { x: 1, y: 1 },
                 links: [],
@@ -1109,31 +1244,31 @@ const CITY_AREA_DATA = {
                 icon: "👑",
                 npcSlot: true,
                 keepBaseName: true,
-                objects: [
-                    { id: "hecate_dialogue", name: "레이디 헤카테", icon: "💬", action: "hecate_dialogue" },
-                    { id: "hecate_exit", name: "구시가지로", icon: "🚪", action: "enter_city_area", areaId: "east_oldtown", spotId: "hecate_cafe" }
-                ]
+                fixedNpcKeys: ["레이디 헤카테"],
+                objects: []
             }
         ]
     },
     youngjin_office_interior: {
         name: "영진 탐정 사무소",
         desc: "서류와 사진으로 가득한 작은 탐정 사무소.",
+        bg: "https://placehold.co/1400x900/f3f3f3/333?text=%EC%82%AC%EB%AC%B4%EC%86%8C",
         start: "office_desk",
         spots: [
             {
                 id: "office_desk",
                 name: "사무소 데스크",
                 desc: "탐정과 조수가 의뢰를 정리하는 자리.",
+                bg: "https://placehold.co/1400x900/f7f7f7/333?text=%EC%82%AC%EB%AC%B4%EC%86%8C+%EB%8D%B0%EC%8A%A4%ED%81%AC",
                 pos: { x: 50, y: 52 },
                 grid: { x: 1, y: 1 },
                 links: [],
                 tags: ["사무소", "의뢰"],
                 icon: "🕵️",
                 objects: [
-                    { id: "office_detective", name: "탐정", icon: "<img src=\"assets/my_detective.png\" alt=\"탐정\" class=\"npc-icon\">", action: "npc_dialogue", npcKey: "영진 탐정" },
-                    { id: "office_assistant", name: "조수", icon: "📋", action: "open_casefiles", npcKey: "사무소 조수" },
-                    { id: "office_exit", name: "구시가지로", icon: "🚪", action: "enter_city_area", areaId: "east_oldtown", spotId: "youngjin_office" }
+                    { id: "office_detective", name: "탐정", icon: "<img src=\"assets/my_detective.png\" alt=\"탐정\" class=\"npc-icon\">", action: "npc_dialogue", npcKey: "영진 탐정", pos: { x: 42, y: 58 } },
+                    { id: "office_assistant", name: "조수", icon: "📋", action: "open_casefiles", npcKey: "사무소 조수", pos: { x: 58, y: 58 } },
+                    { id: "office_exit", name: "구시가지로", icon: "🚪", action: "enter_city_area", areaId: "east_oldtown", spotId: "youngjin_office", pos: { x: 90, y: 62 } }
                 ]
             }
         ]
@@ -1141,22 +1276,25 @@ const CITY_AREA_DATA = {
     west_industrial: {
         name: "공업지대 내부",
         desc: "폐공장과 국도가 얽힌 산업 지대. 거친 소음과 기계음이 끊이지 않습니다.",
+        bg: "https://placehold.co/1400x900/e9e9e9/333?text=%EA%B3%B5%EC%97%85%EC%A7%80%EB%8C%80",
         start: "industrial_yard",
         spots: [
             {
                 id: "industrial_yard",
                 name: "폐공장 단지",
                 desc: "녹슨 설비와 컨베이어가 멈춰 선 넓은 부지.",
+                bg: "https://placehold.co/1400x900/e6e6e6/333?text=%ED%8F%90%EA%B3%B5%EC%9E%A5+%EB%8B%A8%EC%A7%80",
                 pos: { x: 50, y: 52 },
                 grid: { x: 1, y: 1 },
-                links: ["cargo_depot", "national_road", "bad_sector", "industrial_station"],
-                tags: ["폐공장", "소음"],
+                links: ["cargo_depot", "national_road", "bad_sector", "industrial_station", "black_market"],
+                tags: ["폐공장", "소음", "암시장"],
                 icon: "🏭"
             },
             {
                 id: "cargo_depot",
                 name: "화물 집하장",
                 desc: "대형 트럭과 컨테이너가 드나드는 곳.",
+                bg: "https://placehold.co/1400x900/e2e2e2/333?text=%ED%99%94%EB%AC%BC+%EC%A7%91%ED%95%98%EC%9E%A5",
                 pos: { x: 78, y: 52 },
                 grid: { x: 2, y: 1 },
                 links: ["industrial_yard", "national_road"],
@@ -1167,16 +1305,32 @@ const CITY_AREA_DATA = {
                 id: "national_road",
                 name: "외곽 국도",
                 desc: "도시 외곽으로 빠져나가는 넓은 도로.",
+                bg: "https://placehold.co/1400x900/eaeaea/333?text=%EC%99%B8%EA%B3%BD+%EA%B5%AD%EB%8F%84",
                 pos: { x: 50, y: 84 },
                 grid: { x: 1, y: 2 },
-                links: ["industrial_yard", "cargo_depot", "bad_sector", "industrial_station"],
+                links: ["industrial_yard", "cargo_depot", "bad_sector", "industrial_station", "black_market"],
                 tags: ["국도", "외곽"],
                 icon: "🛣️"
+            },
+            {
+                id: "black_market",
+                name: "암시장",
+                desc: "폐공장 옆 그늘진 통로. 불법 거래가 은밀히 이뤄진다.",
+                bg: "https://placehold.co/1400x900/ededed/333?text=%EC%95%94%EC%8B%9C%EC%9E%A5",
+                pos: { x: 78, y: 84 },
+                grid: { x: 2, y: 2 },
+                links: ["industrial_yard", "national_road", "back_alley"],
+                tags: ["암시장", "불법 거래"],
+                icon: "🕶️",
+                objects: [
+                    { id: "open_black_market", name: "암시장 거래", icon: "🛒", action: "open_black_market", pos: { x: 55, y: 60 } }
+                ]
             },
             {
                 id: "bad_sector",
                 name: "클럽 Bad Sector",
                 desc: "산업 지대 속에 숨겨진 클럽. 밤에만 문을 연다.",
+                bg: "https://placehold.co/1400x900/e8e8e8/333?text=Bad+Sector",
                 pos: { x: 22, y: 52 },
                 grid: { x: 0, y: 1 },
                 links: ["industrial_yard", "national_road"],
@@ -1187,29 +1341,31 @@ const CITY_AREA_DATA = {
                 id: "industrial_station",
                 name: "남산역",
                 desc: "공업지대와 이어지는 지하철역 출구.",
-                pos: { x: 78, y: 84 },
-                grid: { x: 2, y: 2 },
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%EB%82%A8%EC%82%B0%EC%97%AD",
+                pos: { x: 78, y: 22 },
+                grid: { x: 2, y: 0 },
                 links: ["industrial_yard", "national_road"],
                 tags: ["역", "지하철"],
                 icon: "🚉",
                 objects: [
-                    { id: "to_south_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_south_station", spotId: "south_platform" },
-                    { id: "to_industrial_yard", name: "공업단지 방면", icon: "🏭", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_yard" },
-                    { id: "to_back_alley", name: "뒷골목 방면", icon: "🌒", action: "enter_city_area", areaId: "west_industrial", spotId: "back_alley" }
+                    { id: "to_south_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_south_station", spotId: "south_platform", pos: { x: 55, y: 58 } },
+                    { id: "to_industrial_yard", name: "공업단지 방면", icon: "🏭", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_yard", pos: { x: 35, y: 62 } },
+                    { id: "to_back_alley", name: "뒷골목 방면", icon: "🌒", action: "enter_city_area", areaId: "west_industrial", spotId: "back_alley", pos: { x: 75, y: 65 } }
                 ]
             },
             {
                 id: "back_alley",
                 name: "뒷골목",
                 desc: "사람들의 시선을 피해 걷기 좋은 어두운 골목.",
+                bg: "https://placehold.co/1400x900/e0e0e0/333?text=%EB%92%B7%EA%B3%A8%EB%AA%A9",
                 pos: { x: 22, y: 84 },
                 grid: { x: 0, y: 2 },
-                links: ["industrial_yard", "national_road"],
+                links: ["industrial_yard", "national_road", "black_market"],
                 tags: ["은신", "위험"],
                 icon: "🌒",
                 objects: [
-                    { id: "slums_dungeon", name: "뒷골목 슬럼", icon: "🧭", action: "enter_dungeon", dungeonId: "slums_back_alley" },
-                    { id: "to_south_station", name: "남산역 출구", icon: "🚇", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station" }
+                    { id: "slums_dungeon", name: "뒷골목 슬럼", icon: "🧭", action: "enter_dungeon", dungeonId: "slums_back_alley", pos: { x: 55, y: 60 } },
+                    { id: "to_south_station", name: "남산역 출구", icon: "🚇", action: "enter_city_area", areaId: "west_industrial", spotId: "industrial_station", pos: { x: 78, y: 70 } }
                 ]
             }
         ]
@@ -1217,25 +1373,28 @@ const CITY_AREA_DATA = {
     south_coast: {
         name: "해안 관광단지 내부",
         desc: "바닷바람과 네온이 뒤섞인 관광 구역. 산책하며 들를 곳이 많습니다.",
+        bg: "https://placehold.co/1400x900/f3f3f3/333?text=%ED%95%B4%EC%95%88+%EA%B4%80%EA%B4%91%EB%8B%A8%EC%A7%80",
         start: "coast_boardwalk",
         spots: [
             {
                 id: "coast_boardwalk",
                 name: "해안 산책로",
                 desc: "바닷바람을 느끼며 걸을 수 있는 산책길.",
+                bg: "https://placehold.co/1400x900/f5f5f5/333?text=%ED%95%B4%EC%95%88+%EC%82%B0%EC%B1%85%EB%A1%9C",
                 pos: { x: 50, y: 52 },
                 grid: { x: 1, y: 1 },
                 links: ["amusement_park", "mega_mart", "seaside_hotel", "beachfront", "coast_station"],
                 tags: ["바닷가", "산책"],
                 icon: "🌊",
                 objects: [
-                    { id: "to_west_station", name: "서항역 출구", icon: "🚇", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station" }
+                    { id: "to_west_station", name: "서항역 출구", icon: "🚇", action: "enter_city_area", areaId: "south_coast", spotId: "coast_station", pos: { x: 70, y: 62 } }
                 ]
             },
             {
                 id: "amusement_park",
                 name: "놀이공원",
                 desc: "빛과 소음으로 가득한 관광 명소.",
+                bg: "https://placehold.co/1400x900/f7f7f7/333?text=%EB%86%80%EC%9D%B4%EA%B3%B5%EC%9B%90",
                 pos: { x: 22, y: 52 },
                 grid: { x: 0, y: 1 },
                 links: ["coast_boardwalk", "mega_mart"],
@@ -1246,6 +1405,7 @@ const CITY_AREA_DATA = {
                 id: "mega_mart",
                 name: "대형 마트",
                 desc: "관광객과 주민 모두가 들르는 대형 상점.",
+                bg: "https://placehold.co/1400x900/f2f2f2/333?text=%EB%8C%80%ED%98%95+%EB%A7%88%ED%8A%B8",
                 pos: { x: 78, y: 52 },
                 grid: { x: 2, y: 1 },
                 links: ["coast_boardwalk", "amusement_park", "seaside_hotel", "coast_station"],
@@ -1256,6 +1416,7 @@ const CITY_AREA_DATA = {
                 id: "seaside_hotel",
                 name: "해안 호텔",
                 desc: "전망 좋은 고급 숙박 시설.",
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%ED%95%B4%EC%95%88+%ED%98%B8%ED%85%94",
                 pos: { x: 50, y: 84 },
                 grid: { x: 1, y: 2 },
                 links: ["coast_boardwalk", "mega_mart", "beachfront"],
@@ -1266,21 +1427,23 @@ const CITY_AREA_DATA = {
                 id: "coast_station",
                 name: "서항역",
                 desc: "해안 관광단지와 이어지는 지하철역 출구.",
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%EC%84%9C%ED%95%AD%EC%97%AD",
                 pos: { x: 78, y: 84 },
                 grid: { x: 2, y: 2 },
                 links: ["coast_boardwalk", "mega_mart"],
                 tags: ["역", "지하철"],
                 icon: "🚉",
                 objects: [
-                    { id: "to_west_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_west_station", spotId: "west_platform" },
-                    { id: "to_coast_boardwalk", name: "해안 산책로 방면", icon: "🌊", action: "enter_city_area", areaId: "south_coast", spotId: "coast_boardwalk" },
-                    { id: "to_mega_mart", name: "대형 마트 방면", icon: "🛒", action: "enter_city_area", areaId: "south_coast", spotId: "mega_mart" }
+                    { id: "to_west_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_west_station", spotId: "west_platform", pos: { x: 55, y: 60 } },
+                    { id: "to_coast_boardwalk", name: "해안 산책로 방면", icon: "🌊", action: "enter_city_area", areaId: "south_coast", spotId: "coast_boardwalk", pos: { x: 35, y: 65 } },
+                    { id: "to_mega_mart", name: "대형 마트 방면", icon: "🛒", action: "enter_city_area", areaId: "south_coast", spotId: "mega_mart", pos: { x: 75, y: 65 } }
                 ]
             },
             {
                 id: "beachfront",
                 name: "바닷가",
                 desc: "파도 소리와 모래사장이 이어지는 해변.",
+                bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EB%B0%94%EB%8B%B7%EA%B0%80",
                 pos: { x: 50, y: 22 },
                 grid: { x: 1, y: 0 },
                 links: ["coast_boardwalk", "seaside_hotel"],
@@ -1292,26 +1455,29 @@ const CITY_AREA_DATA = {
     north_mountain: {
         name: "성주산 구역 내부",
         desc: "짙은 숲과 산길이 이어지는 지대. 길을 잃기 쉬워 주의가 필요합니다.",
+        bg: "https://placehold.co/1400x900/f1f1f1/333?text=%EC%84%B1%EC%A3%BC%EC%82%B0",
         start: "forest_entry",
         spots: [
             {
                 id: "forest_entry",
                 name: "숲 입구",
                 desc: "성주산 숲으로 들어가는 입구. 여기서부터 길이 모호해진다.",
+                bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EC%88%B2+%EC%9E%85%EA%B5%AC",
                 pos: { x: 50, y: 52 },
                 grid: { x: 0, y: 0 },
                 links: ["abandoned_lab", "north_station"],
                 tags: ["산길", "주의"],
                 icon: "🌲",
                 objects: [
-                    { id: "deep_forest", name: "깊은 숲으로", icon: "🌲", action: "enter_dungeon", dungeonId: "north_mountain_forest" },
-                    { id: "to_north_station", name: "성주산역 출구", icon: "🚇", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station" }
+                    { id: "deep_forest", name: "깊은 숲으로", icon: "🌲", action: "enter_dungeon", dungeonId: "north_mountain_forest", pos: { x: 55, y: 60 } },
+                    { id: "to_north_station", name: "성주산역 출구", icon: "🚇", action: "enter_city_area", areaId: "north_mountain", spotId: "north_station", pos: { x: 78, y: 70 } }
                 ]
             },
             {
                 id: "abandoned_lab",
                 name: "폐연구소",
                 desc: "숲속 깊숙한 곳에서 발견된 폐쇄 연구시설.",
+                bg: "https://placehold.co/1400x900/f2f2f2/333?text=%ED%8F%90%EC%97%B0%EA%B5%AC%EC%86%8C",
                 pos: { x: 78, y: 52 },
                 grid: { x: 1, y: 0 },
                 links: ["forest_entry"],
@@ -1323,14 +1489,15 @@ const CITY_AREA_DATA = {
                 id: "north_station",
                 name: "성주산역",
                 desc: "성주산과 이어지는 지하철역 출구.",
+                bg: "https://placehold.co/1400x900/f0f0f0/333?text=%EC%84%B1%EC%A3%BC%EC%82%B0%EC%97%AD",
                 pos: { x: 78, y: 80 },
                 grid: { x: 1, y: 1 },
                 links: ["forest_entry"],
                 tags: ["역", "지하철"],
                 icon: "🚉",
                 objects: [
-                    { id: "to_north_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_north_station", spotId: "north_platform" },
-                    { id: "to_forest_entry", name: "숲 입구 방면", icon: "🌲", action: "enter_city_area", areaId: "north_mountain", spotId: "forest_entry" }
+                    { id: "to_north_platform", name: "지하철로 내려가기", icon: "⬇️", action: "enter_city_area", areaId: "subway_north_station", spotId: "north_platform", pos: { x: 55, y: 60 } },
+                    { id: "to_forest_entry", name: "숲 입구 방면", icon: "🌲", action: "enter_city_area", areaId: "north_mountain", spotId: "forest_entry", pos: { x: 75, y: 65 } }
                 ]
             }
         ]
@@ -1394,7 +1561,7 @@ const DISTRICTS = {
         desc: "범죄와 오물이 뒤섞인 곳. 불량배가 많지만 정보도 많다.",
         danger: 1,
         color: "#c0392b",
-        scenarios: ["tutorial"],
+        scenarios: ["tutorial", "hecate_trial"],
         facilities: ["shop_black_market"],
         enemyPool: ["괴물 쥐", "불량배"],
         dungeon: {
@@ -1627,6 +1794,54 @@ const SCENARIOS = {
         reward: { gold: 2000, xp: 500, itemRank: 2 },
         canRetreat: true, // 도망 가능
     }
+    ,
+    "hecate_trial": {
+        title: "헤카테의 의뢰: 잃어버린 재료",
+        desc: "카페 헤카테의 특별한 재료가 사라졌다. 회수해 달라는 의뢰.",
+        source: "hecate",
+        locations: ["구시가지 뒷골목", "재래시장 골목"],
+        events: [{ type: "battle", chance: 0.35 }, { type: "text", chance: 0.35 }, { type: "nothing", chance: 0.3 }],
+        enemyPool: ["불량배"],
+        boss: "boss_gang_leader",
+        clueEvents: [{ text: "깨진 유리병 발견.", gain: 10 }, { text: "운반 흔적 발견.", gain: 15 }],
+        reward: { gold: 900, xp: 180, itemRank: 1 },
+        canRetreat: true
+    }
+};
+
+// 의뢰 해금/제한 규칙 (추가/수정은 여기서)
+// 플래그 네이밍 규칙:
+// - 형식: domain:subject:action[:state]
+// - 예시: npc:priest:met, item:holy_water:obtained, quest:tutorial:cleared, story:cult:altar_seen
+// - 도메인: npc, quest, item, story, event, area
+// - 소문자 + 언더바 권장, 공백 금지
+// 규칙은 AND 조건으로 모두 만족해야 노출됩니다.
+// 사용 가능 키:
+// - minLevel: 최소 레벨
+// - requiredFlags: 필요한 플래그 배열 (NPC 대화, 이벤트 트리거 등)
+// - leadFlag: 실마리 탭 노출을 위한 대표 플래그 (없으면 requiredFlags[0] 사용)
+// - requiredItems: 필요한 아이템 배열 (인벤/유물/창고 포함)
+// - requiredScenariosCleared: 선행 의뢰 완료 배열
+// - minClearedCount: 완료한 의뢰 개수 최소치
+// - startAt: { day, timeIndex? } 시작 가능 시점
+// - expireAt: { day, timeIndex? } 만료 시점 (지나면 비노출)
+// - hideAfterClear: 완료 후 목록에서 숨김 여부
+const SCENARIO_RULES = {
+    tutorial: {
+        // 기본 튜토리얼은 항상 표시
+    },
+    cult_investigation: {
+        leadFlag: "npc:priest:met",
+        requiredFlags: ["npc:priest:met"],
+        requiredScenariosCleared: ["tutorial"]
+    },
+    hecate_trial: {
+        leadFlag: "lead:hecate:trial",
+        requiredFlags: ["lead:hecate:trial"]
+    },
+    cursed_antique: {
+        requiredScenariosCleared: ["cult_investigation"]
+    }
 };
 
 const EVENT_DATA = [
@@ -1833,7 +2048,7 @@ const JOB_DATA = {
         desc: "논리와 이성으로 사건을 해결합니다.",
         baseStats: { str: 10, con: 9, dex: 12, int: 16, wil: 14, cha: 12 },
         defaultTraits: ["sharp_eye"],
-        starterDeck: ["조사", "조사", "조사", "조사", "회피", "조수 호출", "추리", "명령: 유인", "명령: 유인", "명령: 방호"],
+        starterDeck: ["조사", "조사", "조사", "조사", "회피", "조수 호출", "추리", "명령: 유인", "명령: 방호"],
         starterSocialDeck: ["논리적 반박", "논리적 반박", "증거 제시", "사실 확인", "심호흡"],
         starterEquipment: { rightHand: "권총" },
         // [NEW] 탐정 이미지
