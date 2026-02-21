@@ -1,4 +1,4 @@
-const CHARACTER_IMAGES = {
+﻿const CHARACTER_IMAGES = {
     detective: "assets/my_detective.png",
     assistant: "assets/my_assistant.png"
 };
@@ -1844,17 +1844,180 @@ const SCENARIO_RULES = {
     }
 };
 
+// [NARRATION] 내레이션 텍스트 (통합 관리)
+const NARRATION = {
+    city: {
+        map: {
+            idle: "당신은 다음으로 갈 장소를 생각해 봅니다…",
+            ask: "이곳으로 갈까요?",
+            go: "당신은 [PLACE:으로] 향했습니다."
+        },
+        area: {
+            arrive: "당신은 [PLACE:에] 도착했습니다.",
+            inspect: "당신은 [PLACE:을를] 살펴봅니다.",
+            next: "이제 어디로 갈까요?"
+        }
+    },
+    battle: {
+        start: "당신은 전투를 준비합니다.",
+        victory: "당신은 전투에서 승리했습니다.",
+        defeat: "당신은 더 이상 싸울 수 없습니다.",
+        hpDamage: "당신은 체력 피해 [AMOUNT]를 입었습니다. (HP: [HP])",
+        enemyHpDamage: "적이 체력 피해 [AMOUNT]를 입었습니다. (HP: [HP])",
+        mentalDamage: "당신은 의지 피해 [AMOUNT]를 입었습니다. (남은 벽: [MENTAL])",
+        enemyMentalDamage: "적이 의지 피해 [AMOUNT]를 입었습니다. (남은 벽: [MENTAL])",
+        critical: "당신은 치명타로 [AMOUNT]의 피해를 주었습니다. (HP: [HP])",
+        thorns: "가시 반격으로 [AMOUNT]의 피해를 입었습니다.",
+        reflect: "반사 반격으로 [AMOUNT]의 피해를 입었습니다.",
+        lastStand: "당신은 간신히 버텼습니다.",
+        blockGain: "당신은 방어도를 [AMOUNT] 얻었습니다.",
+        assistantBlockGain: "조수가 방어도를 [AMOUNT] 얻었습니다.",
+        buffApply: "[TARGET:에게] [BUFF] 효과가 적용되었습니다.",
+        poison: "독 피해 [AMOUNT]를 입었습니다.",
+        regen: "활력으로 HP가 [AMOUNT] 회복되었습니다.",
+        assistantTook: "조수가 피해를 대신 받았습니다. (-[AMOUNT])",
+        reactionGone: "당신의 반응 준비가 사라졌습니다.",
+        stunned: "당신은 기절 상태입니다. 아무것도 할 수 없습니다.",
+        postureRecovered: "당신은 자세를 바로잡았습니다.",
+        comboAction: "당신은 연속 행동으로 방어도를 유지합니다.",
+        attrExpired: "속성 부여 효과가 사라졌습니다.",
+        cardExhausted: "휘발성 카드가 소멸되었습니다.",
+        targetStunned: "[TARGET:은는] 기절하여 움직일 수 없습니다.",
+        postureRecoverTarget: "[TARGET:이가] 자세를 바로잡습니다.",
+        hitStunnedTarget: "당신은 기절한 대상을 가격합니다.",
+        stunSuccess: "[TARGET:이가] 기절했습니다. (약점 공략 성공)",
+        selfStunned: "당신은 기절했습니다. 다음 턴 행동 불가입니다.",
+        postureBreakEnemy: "[TARGET:의] 자세가 무너졌습니다. (약점 노출)",
+        postureBreakSelf: "당신의 자세가 무너졌습니다. (피해량 증가)",
+        cardUse: "당신은 [CARD:을를] 사용합니다.",
+        noAssistant: "조수가 없어 사용할 수 없습니다.",
+        reactionOnly: "전투 중에만 반응 카드를 사용할 수 있습니다.",
+        reactionReady: "당신은 [CARD] 반응 준비를 합니다.",
+        planOnly: "전투 중에만 계획 카드를 사용할 수 있습니다.",
+        planSet: "당신은 [CARD] 계획을 설정합니다.",
+        apGain: "당신은 AP [AMOUNT]를 얻었습니다.",
+        drawCards: "당신은 카드를 [AMOUNT]장 뽑았습니다.",
+        drawNextTurn: "당신은 다음 턴에 카드를 [AMOUNT]장 추가로 뽑습니다.",
+        emptyPile: "대상 카드 더미가 비어있습니다.",
+        copyOrRecover: "당신은 [CARD:을를] [ACTION]했습니다.",
+        evidenceBreak: "당신은 증거로 논리 방어를 깨뜨렸습니다.",
+        lieSuccess: "당신의 거짓말이 성공했습니다.",
+        lieFail: "당신의 거짓말이 들켰습니다.",
+        noSummon: "당신은 부하를 부를 수 없습니다.",
+        weaknessFound: "당신은 [TARGET:의] 약점을 파악했습니다.",
+        nextAttackAttr: "당신의 다음 공격에 속성이 부여됩니다.",
+        assistantFocus: "이번 턴 적의 공격이 조수에게 집중됩니다.",
+        cruelDecision: "당신은 비정한 결단으로 조수 체력을 희생합니다.",
+        noAssistantEffect: "조수가 없어 효과가 없습니다.",
+        cardCopyAdded: "카드가 복제되어 버린 카드에 추가되었습니다.",
+        cardGrowPermanent: "[CARD:이가] 영구 성장했습니다.",
+        cardGrowBattle: "[CARD:이가] 전투 중 성장했습니다.",
+        fieldFull: "전장이 꽉 차서 더 이상 소환할 수 없습니다.",
+        reinforced: "[TARGET:이가] 증원되었습니다."
+    },
+    system: {
+        itemGain: "당신은 [ITEM:을를] 획득했습니다.",
+        clueGain: "당신은 단서를 확보했습니다.",
+        clueGainAmount: "당신은 단서를 [AMOUNT]개 확보했습니다.",
+        clueGainTarget: "당신은 [TARGET:에] 단서 [AMOUNT]개를 추가했습니다. (현재 [TOTAL])",
+        clueInsight: "당신은 직감으로 단서를 확보했습니다. (현재 [TOTAL])",
+        clueAssistant: "당신은 조수의 보고로 단서를 확보했습니다. (현재 [TOTAL])",
+        clueConsume: "당신은 단서 [AMOUNT]개를 소모해 추가 피해를 입혔습니다.",
+        clueConclusion: "당신은 단서를 모아 강력한 결론을 도출했습니다.",
+        clueThresholdDraw: "당신은 단서 [THRESHOLD] 이상으로 카드를 [AMOUNT]장 추가 드로우합니다.",
+        assistantDown: "조수가 기절했습니다.",
+        assistantShaken: "조수가 흐트러졌습니다.",
+        assistFail: "체력이 부족해 조수를 치료할 수 없습니다.",
+        assistHeal: "조수가 회복되었습니다. (+[AMOUNT])",
+        profilingDone: "프로파일링이 완료되었습니다. 결정적 논증을 손에 추가합니다.",
+        mansionEnter: "당신은 폐쇄된 저택에 진입했습니다.",
+        powerGain: "당신은 파워 [CARD:을를] 획득했습니다.",
+        powerGainSocial: "당신은 소셜 파워 [CARD:을를] 획득했습니다.",
+        powerAp: "당신은 파워 효과로 AP [AMOUNT]를 얻었습니다.",
+        powerCostZero: "당신은 손패 [CARD:의] 비용을 0으로 만듭니다.",
+        deckMix: "당신의 덱에 [CARD] 카드 [AMOUNT]장이 섞였습니다.",
+        enemyDeckMix: "적의 덱에 [CARD] 카드 [AMOUNT]장이 섞였습니다.",
+        socialStart: "당신은 [TARGET:과와] 설전을 벌입니다.",
+        spDamage: "당신은 정신적 충격으로 SP [AMOUNT]를 잃었습니다.",
+        spDamageShock: "당신은 정신적 충격으로 SP [AMOUNT]를 잃었습니다.",
+        inventoryFull: "가방이 꽉 찼습니다. 교체할 아이템을 선택하세요.",
+        swapItem: "당신은 [OLD:을를] 버리고 [NEW:을를] 획득했습니다.",
+        itemPassive: "[ITEM:은는] 가지고 있으면 효과를 발휘합니다.",
+        battleTurnOnly: "전투 중 내 턴에만 가능합니다.",
+        giftItem: "당신은 [ITEM:을를] 선물합니다.",
+        giftGreat: "효과가 굉장합니다.",
+        giftBad: "상대가 기겁합니다.",
+        giftOk: "나쁘지 않은 반응입니다.",
+        attrGranted: "당신은 [ATTR] 속성을 [TURNS]턴 동안 부여받습니다.",
+        healBoth: "당신은 HP [HP]와 SP [SP]를 회복했습니다.",
+        healHp: "당신은 HP [HP]를 회복했습니다.",
+        throwItem: "당신은 [ITEM:을를] 던져 적에게 피해를 입혔습니다.",
+        callFixer: "당신은 해결사를 불러 호위를 요청했습니다.",
+        itemRest: "당신은 휴식을 취합니다.",
+        relicOwned: "당신은 이미 [ITEM:을를] 보유 중입니다.",
+        locationMarker: "[PLACE:에] 도착했습니다.",
+        bossAppear: "[BOSS:이가] 출현했습니다.",
+        willHeal: "당신은 의지 [AMOUNT]를 회복했습니다.",
+        retreat: "당신은 서둘러 물러납니다.",
+        noBattleNpc: "전투 데이터가 없는 NPC입니다.",
+        socialFail: "협상이 결렬되어 전투가 시작됩니다.",
+        cardTriggerApLoss: "[CARD] 발동: AP -[AMOUNT]",
+        cardTriggerHpLoss: "[CARD] 발동: HP -[AMOUNT]",
+        cardTriggerDiscard: "[CARD] 발동: 무작위 카드가 버려졌습니다.",
+        shuffleDeck: "당신은 덱을 섞습니다.",
+        handFullDiscard: "손패가 가득 차 [CARD] 카드가 버려졌습니다.",
+        addCardToDeck: "당신은 [CARD:을를] [DECK:에] 추가했습니다.",
+        infiniteStageBoss: "무한 모드 보스 스테이지 [STAGE]가 시작됩니다.",
+        infiniteStage: "무한 모드 스테이지 [STAGE]가 시작됩니다.",
+        notice: "[TEXT]",
+        openCaseFiles: "당신은 의뢰 목록을 살펴보았습니다.",
+        openActiveMissions: "당신은 진행 중인 의뢰를 확인했습니다.",
+        levelUp: "당신의 레벨이 상승했습니다.",
+        cardReward: "당신은 카드 보상을 확인했습니다.",
+        learnCard: "당신은 새로 [CARD:을를] 습득했습니다.",
+        openShop: "당신은 상점에 진입했습니다. 어떤 것을 구매할까요?",
+        openPlayerInfo: "당신은 현재 정보를 확인했습니다."
+    },
+    event: {
+        vendingTitle: "⚡ 고장 난 자판기",
+        vendingDesc: "골목길 구석에 네온사인이 깜빡이는 낡은 자판기가 있습니다. 안에 내용물이 들어있지만 전원이 불안정해 보입니다.",
+        shadyTitle: "🕶️ 수상한 거래",
+        shadyDesc: "코트 깃을 세운 남자가 은밀하게 접근합니다. \"좋은 물건이 있는데, 피를 좀 나눌 수 있나?\"",
+        altarTitle: "🕯️ 기이한 제단",
+        altarDesc: "건물 지하에서 촛불이 켜진 작은 제단을 발견했습니다. 알 수 없는 속삭임이 들려옵니다.",
+        walletTitle: "👛 떨어진 지갑",
+        walletDesc: "바닥에 두툼한 지갑이 떨어져 있습니다.",
+        bushTitle: "🌿 수상한 덤불",
+        bushDesc: "덤불 속에서 부스럭거리는 소리가 들립니다. (전투가 발생할 수 있습니다)",
+        supplyTitle: "버려진 보급품",
+        supplyDesc: "길가에 버려진 보급 상자를 발견했습니다.",
+        vendingNoMoney: "돈이 부족합니다.",
+        vendingItem: "덜컹! [ITEM:이가] 나왔습니다.",
+        vendingKickItem: "쾅! 충격으로 [ITEM:이가] 떨어졌습니다!",
+        vendingKickFail: "쾅! 자판기가 쓰러지며 발을 찧었습니다. (체력 -5)",
+        shadyTrade: "남자는 피를 뽑아가고 돈을 쥐어줍니다. (HP -10, +5000원)",
+        shadyReject: "남자는 혀를 차며 사라졌습니다.",
+        altarPray: "마음이 차분해지지만, 시간이 많이 흘렀습니다. (SP +10, 위협도 +10)",
+        altarBattle: "제단을 걷어차자 숨어있던 광신도가 튀어나옵니다!",
+        walletTake: "죄책감이 들지만 지갑은 두둑합니다. (+[GAIN]원, SP -3)",
+        walletReturn: "착한 일을 했다는 뿌듯함이 느껴집니다. (SP +5)",
+        bushAmbush: "덤불 속에 숨어있던 적이 튀어나왔습니다!",
+        supplyFound: "[ITEM:을를] 획득했습니다!"
+    }
+};
+
 const EVENT_DATA = [
     {
         id: "vending_machine",
-        title: "⚡ 고장 난 자판기",
-        desc: "골목길 구석에 네온사인이 깜빡이는 낡은 자판기가 있습니다.<br>안에 내용물이 들어있지만 전원이 불안정해 보입니다.",
+        titleKey: "event.vendingTitle",
+        descKey: "event.vendingDesc",
         choices: [
             {
                 txt: "돈을 넣는다 (800원)",
                 func: () => {
                     if (player.gold < 800) {
-                        showPopup("잔액 부족", "돈이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                        logNarration("event.vendingNoMoney");
+                        finishEvent("exploration");
                         return;
                     }
 
@@ -1863,9 +2026,8 @@ const EVENT_DATA = [
 
                     // 아이템 획득 시도 (성공 시 팝업 띄우고 종료)
                     addItem(item, () => {
-                        showPopup("획득", `덜컹! [${item}]이(가) 나왔습니다.`, [
-                            { txt: "확인", func: () => { finishEvent("exploration"); } }
-                        ]);
+                        logNarration("event.vendingItem", { item });
+                        finishEvent("exploration");
                     });
                 }
             },
@@ -1875,17 +2037,15 @@ const EVENT_DATA = [
                     if (Math.random() < 0.5) {
                         let item = getRandomItem("consumable", { categories: ["general"] });
                         addItem(item, () => {
-                            showPopup("성공!", `쾅! 충격으로 [${item}]이(가) 떨어졌습니다!`, [
-                                { txt: "확인", func: () => { finishEvent("exploration"); } }
-                            ]);
+                            logNarration("event.vendingKickItem", { item });
+                            finishEvent("exploration");
                         });
                     } else {
                         takeDamage(player, 5);
                         // 사망 체크는 takeDamage -> checkGameOver에서 처리되지만, 생존 시 팝업
                         if (player.hp > 0) {
-                            showPopup("실패", "쾅! 자판기가 쓰러지며 발을 찧었습니다.<br>(체력 -5)", [
-                                { txt: "확인", func: () => { finishEvent("exploration"); } }
-                            ]);
+                            logNarration("event.vendingKickFail");
+                            finishEvent("exploration");
                         }
                     }
                 }
@@ -1895,8 +2055,8 @@ const EVENT_DATA = [
     },
     {
         id: "shady_merchant",
-        title: "🕶️ 수상한 거래",
-        desc: "코트 깃을 세운 남자가 은밀하게 접근합니다.<br>\"좋은 물건이 있는데, 피를 좀 나눌 수 있나?\"",
+        titleKey: "event.shadyTitle",
+        descKey: "event.shadyDesc",
         choices: [
             {
                 txt: "피를 판다 (HP -10, +5000원)",
@@ -1904,42 +2064,39 @@ const EVENT_DATA = [
                     takeDamage(player, 10);
                     if (player.hp > 0) {
                         player.gold += 5000;
-                        showPopup("거래 성사", "남자는 피를 뽑아가고 돈을 쥐어줍니다.<br>(HP -10, +5000원)", [
-                            { txt: "확인", func: () => { finishEvent("exploration"); } }
-                        ]);
+                        logNarration("event.shadyTrade");
+                        finishEvent("exploration");
                     }
                 }
             },
             {
                 txt: "거절한다",
                 func: () => {
-                    showPopup("거절", "남자는 혀를 차며 사라졌습니다.", [
-                        { txt: "확인", func: () => { finishEvent("exploration"); } }
-                    ]);
+                    logNarration("event.shadyReject");
+                    finishEvent("exploration");
                 }
             }
         ]
     },
     {
         id: "cult_altar",
-        title: "🕯️ 기이한 제단",
-        desc: "건물 지하에서 촛불이 켜진 작은 제단을 발견했습니다.<br>알 수 없는 속삭임이 들려옵니다.",
+        titleKey: "event.altarTitle",
+        descKey: "event.altarDesc",
         choices: [
             {
                 txt: "기도한다 (SP +10, 위협 +10)",
                 func: () => {
                     player.sp = Math.min(player.maxSp, player.sp + 10);
                     game.scenario.doom += 10;
-                    showPopup("기도", "마음이 차분해지지만, 시간이 많이 흘렀습니다.<br>(SP +10, 위협도 +10)", [
-                        { txt: "확인", func: () => { finishEvent("exploration"); } }
-                    ]);
+                    logNarration("event.altarPray");
+                    finishEvent("exploration");
                 }
             },
             {
                 txt: "제단을 부순다 (전투)",
                 func: () => {
-                    showPopup("전투 개시!", "제단을 걷어차자 숨어있던 광신도가 튀어나옵니다!", [
-                        { txt: "전투!", func: () => { closePopup(); startBattle(false); } }
+                    showNarrationChoice(getNarration("event.altarBattle"), [
+                        { txt: "전투!", func: () => { startBattle(false); } }
                     ]);
                 }
             },
@@ -1948,8 +2105,8 @@ const EVENT_DATA = [
     },
     {
         id: "lost_wallet",
-        title: "👛 떨어진 지갑",
-        desc: "바닥에 두툼한 지갑이 떨어져 있습니다.",
+        titleKey: "event.walletTitle",
+        descKey: "event.walletDesc",
         choices: [
             {
                 txt: "가진다 (+소지금, SP -3)",
@@ -1957,34 +2114,31 @@ const EVENT_DATA = [
                     let gain = 3000 + Math.floor(Math.random() * 200);
                     player.gold += gain;
                     player.sp -= 3;
-                    showPopup("획득", `죄책감이 들지만 지갑은 두둑합니다.<br>(+${gain}원, SP -3)`, [
-                        { txt: "확인", func: () => { finishEvent("exploration"); } }
-                    ]);
+                    logNarration("event.walletTake", { gain });
+                    finishEvent("exploration");
                 }
             },
             {
                 txt: "경찰서에 맡긴다 (SP +5)",
                 func: () => {
                     player.sp = Math.min(player.maxSp, player.sp + 5);
-                    showPopup("선행", "착한 일을 했다는 뿌듯함이 느껴집니다.<br>(SP +5)", [
-                        { txt: "확인", func: () => { finishEvent("exploration"); } }
-                    ]);
+                    logNarration("event.walletReturn");
+                    finishEvent("exploration");
                 }
             }
         ]
     },
     {
         id: "suspicious_bush",
-        title: "🌿 수상한 덤불",
-        desc: "덤불 속에서 부스럭거리는 소리가 들립니다.<br>(전투가 발생할 수 있습니다)",
+        titleKey: "event.bushTitle",
+        descKey: "event.bushDesc",
         choices: [
             {
                 txt: "살펴본다",
                 func: () => {
-                    showPopup("기습!", "덤불 속에 숨어있던 적이 튀어나왔습니다!", [{
+                    showNarrationChoice(getNarration("event.bushAmbush"), [{
                         txt: "전투 개시",
                         func: () => {
-                            closePopup();
                             startBattle();
                         }
                     }]);
@@ -1995,13 +2149,13 @@ const EVENT_DATA = [
     },
 
     {
-        title: "버려진 보급품",
-        desc: "길가에 버려진 보급 상자를 발견했습니다.",
+        titleKey: "event.supplyTitle",
+        descKey: "event.supplyDesc",
         icon: "📦",
         effect: () => {
             let foundItem = getRandomItem(null, { categories: ["general", "medicine"] });
             addItem(foundItem);
-            return `<span style='color:#2ecc71'>[${foundItem}]</span>을(를) 획득했습니다!`;
+            return getNarration("event.supplyFound", { item: foundItem });
         }
     },
     {
@@ -2181,3 +2335,7 @@ const ATTR_ICONS = {
     slash: "⚔️", pierce: "🏹", strike: "🔨", // 물리
     holy: "✨", profane: "😈" // 특수
 };
+
+
+
+

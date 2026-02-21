@@ -1366,7 +1366,8 @@ body {
     background: #f0f0f0;
     padding: 30px;
     border-radius: 0;
-    width: 500px;
+    width: min(420px, 62vw);
+    max-width: calc(100% - 380px);
     max-height: 80%;
     display: flex;
     flex-direction: column;
@@ -2939,8 +2940,8 @@ body {
 .event-box.shop-mode,
 #event-content-box.shop-mode {
     /* [핵심 1] 레이아웃 크기 고정 */
-    max-width: 1100px !important;
-    width: 95% !important;
+    max-width: none !important;
+    width: 100% !important;
 
     /* 높이를 화면의 85%로 잡되, 패딩을 포함하여 계산 */
     height: 85dvh !important;
@@ -2961,7 +2962,7 @@ body {
     /* [핵심 3] 모달 전체 스크롤 방지 (본문만 스크롤 되게) */
     overflow: hidden !important;
     /* 헤더/푸터 고정, 중앙만 스크롤 */
-    margin: 0 auto;
+    margin: 0;
 }
 
 /* 상단 헤더 (고정) */
@@ -3260,6 +3261,7 @@ body {
 }
 
 .shared-log-area {
+    display: none;
     /* 위치 및 크기 */
     width: 100%;
     height: 100px;
@@ -3658,6 +3660,37 @@ body {
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
+.city-left-info {
+    position: absolute;
+    left: 18px;
+    top: 18px;
+    width: min(280px, 36vw);
+    text-align: left;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #d0d0d0;
+    padding: 10px 12px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    z-index: 6;
+}
+
+.city-left-title {
+    font-size: 0.95em;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 6px;
+}
+
+.city-left-desc {
+    font-size: 0.82em;
+    color: #222;
+    line-height: 1.4;
+}
+
+.city-area-detail .city-detail-title,
+.city-area-detail .city-detail-desc {
+    display: none;
+}
+
 .city-dialogue {
     display: flex;
     flex-direction: column;
@@ -3710,9 +3743,37 @@ body {
     gap: 6px;
 }
 
+.city-dialogue-choices.hidden {
+    display: none;
+}
+
 .city-dialogue-choices .action-btn {
     width: 100%;
     text-align: left;
+}
+
+.global-log-panel {
+    position: fixed;
+    right: 14px;
+    top: 80px;
+    bottom: 16px;
+    width: min(340px, 32vw);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #d0d0d0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    z-index: 240;
+    display: flex;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.global-log-panel.hidden {
+    display: none;
+}
+
+.global-log-panel .city-dialogue-log {
+    max-height: none;
+    height: 100%;
 }
 
 .city-case-panel {
@@ -3976,6 +4037,61 @@ body {
     transform: translate(-50%, -50%) scale(1.02);
 }
 
+.hub-scene {
+    padding: 0;
+}
+
+.hub-map {
+    background-size: cover;
+    background-position: center;
+}
+
+.event-shell {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.event-shell.shop-mode {
+    grid-template-columns: minmax(0, 1fr) min(340px, 32vw);
+}
+
+.event-log-panel {
+    background: #ffffff;
+    border: 1px solid #111;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 14px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 240px;
+}
+
+.event-log-panel .city-dialogue-log {
+    max-height: none;
+}
+
+.city-hybrid-shell .city-detail-panel,
+.event-shell .city-detail-panel {
+}
+
+.city-detail-panel .city-dialogue {
+    flex: 1;
+    min-height: 0;
+}
+
+.city-detail-panel .city-dialogue-log {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    max-height: none;
+}
+
 .city-detail-actions .action-btn {
     width: 100%;
 }
@@ -3983,6 +4099,11 @@ body {
 .city-detail-actions .action-btn:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+}
+
+.city-detail-actions,
+.city-spot-actions {
+    margin-top: auto;
 }
 
 .city-note {

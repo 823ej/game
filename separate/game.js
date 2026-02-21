@@ -119,10 +119,10 @@ class AssistantManager {
             if (this.isBroken && !this.isStunned) {
                 this.isStunned = true;
                 this.block = 0;
-                log("😵 조수가 기절했습니다!");
+                logNarration("system.assistantDown");
             } else if (this.hp <= 0 && !this.isBroken && !this.isStunned) {
                 this.isBroken = true;
-                log("⚡ 조수가 흐트러졌습니다!");
+                logNarration("system.assistantShaken");
             }
         }
         return dealt;
@@ -167,7 +167,7 @@ function addClueStacks(target, count) {
         player.combatTempCards.push("결정적 논증"); // 전투 종료 후 사라지게 하려면
         // 즉시 손패 렌더링이 필요할 수 있음
         renderHand();
-        log("💡 <b>단서 10개 포착!</b> [결정적 논증]이 생성되었습니다!");
+    logNarration("system.clueConclusion");
         playAnim(player, 'anim-success'); // 시각적 피드백
     }
 
@@ -244,12 +244,12 @@ function healAssistant(amount, hpCost = 0) {
     if (!mgr || mgr.maxHp <= 0) return false;
     const cost = Math.max(0, Number(hpCost || 0));
     if (cost > 0 && player.hp <= cost) {
-        log("🚫 체력이 부족해 조수를 치료할 수 없습니다.");
+        logNarration("system.assistFail");
         return false;
     }
     if (cost > 0) player.hp -= cost;
     const healed = mgr.heal(amount);
-    if (healed > 0) log(`🩹 조수 회복 +${healed}`);
+    if (healed > 0) logNarration("system.assistHeal", { amount: healed });
     updateUI();
     return healed > 0;
 }
@@ -276,7 +276,7 @@ function addProfiling(amount) {
         if (!Array.isArray(player.combatTempCards)) player.combatTempCards = [];
         player.hand.push("결정적 논증");
         player.combatTempCards.push("결정적 논증");
-        log("💡 프로파일링 완료! [결정적 논증]을 손에 추가했습니다.");
+        logNarration("system.profilingDone");
         renderHand();
     }
     updateUI();
@@ -309,6 +309,7 @@ function renderCityMap() {
     const mapEl = document.getElementById('city-map');
     if (!mapEl) return;
     setCityPanelVisible('map', false);
+    clearCityLogSticky("city_area_desc");
 
     mapEl.innerHTML = `
         <svg class="city-map-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
@@ -409,14 +410,23 @@ function enterDistrict(key, silentAreaOpen) {
 
     if (titleEl) titleEl.textContent = node.name;
     if (descEl) descEl.textContent = node.desc;
+    updateCityLeftInfo('map', node.name, node.desc);
+    if (!game.cityMapNarrated) {
+        appendCityLogLine("", getNarration("city.map.idle"), false, true);
+        game.cityMapNarrated = true;
+    }
+    setCityLogSticky("city_map_desc", `${node.name} — ${node.desc || ""}`.trim(), false);
     const hasArea = CITY_AREA_DATA && CITY_AREA_DATA[key];
 
     if (exploreBtn) {
         if (node.isMissionNode) {
-            exploreBtn.textContent = "작전 개시";
+            exploreBtn.textContent = "진입한다";
             exploreBtn.disabled = false;
             exploreBtn.onclick = () => {
                 const scData = SCENARIOS[node.scenarioId];
+                appendCityLogLine("", `${node.name} — ${node.desc || ""}`.trim(), false, false);
+                appendCityLogLine("", getNarration("city.map.ask"), false, true);
+                appendCityLogLine("", getNarration("city.map.go", { place: node.name }), false, true);
                 if (scData && scData.dungeon) {
                     DungeonSystem.generateDungeon(scData.dungeon);
                     // [Dungeon Mode Init]
@@ -424,21 +434,26 @@ function enterDistrict(key, silentAreaOpen) {
                     DungeonSystem.isCity = false;
                     switchScene('exploration');
                     showExplorationView(); // Assuming this shows the dungeon view
-                    log("⚠️ 폐쇄된 저택에 진입했습니다.");
+                    logNarration("system.mansionEnter");
 
                     // 플레이어 이미지 업데이트
                     const playerEl = document.getElementById('dungeon-player');
                     if (playerEl) playerEl.src = player.img || "https://placehold.co/150x150/3498db/ffffff?text=Hero";
                 } else {
-                    showPopup("오류", "던전 데이터가 없습니다.", [{ txt: "확인", func: closePopup }]);
+                    notifyNarration("던전 데이터가 없습니다.");
                 }
             };
         } else if (hasArea) {
-            exploreBtn.textContent = "진입";
+            exploreBtn.textContent = "진입한다";
             exploreBtn.disabled = false;
-            exploreBtn.onclick = () => enterCityAreaMode(key);
+            exploreBtn.onclick = () => {
+                appendCityLogLine("", `${node.name} — ${node.desc || ""}`.trim(), false, false);
+                appendCityLogLine("", getNarration("city.map.ask"), false, true);
+                appendCityLogLine("", getNarration("city.map.go", { place: node.name }), false, true);
+                enterCityAreaMode(key);
+            };
         } else {
-            exploreBtn.textContent = "진입";
+            exploreBtn.textContent = "진입한다";
             exploreBtn.disabled = true;
             exploreBtn.onclick = null;
         }
@@ -461,10 +476,17 @@ function enterCityAreaMode(areaId, targetSpotId) {
     setCityDialogueMode(false);
     setCityCasePanelVisible(false);
     game.cityDialogue = null;
+    clearCityLogSticky("city_map_desc");
     if (!game.cityArea) game.cityArea = {};
     game.cityArea.explicitSelection = !!targetSpotId;
     if (!targetSpotId) game.cityArea.selectedSpot = null;
     renderCityArea(areaId, targetSpotId);
+    const area = getCityArea(areaId);
+    if (area) {
+        updateCityLeftInfo('area', area.name, area.desc);
+        appendCityLogLine("", `${area.name} — ${area.desc || ""}`.trim(), false, false);
+        appendCityLogLine("", getNarration("city.area.next"), false, true);
+    }
 }
 
 function exitCityAreaMode() {
@@ -476,6 +498,8 @@ function exitCityAreaMode() {
     setCityDialogueMode(false);
     setCityCasePanelVisible(false);
     game.cityDialogue = null;
+    clearCityLogSticky("city_area_desc");
+    game.cityMapNarrated = false;
 }
 
 /* --- 시티 내부 지도 렌더링/이동 --- */
@@ -716,6 +740,16 @@ function selectCityAreaSpot(spotId) {
     if (!game.cityArea) game.cityArea = {};
     game.cityArea.selectedSpot = spotId;
     game.cityArea.explicitSelection = true;
+    const area = getVisibleCityArea(game.cityArea.areaId);
+    const spot = area ? getAreaSpot(area, spotId) : null;
+    if (spot) {
+        updateCityLeftInfo('area', spot.name, spot.desc);
+        if (game.cityArea.inspectNarratedAreaId !== area?.id) {
+            appendCityLogLine("", getNarration("city.area.inspect", { place: spot.name }), false, true);
+            game.cityArea.inspectNarratedAreaId = area?.id || null;
+        }
+        setCityLogSticky("city_area_desc", `${spot.name} — ${spot.desc || ""}`.trim(), false);
+    }
     updateCityAreaDetail();
     renderCityArea(game.cityArea.areaId);
 }
@@ -782,6 +816,12 @@ function updateCityAreaDetail() {
         setCityPanelVisible('area', false);
     } else if (enterBtn) {
         enterBtn.classList.remove('hidden');
+    }
+
+    if (spot && !area.hideNodes) {
+        updateCityLeftInfo('area', spot.name, spot.desc);
+    } else if (!spot) {
+        updateCityLeftInfo('area', area.name, area.desc);
     }
 
     updateCityAreaNavButtons(area);
@@ -905,22 +945,7 @@ function showDialogueNode(nodeId) {
 }
 
 function appendDialogueLine(speaker, text, isPlayer, useTyping) {
-    const logEl = document.getElementById('city-dialogue-log');
-    if (!logEl) return;
-    const line = document.createElement('div');
-    line.className = `city-dialogue-line${isPlayer ? " is-player" : ""}`;
-    line.innerHTML = `<span class="speaker">${speaker}</span><span class="text"></span>`;
-    const textEl = line.querySelector('.text');
-    logEl.appendChild(line);
-    logEl.scrollTop = logEl.scrollHeight;
-    if (useTyping) {
-        startDialogueTyping(textEl, text || "");
-    } else if (textEl) {
-        textEl.textContent = text || "";
-    }
-    if (game.cityDialogue) {
-        game.cityDialogue.log.push({ speaker, text: text || "", isPlayer: !!isPlayer });
-    }
+    appendCityLogLine(speaker, text, isPlayer, useTyping);
 }
 
 function startDialogueTyping(textEl, fullText) {
@@ -958,17 +983,12 @@ function completeDialogueTyping() {
 }
 
 function renderDialogueChoices(choices) {
-    const choicesEl = document.getElementById('city-dialogue-choices');
-    if (!choicesEl) return;
-    choicesEl.innerHTML = "";
     const filtered = filterDialogueChoices(choices);
-    filtered.forEach(choice => {
-        const btn = document.createElement('button');
-        btn.className = 'action-btn';
-        btn.textContent = choice.text || "선택";
-        btn.onclick = () => handleDialogueChoice(choice);
-        choicesEl.appendChild(btn);
-    });
+    if (filtered.length === 0) return;
+    addCityLogChoices(filtered.map(choice => ({
+        text: choice.text || "선택",
+        onSelect: () => handleDialogueChoice(choice)
+    })));
 }
 
 function filterDialogueChoices(choices) {
@@ -1037,8 +1057,10 @@ function endNpcDialogue() {
 function setCityDialogueMode(active) {
     const panel = document.getElementById('city-dialogue-panel');
     const enterBtn = document.getElementById('btn-area-enter');
-    if (panel) panel.classList.toggle('hidden', !active);
+    if (panel) panel.classList.remove('hidden');
     if (enterBtn) enterBtn.classList.toggle('hidden', active);
+    const choices = document.getElementById('city-dialogue-choices');
+    if (choices) choices.classList.toggle('hidden', !active);
 }
 
 function setCityCasePanelVisible(active) {
@@ -1086,6 +1108,7 @@ function renderHecateOfferPanel(noticeText) {
             if (Array.isArray(rule?.requiredFlags) && typeof setGameFlag === 'function') {
                 rule.requiredFlags.forEach(flag => setGameFlag(flag));
             }
+            appendCityLogLine("", "새 의뢰 정보를 확보했다.", false, true);
             renderHecateOfferPanel("의뢰 목록에 추가됨");
         };
         listEl.appendChild(btn);
@@ -1104,6 +1127,75 @@ function renderHecateOfferPanel(noticeText) {
         };
     }
     setCityCasePanelVisible(true);
+}
+
+function appendCityLogLine(speaker, text, isPlayer, useTyping) {
+    const logs = getLogTargets();
+    if (logs.length === 0) return;
+    logs.forEach((logEl, idx) => {
+        const line = document.createElement('div');
+        line.className = `city-dialogue-line${isPlayer ? " is-player" : ""}`;
+        line.innerHTML = speaker ? `<span class="speaker">${speaker}</span><span class="text"></span>` : `<span class="text"></span>`;
+        const textEl = line.querySelector('.text');
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+        if (idx === 0 && useTyping) {
+            startDialogueTyping(textEl, text || "");
+        } else if (textEl) {
+            textEl.textContent = text || "";
+        }
+        logEl.onclick = () => {
+            if (game.cityDialogue?.typing) completeDialogueTyping();
+        };
+    });
+    if (!game.cityLog) game.cityLog = [];
+    game.cityLog.push({ speaker, text: text || "", isPlayer: !!isPlayer });
+}
+
+function clearCityLogSticky(stickyKey) {
+    if (!stickyKey || !game.cityLog) return;
+    game.cityLog = game.cityLog.filter(e => !(e && e.stickyKey === stickyKey));
+    const logs = getLogTargets();
+    logs.forEach(logEl => {
+        logEl.querySelectorAll(`.city-dialogue-line[data-sticky-key="${stickyKey}"]`).forEach(el => el.remove());
+    });
+}
+
+function setCityLogSticky(stickyKey, text, isPlayer) {
+    if (!stickyKey) return;
+    if (!game.cityLog) game.cityLog = [];
+    const entry = game.cityLog.find(e => e && e.stickyKey === stickyKey);
+    const logs = getLogTargets();
+    if (entry) {
+        entry.text = text || "";
+        entry.isPlayer = !!isPlayer;
+        logs.forEach(logEl => {
+            const textEl = logEl.querySelector(`.city-dialogue-line[data-sticky-key="${stickyKey}"] .text`);
+            if (textEl) textEl.textContent = text || "";
+        });
+        return;
+    }
+    logs.forEach(logEl => {
+        const line = document.createElement('div');
+        line.className = `city-dialogue-line${isPlayer ? " is-player" : ""}`;
+        line.dataset.stickyKey = stickyKey;
+        line.innerHTML = `<span class="text"></span>`;
+        const textEl = line.querySelector('.text');
+        if (textEl) textEl.textContent = text || "";
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+        logEl.onclick = () => {
+            if (game.cityDialogue?.typing) completeDialogueTyping();
+        };
+    });
+    game.cityLog.push({ speaker: "", text: text || "", isPlayer: !!isPlayer, stickyKey });
+}
+
+function updateCityLeftInfo(mode, title, desc) {
+    const titleEl = document.getElementById(mode === 'map' ? 'city-map-left-title' : 'city-area-left-title');
+    const descEl = document.getElementById(mode === 'map' ? 'city-map-left-desc' : 'city-area-left-desc');
+    if (titleEl) titleEl.textContent = title || "";
+    if (descEl) descEl.textContent = desc || "";
 }
 
 function updateCityAreaNavButtons(area) {
@@ -1132,6 +1224,50 @@ function setCityPanelVisible(mode, visible) {
     if (!shell || !panel) return;
     shell.classList.toggle('panel-hidden', !visible);
     panel.classList.toggle('is-hidden', !visible);
+    if (visible) syncCityLogPanels();
+}
+
+function syncCityLogPanels() {
+    if (!game.cityLog) return;
+    const logs = getLogTargets();
+    logs.forEach(logEl => {
+        logEl.innerHTML = "";
+        game.cityLog.forEach(entry => {
+            if (entry && entry.type === "choices") {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'city-dialogue-line is-player';
+                if (entry.resolved) {
+                    wrapper.innerHTML = `<span class="text">선택: ${entry.selectedText || ""}</span>`;
+                } else {
+                    const btnWrap = document.createElement('div');
+                    btnWrap.className = 'city-dialogue-choices';
+                    entry.choices.forEach((txt, idx) => {
+                        const btn = document.createElement('button');
+                        btn.className = 'action-btn';
+                        btn.textContent = txt || "선택";
+                        btn.onclick = () => resolveCityLogChoice(entry.id, idx);
+                        btnWrap.appendChild(btn);
+                    });
+                    wrapper.appendChild(btnWrap);
+                }
+                logEl.appendChild(wrapper);
+            } else {
+                const line = document.createElement('div');
+                line.className = `city-dialogue-line${entry.isPlayer ? " is-player" : ""}`;
+                if (entry.stickyKey) line.dataset.stickyKey = entry.stickyKey;
+                line.innerHTML = entry.speaker
+                    ? `<span class="speaker">${entry.speaker}</span><span class="text"></span>`
+                    : `<span class="text"></span>`;
+                const textEl = line.querySelector('.text');
+                if (textEl) textEl.textContent = entry.text || "";
+                logEl.appendChild(line);
+            }
+        });
+        logEl.scrollTop = logEl.scrollHeight;
+        logEl.onclick = () => {
+            if (game.cityDialogue?.typing) completeDialogueTyping();
+        };
+    });
 }
 
 function renderCitySpotBackground(area, spotId) {
@@ -1172,6 +1308,9 @@ function renderCitySpotObjects(area, spotId, layerEl) {
             if (titleEl) titleEl.textContent = obj.name || (spot?.name || "지점");
             const npc = obj?.npcKey && (typeof NPC_DATA !== 'undefined') ? NPC_DATA[obj.npcKey] : null;
             if (descEl) descEl.textContent = obj.desc || npc?.desc || spot?.desc || "무엇을 할까?";
+            if (npc?.desc) {
+                appendCityLogLine("", `${npc.name} — ${npc.desc}`, false, true);
+            }
             const enterBtn = document.getElementById('btn-area-enter');
             if (enterBtn) {
                 enterBtn.disabled = false;
@@ -1181,6 +1320,82 @@ function renderCitySpotObjects(area, spotId, layerEl) {
         };
         layerEl.appendChild(el);
     });
+}
+
+function hasFinalConsonant(word) {
+    if (!word) return false;
+    const str = String(word).trim();
+    if (!str) return false;
+    const ch = str[str.length - 1];
+    const code = ch.charCodeAt(0);
+    if (code < 0xac00 || code > 0xd7a3) return false;
+    const index = (code - 0xac00) % 28;
+    return index !== 0;
+}
+
+function getFinalConsonantIndex(word) {
+    if (!word) return 0;
+    const str = String(word).trim();
+    if (!str) return 0;
+    const ch = str[str.length - 1];
+    const code = ch.charCodeAt(0);
+    if (code < 0xac00 || code > 0xd7a3) return 0;
+    return (code - 0xac00) % 28;
+}
+
+function pickJosa(word, pair) {
+    const raw = String(pair || "").trim();
+    if (!raw) return "";
+    const map = {
+        "을를": ["을", "를"],
+        "이가": ["이", "가"],
+        "은는": ["은", "는"],
+        "과와": ["과", "와"],
+        "으로": ["으로", "로"],
+        "로": ["으로", "로"]
+    };
+    let first = "";
+    let second = "";
+    if (raw.includes("/")) {
+        const parts = raw.split("/");
+        first = parts[0] || "";
+        second = parts[1] || "";
+    } else if (map[raw]) {
+        [first, second] = map[raw];
+    } else if (raw.length >= 2) {
+        first = raw[0];
+        second = raw[1];
+    } else {
+        return raw;
+    }
+
+    if (first === "으로" || second === "로") {
+        const idx = getFinalConsonantIndex(word);
+        if (idx === 0 || idx === 8) return second; // 받침 없음 or ㄹ
+        return first;
+    }
+    return hasFinalConsonant(word) ? first : second;
+}
+
+function getNarration(path, vars = {}) {
+    const root = (typeof NARRATION !== 'undefined') ? NARRATION : null;
+    if (!root || !path) return "";
+    const value = path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : null), root);
+    if (typeof value !== 'string') return "";
+    let out = value;
+    const upperVars = {};
+    Object.keys(vars || {}).forEach(k => {
+        upperVars[String(k).toUpperCase()] = vars[k];
+    });
+    out = out.replace(/\[([A-Z0-9_]+)(?:[:\/]([^\]]+))\]/g, (m, key, particle) => {
+        const v = upperVars[key];
+        if (v === undefined || v === null) return "";
+        return `${v}${pickJosa(v, particle)}`;
+    });
+    Object.keys(upperVars).forEach(k => {
+        out = out.replace(`[${k}]`, upperVars[k]);
+    });
+    return out;
 }
 
 function getCityObjectPositions(areaId, spotId, objects) {
@@ -1318,6 +1533,14 @@ function exitShop(shopType) {
         return;
     }
 
+    // 상점 로그 패널 숨김
+    const eventBox = document.getElementById('event-content-box');
+    if (eventBox) eventBox.classList.remove('shop-mode');
+    const shell = document.getElementById('event-shell');
+    if (shell) shell.classList.remove('shop-mode');
+    const eventLogPanel = document.getElementById('event-log-panel');
+    if (eventLogPanel) eventLogPanel.classList.add('is-hidden');
+
     // 인터넷 쇼핑이면 무조건 허브로
     if (shopType === 'shop_internet') {
         renderHub();
@@ -1350,7 +1573,7 @@ function beginMission() {
     closePopup();
 
     if (!game.activeScenarioId || !SCENARIOS[game.activeScenarioId]) {
-        showPopup("진행 중인 의뢰 정보를 찾을 수 없습니다.");
+        notifyNarration("진행 중인 의뢰 정보를 찾을 수 없습니다.");
         return;
     }
     advanceTimeSlot("mission");
@@ -1749,7 +1972,7 @@ function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
             const val = Math.max(0, Number(r.block || 0));
             if (val > 0) {
                 player.block += val;
-                log(`🛡️ ${name} 방어도 +${val}`);
+                logNarration("battle.blockGain", { amount: val });
             }
         }
         if (r.assistantBlock) {
@@ -1757,7 +1980,7 @@ function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
             if (val > 0) {
                 const mgr = ensureAssistantManager();
                 if (mgr) mgr.addBlock(val);
-                log(`🛡️ ${name} 조수 방어도 +${val}`);
+                logNarration("battle.assistantBlockGain", { amount: val });
             }
         }
         if (r.reduceDmgPct) {
@@ -1772,7 +1995,7 @@ function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
             const count = Math.max(0, Number(r.addClue || 0));
             if (count > 0) {
                 const next = addClueStacks(source, count);
-                log(`🔍 ${name} 단서 +${count} (현재 ${next})`);
+                logNarration("system.clueGainTarget", { target: name, amount: count, total: next });
             }
         }
         if (r.debuff && source) {
@@ -1848,7 +2071,7 @@ function applyPowerCard(user, cardName, data) {
         player.powers[id][k] = Number(player.powers[id][k] || 0) + v;
     }
 
-    log(`✨ 파워 획득: [${cardName}]`);
+    logNarration("system.powerGain", { card: cardName });
     return true;
 }
 
@@ -1866,7 +2089,7 @@ function applySocialPowerCard(user, cardName, data) {
         player.socialPowers[id][k] = Number(player.socialPowers[id][k] || 0) + v;
     }
 
-    log(`✨ 소셜 파워 획득: [${cardName}]`);
+    logNarration("system.powerGainSocial", { card: cardName });
     return true;
 }
 
@@ -1893,7 +2116,7 @@ function triggerTurnStartPowers() {
     const apBonus = getTotalPowerValue('apBonus');
     if (apBonus > 0) {
         player.ap += apBonus;
-        log(`✨ 파워 효과: AP +${apBonus}`);
+        logNarration("system.powerAp", { amount: apBonus });
     }
 
     const clueOnTurnStart = Math.max(0, Number(getTotalPowerValue('clueOnTurnStart') || 0));
@@ -1902,7 +2125,7 @@ function triggerTurnStartPowers() {
         if (alive.length > 0) {
             const picked = alive[Math.floor(Math.random() * alive.length)];
             const next = addClueStacks(picked, clueOnTurnStart);
-            log(`🔍 [직감] ${picked.name} 단서 +${clueOnTurnStart} (현재 ${next})`);
+            logNarration("system.clueInsight", { total: next });
         }
     }
 
@@ -1914,7 +2137,7 @@ function triggerTurnStartPowers() {
             if (alive.length > 0) {
                 const picked = alive[Math.floor(Math.random() * alive.length)];
                 const next = addClueStacks(picked, assistantClueOnTurnStart);
-                log(`🧾 [조수 보고] ${picked.name} 단서 +${assistantClueOnTurnStart} (현재 ${next})`);
+                logNarration("system.clueAssistant", { total: next });
             }
         }
     }
@@ -1937,7 +2160,7 @@ function triggerSocialTurnStartPowers() {
     const apBonus = getTotalSocialPowerValue('apBonus');
     if (apBonus > 0) {
         player.ap += apBonus;
-        log(`✨ 소셜 파워 효과: AP +${apBonus}`);
+        logNarration("system.powerAp", { amount: apBonus });
     }
 }
 
@@ -1998,7 +2221,7 @@ function setRandomHandCardCostToZeroOnce() {
 
     const idx = candidates[Math.floor(Math.random() * candidates.length)];
     player.handCostOverride[idx] = 0;
-    log(`✨ 파워 효과: 손패 [${player.hand[idx]}] 비용이 0이 됩니다.`);
+    logNarration("system.powerCostZero", { card: player.hand[idx] });
     renderHand();
     return true;
 }
@@ -2015,7 +2238,7 @@ function addStatusCardToCombat(cardName, count = 1, destination = 'discard') {
     }
 
     if (count > 0) {
-        log(`🩸 [${cardName}] (${count})가 덱에 섞였습니다!`);
+        logNarration("system.deckMix", { card: cardName, amount: count });
     }
     updateUI();
     if (destination === 'hand') renderHand();
@@ -2033,7 +2256,7 @@ function addStatusCardToEnemyDeck(enemy, cardName, count = 1) {
     for (let i = 0; i < num; i++) {
         enemy.deck.push(cardName);
     }
-    log(`🩸 ${enemy.name} 덱에 [${cardName}] ${num}장 섞였습니다!`);
+    logNarration("system.enemyDeckMix", { card: cardName, amount: num });
     return true;
 }
 
@@ -2321,20 +2544,20 @@ function triggerRandomEvent() {
     // 2. 선택지 버튼 생성 (choices 우선, 없으면 effect 기반 단일 버튼)
     let buttons = [];
     if (Array.isArray(event.choices) && event.choices.length > 0) {
-        buttons = event.choices.map(choice => ({
-            txt: choice.txt,
-            func: choice.func
-        }));
-
-        // 3. 팝업 표시
-        showPopup(event.title, event.desc, buttons);
+        const title = event.titleKey ? getNarration(event.titleKey) : (event.title || "");
+        const desc = event.descKey ? getNarration(event.descKey) : (event.desc || "");
+        notifyNarration(`${title} ${stripHtml(desc || "")}`.trim());
+        addCityLogChoices(event.choices.map(choice => ({
+            text: choice.txt,
+            onSelect: choice.func
+        })));
         return;
     }
 
     if (typeof event.effect === "function") {
         const resultText = event.effect();
         const icon = event.icon || "";
-        const desc = event.desc || "";
+        const desc = event.descKey ? getNarration(event.descKey) : (event.desc || "");
         const btnLabel = (game.mode === "infinite") ? "다음 스테이지로" : "확인";
 
         buttons = [{
@@ -2342,13 +2565,15 @@ function triggerRandomEvent() {
             func: () => finishEvent((game.mode === "infinite") ? "infinite" : "exploration")
         }];
 
-        showPopup(event.title || "이벤트", `
-            <div style="text-align:center;">
-                ${icon ? `<div style="font-size:3em; margin-bottom:10px;">${icon}</div>` : ""}
-                ${desc ? `<p>${desc}</p>` : ""}
-                <p style="margin-top:10px; font-weight:bold;">${resultText || ""}</p>
-            </div>
-        `, buttons);
+        const title = event.titleKey ? getNarration(event.titleKey) : (event.title || "이벤트");
+        const parts = [
+            title,
+            desc ? stripHtml(desc) : "",
+            resultText ? stripHtml(resultText) : ""
+        ].filter(Boolean);
+        notifyNarration(parts.join(" "));
+        const resume = (game.mode === "infinite") ? "infinite" : "exploration";
+        setTimeout(() => finishEvent(resume), 600);
     }
 }
 
@@ -2368,16 +2593,116 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 function shuffle(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[array[i], array[j]] = [array[j], array[i]]; } }
 /* [game.js] log 함수 수정 (통합 로그창 사용) */
 function log(msg) {
+    const normalized = normalizeLogMessage(msg);
     const box = document.getElementById('shared-log');
     if (box) {
-        // 새 메시지 추가
-        // (가독성을 위해 전투/탐사 구분이 필요하다면 msg 앞에 아이콘을 붙여도 좋습니다)
-        const html = (typeof applyTooltip === 'function') ? applyTooltip(String(msg)) : String(msg);
+        const html = (typeof applyTooltip === 'function')
+            ? applyTooltip(String(normalized.html))
+            : String(normalized.html);
         box.innerHTML += `<div>${html}</div>`;
-
-        // 자동 스크롤 (맨 아래로)
         box.scrollTop = box.scrollHeight;
     }
+    appendCityLogLine("", stripHtml(String(normalized.text)), false, false);
+}
+
+function logNarration(type, vars = {}) {
+    log({ type, vars });
+}
+
+function normalizeLogMessage(msg) {
+    if (msg && typeof msg === "object" && !Array.isArray(msg)) {
+        const type = msg.type || msg.path || "";
+        const vars = msg.vars || {};
+        const fallback = msg.text || msg.raw || "";
+        if (type) {
+            const narrated = getNarration(type, vars);
+            if (narrated) {
+                return { text: narrated, html: narrated };
+            }
+        }
+        if (fallback) return { text: fallback, html: fallback };
+    }
+    const text = String(msg ?? "");
+    return { text, html: text };
+}
+
+function stripHtml(text) {
+    return String(text).replace(/<[^>]*>/g, '').trim();
+}
+
+function setSharedLogMessage(msg) {
+    const normalized = normalizeLogMessage(msg);
+    const box = document.getElementById('shared-log');
+    const html = (typeof applyTooltip === 'function') ? applyTooltip(String(normalized.html)) : String(normalized.html);
+    if (box) {
+        box.innerHTML = `<div>${html}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+    appendCityLogLine("", stripHtml(String(normalized.text)), false, false);
+}
+
+function clearGlobalLog() {
+    if (game.cityLog) game.cityLog.length = 0;
+    const logs = [
+        document.getElementById('city-dialogue-log'),
+        document.getElementById('city-dialogue-log-map'),
+        document.getElementById('global-log'),
+        document.getElementById('shared-log')
+    ].filter(Boolean);
+    logs.forEach(logEl => {
+        logEl.innerHTML = "";
+    });
+}
+
+function notifyNarration(text) {
+    logNarration("system.notice", { text });
+}
+
+function showNarrationChoice(desc, choices) {
+    notifyNarration(stripHtml(desc));
+    addCityLogChoices((choices || []).map(c => ({
+        text: c.txt || "선택",
+        onSelect: c.func
+    })));
+}
+
+function getLogTargets() {
+    return [
+        document.getElementById('city-dialogue-log'),
+        document.getElementById('city-dialogue-log-map'),
+        document.getElementById('global-log'),
+        document.getElementById('hub-dialogue-log'),
+        document.getElementById('event-dialogue-log')
+    ].filter(Boolean);
+}
+
+function addCityLogChoices(choices) {
+    if (!Array.isArray(choices) || choices.length === 0) return;
+    if (!game.cityLog) game.cityLog = [];
+    if (!game.cityLogSeq) game.cityLogSeq = 0;
+    if (!game.cityLogChoiceHandlers) game.cityLogChoiceHandlers = {};
+    const id = ++game.cityLogSeq;
+    game.cityLogChoiceHandlers[id] = choices.map(c => c.onSelect);
+    game.cityLog.push({
+        type: "choices",
+        id,
+        choices: choices.map(c => c.text),
+        resolved: false,
+        selectedText: null
+    });
+    syncCityLogPanels();
+}
+
+function resolveCityLogChoice(id, index) {
+    if (!game.cityLog || !game.cityLogChoiceHandlers) return;
+    const entry = game.cityLog.find(e => e && e.type === "choices" && e.id === id);
+    if (!entry || entry.resolved) return;
+    const handlers = game.cityLogChoiceHandlers[id] || [];
+    entry.resolved = true;
+    entry.selectedText = entry.choices[index] || "선택";
+    syncCityLogPanels();
+    const handler = handlers[index];
+    if (typeof handler === "function") handler();
 }
 
 // 클릭을 통과시키면서 툴팁 호버를 유지하기 위한 헬퍼
@@ -2865,25 +3190,24 @@ function loadGame() {
 
     } catch (e) {
         console.error(e);
-        showPopup("오류", "세이브 파일 오류입니다. 데이터를 초기화합니다.", [
-            { txt: "확인", func: () => { closePopup(); resetGameData(); } }
-        ]);
+        notifyNarration("세이브 파일 오류로 데이터를 초기화합니다.");
+        resetGameData();
     }
 }
 
 // [4] 데이터 삭제 (초기화)
 // [수정] confirmReset: confirm -> showPopup
 function confirmReset() {
-    showPopup("⚠️ 데이터 초기화", "정말 모든 데이터를 삭제하고 처음부터 시작하시겠습니까?<br><span style='color:#e74c3c'>(되돌릴 수 없습니다)</span>", [
-        {
-            txt: "예 (삭제)",
-            func: () => {
-                closePopup();
-                resetGameData();
-            }
-        },
-        { txt: "아니오", func: closePopup }
-    ]);
+    showPopup(
+        "데이터 초기화",
+        "정말 모든 데이터를 삭제하고 처음부터 시작하시겠습니까? (되돌릴 수 없습니다)",
+        [
+            { txt: "예 (삭제)", func: resetGameData },
+            { txt: "아니오", func: closePopup }
+        ],
+        "",
+        { forcePopup: true }
+    );
 }
 
 function resetGameData() {
@@ -3153,7 +3477,7 @@ function renderTraitSelection() {
         `;
 
         if (isDefault) {
-            el.onclick = () => showPopup("기본 특성", "이 직업의 기본 특성입니다. 해제할 수 없습니다.", [{ txt: "확인", func: closePopup }]);
+            el.onclick = () => notifyNarration("이 직업의 기본 특성은 해제할 수 없습니다.");
             el.style.cursor = "default";
             el.style.opacity = "0.8";
         } else {
@@ -3259,10 +3583,7 @@ function finishCreation() {
 
     // ★ [핵심] HP나 SP가 0 이하라면 생성 차단
     if (player.maxHp <= 0 || player.maxSp <= 0) {
-        showPopup("⛔ 캐릭터 생성 불가",
-            `현재 세팅으로는 생존할 수 없습니다.<br>(최대 HP: ${player.maxHp}, 최대 SP: ${player.maxSp})<br><br>건강/정신 스탯을 높이거나, 페널티 특성을 해제해주세요.`,
-            [{ txt: "확인", func: closePopup }]
-        );
+        notifyNarration(`현재 세팅으로는 생존할 수 없습니다. (최대 HP: ${player.maxHp}, 최대 SP: ${player.maxSp}) 건강/정신 스탯을 높이거나 페널티 특성을 해제해 주세요.`);
         return;
     }
 
@@ -3308,13 +3629,21 @@ function getAcademyDormName() {
 }
 
 function getHomeMeta() {
+    const cafeStyle = {
+        sub: "해결사들이 쉬어가는 은신처",
+        bg: "https://placehold.co/1400x800/2b1f1a/d9c2a3?text=Cafe+Hecate"
+    };
+    const officeStyle = {
+        sub: cafeStyle.sub,
+        bg: "https://placehold.co/1400x800/2b1f1a/d9c2a3?text=Detective+Office"
+    };
     const officeName = getOfficeName();
     if (isDetectiveJob()) {
         return {
             tag: officeName,
             title: `🕵️ ${officeName}`,
-            sub: "도시의 어둠을 밝히는 유일한 불빛",
-            bg: "https://placehold.co/1400x800/1c1f28/3f4757?text=Detective+Office+Panorama",
+            sub: officeStyle.sub,
+            bg: officeStyle.bg,
             returnLabel: "🏠 사무소 복귀",
             returnLabelLong: "🏠 사무소로 복귀"
         };
@@ -3333,8 +3662,8 @@ function getHomeMeta() {
     return {
         tag: "카페 헤카테",
         title: "☕ 카페 헤카테",
-        sub: "해결사들이 쉬어가는 은신처",
-        bg: "https://placehold.co/1400x800/2b1f1a/d9c2a3?text=Cafe+Hecate",
+        sub: cafeStyle.sub,
+        bg: cafeStyle.bg,
         returnLabel: "🏠 카페 복귀",
         returnLabelLong: "🏠 카페로 복귀"
     };
@@ -3344,14 +3673,12 @@ function updateHomeUI() {
     const meta = getHomeMeta();
     const hub = document.getElementById('hub-scene');
     if (hub) {
-        const tagEl = hub.querySelector('.hub-tag');
-        const titleEl = hub.querySelector('.hub-copy h1');
-        const subEl = hub.querySelector('.hub-sub');
-        if (tagEl) tagEl.textContent = meta.tag;
+        const titleEl = document.getElementById('hub-left-title');
+        const subEl = document.getElementById('hub-left-desc');
         if (titleEl) titleEl.textContent = meta.title;
         if (subEl) subEl.textContent = meta.sub;
-        const illus = hub.querySelector('.hub-illustration');
-        if (illus) illus.style.backgroundImage = `url('${meta.bg}')`;
+        const mapEl = document.getElementById('hub-map');
+        if (mapEl) mapEl.style.backgroundImage = `url('${meta.bg}')`;
     }
 
     const cityBack = document.querySelector('.city-back-btn');
@@ -3360,20 +3687,53 @@ function updateHomeUI() {
     const returnBtn = document.querySelector('button[onclick="returnToHub()"]');
     if (returnBtn) returnBtn.textContent = meta.returnLabelLong;
 }
+
+function setHubPanelVisible(visible) {
+    const hubPanel = document.getElementById('hub-detail-panel');
+    const hubShell = document.getElementById('hub-shell');
+    if (!hubPanel || !hubShell) return;
+    hubPanel.classList.toggle('is-hidden', !visible);
+    hubShell.classList.toggle('panel-hidden', !visible);
+    if (visible) syncCityLogPanels();
+}
 function renderHub() {
     game.state = 'hub';
     // 사무소로 돌아올 때는 던전 진행을 리셋하여 다음 진입 시 시작방에서 시작
     resetDungeonState();
     switchScene('hub');
     updateHomeUI();
+    setHubPanelVisible(false);
+    const layer = document.getElementById('hub-object-layer');
+    if (layer) {
+        layer.innerHTML = "";
+        const actions = [
+            { name: "📁 사건 파일", desc: "의뢰를 선택하고 현장으로 나갑니다.", pos: { x: 20, y: 30 }, func: () => openCaseFiles() },
+            { name: "🗺️ 도시로 외출", desc: "사건 현장이나 상점으로 이동합니다.", pos: { x: 58, y: 24 }, func: () => renderCityMap() },
+            { name: "☕ 커피 한 잔", desc: "체력과 이성을 회복합니다. (1900원)", pos: { x: 28, y: 58 }, func: () => hubRest() },
+            { name: "📦 인터넷 주문", desc: "장비를 구매합니다.", pos: { x: 70, y: 42 }, func: () => renderShopScreen('shop_internet') },
+            { name: "🃏 덱 정비", desc: "전투용/대화용 덱을 편집합니다.", pos: { x: 62, y: 68 }, func: () => openDeckManager() },
+            { name: "📦 창고", desc: "아이템과 유물을 보관합니다.", pos: { x: 36, y: 78 }, func: () => openStorage() }
+        ];
+        actions.forEach(action => {
+            const btn = document.createElement('button');
+            btn.className = 'city-area-object';
+            btn.style.left = `${action.pos.x}%`;
+            btn.style.top = `${action.pos.y}%`;
+            btn.textContent = action.name;
+            btn.title = action.desc || action.name;
+            btn.onclick = action.func;
+            layer.appendChild(btn);
+        });
+    }
     updateUI(); // 상단 바 갱신
     autoSave();
 }
 
 /* [NEW] 거점 휴식 */
 function hubRest() {
+    setHubPanelVisible(true);
     if (player.gold < 1900) {
-        showPopup("잔액 부족", "커피 사 마실 돈도 없습니다...", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("소지금이 부족합니다.");
         return;
     }
 
@@ -3383,13 +3743,13 @@ function hubRest() {
 
     updateUI();
     advanceTimeSlot("rest");
-    showPopup("휴식", "따뜻한 커피를 마시며 안정을 찾았습니다.<br>(HP/SP 완전 회복)", [{ txt: "확인", func: closePopup }]);
+    notifyNarration("당신은 따뜻한 커피로 안정을 찾았습니다. HP와 SP가 회복되었습니다.");
 }
 
 function openHospitalCure() {
     const curseTraits = getCureTraitsByTag("medical");
     if (curseTraits.length === 0) {
-        showPopup("대학 병원", "치료할 부상이 없습니다.", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("치료할 부상이 없습니다.");
         return;
     }
 
@@ -3402,14 +3762,14 @@ function openHospitalCure() {
             func: () => {
                 closePopup();
                 if (player.gold < cost) {
-                    showPopup("잔액 부족", "치료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    notifyNarration("치료 비용이 부족합니다.");
                     return;
                 }
                 player.gold -= cost;
                 removeTrait(key);
                 if (cardName) removeCardEverywhere(cardName);
                 advanceTimeSlot("hospital_cure");
-                showPopup("치료 완료", `${t.name}이(가) 해제되었습니다.`, [{ txt: "확인", func: closePopup }]);
+                notifyNarration(`${t.name}이(가) 해제되었습니다.`);
             }
         };
     });
@@ -3430,7 +3790,7 @@ function getCureTraitsByTag(tag) {
 function openOccultClinic() {
     const curseTraits = getCureTraitsByTag("occult");
     if (curseTraits.length === 0) {
-        showPopup("한의원 제생당", "해주할 오컬트 저주가 없습니다.", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("해주할 오컬트 저주가 없습니다.");
         return;
     }
 
@@ -3443,14 +3803,14 @@ function openOccultClinic() {
             func: () => {
                 closePopup();
                 if (player.gold < cost) {
-                    showPopup("잔액 부족", "치료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    notifyNarration("치료 비용이 부족합니다.");
                     return;
                 }
                 player.gold -= cost;
                 removeTrait(key);
                 if (cardName) removeCardEverywhere(cardName);
                 advanceTimeSlot("occult_cure");
-                showPopup("해주 완료", `${t.name}이(가) 해제되었습니다.`, [{ txt: "확인", func: closePopup }]);
+                notifyNarration(`${t.name}이(가) 해제되었습니다.`);
             }
         };
     });
@@ -3461,14 +3821,14 @@ function openOccultClinic() {
 
 function openSaunaRest() {
     if (player.hp >= player.maxHp && player.sp >= player.maxSp) {
-        showPopup("용궁 사우나", "이미 충분히 회복되어 있습니다.", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("이미 충분히 회복되어 있습니다.");
         return;
     }
     player.hp = player.maxHp;
     player.sp = player.maxSp;
     updateUI();
     advanceTimeSlot("sauna_rest");
-    showPopup("용궁 사우나", "뜨끈한 탕에서 쉬며 체력과 이성을 회복했습니다.", [{ txt: "확인", func: closePopup }]);
+    notifyNarration("뜨끈한 탕에서 쉬며 체력과 이성을 회복했습니다.");
 }
 
 function openHealingClinic() {
@@ -3488,7 +3848,7 @@ function openHealingClinic() {
             func: () => {
                 closePopup();
                 if (player.gold < healCost) {
-                    showPopup("잔액 부족", "진료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    notifyNarration("진료 비용이 부족합니다.");
                     return;
                 }
                 player.gold -= healCost;
@@ -3496,7 +3856,7 @@ function openHealingClinic() {
                 player.sp = player.maxSp;
                 updateUI();
                 advanceTimeSlot("clinic_heal");
-                showPopup("힐링 클리닉 사일런스", "컨디션이 완전히 회복되었습니다.", [{ txt: "확인", func: closePopup }]);
+                notifyNarration("컨디션이 완전히 회복되었습니다.");
             }
         },
         {
@@ -3504,11 +3864,11 @@ function openHealingClinic() {
             func: () => {
                 closePopup();
                 if (cureTraits.length === 0) {
-                    showPopup("힐링 클리닉 사일런스", "해제할 저주가 없습니다.", [{ txt: "확인", func: closePopup }]);
+                    notifyNarration("해제할 저주가 없습니다.");
                     return;
                 }
                 if (player.gold < cureCost) {
-                    showPopup("잔액 부족", "진료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    notifyNarration("진료 비용이 부족합니다.");
                     return;
                 }
                 player.gold -= cureCost;
@@ -3518,7 +3878,7 @@ function openHealingClinic() {
                     if (cardName) removeCardEverywhere(cardName);
                 });
                 advanceTimeSlot("clinic_cure_all");
-                showPopup("힐링 클리닉 사일런스", "모든 저주가 해제되었습니다.", [{ txt: "확인", func: closePopup }]);
+                notifyNarration("모든 저주가 해제되었습니다.");
             }
         },
         {
@@ -3526,7 +3886,7 @@ function openHealingClinic() {
             func: () => {
                 closePopup();
                 if (player.gold < buffCost) {
-                    showPopup("잔액 부족", "진료 비용이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+                    notifyNarration("진료 비용이 부족합니다.");
                     return;
                 }
                 player.gold -= buffCost;
@@ -3535,7 +3895,7 @@ function openHealingClinic() {
                 applyBuff(player, "쾌속", 2);
                 updateUI();
                 advanceTimeSlot("clinic_buff");
-                showPopup("힐링 클리닉 사일런스", "맞춤 케어로 컨디션이 강화되었습니다.", [{ txt: "확인", func: closePopup }]);
+                notifyNarration("맞춤 케어로 컨디션이 강화되었습니다.");
             }
         },
         { txt: "약 구매", func: () => renderShopScreen("shop_clinic") },
@@ -3633,13 +3993,13 @@ function moveCardToStorage(deckIdx) {
 
     // 최소 덱 매수 제한 (예: 5장)
     if (targetDeck.length <= 5) {
-        showPopup("최소 5장의 카드는 있어야 합니다.");
+        notifyNarration("최소 5장의 카드는 있어야 합니다.");
         return;
     }
 
     let card = targetDeck[deckIdx];
     if (isPenaltyCard(card, 'curse')) {
-        showPopup("저주는 제거할 수 없습니다.");
+        notifyNarration("저주는 제거할 수 없습니다.");
         return;
     }
 
@@ -3668,6 +4028,7 @@ function startSocialBattle(npcKey, preserveEnemies = false) {
     game.turnOwner = "none";
     game.lastTurnOwner = "none";
     game.profilingGauge = 0;
+    game.winNarrated = false;
 
     // 1. 플레이어 상태 초기화 (소셜 전용 스탯 설정)
     player.mental = 100;
@@ -3707,7 +4068,7 @@ function startSocialBattle(npcKey, preserveEnemies = false) {
     seedEnemyIntents(true);
 
     let data = NPC_DATA[npcKey] || enemies[0];
-    if (data) log(`💬 [${data.name}]와(과) 설전을 벌입니다! (의지을 무너뜨리세요)`);
+    if (data) logNarration("system.socialStart", { target: data.name });
 
     // 탐사 배경을 전투 배경과 동기화
     let explBg = document.getElementById('expl-bg');
@@ -3766,11 +4127,11 @@ function applySocialImpact(target, val) {
             // 연출 분기
             if (val > 0) {
                 // 긍정적 공격 (유혹, 회유, 기만) -> 💖 매료됨
-                log(`😵 상대의 언변에 마음이 흔들립니다! (SP -${effectiveVal})`);
+                logNarration("system.spDamage", { amount: effectiveVal });
                 showDamageText(target, `💖-${effectiveVal}`);
             } else {
                 // 부정적 공격 (공포, 협박, 충격) -> 💔 상처입음
-                log(`😱 정신적 충격을 받았습니다! (SP -${effectiveVal})`);
+                logNarration("system.spDamageShock", { amount: effectiveVal });
                 showDamageText(target, `💔-${effectiveVal}`);
             }
         }
@@ -3792,6 +4153,7 @@ function applySocialImpact(target, val) {
 /* [NEW] 사건 파일 열기 (시나리오 선택) */
 function openCaseFiles() {
     if (handleExpiredScenarios()) return;
+    logNarration("system.openCaseFiles");
     // 팝업으로 시나리오 목록 보여주기
     let content = `
         <div style="display:flex; gap:6px; justify-content:center; margin-bottom:10px;">
@@ -3869,6 +4231,7 @@ function switchCaseTab(tab) {
 }
 
 function openActiveMissions() {
+    logNarration("system.openActiveMissions");
     let content = "";
     if (game.activeScenarioId && SCENARIOS[game.activeScenarioId]) {
         const sc = SCENARIOS[game.activeScenarioId];
@@ -4017,7 +4380,7 @@ function addItem(name, onAcquireCallback = null) {
         if (hasItemAnywhere(name)) return false;
 
         player.relics.push(name);
-        log(`💍 유물 획득! [${name}]`);
+            logNarration("system.itemGain", { item: name });
 
         recalcStats();
         updatePlayerAttribute();
@@ -4033,7 +4396,7 @@ function addItem(name, onAcquireCallback = null) {
 
         ensureEquipmentFields(player);
         player.equipmentBag.push(name);
-        log(`🧰 장비 획득! [${name}]`);
+        logNarration("system.itemGain", { item: name });
 
         recalcStats();
         updatePlayerAttribute();
@@ -4046,12 +4409,12 @@ function addItem(name, onAcquireCallback = null) {
     else {
         if (player.inventory.length < player.maxInventory) {
             player.inventory.push(name);
-            log(`🎒 아이템 획득! [${name}]`);
+            logNarration("system.itemGain", { item: name });
             updateInventoryUI();
             if (onAcquireCallback) onAcquireCallback();
             return true;
         } else {
-            log("🚫 가방이 꽉 찼습니다! 교체할 아이템을 선택하세요.");
+            logNarration("system.inventoryFull");
             showSwapPopup(name, onAcquireCallback);
             return false;
         }
@@ -4183,7 +4546,7 @@ function moveItemFromWarehouse(idx) {
 
     // 공간 확인 (소모품인 경우만)
     if (data.usage === 'consume' && player.inventory.length >= player.maxInventory) {
-        showPopup("공간 부족", "가방(소모품) 공간이 부족합니다!", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("가방 공간이 부족합니다.");
         return;
     }
 
@@ -4253,7 +4616,7 @@ function processItemSwap(idx, newItemName) {
 
     // 교체 (덮어쓰기)
     player.inventory[idx] = newItemName;
-    log(`♻️ [${oldItem}] 버림 -> [${newItemName}] 획득`);
+    logNarration("system.swapItem", { old: oldItem, new: newItemName });
 
     // UI 갱신
     updateInventoryUI();
@@ -4291,13 +4654,13 @@ function useItem(index, target) {
 
     // 사용 불가 조건: (소모품 아님) AND (선물하기도 아님)
     if (data.usage !== "consume" && !isSocialGift) {
-        log(`🚫 [${name}]은(는) 가지고 있으면 효과를 발휘합니다.`);
+        logNarration("system.itemPassive", { item: name });
         return;
     }
 
     // 전투 중 공격 아이템 체크
     if (data.effect === "damage" && (game.state !== "battle" || game.turnOwner !== "player") && !isSocialGift) {
-        log("🚫 전투 중 내 턴에만 가능합니다.");
+        logNarration("system.battleTurnOnly");
         return;
     }
 
@@ -4306,7 +4669,7 @@ function useItem(index, target) {
 
     // --- 1. 소셜 모드 선물하기 ---
     if (isSocialGift) {
-        log(`🎁 [${name}] 아이템을 선물합니다.`);
+        logNarration("system.giftItem", { item: name });
 
         // 1. 태그 매칭 계산
         let npcData = NPC_DATA[enemies[0].name]; // 현재 NPC 데이터 원본 가져오기 (취향 확인용)
@@ -4328,17 +4691,17 @@ function useItem(index, target) {
 
         if (isLike) {
             score = 40; // 좋아하는 물건: 호감도 대폭 상승
-            log(`🥰 효과가 굉장합니다! (취향 저격)`);
+            logNarration("system.giftGreat");
             playAnim(targetId, 'anim-bounce');
         }
         else if (isDislike) {
             score = -30; // 싫어하는 물건: 멘탈 타격 (공포/혐오)
-            log(`😱 기겁합니다! (약점 공략)`);
+            logNarration("system.giftBad");
             playAnim(targetId, 'anim-hit');
         }
         else {
             score = 10; // 그저 그런 물건: 소소한 호감
-            log(`🙂 나쁘지 않은 반응입니다.`);
+            logNarration("system.giftOk");
         }
 
         // 3. SP 변동 적용
@@ -4358,7 +4721,7 @@ function useItem(index, target) {
 
                 // 로그 메시지 생성
                 let attrNames = types.map(t => ATTR_ICONS[t]).join(", ");
-                log(`✨ ${data.duration}턴 동안 [${attrNames}] 속성이 부여됩니다.`);
+                logNarration("system.attrGranted", { attr: attrNames, turns: data.duration });
 
                 playAnim("player-char", "anim-bounce");
                 used = true;
@@ -4369,22 +4732,22 @@ function useItem(index, target) {
                 if (Number.isFinite(data.healSp) && data.healSp > 0) {
                     let spHeal = Math.min(target.maxSp - target.sp, data.healSp);
                     target.sp += spHeal;
-                    log(`🍷 [${name}] 사용! HP +${healAmt}, SP +${spHeal}`);
+                    logNarration("system.healBoth", { hp: healAmt, sp: spHeal });
                 } else {
-                    log(`🍷 [${name}] 사용! HP +${healAmt}`);
+                    logNarration("system.healHp", { hp: healAmt });
                 }
                 playAnim(targetId, 'anim-bounce');
                 used = true;
                 break;
             }
             case "damage":
-                log(`🧴 [${name}] 투척! 적에게 ${data.val} 피해`);
+                logNarration("system.throwItem", { item: name });
                 takeDamage(target, data.val);
                 used = true;
                 break;
             // ★ [추가] 탈출 아이템 효과 처리
             case "escape":
-                log(`📱 [${name}] 사용! 해결사가 도착하여 당신을 호위합니다.`);
+                logNarration("system.callFixer");
                 used = true;
 
                 // 잠시 후 복귀 처리
@@ -4414,7 +4777,7 @@ function useItem(index, target) {
                 break;
             case "event_rest":
                 game.forceRest = true;
-                log(`🎼 [${name}] 사용. 다음은 휴식입니다.`);
+                logNarration("system.itemRest");
                 playAnim("player-char", 'anim-bounce');
                 used = true;
                 break;
@@ -4505,7 +4868,7 @@ function updateInventoryUI() {
         }
         // 유물: 클릭 시 정보만 (사용 불가)
         else {
-            el.onclick = () => log(`[${name}] 보유 중인 유물입니다.`);
+            el.onclick = () => logNarration("system.relicOwned", { item: name });
         }
 
         list.appendChild(el);
@@ -4926,7 +5289,7 @@ function renderEquipmentPanel() {
 function equipItemToSlot(slotKey, name) {
     ensureEquipmentFields(player);
     if (game.state === "battle" || game.state === "social") {
-        showPopup("불가", "전투/대화 중에는 장비를 변경할 수 없습니다.", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("전투/대화 중에는 장비를 변경할 수 없습니다.");
         return;
     }
     const data = ITEM_DATA[name];
@@ -4934,7 +5297,7 @@ function equipItemToSlot(slotKey, name) {
 
     const slots = data.equipSlots || [];
     if (!slots.includes(slotKey)) {
-        showPopup("장착 불가", `[${name}]은(는) ${EQUIP_SLOT_META[slotKey]?.label || slotKey} 슬롯에 장착할 수 없습니다.`, [{ txt: "확인", func: closePopup }]);
+        notifyNarration(`[${name}]은(는) ${EQUIP_SLOT_META[slotKey]?.label || slotKey} 슬롯에 장착할 수 없습니다.`);
         return;
     }
 
@@ -5032,7 +5395,7 @@ function equipItemFromBag(idx) {
 
     const slots = data.equipSlots || [];
     if (slots.length === 0) {
-        showPopup("장착 불가", `[${name}]은(는) 장착 슬롯 정보가 없습니다.`, [{ txt: "확인", func: closePopup }]);
+        notifyNarration(`[${name}]은(는) 장착 슬롯 정보가 없습니다.`);
         return;
     }
 
@@ -5147,7 +5510,7 @@ function cancelItemTargeting() {
 function beginItemTargeting(itemIdx) {
     if (game.state !== 'battle') return false;
     if (game.turnOwner !== 'player') {
-        showPopup("불가", "전투 중 내 턴에만 사용할 수 있습니다.", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("전투 중 내 턴에만 사용할 수 있습니다.");
         return false;
     }
 
@@ -5378,7 +5741,7 @@ function renderExploration(forceReset = false) {
     showExplorationView();
     updateUI();
     autoSave();
-    log(`<span style="color:#aaa">--- [${game.scenario.location}] ---</span>`);
+    logNarration("system.locationMarker", { place: game.scenario.location });
 }
 
 // 탐사/배틀 UI 토글 헬퍼
@@ -5472,15 +5835,15 @@ function confirmRetreat() {
 
     // [Infinite Mode Check]
     if (game.mode === 'infinite' || (typeof tempGameMode !== 'undefined' && tempGameMode === 'infinite')) {
-        showPopup("🚫 탈출 불가", "무한의 구렁렁텅이에서 도망칠 수 없습니다...<br>이곳은 오직 죽음만이 끝입니다.", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("이곳에서는 도망칠 수 없습니다. 오직 죽음만이 끝입니다.");
         return;
     }
 
     // [도시 모드] 언제든 전역 지도로 복귀
     if (DS && DS.isCity) {
-        showPopup("🏙️ 도시 지도 복귀", "지금 탐색을 종료하고 세주시 전역 지도로 돌아갑니다.", [
-            { txt: "복귀", func: () => { closePopup(); resetDungeonState(); renderCityMap(); } },
-            { txt: "취소", func: closePopup }
+        showNarrationChoice("지금 탐색을 종료하고 세주시 전역 지도로 돌아갑니다.", [
+            { txt: "복귀", func: () => { resetDungeonState(); renderCityMap(); } },
+            { txt: "취소", func: () => {} }
         ]);
         return;
     }
@@ -5491,9 +5854,9 @@ function confirmRetreat() {
 
     // [CASE 1] 시작 방(입구)에 있을 때 -> 자유롭게 탈출 가능
     if (isStartRoom) {
-        showPopup("🏠 복귀 확인", "던전을 떠나시겠습니까?<br>(입구에서는 안전하게 나갈 수 있습니다)", [
-            { txt: "돌아가기", func: () => { closePopup(); handleDungeonExit(); } },
-            { txt: "취소", func: closePopup }
+        showNarrationChoice("던전을 떠나시겠습니까? (입구에서는 안전하게 나갈 수 있습니다)", [
+            { txt: "돌아가기", func: () => { handleDungeonExit(); } },
+            { txt: "취소", func: () => {} }
         ]);
         return;
     }
@@ -5503,22 +5866,16 @@ function confirmRetreat() {
 
     if (itemIdx !== -1) {
         // 아이템이 있다면 사용 권유
-        showPopup("📞 긴급 탈출", "이곳에서 나가려면 해결사를 불러야 합니다.<br><b>[해결사의 연락처]</b>를 사용하시겠습니까?", [
+        showNarrationChoice("이곳에서 나가려면 해결사를 불러야 합니다. [해결사의 연락처]를 사용하시겠습니까?", [
             {
                 txt: "사용하기 (탈출)",
-                func: () => {
-                    closePopup();
-                    // 아이템 사용 함수 호출 (여기서 소모 및 탈출 처리)
-                    useItem(itemIdx, player);
-                }
+                func: () => { useItem(itemIdx, player); }
             },
-            { txt: "취소", func: closePopup }
+            { txt: "취소", func: () => {} }
         ]);
     } else {
         // 아이템도 없다면 탈출 불가
-        showPopup("🚫 탈출 불가", "이곳에서는 나갈 수 없습니다.<br><br><b>던전 입구</b>로 돌아가거나,<br><b>[해결사의 연락처]</b> 아이템이 필요합니다.", [
-            { txt: "확인", func: closePopup }
-        ]);
+        notifyNarration("이곳에서는 나갈 수 없습니다. 던전 입구로 돌아가거나 해결사의 연락처 아이템이 필요합니다.");
     }
 }
 
@@ -5570,7 +5927,7 @@ function exploreAction(action) {
                 enemies.push(createEnemyData(key, i));
             }
 
-            logBox.innerHTML = `<span style='color:#e74c3c; font-weight:bold;'>⚠️ 적 발견! 전투 태세!</span>`;
+            log({ type: "battle.start" });
 
             // [핵심] 프리뷰 모드로 렌더링 (HP바 숨김)
             const eArea = document.getElementById('dungeon-enemies');
@@ -5602,7 +5959,7 @@ function exploreAction(action) {
             let npcKey = keys[Math.floor(Math.random() * keys.length)];
             let npcData = NPC_DATA[npcKey];
 
-            logBox.innerHTML = `<span style='color:#3498db'>누군가 다가옵니다. 대화가 가능해 보입니다.</span>`;
+            setSharedLogMessage("누군가 다가옵니다. 대화가 가능해 보입니다.");
 
             // 적 데이터 미리 생성 후 프리뷰 렌더링
             enemies = [];
@@ -5628,7 +5985,7 @@ function exploreAction(action) {
         // 3. 랜덤 이벤트 / 파밍
         else {
             if (roll < 0.75) {
-                logBox.innerHTML = "무언가 흥미로운 상황입니다...";
+                setSharedLogMessage("무언가 흥미로운 상황입니다...");
                 setTimeout(() => { game.inputLocked = false; triggerRandomEvent(); }, 600);
             } else {
                 setTimeout(() => {
@@ -5637,13 +5994,14 @@ function exploreAction(action) {
                         let evt = scData.clueEvents[Math.floor(Math.random() * scData.clueEvents.length)];
                         game.scenario.clues = Math.min(100, game.scenario.clues + evt.gain);
                         game.doom = Math.min(100, game.doom + 5);
-                        logBox.innerHTML = `<span style='color:#f1c40f'>🔍 단서 발견!</span><br>${evt.text}`;
+                        logNarration("system.clueGain");
+                        setSharedLogMessage(`${evt.text}`);
                     } else {
                         let foundItem = null;
                         if (Math.random() < 0.4) { foundItem = getRandomItem(null, { categories: ["general"] }); addItem(foundItem); }
                         game.doom = Math.min(100, game.doom + 2);
                         let msg = foundItem ? `주변을 뒤져 <span style='color:#2ecc71'>[${foundItem}]</span>을(를) 발견했습니다!` : "주변을 샅샅이 뒤져보았습니다. 별다른 특이사항은 없습니다.";
-                        logBox.innerHTML = `${msg}`;
+                        setSharedLogMessage(msg);
                     }
                     renderExploration();
                 }, 600);
@@ -5657,7 +6015,7 @@ function exploreAction(action) {
         // [연출] 걷는 애니메이션 + 배경 줌 효과
         pArea.classList.add('anim-walk');
         bg.classList.add('anim-bg-move');
-        logBox.innerHTML = "이동 중...";
+        setSharedLogMessage("이동 중...");
 
         setTimeout(() => {
             game.inputLocked = false;
@@ -5670,9 +6028,9 @@ function exploreAction(action) {
                     nextLoc = scData.locations[Math.floor(Math.random() * scData.locations.length)];
                 }
                 game.scenario.location = nextLoc;
-                logBox.innerHTML = `[${nextLoc}] 구역에 도착했습니다.`;
+                setSharedLogMessage(`[${nextLoc}] 구역에 도착했습니다.`);
             } else {
-                logBox.innerHTML = "다른 골목으로 이동했습니다.";
+                setSharedLogMessage("다른 골목으로 이동했습니다.");
             }
 
             renderExploration();
@@ -5681,7 +6039,7 @@ function exploreAction(action) {
     // --- [3] 휴식 ---
     else if (action === 'rest') {
         game.inputLocked = true;
-        logBox.innerHTML = "잠시 휴식을 취합니다...";
+        setSharedLogMessage("잠시 휴식을 취합니다...");
 
         setTimeout(() => {
             game.inputLocked = false;
@@ -5691,7 +6049,7 @@ function exploreAction(action) {
             player.hp = Math.min(player.maxHp, player.hp + hpHeal);
             player.sp = Math.min(player.maxSp, player.sp + spHeal);
 
-            logBox.innerHTML = `<span style='color:#2ecc71'>체력을 회복했습니다. (+${hpHeal})</span>`;
+            setSharedLogMessage(`체력을 회복했습니다. (+${hpHeal})`);
             renderExploration();
         }, 800);
     }
@@ -5713,6 +6071,7 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     game.turnOwner = "none";
     game.lastTurnOwner = "none";
     game.surrenderOffered = false;
+    game.winNarrated = false;
 
     // 3. 플레이어 상태 초기화
     // (덱이 비어있으면 기본 덱으로 복구하는 안전장치 추가)
@@ -5771,7 +6130,7 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
                 ensureThornsField(boss);
                 boss.thorns = 0;
                 enemies.push(boss);
-                log(`⚠️ <b>${boss.name}</b> 출현! 목숨을 걸어라!`);
+                logNarration("system.bossAppear", { boss: boss.name });
             }
         } else {
             // 랜덤 적 생성
@@ -5901,9 +6260,8 @@ function nextStepAfterWin() {
         // 탐사 화면 텍스트 업데이트
         const logBox = document.getElementById('shared-log');
         if (logBox) {
-            logBox.innerHTML =
-                `<span style='color:#2ecc71'>적들을 제압하고 무사히 복귀했습니다.</span><br>` +
-                `<span style='color:#f1c40f'>단서를 일부 확보했습니다. (진척도 +${clueGain})</span>`;
+            logNarration("battle.victory");
+            logNarration("system.clueGainAmount", { amount: clueGain });
         }
     }
     game.isBossBattle = false;
@@ -6069,14 +6427,14 @@ function startPlayerTurnLogic() {
         const before = player.pendingReactions.length;
         player.pendingReactions = player.pendingReactions.filter(r => !r?.expiresOnPlayerTurnStart);
         if (player.pendingReactions.length < before) {
-            log("🧹 반응 준비가 사라졌습니다.");
+            logNarration("battle.reactionGone");
         }
     }
     // 플레이어 턴 시작 시 적 의도 예고를 새로 설정
     seedEnemyIntents(true);
     // [NEW] 기절 체크
     if (player.isStunned) {
-        log("😵 <b>기절 상태입니다! 아무것도 할 수 없습니다.</b>");
+        logNarration("battle.stunned");
         showDamageText(player, "STUNNED...");
 
         // 상태 회복
@@ -6094,7 +6452,7 @@ function startPlayerTurnLogic() {
 
     // [NEW] 브레이크 회복 (한 턴 무사히 넘기면 회복)
     if (player.isBroken) {
-        log("🛡️ 자세를 바로잡았습니다.");
+        logNarration("battle.postureRecovered");
         player.isBroken = false;
     }
     // [핵심 변경] 직전 턴이 플레이어가 아니었을 때만 방어도 초기화
@@ -6105,7 +6463,7 @@ function startPlayerTurnLogic() {
         const mgr = ensureAssistantManager();
         if (mgr) mgr.block = 0;
     } else {
-        log("⚡ 연속 행동! 방어도가 유지됩니다.");
+        logNarration("battle.comboAction");
     }
 
     player.ap = 3;
@@ -6159,7 +6517,7 @@ function startPlayerTurnLogic() {
         player.attrBuff.turns--;
         if (player.attrBuff.turns === 0) {
             player.attrBuff.type = "none";
-            log("💨 속성 부여 효과가 사라졌습니다.");
+            logNarration("battle.attrExpired");
         }
         updatePlayerAttribute(); // 갱신
     }
@@ -6184,7 +6542,7 @@ function endPlayerTurn() {
         if (toDiscard.length > 0) player.discardPile.push(...toDiscard);
         if (toExhaust.length > 0) {
             player.exhaustPile.push(...toExhaust);
-            log(`🔥 휘발성 카드가 소멸되었습니다: ${toExhaust.map(n => `[${n}]`).join(", ")}`);
+            logNarration("battle.cardExhausted");
         }
         player.hand = [];
         if (player.handCostOverride) player.handCostOverride = [];
@@ -6211,7 +6569,7 @@ async function startEnemyTurnLogic(actor) {
     }
     // 1. 기절(Stun) 체크
     if (actor.isStunned) {
-        log(`😵 <b>${actor.name}</b>은(는) 기절하여 움직일 수 없습니다!`);
+        logNarration("battle.targetStunned", { target: actor.name });
 
         let el = document.getElementById(`enemy-unit-${actor.id}`);
         if (el) {
@@ -6232,7 +6590,7 @@ async function startEnemyTurnLogic(actor) {
 
     // 2. 브레이크 회복 (한 턴 동안 추가타 안 맞으면 회복)
     if (actor.isBroken) {
-        log(`🛡️ <b>${actor.name}</b>이(가) 자세를 바로잡습니다.`);
+        logNarration("battle.postureRecoverTarget", { target: actor.name });
         actor.isBroken = false;
         let el = document.getElementById(`enemy-unit-${actor.id}`);
         if (el) el.classList.remove('broken');
@@ -6288,7 +6646,7 @@ async function startEnemyTurnLogic(actor) {
 function applyWeaknessHit(atkTarget) {
     if (!atkTarget) return;
     if (atkTarget.isStunned) {
-        log(`😵 기절한 대상을 가격합니다!`);
+        logNarration("battle.hitStunnedTarget");
         showDamageText(atkTarget, "CRITICAL!", true);
         return;
     }
@@ -6297,7 +6655,7 @@ function applyWeaknessHit(atkTarget) {
         atkTarget.block = 0;
         atkTarget.ag = 0;
 
-        log(`😵 <b>${atkTarget.name}</b> 기절! (약점 공략 성공)`);
+        logNarration("battle.stunSuccess", { target: atkTarget.name });
 
         const atkTargetId = (atkTarget === player) ? "dungeon-player" : `enemy-unit-${atkTarget.id}`;
         playAnim(atkTargetId, 'anim-hit');
@@ -6307,20 +6665,20 @@ function applyWeaknessHit(atkTarget) {
             const el = document.getElementById(atkTargetId);
             if (el) el.classList.add('stunned');
         } else {
-            log("🚫 <b>당신은 기절했습니다! 다음 턴 행동 불가!</b>");
+            logNarration("battle.selfStunned");
         }
         return;
     }
 
     atkTarget.isBroken = true;
-    log(`⚡ <b>${atkTarget.name}</b>의 자세가 무너졌습니다! (WEAK)`);
+    logNarration("battle.postureBreakEnemy", { target: atkTarget.name });
     showDamageText(atkTarget, "⚡BREAK!");
 
     if (atkTarget !== player) {
         const el = document.getElementById(`enemy-unit-${atkTarget.id}`);
         if (el) el.classList.add('broken');
     } else {
-        log("⚠️ <b>당신의 자세가 무너졌습니다! (피해량 증가)</b>");
+        logNarration("battle.postureBreakSelf");
     }
 }
 
@@ -6332,12 +6690,12 @@ function useCard(user, target, cardName) {
     let userId = (user === player) ? "player-char" : `enemy-unit-${user.id}`;
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
 
-    log(`🃏 [${cardName}] 사용!`);
+    logNarration("battle.cardUse", { card: cardName });
 
     if (user === player && data.requireAssistant) {
         const mgr = ensureAssistantManager();
         if (!mgr || !mgr.isAlive()) {
-            log("🚫 조수가 없어 사용할 수 없습니다.");
+            logNarration("battle.noAssistant");
             return;
         }
     }
@@ -6345,7 +6703,7 @@ function useCard(user, target, cardName) {
     // [반응] 적의 행동에 반응하는 카드(대기열 등록)
     if (user === player && data.reaction) {
         if (game.state !== "battle") {
-            log("🚫 전투 중에만 반응 카드를 사용할 수 있습니다.");
+            logNarration("battle.reactionOnly");
             return;
         }
         ensureReactionSystems(player);
@@ -6362,7 +6720,7 @@ function useCard(user, target, cardName) {
             remaining: cfg.remaining ?? 1,
             expiresOnPlayerTurnStart: cfg.expiresOnPlayerTurnStart !== false
         });
-        log(`⏳ [${cardName}] 반응 준비`);
+        logNarration("battle.reactionReady", { card: cardName });
         updateUI();
         return;
     }
@@ -6370,7 +6728,7 @@ function useCard(user, target, cardName) {
     // [계획] 전투 종료까지 유지되는 반응
     if (user === player && data.stakeout) {
         if (game.state !== "battle") {
-            log("🚫 전투 중에만 계획 카드를 사용할 수 있습니다.");
+            logNarration("battle.planOnly");
             return;
         }
         ensureReactionSystems(player);
@@ -6385,7 +6743,7 @@ function useCard(user, target, cardName) {
             addClue: cfg.addClue,
             debuff: cfg.debuff
         });
-        log(`🕵️ [${cardName}] 계획 설정`);
+        logNarration("battle.planSet", { card: cardName });
         updateUI();
         return;
     }
@@ -6411,7 +6769,7 @@ function useCard(user, target, cardName) {
         const v = Math.max(0, Number(data.gainAp || 0));
         if (v > 0) {
             user.ap += v;
-            log(`⚡ AP +${v}`);
+            logNarration("battle.apGain", { amount: v });
         }
     }
 
@@ -6425,7 +6783,7 @@ function useCard(user, target, cardName) {
             const mode = cfg.mode || 'choose';
 
             if (!Array.isArray(src) || src.length === 0) {
-                log("🗂️ 대상 카드 더미가 비어있습니다.");
+                logNarration("battle.emptyPile");
             } else if (mode === 'random') {
                 for (let i = 0; i < count; i++) {
                     if (src.length === 0) break;
@@ -6433,7 +6791,7 @@ function useCard(user, target, cardName) {
                     const picked = src[idx];
                     if (!isCopy) src.splice(idx, 1);
                     addCardToHand(picked);
-                    log(`🧤 ${isCopy ? "복사" : "회수"}: [${picked}]`);
+                    logNarration("battle.copyOrRecover", { card: picked, action: isCopy ? "복사" : "회수" });
                 }
                 updateUI();
                 renderHand();
@@ -6448,7 +6806,7 @@ function useCard(user, target, cardName) {
                         }
                     }
                     addCardToHand(pickedName);
-                    log(`🧤 ${isCopy ? "복사" : "회수"}: [${pickedName}]`);
+                    logNarration("battle.copyOrRecover", { card: pickedName, action: isCopy ? "복사" : "회수" });
                     updateUI();
                     renderHand();
                 });
@@ -6464,7 +6822,7 @@ function useCard(user, target, cardName) {
                 if (hasLogicShield(target)) {
                     if (data.evidence) {
                         breakLogicShield(target);
-                        log("📌 증거로 논리 방어를 깨뜨렸습니다!");
+                        logNarration("battle.evidenceBreak");
                         showDamageText(target, "🧠BREAK");
                         const tEl = document.getElementById(targetId);
                         if (tEl) {
@@ -6485,7 +6843,7 @@ function useCard(user, target, cardName) {
         if (data.heal) {
             if (user === player) {
                 user.mental = Math.min(100, user.mental + data.heal);
-                log(`🌿 의지 회복 +${data.heal}`);
+                logNarration("system.willHeal", { amount: data.heal });
                 showDamageText(user, `💚+${data.heal}`);
             } else {
                 user.hp = Math.min(100, user.hp + data.heal);
@@ -6494,10 +6852,10 @@ function useCard(user, target, cardName) {
         }
         if (data.special === "gamble_lie") {
             if (Math.random() < 0.5) {
-                log("🎲 거짓말 성공! 상대가 크게 동요합니다.");
+                logNarration("battle.lieSuccess");
                 takeDamage(target, 40);
             } else {
-                log("💦 거짓말을 들켰습니다! 망신살이 뻗칩니다.");
+                logNarration("battle.lieFail");
                 takeDamage(user, 20);
             }
         }
@@ -6508,7 +6866,7 @@ function useCard(user, target, cardName) {
     else {
         if (data.special === "summon") {
             if (user === player) {
-                log("🚫 플레이어는 부하를 부를 수 없습니다.");
+                logNarration("battle.noSummon");
                 return;
             } else {
                 playAnim(userId, 'anim-bounce');
@@ -6569,7 +6927,7 @@ function useCard(user, target, cardName) {
                 if (atkTarget !== player && atkTarget.enemyKey) {
                     if (!player.discoveredWeaknesses[atkTarget.enemyKey]) {
                         player.discoveredWeaknesses[atkTarget.enemyKey] = atkTarget.weakness;
-                        log(`💡 <b>[${atkTarget.name}]</b>의 약점(${ATTR_ICONS[atkTarget.weakness]})을 파악했습니다!`);
+                        logNarration("battle.weaknessFound", { target: atkTarget.name });
                         updateUI();
                     }
                 }
@@ -6592,7 +6950,7 @@ function useCard(user, target, cardName) {
                 const bonus = Math.max(0, Number(cfg.bonus || 0));
                 if (consumed > 0) {
                     finalDmg += bonus + (consumed * mult);
-                    log(`🧩 단서 ${consumed} 소모! 추가 피해 +${bonus + (consumed * mult)}`);
+                    logNarration("system.clueConsume", { amount: consumed });
                 }
                 const triggerAt = Math.max(0, Number(cfg.triggerWeaknessHitAt || 0));
                 if (triggerAt > 0 && consumed >= triggerAt) {
@@ -6605,7 +6963,7 @@ function useCard(user, target, cardName) {
                 if (CardEffect_CheckClue(atkTarget, config.threshold || 10)) {
                     finalDmg = Math.max(finalDmg, Number(config.bonusDmg || finalDmg));
                     if (config.consume !== false) clueDebuff.consumeAll(atkTarget);
-                    log("🧩 단서가 모여 강력한 결론을 도출했습니다!");
+                    logNarration("system.clueConclusion");
                 }
             }
 
@@ -6648,7 +7006,7 @@ function useCard(user, target, cardName) {
                 const chance = (typeof cfg === "object" && cfg.chance !== undefined) ? Number(cfg.chance || 0) : 1;
                 if (count > 0 && Math.random() <= chance) {
                     const next = addClueStacks(atkTarget, count);
-                    log(`🔍 단서 +${count} (현재 ${next})`);
+                    logNarration("system.clueGainTarget", { target: "대상", amount: count, total: next });
                 }
             }
 
@@ -6683,7 +7041,7 @@ function useCard(user, target, cardName) {
                 const healAmt = Math.floor(dealtSum * ratio);
                 if (healAmt > 0) {
                     user.hp = Math.min(user.maxHp, user.hp + healAmt);
-                    log(`🩸 흡혈 회복 +${healAmt}`);
+            logNarration("battle.regen", { amount: healAmt });
                     showDamageText(user, `💚+${healAmt}`);
                 }
             }
@@ -6694,7 +7052,7 @@ function useCard(user, target, cardName) {
                 const drawCount = Math.max(0, Number(cfg.draw || 0));
                 if (drawCount > 0 && clueDebuff.getStacks(target) >= threshold) {
                     drawCards(drawCount);
-                    log(`🧠 단서 ${threshold} 이상! 카드 ${drawCount}장 추가 드로우`);
+                    logNarration("system.clueThresholdDraw", { threshold, amount: drawCount });
                 }
             }
 
@@ -6717,19 +7075,19 @@ function useCard(user, target, cardName) {
                 const count = Math.max(0, Number(typeof cfg === "number" ? cfg : (cfg.count || 0)));
                 if (count > 0) {
                     const next = addClueStacks(target, count);
-                    log(`🔍 단서 +${count} (현재 ${next})`);
+                    logNarration("system.clueGainTarget", { target: "대상", amount: count, total: next });
                 }
             }
         }
 
         if (user === player && shouldUseNextAttackAttrs && data.type && data.type.includes("attack")) {
             player.nextAttackAttrs = [];
-            log("✨ 다음 공격 속성이 소모되었습니다.");
+            logNarration("battle.nextAttackAttr");
         }
 
         if (data.special === "cure_anger") {
-            if (target.buffs["분노"]) { delete target.buffs["분노"]; log("😌 상대가 분노를 가라앉혔습니다."); }
-            if (target.buffs["우울"]) { delete target.buffs["우울"]; log("😐 상대가 평정심을 찾았습니다."); }
+            if (target.buffs["분노"]) { delete target.buffs["분노"]; logNarration("battle.attrExpired"); }
+            if (target.buffs["우울"]) { delete target.buffs["우울"]; logNarration("battle.attrExpired"); }
         }
     }
 
@@ -6738,7 +7096,7 @@ function useCard(user, target, cardName) {
         let finalBlock = data.block + getStat(user, statType);
         user.block += finalBlock;
         let defenseText = (game.state === "social") ? "논리 방어" : "방어도";
-        log(`🛡️ ${defenseText} +${finalBlock}`);
+        logNarration("battle.blockGain", { amount: finalBlock });
         updateUI();
         if (game.state === "social" && user === player) {
             const gain = Number(data.profilingGain || 5);
@@ -6761,14 +7119,14 @@ function useCard(user, target, cardName) {
 
     if (data.draw && user === player) {
         drawCards(data.draw);
-        log(`🃏 카드를 ${data.draw}장 뽑았습니다.`);
+            logNarration("battle.drawCards", { amount: data.draw });
     }
 
     if (user === player && data.nextTurnDraw) {
         const extra = Math.max(0, Number(data.nextTurnDraw || 0));
         if (extra > 0) {
             player.nextTurnDraw += extra;
-            log(`🧭 다음 턴 카드 ${extra}장 추가 드로우 준비`);
+            logNarration("battle.drawNextTurn", { amount: extra });
         }
     }
 
@@ -6777,7 +7135,7 @@ function useCard(user, target, cardName) {
         if (count > 0) {
             enemies.filter(e => e && e.hp > 0).forEach(e => {
                 const next = addClueStacks(e, count);
-                log(`🔍 단서 +${count} (현재 ${next})`);
+                logNarration("system.clueGainTarget", { target: "대상", amount: count, total: next });
             });
         }
     }
@@ -6800,14 +7158,14 @@ function useCard(user, target, cardName) {
         player.nextAttackAttrs.push(...list.filter(Boolean));
         if (list.length > 0) {
             const icons = list.map(a => ATTR_ICONS[a] || a).join(", ");
-            log(`✨ 다음 공격에 [${icons}] 부여`);
+            logNarration("battle.nextAttackAttr");
         }
     }
 
     if (user === player && game.state === "battle" && data.assistantDamageReductionPct) {
         const pct = Math.max(0, Number(data.assistantDamageReductionPct || 0));
         game.assistantDamageReductionPct = Math.max(game.assistantDamageReductionPct || 0, pct);
-        if (pct > 0) log(`🛡️ 이번 턴 조수 피해 감소 ${Math.floor(pct * 100)}%`);
+        if (pct > 0) logNarration("battle.assistantBlockGain", { amount: Math.floor(pct * 100) });
     }
 
     if (user === player && game.state === "battle" && data.assistantTauntTurns) {
@@ -6818,7 +7176,7 @@ function useCard(user, target, cardName) {
             const mgr = ensureAssistantManager();
             if (mgr) mgr.addBlock(block);
         }
-        if (turns > 0) log("🎯 이번 턴 적의 공격이 조수에게 집중됩니다.");
+        if (turns > 0) logNarration("battle.assistantFocus");
     }
 
     if (user === player && game.state === "battle" && data.assistantBuff) {
@@ -6828,12 +7186,12 @@ function useCard(user, target, cardName) {
             const dur = Math.max(1, Number(buff.val || 1));
             if (!mgr.buffs) mgr.buffs = {};
             mgr.buffs[buff.name] = (mgr.buffs[buff.name] || 0) + dur;
-            log(`✨ 조수에게 [${buff.name}] 적용`);
+            logNarration("battle.buffApply", { target: "조수", buff: buff.name });
         }
         const block = Math.max(0, Number(data.assistantBlock || 0));
         if (mgr && block > 0) {
             mgr.addBlock(block);
-            log(`🛡️ 조수 방어도 +${block}`);
+            logNarration("battle.assistantBlockGain", { amount: block });
         }
     }
 
@@ -6846,10 +7204,10 @@ function useCard(user, target, cardName) {
             mgr.hp = after;
             const apGain = Math.floor(removed / 2);
             if (apGain > 0) player.ap += apGain;
-            log(`⚠️ 비정한 결단: 조수 HP -${removed}, AP +${apGain}`);
+            logNarration("battle.cruelDecision");
             updateUI();
         } else {
-            log("🚫 조수가 없어 효과가 없습니다.");
+            logNarration("battle.noAssistantEffect");
         }
     }
 
@@ -6857,7 +7215,7 @@ function useCard(user, target, cardName) {
     if (user === player && data.selfDuplicateToDiscard) {
         const cnt = Math.max(0, Number(data.selfDuplicateToDiscard || 0));
         for (let i = 0; i < cnt; i++) player.discardPile.push(cardName);
-        if (cnt > 0) log(`🌀 [${cardName}] 카드가 ${cnt}장 복제되어 버린 카드에 추가되었습니다.`);
+        if (cnt > 0) logNarration("battle.cardCopyAdded");
     }
 
     // 성장(전투/영구)
@@ -6876,12 +7234,12 @@ function useCard(user, target, cardName) {
         if (scope === "permanent") {
             ensureCardSystems(player);
             applyGrowth(player.permanentCardGrowth);
-            log(`📈 [${cardName}] 영구 성장!`);
+            logNarration("battle.cardGrowPermanent", { card: cardName });
             autoSave();
         } else {
             if (!game.combatCardGrowth) game.combatCardGrowth = {};
             applyGrowth(game.combatCardGrowth);
-            log(`📈 [${cardName}] 전투 중 성장!`);
+            logNarration("battle.cardGrowBattle", { card: cardName });
         }
     }
 
@@ -6898,7 +7256,7 @@ function summonMinion(enemyKey) {
     // 죽은 적은 제외하고 산 적만 카운트 (최대 3~4명 제한 추천)
     let aliveCount = enemies.filter(e => e.hp > 0).length;
     if (aliveCount >= 3) {
-        log("🚫 전장이 꽉 차서 더 이상 소환할 수 없습니다!");
+        logNarration("battle.fieldFull");
         return;
     }
 
@@ -6951,7 +7309,7 @@ function summonMinion(enemyKey) {
         }
     }, 50);
 
-    log(`📢 <b>${data.name}</b>이(가) 증원되었습니다!`);
+    logNarration("battle.reinforced", { target: data.name });
 }
 
 /* [수정] 데미지 처리 함수 (소셜 모드 완벽 지원) */
@@ -6979,7 +7337,7 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
                 const dealt = mgr.takeDamage(assistantDmg);
                 // [FIX] 조수가 피격 시 조수에게만 애니메이션 표시 (탐정에게 표시되지 않도록)
                 playAnim('assistant-player', 'anim-hit');
-                log(`🛡️ 조수가 피해를 대신 받았습니다. (-${dealt})`);
+                logNarration("battle.assistantTook", { amount: dealt });
                 updateUI();
                 return { raw: rawDmg, blocked: 0, dealt, redirectedToAssistant: true };
             }
@@ -7025,11 +7383,11 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
             // [변경] 소셜 모드: 'mental'(플레이어) 또는 'hp'(NPC)를 깎음
             if (target === player) {
                 target.mental -= dmg;
-                log(`💔 내 의지 손상 -${dmg}! (남은 벽: ${target.mental})`);
+                logNarration("battle.mentalDamage", { amount: dmg, mental: target.mental });
                 showDamageText(target, `💔-${dmg}`);
             } else {
                 target.hp -= dmg; // NPC는 hp를 의지으로 씀
-                log(`🗣️ 적 의지 타격! -${dmg} (남은 벽: ${target.hp})`);
+                logNarration("battle.enemyMentalDamage", { amount: dmg, mental: target.hp });
                 showDamageText(target, `💢-${dmg}`);
             }
         } else {
@@ -7037,10 +7395,10 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
             target.hp -= dmg;
 
             if (isCrit) {
-                log(`⚡ <b>치명타 적중!</b> 💥${dmg} 피해! (HP: ${target.hp})`);
+                logNarration("battle.critical", { amount: dmg, hp: target.hp });
                 showDamageText(target, `⚡CRIT! -${dmg}`, true); // true = 치명타 스타일 적용
             } else {
-                log(`💥 체력 피해 -${dmg}! (HP: ${target.hp})`);
+                logNarration("battle.hpDamage", { amount: dmg, hp: target.hp });
                 showDamageText(target, `💥-${dmg}`, false);
             }
         }
@@ -7053,14 +7411,14 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
         if (rawDmg > 0 && (target.thorns || 0) > 0) {
             const th = Math.max(0, Number(target.thorns || 0));
             if (th > 0) {
-                log(`🌵 [가시] 반격! 공격자에게 ${th} 피해`);
+                logNarration("battle.thorns", { amount: th });
                 takeDamage(source, th, false, null, null, { isThorns: true });
             }
         }
 
         // [반사] 막히지 않은 피해(실제 받은 피해)를 그대로 반격
         if (dealt > 0 && target.buffs["반사"]) {
-            log(`🪞 [반사] 반격! 공격자에게 ${dealt} 피해`);
+            logNarration("battle.reflect", { amount: dealt });
             takeDamage(source, dealt, false, null, null, { isReflect: true });
         }
     }
@@ -7073,7 +7431,7 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
         if (!target.jumadeung) {
             target.hp = 1;
             target.jumadeung = true;
-            log("⚡ [주마등] 버티기!");
+        logNarration("battle.lastStand");
             updateUI();
         } else {
             // 보스전 등에서 사망 처리가 누락되는 경우를 방지하기 위해 즉시 체크
@@ -7107,6 +7465,7 @@ function checkGameOver() {
             ]);
             return false;
         }
+        clearGlobalLog();
         game.state = "gameover"; // 상태 잠금
         showPopup("💀 사망", "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.", [
             {
@@ -7123,6 +7482,7 @@ function checkGameOver() {
 
     // 2. [정신적 사망] SP 0
     if (player.sp <= 0) {
+        clearGlobalLog();
         game.state = "gameover"; // 상태 잠금
         showPopup("🤪 발광(Insanity)", "공포를 견디지 못하고 정신이 붕괴되었습니다.<br>당신은 어둠 속으로 사라집니다...", [
             {
@@ -7228,9 +7588,8 @@ function endSocialBattle(success) {
 
     // UI 갱신 후 팝업
     updateUI();
-    showPopup("대화 종료", game.winMsg + `<br><br><b>단서 획득 (+${clueGain})</b>`, [
-        { txt: "떠나기", func: nextStepAfterWin } // 기존 복귀 함수 재사용
-    ]);
+    notifyNarration(`${stripHtml(game.winMsg || "")} 단서를 확보했습니다. (+${clueGain})`);
+    addCityLogChoices([{ text: "떠나기", onSelect: nextStepAfterWin }]);
 }
 // [game.js] 적절한 곳(checkGameOver 근처)에 추가
 
@@ -7242,22 +7601,13 @@ function showSocialLossPopup(npcName) {
         (내 의지 0 도달)
     `;
 
-    showPopup("💬 협상 실패", msg, [
+    notifyNarration(stripHtml(msg));
+    addCityLogChoices([
+        { text: "👊 무력 행사 (전투 돌입)", onSelect: () => forcePhysicalBattle() },
         {
-            txt: "👊 무력 행사 (전투 돌입)",
-            func: () => {
-                closePopup();
-                // 체력 페널티 없이 바로 전투 시작? 아니면 약간의 불리함?
-                // 여기선 '기습 실패'로 간주하여 적의 턴게이지를 채워주는 식으로 구현 가능
-                forcePhysicalBattle();
-            }
-        },
-        {
-            txt: "🏃 포기하고 떠나기",
-            func: () => {
-                closePopup();
-                log("패배를 인정하고 물러납니다...");
-                // 보상 없이 복귀
+            text: "🏃 포기하고 떠나기",
+            onSelect: () => {
+                logNarration("system.retreat");
                 if (game.scenario && game.scenario.isPatrol) renderCityMap();
                 else renderExploration();
             }
@@ -7266,9 +7616,9 @@ function showSocialLossPopup(npcName) {
 }
 /* [NEW] 무력 행사 확인 팝업 */
 function confirmForceBattle() {
-    showPopup("👊 무력 행사", "대화를 중단하고 공격하시겠습니까?<br><span style='color:#e74c3c; font-size:0.8em;'>※ 적이 전투 태세를 갖춥니다.</span>", [
-        { txt: "공격 개시!", func: () => { closePopup(); forcePhysicalBattle(); } },
-        { txt: "취소", func: closePopup }
+    showNarrationChoice("대화를 중단하고 공격하시겠습니까? (적이 전투 태세를 갖춥니다)", [
+        { txt: "공격 개시!", func: () => forcePhysicalBattle() },
+        { txt: "취소", func: () => {} }
     ]);
 }
 
@@ -7282,11 +7632,11 @@ function forcePhysicalBattle() {
     let npcData = NPC_DATA[currentEnemy.name];
 
     if (!npcData || !npcData.battle) {
-        log("🚫 전투 데이터가 없는 NPC입니다.");
+        logNarration("system.noBattleNpc");
         return;
     }
 
-    log("⚔️ <b>협상 결렬! 적이 무기를 꺼내 듭니다!</b>");
+    logNarration("system.socialFail");
 
     // 1. 모드 변경
     game.state = "battle";
@@ -7431,11 +7781,17 @@ function exitRestArea() {
 }
 /* [game.js] renderShopScreen 함수 전체 교체 */
 function renderShopScreen(shopType = "shop_black_market") {
+    logNarration("system.openShop");
     switchScene('event');
 
     // [핵심] 상점 전용 와이드 스타일 적용
     const container = document.getElementById('event-content-box');
     container.classList.add('shop-mode');
+    const shell = document.getElementById('event-shell');
+    if (shell) shell.classList.add('shop-mode');
+    const eventLogPanel = document.getElementById('event-log-panel');
+    if (eventLogPanel) eventLogPanel.classList.remove('is-hidden');
+    syncCityLogPanels();
 
     // 1. 상점 설정
     let shopTitle = "상점";
@@ -7632,7 +7988,7 @@ function buyShopItem(el, type, name, cost) {
 
     // [수정] 잔액 부족 알림
     if (player.gold < cost) {
-        showPopup("잔액 부족", "소지금이 부족합니다.", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("소지금이 부족합니다.");
         return;
     }
 
@@ -7641,7 +7997,7 @@ function buyShopItem(el, type, name, cost) {
         const deckLabel = addCardToAppropriateDeck(name);
 
         // [수정] 구매 완료 알림
-        showPopup("구매 성공", `[${name}] 구매 완료!<br>${deckLabel}에 바로 추가되었습니다.`, [{ txt: "확인", func: closePopup }]);
+        notifyNarration(`[${name}]을(를) 구매했습니다. ${deckLabel}에 추가되었습니다.`);
 
         el.classList.add('sold-out');
         el.style.opacity = 0.5;
@@ -7652,7 +8008,7 @@ function buyShopItem(el, type, name, cost) {
         const onBuySuccess = () => {
             player.gold -= cost;
             // [수정] 구매 완료 알림
-            showPopup("구매 성공", `[${name}] 구매 완료!`, [{ txt: "확인", func: closePopup }]);
+            notifyNarration(`[${name}]을(를) 구매했습니다.`);
 
             el.classList.add('sold-out');
             el.style.opacity = 0.5;
@@ -7666,11 +8022,7 @@ function buyShopItem(el, type, name, cost) {
             let data = ITEM_DATA[name];
             // [수정] 중복 알림
             if (data.usage === 'passive' || data.usage === 'equip') {
-                showPopup(
-                    "중복 불가",
-                    data.usage === 'equip' ? "이미 보유하고 있는 장비입니다." : "이미 보유하고 있는 유물입니다.",
-                    [{ txt: "확인", func: closePopup }]
-                );
+                notifyNarration(data.usage === 'equip' ? "이미 보유하고 있는 장비입니다." : "이미 보유하고 있는 유물입니다.");
             }
         }
     }
@@ -7678,7 +8030,7 @@ function buyShopItem(el, type, name, cost) {
 // [수정] processCardRemoval: alert -> showPopup
 function processCardRemoval(idx, cost) {
     if (player.deck.length <= 5) {
-        showPopup("불가", "최소 5장의 카드는 남겨야 합니다.", [{ txt: "확인", func: closePopup }]);
+        notifyNarration("최소 5장의 카드는 남겨야 합니다.");
         return;
     }
 
@@ -7690,7 +8042,7 @@ function processCardRemoval(idx, cost) {
 
     // [수정] 제거 완료 알림
     setTimeout(() => {
-        showPopup("제거 완료", `[${removed}] 카드를 태워버렸습니다.`, [{ txt: "확인", func: closePopup }]);
+        notifyNarration(`[${removed}] 카드를 태워버렸습니다.`);
     }, 100);
 
     updateUI();
@@ -7706,7 +8058,7 @@ function processCardRemoval(idx, cost) {
 /* [NEW] 실제 카드 삭제 로직 */
 function processCardRemoval(idx, cost) {
     if (player.deck.length <= 5) {
-        showPopup("최소 5장의 카드는 남겨야 합니다.");
+        notifyNarration("최소 5장의 카드는 남겨야 합니다.");
         return;
     }
 
@@ -7714,7 +8066,7 @@ function processCardRemoval(idx, cost) {
     player.gold -= cost;
 
     closePopup();
-    showPopup(`[${removed}] 카드를 태워버렸습니다.`);
+    notifyNarration(`[${removed}] 카드를 태워버렸습니다.`);
 
     // 상점 화면 갱신 (돈 줄어든 거 반영)
     // 현재 상점 타입을 알기 어려우므로 간단히 다시 렌더링하거나 UI만 업데이트
@@ -7772,9 +8124,24 @@ function switchScene(sceneName) {
         updateUI();
     } else {
         console.error(`[Error] 화면을 찾을 수 없습니다: ${targetId}`);
-        showPopup("화면 로딩 실패! 페이지를 새로고침 해주세요.\n(브라우저 캐시 문제일 수 있습니다.)");
+        notifyNarration("화면 로딩에 실패했습니다. 페이지를 새로고침해 주세요.");
         // 강제로 허브로 보내거나 재시도
         if (sceneName !== 'hub') switchScene('hub');
+    }
+
+    const globalLog = document.getElementById('global-log-panel');
+    if (globalLog) {
+        const hideLog = (
+            sceneName === 'city' ||
+            sceneName === 'hub' ||
+            sceneName === 'event' ||
+            sceneName === 'start' ||
+            sceneName === 'char-creation' ||
+            sceneName === 'deck' ||
+            sceneName === 'storage'
+        );
+        globalLog.classList.toggle('hidden', hideLog);
+        if (!hideLog) syncCityLogPanels();
     }
 }
 /* [game.js] renderResultScreen 수정 */
@@ -7952,7 +8319,7 @@ function addTrait(key) {
     ensureCurseCardForTrait(key);
 
     recalcStats();
-    showPopup("특성 획득", `[${t.name}]<br>${t.desc}`, [{ txt: "확인", func: closePopup }]);
+    notifyNarration(`특성 [${t.name}]을(를) 획득했습니다. ${t.desc}`);
 }
 
 function removeTrait(key) {
@@ -7960,7 +8327,7 @@ function removeTrait(key) {
     player.traits = player.traits.filter(k => k !== key);
 
     recalcStats();
-    showPopup("특성 제거", `${TRAIT_DATA[key].name} 특성이 사라졌습니다.`, [{ txt: "확인", func: closePopup }]);
+    notifyNarration(`${TRAIT_DATA[key].name} 특성이 사라졌습니다.`);
 }
 
 function applyBuff(entity, name, dur) {
@@ -7968,16 +8335,16 @@ function applyBuff(entity, name, dur) {
     if (name === "가시") {
         ensureThornsField(entity);
         entity.thorns = (entity.thorns || 0) + Number(dur || 0);
-        log(`✨ ${entity === player ? "나" : "적"}에게 [${name}] 적용`);
+        logNarration("battle.buffApply", { target: entity === player ? "당신" : "적", buff: name });
         return;
     }
     if (name === "독" || name === "활력" || name === "반사") entity.buffs[name] = (entity.buffs[name] || 0) + dur;
     else entity.buffs[name] = dur;
-    log(`✨ ${entity === player ? "나" : "적"}에게 [${name}] 적용`);
+    logNarration("battle.buffApply", { target: entity === player ? "당신" : "적", buff: name });
 }
 function tickBuffs(entity) {
-    if (entity.buffs["독"]) { let dmg = entity.buffs["독"]; log(`☠️ 독 피해 ${dmg}!`); takeDamage(entity, dmg); }
-    if (entity.buffs["활력"]) { let heal = entity.buffs["활력"]; entity.hp = Math.min(entity.maxHp, entity.hp + heal); log(`🌿 활력 회복 +${heal}`); updateUI(); }
+    if (entity.buffs["독"]) { let dmg = entity.buffs["독"]; logNarration("battle.poison", { amount: dmg }); takeDamage(entity, dmg); }
+    if (entity.buffs["활력"]) { let heal = entity.buffs["활력"]; entity.hp = Math.min(entity.maxHp, entity.hp + heal); logNarration("battle.regen", { amount: heal }); updateUI(); }
 }
 function decrementBuffs(entity) {
     for (let k in entity.buffs) {
@@ -8094,13 +8461,13 @@ function applyCardDrawEffect(cardName) {
             if (val <= 0) break;
             const before = player.ap;
             player.ap = Math.max(0, player.ap - val);
-            log(`😨 [${cardName}] 발동: AP -${Math.min(before, val)}`);
+            logNarration("system.cardTriggerApLoss", { card: cardName, amount: Math.min(before, val) });
             break;
         }
         case "damage_self": {
             const val = Math.max(0, Number(eff.val || 0));
             if (val <= 0) break;
-            log(`😖 [${cardName}] 발동: HP -${val}`);
+            logNarration("system.cardTriggerHpLoss", { card: cardName, amount: val });
             takeDamage(player, val);
             break;
         }
@@ -8114,7 +8481,7 @@ function applyCardDrawEffect(cardName) {
                     player.handCostOverride.splice(idx, 1);
                 }
                 player.discardPile.push(removed);
-                log(`😵 [${cardName}] 발동: 무작위 카드 버림 -> [${removed}]`);
+                logNarration("system.cardTriggerDiscard", { card: cardName });
             }
             break;
         }
@@ -8131,7 +8498,7 @@ function drawCards(n) {
         // 1. 덱 리필 확인
         if (player.drawPile.length === 0) {
             if (player.discardPile.length > 0) {
-                log("🔄 덱을 섞습니다!");
+                logNarration("system.shuffleDeck");
                 player.drawPile = [...player.discardPile];
                 player.discardPile = [];
                 shuffle(player.drawPile);
@@ -8155,7 +8522,7 @@ function drawCards(n) {
         } else {
             // 공간이 없으면 바로 버림 패로 이동 (카드가 타버림)
             player.discardPile.push(card);
-            log(`🔥 손패가 꽉 차서 [${card}] 카드가 버려졌습니다!`);
+            logNarration("system.handFullDiscard", { card });
 
             // 시각적 효과 (버림 카드 더미가 흔들림)
             playAnim('btn-discard-pile-floating', 'anim-bounce');
@@ -8626,15 +8993,15 @@ function updateUI() {
 }
 /* [NEW] 도망치기 확인 팝업 */
 function confirmRunAway() {
-    showPopup("🏃 도망치기", "전투를 포기하고 도망치시겠습니까?<br><span style='color:#e74c3c; font-size:0.8em;'>(패널티: HP -5, 위협도 증가)</span>", [
-        { txt: "도망친다!", func: () => { closePopup(); escapePhysicalBattle(); } },
-        { txt: "취소", func: closePopup }
+    showNarrationChoice("전투를 포기하고 도망치시겠습니까? (패널티: HP -5, 위협도 증가)", [
+        { txt: "도망친다!", func: () => { escapePhysicalBattle(); } },
+        { txt: "취소", func: () => {} }
     ]);
 }
 
 /* [수정] 전투 도주 처리 함수 (사망 체크 추가) */
 function escapePhysicalBattle() {
-    log("🏃 허겁지겁 도망칩니다!");
+    logNarration("system.retreat");
 
     // 1. 패널티 적용 (HP -5)
     // takeDamage 함수 내부에서 HP 감소 및 사망 시 팝업 처리를 수행함
@@ -8673,7 +9040,7 @@ function escapePhysicalBattle() {
 
     toggleBattleUI(false); // 이동 버튼 다시 표시
 
-    log("<span style='color:#e74c3c; font-weight:bold;'>🏃 허겁지겁 도망쳤습니다!</span>");
+    logNarration("system.retreat");
     renderExploration();
 }
 
@@ -8764,16 +9131,16 @@ function renderHand() {
         }
 
         if (isUnplayable) {
-            el.onclick = () => log(`🚫 [${cName}]은(는) 사용할 수 없습니다.`);
+            el.onclick = () => logNarration("system.battleTurnOnly");
         }
         else if (!assistantAlive) {
-            el.onclick = () => log(`🚫 조수가 없어 [${cName}]을(를) 사용할 수 없습니다.`);
+            el.onclick = () => logNarration("battle.noAssistant");
         }
         else if (game.turnOwner === "player" && player.ap >= cost) {
             el.onmousedown = (e) => startDrag(e, idx, cName);
             el.ontouchstart = (e) => startDrag(e, idx, cName);
         } else {
-            el.onclick = () => log("🚫 행동력이 부족하거나 사용할 수 없습니다.");
+            el.onclick = () => logNarration("battle.reactionOnly");
         }
 
         container.appendChild(el);
@@ -8815,10 +9182,30 @@ function openPileView(type) {
     document.getElementById('popup-layer').style.display = 'flex';
 }
 
-function showPopup(title, desc, buttons = [], contentHTML = "") {
-    const layer = document.getElementById('popup-layer'); document.getElementById('popup-title').innerText = title; document.getElementById('popup-desc').innerHTML = desc; document.getElementById('popup-content').innerHTML = contentHTML;
-    const btnBox = document.getElementById('popup-buttons'); btnBox.innerHTML = "";
-    (buttons || []).forEach(b => { let btn = document.createElement('button'); btn.className = 'action-btn'; btn.style.fontSize = "1em"; btn.style.padding = "5px 15px"; btn.innerText = b.txt; btn.onclick = b.func; btnBox.appendChild(btn); });
+function showPopup(title, desc, buttons = [], contentHTML = "", options = {}) {
+    const hasContent = !!(contentHTML && String(contentHTML).trim());
+    const btns = Array.isArray(buttons) ? buttons : [];
+    const forcePopup = !!(options && options.forcePopup) || btns.some(b => b && b.keepPopup);
+    // 전용 UI(장비창 등)만 팝업 유지. 콘텐츠 없는 단순 선택지는 로그 버튼으로 이동.
+    if (!hasContent && !forcePopup) {
+        showNarrationChoice(desc, btns.map(b => ({ txt: b.txt, func: b.func })));
+        return;
+    }
+    const layer = document.getElementById('popup-layer');
+    document.getElementById('popup-title').innerText = title;
+    document.getElementById('popup-desc').innerHTML = desc;
+    document.getElementById('popup-content').innerHTML = contentHTML;
+    const btnBox = document.getElementById('popup-buttons');
+    btnBox.innerHTML = "";
+    btns.forEach(b => {
+        let btn = document.createElement('button');
+        btn.className = 'action-btn';
+        btn.style.fontSize = "1em";
+        btn.style.padding = "5px 15px";
+        btn.innerText = b.txt;
+        btn.onclick = b.func;
+        btnBox.appendChild(btn);
+    });
     layer.style.display = "flex";
 }
 
@@ -8828,7 +9215,7 @@ function showAlert(title, desc, onClose) {
 }
 
 function showConfirm(title, desc, onYes, onNo, yesText = "확인", noText = "취소") {
-    showChoice(title, desc, [
+    showNarrationChoice(desc, [
         { txt: yesText, func: onYes || closePopup },
         { txt: noText, func: onNo || closePopup }
     ]);
@@ -8865,7 +9252,7 @@ function addCardToHand(cardName) {
 
     if (player.hand.length >= MAX_HAND_SIZE) {
         player.discardPile.push(cardName);
-        log(`🔥 손패가 꽉 차서 [${cardName}] 카드가 버려졌습니다!`);
+        logNarration("system.handFullDiscard", { card: cardName });
         playAnim('btn-discard-pile-floating', 'anim-bounce');
         return false;
     }
@@ -8878,7 +9265,7 @@ function addCardToHand(cardName) {
 function showChooseCardFromPile(pileType, title, onPick) {
     const arr = (pileType === 'draw') ? player.drawPile : player.discardPile;
     if (!Array.isArray(arr) || arr.length === 0) {
-        log("🗂️ 대상 카드 더미가 비어있습니다.");
+        logNarration("battle.emptyPile");
         return false;
     }
 
@@ -8919,6 +9306,7 @@ function showChooseCardFromPile(pileType, title, onPick) {
 }
 
 function showLevelUp() {
+    logNarration("system.levelUp");
     let content = `
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <button class="action-btn" onclick="applyStatUp('str')">💪 근력 (공격↑)</button>
@@ -9013,12 +9401,14 @@ function getCardReward() {
         }
     };
 
+    logNarration("system.cardReward");
     showPopup("🎁 카드 보상", "획득하시겠습니까?", [
         {
             txt: "받기",
             func: () => {
                 const deckLabel = addCardToAppropriateDeck(newCard);
-                log(`🃏 [${newCard}]을(를) ${deckLabel}에 추가했습니다.`);
+                logNarration("system.addCardToDeck", { card: newCard, deck: deckLabel });
+                logNarration("system.learnCard", { card: newCard });
                 finishReward(); // 제자리 유지
             }
         },
@@ -9087,6 +9477,10 @@ function playAnim(elementId, animClass) {
 function renderWinPopup() {
     // 팝업이 닫혀버리는 문제 방지를 위해 상태 재확인
     game.state = "win";
+    if (!game.winNarrated) {
+        logNarration("battle.victory");
+        game.winNarrated = true;
+    }
 
     let btns = [];
     let contentHTML = "";
@@ -9170,6 +9564,7 @@ function getLoot() {
             // 소모품이 꽉 찬 게 아니라, '중복 불가 유물/장비'라서 실패한 경우
             if (itemData.usage === 'passive' || itemData.usage === 'equip') {
                 const label = (itemData.usage === 'equip') ? "장비" : "유물";
+                notifyNarration(`이미 보유하고 있는 ${label}입니다.`);
                 showPopup("획득 불가", `이미 보유하고 있는 ${label}([${game.pendingLoot}])입니다.<br>전리품을 포기합니다.`, [
                     {
                         txt: "확인",
@@ -9593,6 +9988,7 @@ function toggleFullScreen() {
 // 플레이어 스탯/트레잇 확인 팝업
 function openPlayerStats() {
     if (!game.started) return;
+    logNarration("system.openPlayerInfo");
     const s = player.stats;
     const statRows = `
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:left;">
@@ -9781,7 +10177,7 @@ function startInfiniteStage() {
         let bossKeys = Object.keys(ENEMY_DATA).filter(k => k.startsWith('boss_'));
         let bossKey = bossKeys[Math.floor(Math.random() * bossKeys.length)] || "boss_gang_leader";
         startBattle(true, bossKey);
-        log(`💀 <b>STAGE ${infiniteStage} (BOSS)</b> 시작!`);
+        logNarration("system.infiniteStageBoss", { stage: infiniteStage });
     } else {
         // Random enemies (Count logic is inside startBattle if we pass null/array, 
         // but let's customize it or rely on random. 
@@ -9795,7 +10191,7 @@ function startInfiniteStage() {
             picked.push(pool[Math.floor(Math.random() * pool.length)]);
         }
         startBattle(false, picked);
-        log(`⚔️ <b>STAGE ${infiniteStage}</b> 시작!`);
+        logNarration("system.infiniteStage", { stage: infiniteStage });
     }
 }
 
@@ -9836,6 +10232,7 @@ function showInfiniteIntermissionChoices() {
         </div>
     `;
 
+    logNarration("battle.victory");
     showPopup("전투 승리", "다음 행동을 선택하세요.", [], html);
 }
 
@@ -9851,6 +10248,7 @@ function handleInfiniteRest() {
 
     updateUI(); // [CI] UI 갱신 추가
 
+    notifyNarration("당신은 잠시 휴식을 취합니다.");
     showPopup("모닥불", `
         <div style="text-align:center;">
             <div style="font-size:3em; margin-bottom:10px;">🔥</div>

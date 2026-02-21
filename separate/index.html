@@ -171,45 +171,17 @@
             </div>
         </div>
         <div id="hub-scene" class="scene hidden hub-scene">
-            <div class="hub-illustration"></div>
-            <div class="hub-overlay-gradient"></div>
-
-            <div class="hub-content">
-                <div class="hub-hero">
-                    <div class="hub-copy">
-                        <p class="hub-tag">MIDNIGHT OFFICE</p>
-                        <h1>🕵️ 심야 탐정 사무소</h1>
-                        <p class="hub-sub">도시의 어둠을 밝히는 유일한 불빛</p>
-                    </div>
+            <div id="hub-shell" class="city-hybrid-shell panel-hidden">
+                <div class="city-left-info">
+                    <div id="hub-left-title" class="city-left-title"></div>
+                    <div id="hub-left-desc" class="city-left-desc"></div>
                 </div>
-
-                <div class="hub-actions">
-                    <div class="hub-grid">
-                        <button class="hub-card" onclick="openCaseFiles()">
-                            <div class="hub-card-title">📁 사건 파일 (출동)</div>
-                            <div class="hub-card-desc">의뢰를 선택하고 현장으로 나갑니다.</div>
-                        </button>
-                        <button class="hub-card" onclick="renderCityMap()">
-                            <div class="hub-card-title">🗺️ 도시로 외출</div>
-                            <div class="hub-card-desc">사건 현장이나 상점으로 이동합니다.</div>
-                        </button>
-                        <button class="hub-card" onclick="hubRest()">
-                            <div class="hub-card-title">☕ 커피 한 잔 (회복)</div>
-                            <div class="hub-card-desc">체력과 이성을 회복합니다. (1900원)</div>
-                        </button>
-                        <button class="hub-card" onclick="renderShopScreen('shop_internet')">
-                            <div class="hub-card-title">📦 인터넷 주문 (상점)</div>
-                            <div class="hub-card-desc">장비를 구매합니다.</div>
-                        </button>
-                        <button class="hub-card" onclick="openDeckManager()">
-                            <div class="hub-card-title">🃏 덱 정비 (카드)</div>
-                            <div class="hub-card-desc">전투용/대화용 덱을 편집합니다.</div>
-                        </button>
-                        <button class="hub-card" onclick="openStorage()">
-                            <div class="hub-card-title">📦 창고 (보관함)</div>
-                            <div class="hub-card-desc">아이템과 유물을 보관합니다.<br><span style="color:#777; font-size:0.9em;">(보관
-                                    중인 유물은 효과가 꺼집니다)</span></div>
-                        </button>
+                <div id="hub-map" class="city-area-map hub-map">
+                    <div id="hub-object-layer" class="city-area-object-layer"></div>
+                </div>
+                <div class="city-detail-panel is-hidden" id="hub-detail-panel">
+                    <div class="city-dialogue">
+                        <div class="city-dialogue-log" id="hub-dialogue-log"></div>
                     </div>
                 </div>
             </div>
@@ -293,10 +265,15 @@
 
         <div id="city-scene" class="scene hidden city-scene">
             <div id="city-map-mode" class="city-hybrid-shell">
+                <div class="city-left-info">
+                    <div class="city-left-title" id="city-map-left-title">전역 지도</div>
+                    <div class="city-left-desc" id="city-map-left-desc">구역을 선택하세요.</div>
+                </div>
                 <div id="city-map" class="city-map-canvas"></div>
                 <div class="city-detail-panel is-hidden" id="city-detail-panel">
-                    <p class="city-detail-title" id="city-detail-title">구역을 선택하세요</p>
-                    <p class="city-detail-desc" id="city-detail-desc">세주시 전역 지도에서 이동할 구역을 선택하세요.</p>
+                    <div class="city-dialogue" id="city-dialogue-panel-map">
+                        <div class="city-dialogue-log" id="city-dialogue-log-map"></div>
+                    </div>
                     <div class="city-detail-actions">
                         <button class="action-btn" id="city-action-explore" disabled>진입</button>
                         <button class="action-btn city-back-btn" style="background:#7f8c8d;" onclick="renderHub()">🏠 사무소 복귀</button>
@@ -305,13 +282,15 @@
             </div>
 
             <div id="city-area-mode" class="hidden city-hybrid-shell">
+                <div class="city-left-info">
+                    <div class="city-left-title" id="city-area-left-title">지역</div>
+                    <div class="city-left-desc" id="city-area-left-desc">지점을 선택하세요.</div>
+                </div>
                 <div id="city-area-map" class="city-area-map">
                     <svg class="city-area-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
                     <div class="city-area-node-layer"></div>
                 </div>
                 <div class="city-detail-panel city-area-detail is-hidden">
-                    <p class="city-detail-title" id="city-spot-title">지점을 선택하세요</p>
-                    <p class="city-detail-desc" id="city-spot-desc">지도를 눌러 이동할 지점을 선택하세요.</p>
                     <div class="city-dialogue hidden" id="city-dialogue-panel">
                         <div class="city-dialogue-log" id="city-dialogue-log"></div>
                         <div class="city-dialogue-choices" id="city-dialogue-choices"></div>
@@ -408,7 +387,12 @@
 
         <!-- 이벤트/휴식/기타 전용 장면 (switchScene('event')) -->
         <div id="event-scene" class="scene hidden" style="background:#111; padding:20px;">
-            <div id="event-content-box" class="event-box"></div>
+            <div class="event-shell" id="event-shell">
+                <div id="event-content-box" class="event-box"></div>
+                <div class="city-detail-panel event-log-panel is-hidden" id="event-log-panel">
+                    <div class="city-dialogue-log" id="event-dialogue-log"></div>
+                </div>
+            </div>
         </div>
 
 
@@ -489,6 +473,10 @@
             stroke-linecap="round" />
         <circle id="drag-head" cx="0" cy="0" r="8" fill="#e74c3c" stroke="#fff" stroke-width="2" />
     </svg>
+
+    <div id="global-log-panel" class="global-log-panel hidden">
+        <div class="city-dialogue-log" id="global-log"></div>
+    </div>
 </body>
 
 </html>
