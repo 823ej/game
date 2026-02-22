@@ -1,4 +1,4 @@
-﻿/* [dungeon.js] 던전 시스템 모듈 */
+/* [dungeon.js] 던전 시스템 모듈 */
 
 const DungeonSystem = {
     map: [],        // 현재 층의 2D 맵 데이터
@@ -412,6 +412,8 @@ const DungeonSystem = {
     },
     // [신규] 방 타입에 따라 오브젝트 표시/숨김 결정
     checkObjectVisibility: function () {
+        if (!this.map || this.map.length === 0) return;
+        if (!this.map[this.currentPos.y] || !this.map[this.currentPos.y][this.currentPos.x]) return;
         let room = this.map[this.currentPos.y][this.currentPos.x];
         const objWrap = document.getElementById('dungeon-objects');
         if (!objWrap) return;
@@ -425,7 +427,7 @@ const DungeonSystem = {
                     el.style.pointerEvents = 'none';
                 }
                 const icon = obj.icon || "❓";
-                const label = obj.label || "조사하기";
+                const label = obj.label || getUIText("dungeon.objectDefault");
                 el.innerHTML = `
                   <div class="dungeon-obj-icon">${icon}</div>
                   <div class="dungeon-obj-label">${label}</div>
@@ -457,7 +459,7 @@ const DungeonSystem = {
             }
             const list = objects.map(obj => ({
                 icon: obj.icon || room.citySpot.icon || "🏢",
-                label: obj.name || room.citySpot.name || "건물",
+                label: obj.name || room.citySpot.name || getUIText("dungeon.objectBuilding"),
                 data: obj
             }));
             setObjects(list, { disabled: inBattle });
@@ -469,21 +471,21 @@ const DungeonSystem = {
 
         // 비도시: 아이콘 및 라벨 설정
         let icon = "❓";
-        let label = "조사하기";
+        let label = getUIText("dungeon.objectDefault");
         switch (room.type) {
-            case 'treasure': icon = "🎁"; label = "보물상자"; break;
-            case 'heal': icon = "🔥"; label = "모닥불"; break;
-            case 'shop': icon = "⛺"; label = "상점"; break;
-            case 'event': icon = "❔"; label = "무언가 있다"; break;
-            case 'investigate': icon = "🔍"; label = "수상한 흔적"; break;
-            case 'boss': icon = room.locked ? "🔒" : "👹"; label = room.locked ? "잠긴 문" : "보스"; break;
-            case 'box': icon = "📦"; label = "낡은 상자"; break;
-            case 'note': icon = "📄"; label = "떨어진 쪽지"; break;
-            case 'bush': icon = "❔"; label = "무언가 있다"; break;
+            case 'treasure': icon = "🎁"; label = getUIText("dungeon.objectTreasure"); break;
+            case 'heal': icon = "🔥"; label = getUIText("dungeon.objectHeal"); break;
+            case 'shop': icon = "⛺"; label = getUIText("dungeon.objectShop"); break;
+            case 'event': icon = "❔"; label = getUIText("dungeon.objectEvent"); break;
+            case 'investigate': icon = "🔍"; label = getUIText("dungeon.objectInvestigate"); break;
+            case 'boss': icon = room.locked ? "🔒" : "👹"; label = room.locked ? getUIText("dungeon.objectLocked") : getUIText("dungeon.objectBoss"); break;
+            case 'box': icon = "📦"; label = getUIText("dungeon.objectBox"); break;
+            case 'note': icon = "📄"; label = getUIText("dungeon.objectNote"); break;
+            case 'bush': icon = "❔"; label = getUIText("dungeon.objectEvent"); break;
         }
 
         if (room.cleared && !this.isCity) {
-            setObjects([{ icon: "✔", label: "비어 있음" }], { disabled: true });
+            setObjects([{ icon: "✔", label: getUIText("dungeon.objectEmpty") }], { disabled: true });
             objWrap.classList.remove('hidden');
             objWrap.style.pointerEvents = 'none';
             objWrap.style.opacity = 0.5;
@@ -506,7 +508,7 @@ const DungeonSystem = {
     enterRoom: function (dx, dy, fromBack = false) {
         // [방어 로직] 전투 중 이동 불가
         if (typeof game !== 'undefined' && game.state === 'battle') {
-            if (typeof log === 'function') log("⚠️ 전투 중에는 이동할 수 없습니다.");
+            if (typeof log === 'function') log(getUIText("dungeon.logNoMoveBattle"));
             return;
         }
 
@@ -564,8 +566,8 @@ const DungeonSystem = {
             });
         });
 
-        this.renderMinimap();
-        log(`[${room.type}] 방에 진입했습니다.`);
+        this.renderMinimap('minimap-right-grid', 26);
+        log(getUIText("dungeon.roomEnter").replace("[TYPE]", room.type));
         if (typeof autoSave === 'function') {
             autoSave();
         }
@@ -592,9 +594,16 @@ const DungeonSystem = {
         // 시작 방이거나 서쪽 출구가 있을 때
         if (room.type === 'start' || exits.includes('w')) {
             let isStart = (room.type === 'start');
-            let label = isStart ? "🚪 나가기" : "⬅ 이전 구역";
+            let label = isStart ? getUIText("dungeon.doorExitStart") : getUIText("dungeon.doorBack");
             let func = isStart
-                ? () => showPopup("나가기", "던전을 벗어납니다.", [{ txt: "떠나기", func: () => { closePopup(); renderHub(); } }, { txt: "취소", func: closePopup }])
+                ? () => showPopup(
+                    getUIText("dungeon.doorExitTitle"),
+                    getUIText("dungeon.doorExitDesc"),
+                    [
+                        { txt: getUIText("dungeon.doorExitLeave"), func: () => { closePopup(); renderHub(); } },
+                        { txt: getUIText("dungeon.doorExitCancel"), func: closePopup }
+                    ]
+                )
                 : () => this.enterRoom(-1, 0, true); // 뒤로 들어가기(fromBack=true)
 
             this._createDoor(container, 0, "w", "🔙", label, func);
@@ -602,18 +611,18 @@ const DungeonSystem = {
 
         // 2. [동쪽/East] = "앞으로 가기" (무조건 오른쪽 끝 100)
         if (exits.includes('e')) {
-            this._createDoor(container, 100, "e", "➡", "다음 구역", () => this.enterRoom(1, 0));
+            this._createDoor(container, 100, "e", "➡", getUIText("dungeon.doorNext"), () => this.enterRoom(1, 0));
         }
 
         // 3. [북쪽/North] = "배경의 윗 문" (화면 중간 40 지점)
         if (exits.includes('n')) {
             // 아이콘을 문 모양으로 변경하여 '들어간다'는 느낌 주기
-            this._createDoor(container, 40, "n", "🚪", "윗방 진입", () => this.enterRoom(0, -1));
+            this._createDoor(container, 40, "n", "🚪", getUIText("dungeon.doorNorth"), () => this.enterRoom(0, -1));
         }
 
         // 4. [남쪽/South] = "배경의 아랫 문/지하실" (화면 중간 70 지점)
         if (exits.includes('s')) {
-            this._createDoor(container, 70, "s", "🕳️", "아랫방 진입", () => this.enterRoom(0, 1));
+            this._createDoor(container, 70, "s", "🕳️", getUIText("dungeon.doorSouth"), () => this.enterRoom(0, 1));
         }
     },
 
@@ -646,7 +655,7 @@ const DungeonSystem = {
                 if (typeof stopMove === 'function') stopMove();
                 room.battleTriggered = true; // 이번 진입에서 한 번만 발생
                 // 팝업 없이 로그에만 알림 후 바로 전투 시작
-                log("⚠️ 적이 나타났습니다! 전투를 시작합니다.");
+                log(getUIText("dungeon.logEnemyAppear"));
                 startBattle();
             }
         }
@@ -654,7 +663,7 @@ const DungeonSystem = {
     // [신규] 오브젝트 클릭 시 실행되는 함수
     interactWithObject: function (objOverride) {
         if (typeof game !== 'undefined' && game.state === 'battle') {
-            log("⚠️ 전투 중에는 상호작용할 수 없습니다.");
+            log(getUIText("dungeon.logNoInteractBattle"));
             return;
         }
         let room = this.map[this.currentPos.y][this.currentPos.x];
@@ -662,14 +671,14 @@ const DungeonSystem = {
 
         // 플레이어와 오브젝트 거리 체크 (너무 멀면 상호작용 불가)
         if (this.progress < 5 || this.progress > 90) {
-            log("🚫 너무 멉니다. 더 가까이 가세요.");
+            log(getUIText("dungeon.logTooFar"));
             return;
         }
 
         if (this.isCity && room.citySpot) {
             const objects = Array.isArray(room.citySpot.objects) ? room.citySpot.objects : [];
             const runCityObject = (obj) => {
-                const name = obj.name || "이름 없는 객체";
+                const name = obj.name || getUIText("dungeon.objectUnknown");
                 const action = obj.action || "";
                 const dungeonId = obj.dungeonId || obj.targetDungeon;
                 if (action === 'enter_dungeon' && dungeonId) {
@@ -697,9 +706,9 @@ const DungeonSystem = {
                         }
                     }));
                     if (typeof showChoice === 'function') {
-                        showChoice("🚇 이동할 역을 선택하세요", "목적지를 선택하면 바로 이동합니다.", buttons);
+                        showChoice(getUIText("dungeon.subwayTitle"), getUIText("dungeon.subwayDesc"), buttons);
                     } else {
-                        showPopup("🚇 이동할 역을 선택하세요", "목적지를 선택하면 바로 이동합니다.", buttons);
+                        showPopup(getUIText("dungeon.subwayTitle"), getUIText("dungeon.subwayDesc"), buttons);
                     }
                 } else if (action === 'open_casefiles') {
                     if (typeof closePopup === 'function') closePopup();
@@ -719,38 +728,39 @@ const DungeonSystem = {
                 } else if (action === 'hecate_dialogue') {
                     const options = [
                         {
-                            txt: "의뢰 목록 보기",
+                            txt: getUIText("dungeon.hecateOptionCase"),
                             func: () => {
                                 closePopup();
                                 if (typeof openCaseFiles === 'function') openCaseFiles();
                             }
                         },
-                        { txt: "대화 종료", func: closePopup }
+                        { txt: getUIText("dungeon.dialogEnd"), func: closePopup }
                     ];
                     if (typeof showChoice === 'function') {
-                        showChoice("레이디 헤카테", "의뢰가 필요하면 말만 해요.", options);
+                        showChoice(getUIText("dungeon.hecateTitle"), getUIText("dungeon.hecateDesc"), options);
                     } else {
-                        showPopup("레이디 헤카테", "의뢰가 필요하면 말만 해요.", options);
+                        showPopup(getUIText("dungeon.hecateTitle"), getUIText("dungeon.hecateDesc"), options);
                     }
                 } else if (action === 'npc_dialogue' && obj.npcKey) {
                     const npc = (typeof NPC_DATA !== 'undefined') ? NPC_DATA[obj.npcKey] : null;
-                    const title = npc?.name || "해결사";
-                    let desc = npc?.desc || "말을 건다.";
+                    const rawNpcName = npc?.name || getUIText("dungeon.npcDefaultName");
+                    const title = (typeof getActorDisplayName === 'function') ? getActorDisplayName(rawNpcName) : rawNpcName;
+                    let desc = npc?.desc || getUIText("dungeon.npcDefaultDesc");
                     const flag = npc?.flagOnTalk;
                     if (flag && typeof hasGameFlag === 'function' && typeof setGameFlag === 'function') {
                         const was = hasGameFlag(flag);
                         if (!was) {
                             setGameFlag(flag);
-                            desc += "<br><br><span style='color:#c0392b;'>새로운 단서를 얻었다.</span>";
+                            desc += `<br><br><span style='color:#c0392b;'>${getUIText("dungeon.npcNewClue")}</span>`;
                         }
                     }
                     if (typeof showChoice === 'function') {
-                        showChoice(title, desc, [{ txt: "대화 종료", func: closePopup }]);
+                        showChoice(title, desc, [{ txt: getUIText("dungeon.dialogEnd"), func: closePopup }]);
                     } else {
-                        showPopup(title, desc, [{ txt: "대화 종료", func: closePopup }]);
+                        showPopup(title, desc, [{ txt: getUIText("dungeon.dialogEnd"), func: closePopup }]);
                     }
                 } else {
-                    log(`▶ ${name}을(를) 살펴봅니다. (내부 진입 예정)`);
+                    log(getUIText("dungeon.logInspectObject").replace("[NAME]", name));
                 }
             };
             if (objOverride) {
@@ -761,10 +771,10 @@ const DungeonSystem = {
                 if (objects.length === 1) {
                     runCityObject(objects[0]);
                 } else {
-                    const title = room.citySpot.name || "상호작용";
-                    const desc = "무엇을 할까?";
+                    const title = room.citySpot.name || getUIText("dungeon.interactionTitleFallback");
+                    const desc = getUIText("dungeon.interactionDescFallback");
                     const buttons = objects.map(obj => {
-                        const label = `${obj.icon ? `${obj.icon} ` : ""}${obj.name || "상호작용"}`;
+                        const label = `${obj.icon ? `${obj.icon} ` : ""}${obj.name || getUIText("dungeon.interactionLabelFallback")}`;
                         return {
                             txt: label,
                             func: () => {
@@ -773,7 +783,7 @@ const DungeonSystem = {
                             }
                         };
                     });
-                    buttons.push({ txt: "취소", func: closePopup });
+                    buttons.push({ txt: getUIText("dungeon.cancel"), func: closePopup });
                     if (typeof showChoice === 'function') {
                         showChoice(title, desc, buttons);
                     } else {
@@ -781,7 +791,7 @@ const DungeonSystem = {
                     }
                 }
             } else {
-                log("▶ 내부 진입/상호작용은 추후 구현 예정입니다.");
+                log(getUIText("dungeon.logInteractPending"));
             }
             return;
         }
@@ -795,7 +805,11 @@ const DungeonSystem = {
             let gold = Math.floor(Math.random() * 200) + 100;
             player.gold += gold;
             updateUI();
-            showPopup("상자 열기", `상자를 열었습니다!<br><span style="color:#f1c40f">${gold} 골드</span>를 획득했습니다.`, [{ txt: "확인", func: closePopup }]);
+            showPopup(
+                getUIText("dungeon.treasureTitle"),
+                getUIText("dungeon.treasureDesc").replace("[GOLD]", gold),
+                [{ txt: getUIText("dungeon.treasureConfirm"), func: closePopup }]
+            );
         }
         else if (room.type === 'heal') {
             renderRestScreen();
@@ -818,7 +832,12 @@ const DungeonSystem = {
             // 아이템 획득 시도
             addItem(item, () => {
                 updateUI();
-                showPopup("상자 개봉", `상자 안에서 <span style="color:#2ecc71">[${item}]</span>을(를) 발견했습니다!`, [{ txt: "확인", func: closePopup }]);
+                const displayName = (typeof getItemDisplayName === 'function') ? getItemDisplayName(item) : item;
+                showPopup(
+                    getUIText("dungeon.boxTitle"),
+                    getUIText("dungeon.boxDesc").replace("[ITEM]", `[${displayName}]`),
+                    [{ txt: getUIText("dungeon.treasureConfirm"), func: closePopup }]
+                );
             });
             this.checkObjectVisibility(); // 아이콘 갱신 (빈 상자 처리)
         }
@@ -830,8 +849,11 @@ const DungeonSystem = {
             game.scenario.clues = Math.min(100, game.scenario.clues + gain);
             updateUI();
 
-            let noteText = room.text || "'배달부는 폐기물 처리장으로 갔다'라고 적혀있습니다.";
-            showPopup("쪽지 읽기", `<i>"${noteText}"</i><br><br><span style="color:#f1c40f">🔍 단서 획득 (+${gain})</span>`, [{ txt: "확인", func: closePopup }]);
+            let noteText = room.text || getUIText("dungeon.noteDefaultText");
+            const noteDesc = getUIText("dungeon.noteDesc")
+                .replace("[TEXT]", noteText)
+                .replace("[AMOUNT]", gain);
+            showPopup(getUIText("dungeon.noteTitle"), noteDesc, [{ txt: getUIText("dungeon.treasureConfirm"), func: closePopup }]);
             this.checkObjectVisibility();
         }
 
@@ -842,9 +864,9 @@ const DungeonSystem = {
                 if (typeof unlockCitySpot === 'function') {
                     unlockCitySpot(discovery.areaId, discovery.key);
                 }
-                showPopup("발견", `${discovery.name} 구역을 찾아냈습니다!<br>이제 지도에서 바로 이동할 수 있습니다.`, [
-                    { txt: "복귀", func: () => { closePopup(); handleDungeonExit(); } },
-                    { txt: "계속 탐색", func: closePopup }
+                showPopup(getUIText("dungeon.discoveryTitle"), getUIText("dungeon.discoveryDesc").replace("[NAME]", discovery.name), [
+                    { txt: getUIText("dungeon.discoveryReturn"), func: () => { closePopup(); handleDungeonExit(); } },
+                    { txt: getUIText("dungeon.discoveryContinue"), func: closePopup }
                 ]);
                 return;
             }
@@ -853,9 +875,15 @@ const DungeonSystem = {
                 if (game.scenario.clues >= this.REQUIRED_CLUES) {
                     room.locked = false;
                     this.checkObjectVisibility();
-                    showPopup("해금", "단서를 맞춰보니 보스의 위치가 확실해졌습니다.<br>문이 열립니다.", [{ txt: "확인", func: closePopup }]);
+                    showPopup(getUIText("dungeon.bossUnlockTitle"), getUIText("dungeon.bossUnlockDesc"), [{ txt: getUIText("dungeon.treasureConfirm"), func: closePopup }]);
                 } else {
-                    showPopup("잠김", `단서가 부족하여 진입할 수 없습니다.<br>(${game.scenario.clues}/${this.REQUIRED_CLUES})`, [{ txt: "돌아가기", func: closePopup }]);
+                    showPopup(
+                        getUIText("dungeon.bossLockedTitle"),
+                        getUIText("dungeon.bossLockedDesc")
+                            .replace("[CURRENT]", game.scenario.clues)
+                            .replace("[REQUIRED]", this.REQUIRED_CLUES),
+                        [{ txt: getUIText("dungeon.bossLockedBack"), func: closePopup }]
+                    );
                 }
             } else {
                 // [2] 열려 있을 때 (전투 진입)
@@ -879,7 +907,11 @@ const DungeonSystem = {
 
         if (!game.scenario || !game.scenario.isActive) {
             updateUI();
-            showPopup("조사 완료", "주변을 조사했지만 진행도에 영향이 없습니다.", [{ txt: "확인", func: closePopup }]);
+            showPopup(
+                getUIText("dungeon.investigateTitle"),
+                getUIText("dungeon.investigateNoScenarioDesc"),
+                [{ txt: getUIText("dungeon.treasureConfirm"), func: closePopup }]
+            );
             return;
         }
 
@@ -890,15 +922,17 @@ const DungeonSystem = {
         // UI 갱신 (game.js의 updateUI 호출)
         updateUI();
 
-        let msg = `단서를 확보했습니다! (+${gain})<br>현재 진척도: ${game.scenario.clues}%`;
+        let msg = getUIText("dungeon.investigateResult")
+            .replace("[GAIN]", gain)
+            .replace("[CLUES]", game.scenario.clues);
 
         // 보스 해금 알림
         if (game.scenario.clues >= this.REQUIRED_CLUES) {
-            msg += `<br><br><b style="color:#f1c40f">★ 보스 방의 위치가 파악되었습니다!</b>`;
+            msg += getUIText("dungeon.bossFoundSuffix");
             // (선택 사항) 미니맵에 보스방 아이콘 강조 표시 로직 추가 가능
         }
 
-        showPopup("조사 완료", msg, [{ txt: "확인", func: closePopup }]);
+        showPopup(getUIText("dungeon.investigateTitle"), msg, [{ txt: getUIText("dungeon.treasureConfirm"), func: closePopup }]);
     },
 
     // 헬퍼: 방 연결
@@ -913,6 +947,8 @@ const DungeonSystem = {
     },
     /* [dungeon.js] renderView 함수 수정 (초기 진입/텔레포트 시 슬라이딩 방지) */
     renderView: function () {
+        if (!this.map || this.map.length === 0) return;
+        if (!this.map[this.currentPos.y] || !this.map[this.currentPos.y][this.currentPos.x]) return;
         // 1. 현재 방 데이터 가져오기 및 문 생성
         let room = this.map[this.currentPos.y][this.currentPos.x];
         this.renderDoors(room);
@@ -994,6 +1030,8 @@ const DungeonSystem = {
     renderMinimap: function (gridId = 'minimap-grid', cellSize = 50) {
         const grid = document.getElementById(gridId);
         if (!grid) return;
+        if (!this.map || this.map.length === 0) return;
+        if (!this.map[0]) return;
 
         // 도시 모드일 때는 지도를 넉넉하게 키움
         if (this.isCity) {
@@ -1163,7 +1201,7 @@ const DungeonSystem = {
 
         // 이동 메시지
         let roomType = this.map[y][x].type;
-        log(`🚀 [${roomType}] 구역으로 신속 이동했습니다.`);
+        log(getUIText("dungeon.quickMoveLog").replace("[TYPE]", roomType));
     }
 
 };
@@ -1296,4 +1334,5 @@ if (document.readyState === 'loading') {
 } else {
     initDungeonMovementInputs();
 }
+
 

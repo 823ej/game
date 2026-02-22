@@ -144,11 +144,11 @@ const StoryEngine = {
         this.isSkipping = !this.isSkipping;
         const btn = document.getElementById("btn-skip");
         if (this.isSkipping) {
-            if(btn) { btn.innerText = "SKIP ON ▶▶"; btn.classList.add("active"); }
+            if (btn) { btn.innerText = getUIText("story.skipOn"); btn.classList.add("active"); }
             if (this.isTyping) this.finishTyping();
             else nextDialog();
         } else {
-            if(btn) { btn.innerText = "SKIP"; btn.classList.remove("active"); }
+            if (btn) { btn.innerText = getUIText("story.skipButton"); btn.classList.remove("active"); }
         }
     },
 
@@ -185,12 +185,12 @@ const StoryEngine = {
         document.body.appendChild(uiContainer);
 
         let btnLog = document.createElement("button");
-        btnLog.innerText = "LOG"; btnLog.className = "story-ui-btn";
+        btnLog.innerText = getUIText("story.logButton"); btnLog.className = "story-ui-btn";
         btnLog.onclick = (e) => { e.stopPropagation(); this.toggleLog(); };
         uiContainer.appendChild(btnLog);
 
         let btnSkip = document.createElement("button");
-        btnSkip.id = "btn-skip"; btnSkip.innerText = "SKIP"; btnSkip.className = "story-ui-btn";
+        btnSkip.id = "btn-skip"; btnSkip.innerText = getUIText("story.skipButton"); btnSkip.className = "story-ui-btn";
         btnSkip.onclick = (e) => { e.stopPropagation(); this.toggleSkip(); };
         uiContainer.appendChild(btnSkip);
 
@@ -225,3 +225,4 @@ function nextDialog() {
         StoryEngine.playNext();
     }
 }
+

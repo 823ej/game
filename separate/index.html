@@ -18,13 +18,13 @@
 <body>
     <div class="utility-dock">
         <div class="utility-dock-inner">
-            <div id="game-info" class="utility-pill">Lv.1 | 0 | 30/30 | 100/100</div>
+            <div id="game-info" class="utility-pill"></div>
 
             <div id="top-scenario-info" class="scenario-pill hidden">
-                <span id="sc-title-mini">의뢰명 | 0%</span>
+                <span id="sc-title-mini"></span>
             </div>
 
-            <div id="doom-pill" class="utility-pill hidden">Doom 0%</div>
+            <div id="doom-pill" class="utility-pill hidden"></div>
 
             <div class="utility-buttons">
                 <button id="btn-game-menu" class="small-btn" onclick="openGameMenu()">≡</button>
@@ -39,10 +39,9 @@
                 <p class="game-subtitle">The City of Shadows</p>
 
                 <div class="start-menu">
-                    <button id="btn-continue" class="action-btn hidden" onclick="loadGame()">이어하기</button>
-                    <button id="btn-new-game" class="action-btn" onclick="startCharacterCreation()">새 게임</button>
-                    <button id="btn-infinite-mode" class="action-btn" onclick="startInfiniteJobSelection()">무한 모드
-                        (Infinite)</button>
+                    <button id="btn-continue" class="action-btn hidden" onclick="loadGame()"></button>
+                    <button id="btn-new-game" class="action-btn" onclick="startCharacterCreation()"></button>
+                    <button id="btn-infinite-mode" class="action-btn" onclick="startInfiniteJobSelection()"></button>
                 </div>
                 <div class="version-info">Ver 2.5</div>
             </div>
@@ -55,15 +54,9 @@
             <div class="inventory-panel" onclick="event.stopPropagation()">
 
                 <div class="inventory-header-tabs">
-                    <button id="tab-consume" class="inv-tab active" onclick="switchInvTab('consume')">
-                        🎒 소모품 <span id="cnt-consume" style="font-size:0.8em">(0/6)</span>
-                    </button>
-                    <button id="tab-equip" class="inv-tab" onclick="switchInvTab('equip')">
-                        🧰 장비 <span id="cnt-equip" style="font-size:0.8em">(0)</span>
-                    </button>
-                    <button id="tab-relic" class="inv-tab" onclick="switchInvTab('relic')">
-                        💍 유물 <span id="cnt-relic" style="font-size:0.8em">(0)</span>
-                    </button>
+                    <button id="tab-consume" class="inv-tab active" onclick="switchInvTab('consume')"></button>
+                    <button id="tab-equip" class="inv-tab" onclick="switchInvTab('equip')"></button>
+                    <button id="tab-relic" class="inv-tab" onclick="switchInvTab('relic')"></button>
                     <button class="small-btn close-inv-btn" onclick="closeInventory()">✖</button>
                 </div>
 
@@ -73,15 +66,13 @@
                     </div>
                 </div>
 
-                <div style="font-size:0.8em; color:#777; margin-top:5px;">
-                    아이템을 클릭하여 사용하거나 정보를 확인하세요.
-                </div>
+                <div id="inventory-hint" style="font-size:0.8em; color:#777; margin-top:5px;"></div>
             </div>
         </div>
         <div id="game-menu-overlay" class="game-menu-overlay hidden" onclick="closeGameMenu()">
             <div class="game-menu-panel" onclick="event.stopPropagation()">
                 <div class="game-menu-header">
-                    <div class="game-menu-title">GAME MENU</div>
+                    <div id="game-menu-title" class="game-menu-title">GAME MENU</div>
                 </div>
                 <div class="game-menu-nav-row">
                     <button id="game-menu-prev" class="small-btn hidden" onclick="showGameMenuPrev()">←</button>
@@ -91,38 +82,38 @@
                     <div id="game-menu-home" class="game-menu-grid menu-home-vertical">
                         <button id="menu-tile-status" class="menu-tile" onclick="openGameMenuAction('status')">
                             <div class="menu-tile-icon">🧬</div>
-                            <div class="menu-tile-title">상태</div>
-                            <div class="menu-tile-desc">스탯과 현재 상태</div>
+                            <div id="menu-tile-status-title" class="menu-tile-title"></div>
+                            <div id="menu-tile-status-desc" class="menu-tile-desc"></div>
                         </button>
                         <button id="menu-tile-inventory" class="menu-tile" onclick="openGameMenuAction('inventory')">
                             <div class="menu-tile-icon">🎒</div>
-                            <div class="menu-tile-title">아이템</div>
-                            <div class="menu-tile-desc">가방 및 소모품</div>
+                            <div id="menu-tile-inventory-title" class="menu-tile-title"></div>
+                            <div id="menu-tile-inventory-desc" class="menu-tile-desc"></div>
                         </button>
                         <button id="menu-tile-cards" class="menu-tile" onclick="openGameMenuAction('cards')">
                             <div class="menu-tile-icon">🃏</div>
-                            <div class="menu-tile-title">스킬/카드</div>
-                            <div class="menu-tile-desc">카드 컬렉션</div>
+                            <div id="menu-tile-cards-title" class="menu-tile-title"></div>
+                            <div id="menu-tile-cards-desc" class="menu-tile-desc"></div>
                         </button>
                         <button id="menu-tile-missions" class="menu-tile" onclick="openGameMenuAction('missions')">
                             <div class="menu-tile-icon">📌</div>
-                            <div class="menu-tile-title">의뢰</div>
-                            <div class="menu-tile-desc">진행 중 의뢰</div>
+                            <div id="menu-tile-missions-title" class="menu-tile-title"></div>
+                            <div id="menu-tile-missions-desc" class="menu-tile-desc"></div>
                         </button>
                         <button id="menu-tile-options" class="menu-tile" onclick="openGameMenuAction('options')">
                             <div class="menu-tile-icon">⚙️</div>
-                            <div class="menu-tile-title">옵션</div>
-                            <div class="menu-tile-desc">설정 및 표시</div>
+                            <div id="menu-tile-options-title" class="menu-tile-title"></div>
+                            <div id="menu-tile-options-desc" class="menu-tile-desc"></div>
                         </button>
                         <button id="menu-tile-reset" class="menu-tile danger" onclick="openGameMenuAction('reset')">
                             <div class="menu-tile-icon">🗑️</div>
-                            <div class="menu-tile-title">데이터 초기화</div>
-                            <div class="menu-tile-desc">저장 데이터 삭제</div>
+                            <div id="menu-tile-reset-title" class="menu-tile-title"></div>
+                            <div id="menu-tile-reset-desc" class="menu-tile-desc"></div>
                         </button>
                         <button id="menu-tile-fullscreen" class="menu-tile" onclick="openGameMenuAction('fullscreen')">
                             <div class="menu-tile-icon">⛶</div>
-                            <div class="menu-tile-title">전체 화면</div>
-                            <div class="menu-tile-desc">화면 전환</div>
+                            <div id="menu-tile-fullscreen-title" class="menu-tile-title"></div>
+                            <div id="menu-tile-fullscreen-desc" class="menu-tile-desc"></div>
                         </button>
                     </div>
                     <div id="game-menu-content" class="game-menu-content hidden"></div>
@@ -137,10 +128,10 @@
             <div class="inventory-panel" onclick="event.stopPropagation()" style="height: 600px;">
                 <div class="inventory-header-tabs">
                     <button id="tab-col-battle" class="inv-tab active" onclick="switchCollectionTab('battle')">
-                        ⚔️ 전투 덱 <span id="cnt-col-battle" style="font-size:0.8em">(0)</span>
+                        <span id="tab-col-battle-label"></span> <span id="cnt-col-battle" style="font-size:0.8em">(0)</span>
                     </button>
                     <button id="tab-col-social" class="inv-tab" onclick="switchCollectionTab('social')">
-                        💬 소셜 덱 <span id="cnt-col-social" style="font-size:0.8em">(0)</span>
+                        <span id="tab-col-social-label"></span> <span id="cnt-col-social" style="font-size:0.8em">(0)</span>
                     </button>
                     <button class="small-btn close-inv-btn" onclick="closeCardCollection()">✖</button>
                 </div>
@@ -156,7 +147,7 @@
                 onclick="event.stopPropagation()">
 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <h3 style="margin:0; color:#f1c40f;">🗺️ 지역 지도</h3>
+                    <h3 id="minimap-title" style="margin:0; color:#f1c40f;"></h3>
                     <button class="small-btn" onclick="toggleMinimap()">✖</button>
                 </div>
 
@@ -164,10 +155,7 @@
                     <div id="minimap-grid" class="minimap-grid"></div>
                 </div>
 
-                <div style="margin-top:10px; font-size:0.9em; color:#aaa;">
-                    <span style="color:#f1c40f">■</span> 현재 위치 / <span style="color:#555">■</span> 미방문 / <span
-                        style="color:#ddd">■</span> 방문함
-                </div>
+                <div id="minimap-legend" style="margin-top:10px; font-size:0.9em; color:#aaa;"></div>
             </div>
         </div>
         <div id="hub-scene" class="scene hidden hub-scene">
@@ -189,21 +177,21 @@
         <div id="deck-scene" class="scene hidden" style="background:#222;">
             <div
                 style="padding:10px; background:#333; box-shadow:0 2px 5px rgba(0,0,0,0.5); display:flex; justify-content:space-between; align-items:center;">
-                <h2 style="margin:0; color:#eee;">🃏 덱 관리</h2>
+                <h2 id="deck-title" style="margin:0; color:#eee;"></h2>
                 <div>
                     <button id="tab-battle" class="small-btn" style="background:#e74c3c; font-weight:bold;"
-                        onclick="switchDeckMode('battle')">⚔️ 전투 덱</button>
+                        onclick="switchDeckMode('battle')"></button>
                     <button id="tab-social" class="small-btn" style="background:#8e44ad; font-weight:bold; opacity:0.5;"
-                        onclick="switchDeckMode('social')">💬 소셜 덱</button>
+                        onclick="switchDeckMode('social')"></button>
                 </div>
-                <button class="small-btn" onclick="renderHub()">❌ 닫기</button>
+                <button id="deck-close" class="small-btn" onclick="renderHub()"></button>
             </div>
 
             <div class="deck-builder-container">
                 <div class="deck-column">
                     <div class="deck-header">
-                        <h3>장착 중 (<span id="deck-count">0</span>)</h3>
-                        <span style="font-size:0.8em; color:#aaa;">전투에 가져갈 카드입니다.</span>
+                        <h3><span id="deck-active-label"></span> (<span id="deck-count">0</span>)</h3>
+                        <span id="deck-active-help" style="font-size:0.8em; color:#aaa;"></span>
                     </div>
                     <div id="active-deck-list" class="card-grid"></div>
                 </div>
@@ -212,8 +200,8 @@
 
                 <div class="deck-column" style="background:#2c3e50;">
                     <div class="deck-header">
-                        <h3>보관함 (<span id="storage-count">0</span>)</h3>
-                        <span style="font-size:0.8em; color:#aaa;">대기 중인 카드입니다.</span>
+                        <h3><span id="deck-storage-label"></span> (<span id="storage-count">0</span>)</h3>
+                        <span id="deck-storage-help" style="font-size:0.8em; color:#aaa;"></span>
                     </div>
                     <div id="storage-list" class="card-grid"></div>
                 </div>
@@ -222,27 +210,27 @@
         <div id="storage-scene" class="scene hidden" style="background:#222;">
             <div
                 style="padding:10px; background:#333; box-shadow:0 2px 5px rgba(0,0,0,0.5); display:flex; justify-content:space-between; align-items:center;">
-                <h2 style="margin:0; color:#f39c12; font-size:1.2em;">📦 개인 창고</h2>
+                <h2 id="storage-title" style="margin:0; color:#f39c12; font-size:1.2em;"></h2>
 
                 <div>
                     <button id="tab-storage-consume" class="small-btn" style="background:#27ae60; font-weight:bold;"
-                        onclick="switchStorageMode('consume')">🎒 소모품</button>
+                        onclick="switchStorageMode('consume')"></button>
                     <button id="tab-storage-equip" class="small-btn"
                         style="background:#3498db; font-weight:bold; opacity:0.5;"
-                        onclick="switchStorageMode('equip')">🧰 장비</button>
+                        onclick="switchStorageMode('equip')"></button>
                     <button id="tab-storage-relic" class="small-btn"
                         style="background:#e67e22; font-weight:bold; opacity:0.5;"
-                        onclick="switchStorageMode('relic')">💍 유물</button>
+                        onclick="switchStorageMode('relic')"></button>
                 </div>
 
-                <button class="small-btn" onclick="renderHub()">❌ 나가기</button>
+                <button id="storage-exit" class="small-btn" onclick="renderHub()"></button>
             </div>
 
             <div class="deck-builder-container">
                 <div class="deck-column">
                     <div class="deck-header">
-                        <h3 id="storage-bag-title">🎒 가방</h3>
-                        <span style="font-size:0.8em; color:#aaa;">현재 소지 중</span>
+                        <h3 id="storage-bag-title"></h3>
+                        <span id="storage-bag-desc" style="font-size:0.8em; color:#aaa;"></span>
                     </div>
                     <div id="storage-bag-list" class="card-grid"
                         style="display:flex; flex-wrap:wrap; align-content:flex-start; gap:5px;"></div>
@@ -254,8 +242,8 @@
 
                 <div class="deck-column" style="background:#1f2a36;">
                     <div class="deck-header">
-                        <h3 id="storage-wh-title">📦 창고</h3>
-                        <span style="font-size:0.8em; color:#aaa;">보관 중 (유물 효과 꺼짐)</span>
+                        <h3 id="storage-wh-title"></h3>
+                        <span id="storage-wh-desc" style="font-size:0.8em; color:#aaa;"></span>
                     </div>
                     <div id="storage-warehouse-list" class="card-grid"
                         style="display:flex; flex-wrap:wrap; align-content:flex-start; gap:5px;"></div>
@@ -266,25 +254,25 @@
         <div id="city-scene" class="scene hidden city-scene">
             <div id="city-map-mode" class="city-hybrid-shell">
                 <div class="city-left-info">
-                    <div class="city-left-title" id="city-map-left-title">전역 지도</div>
-                    <div class="city-left-desc" id="city-map-left-desc">구역을 선택하세요.</div>
+                    <div class="city-left-title" id="city-map-left-title"></div>
+                    <div class="city-left-desc" id="city-map-left-desc"></div>
                 </div>
                 <div id="city-map" class="city-map-canvas"></div>
                 <div class="city-detail-panel is-hidden" id="city-detail-panel">
                     <div class="city-dialogue" id="city-dialogue-panel-map">
                         <div class="city-dialogue-log" id="city-dialogue-log-map"></div>
                     </div>
-                    <div class="city-detail-actions">
-                        <button class="action-btn" id="city-action-explore" disabled>진입</button>
-                        <button class="action-btn city-back-btn" style="background:#7f8c8d;" onclick="renderHub()">🏠 사무소 복귀</button>
+                    <div class="city-detail-actions hidden">
+                        <button class="action-btn" id="city-action-explore" disabled></button>
+                        <button id="city-back-office" class="action-btn city-back-btn" style="background:#7f8c8d;" onclick="renderHub()"></button>
                     </div>
                 </div>
             </div>
 
             <div id="city-area-mode" class="hidden city-hybrid-shell">
                 <div class="city-left-info">
-                    <div class="city-left-title" id="city-area-left-title">지역</div>
-                    <div class="city-left-desc" id="city-area-left-desc">지점을 선택하세요.</div>
+                    <div class="city-left-title" id="city-area-left-title"></div>
+                    <div class="city-left-desc" id="city-area-left-desc"></div>
                 </div>
                 <div id="city-area-map" class="city-area-map">
                     <svg class="city-area-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
@@ -298,91 +286,87 @@
                     <div class="city-case-panel hidden" id="city-case-panel">
                         <div class="city-case-list" id="city-case-list"></div>
                         <div class="city-case-actions">
-                            <button class="action-btn" id="btn-case-close">닫기</button>
+                            <button class="action-btn" id="btn-case-close"></button>
                         </div>
                     </div>
-                    <div class="city-spot-actions">
-                        <button class="action-btn" id="btn-area-enter">진입</button>
-                        <button class="action-btn hidden" id="btn-area-back-area">◀ 구시가지로</button>
-                        <button class="action-btn" id="btn-area-back-map" onclick="exitCityAreaMode()">◀ 전역 지도</button>
+                    <div class="city-spot-actions hidden">
+                        <button class="action-btn" id="btn-area-enter"></button>
+                        <button class="action-btn hidden" id="btn-area-back-area"></button>
+                        <button class="action-btn" id="btn-area-back-map" onclick="exitCityAreaMode()"></button>
                     </div>
                 </div>
             </div>
         </div>
         <div id="exploration-scene" class="scene hidden">
 
-            <div class="stage-view" id="dungeon-stage">
-                <div id="layer-bg" class="parallax-layer"></div>
+            <div id="exploration-shell" class="explore-hybrid-shell">
+                <div class="explore-main">
+                    <div class="stage-view" id="dungeon-stage">
+                        <div id="layer-bg" class="parallax-layer"></div>
 
-                <div id="layer-char" class="parallax-layer" style="z-index:20;">
+                        <div id="layer-char" class="parallax-layer" style="z-index:20;">
 
-                    <div id="turn-timeline" class="timeline-container battle-ui hidden"></div>
+                            <div id="turn-timeline" class="timeline-container battle-ui hidden"></div>
 
-                    <div id="dungeon-player-wrapper">
-                        <img id="dungeon-player" src="assets/player.png" alt="Player">
-                        <div id="player-hud"></div>
+                            <div id="dungeon-player-wrapper">
+                                <img id="dungeon-player" src="assets/player.png" alt="Player">
+                                <div id="player-hud"></div>
+                            </div>
+                            <div id="dungeon-objects" class="room-objects hidden"></div>
+
+                            <div id="dungeon-doors"></div>
+                            <div id="dungeon-enemies" class="enemies-wrapper"></div>
+
+                            <div class="pile-buttons battle-ui hidden">
+                                <button id="btn-draw-pile-floating" class="small-btn pile-btn"
+                                    onclick="openPileView('draw')"></button>
+                                <div class="pile-btn-stack">
+                                    <button id="btn-exhaust-pile-floating" class="small-btn pile-btn"
+                                        onclick="openPileView('exhaust')"></button>
+                                    <button id="btn-discard-pile-floating" class="small-btn pile-btn"
+                                        onclick="openPileView('discard')"></button>
+                                </div>
+                            </div>
+
+                            <div id="interaction-bubble" class="hidden"></div>
+                        </div>
+
+                        <div id="layer-fg" class="parallax-layer"></div>
                     </div>
-                    <div id="dungeon-objects" class="room-objects hidden"></div>
 
-                    <div id="dungeon-doors"></div>
-                    <div id="dungeon-enemies" class="enemies-wrapper"></div>
+                    <div class="control-group battle-ui hidden">
+                        <div id="ap-indicator">
+                            <div class="ap-inner">
+                                <span id="ap-val">3</span><span class="ap-sep">/</span><span id="ap-max">3</span>
+                            </div>
+                            <div id="ap-label" class="ap-label"></div>
+                        </div>
 
-                    <div class="pile-buttons battle-ui hidden">
-                        <button id="btn-draw-pile-floating" class="small-btn pile-btn"
-                            onclick="openPileView('draw')">덱(0)</button>
-                        <div class="pile-btn-stack">
-                            <button id="btn-exhaust-pile-floating" class="small-btn pile-btn"
-                                onclick="openPileView('exhaust')">소멸(0)</button>
-                            <button id="btn-discard-pile-floating" class="small-btn pile-btn"
-                                onclick="openPileView('discard')">버림(0)</button>
+                        <div id="btn-group-right" class="btn-group-right">
+                            <button id="end-turn-btn" class="action-btn btn-end-turn-side" onclick="endPlayerTurn()"></button>
                         </div>
                     </div>
 
-                    <div id="interaction-bubble" class="hidden">! 조사하기</div>
+                    <div class="hand-area battle-ui hidden" id="hand-container"></div>
                 </div>
 
-                <div id="layer-fg" class="parallax-layer"></div>
-                <div id="minimap-toggle-wrapper">
-                    <button id="btn-minimap" onclick="DungeonSystem.toggleMiniMapInline()" class="small-btn">🗺️
-                        지도</button>
-                    <div id="minimap-inline" class="mini-map hidden" onclick="event.stopPropagation()">
-                        <div class="mini-map-header">
-                            <span>🗺️ 지도</span>
-                            <button class="small-btn" onclick="DungeonSystem.toggleMiniMapInline()">✕</button>
+                <div class="city-detail-panel explore-detail-panel" id="explore-detail-panel">
+                    <div class="explore-minimap-panel">
+                        <div id="explore-minimap-title" class="explore-minimap-header"></div>
+                        <div class="explore-minimap-body">
+                            <div id="minimap-right-grid" class="minimap-grid mini"></div>
                         </div>
-                        <div id="minimap-inline-grid" class="minimap-grid mini"></div>
+                    </div>
+                    <div class="city-dialogue">
+                        <div class="city-dialogue-log" id="explore-dialogue-log"></div>
+                    </div>
+                    <div class="explore-log-actions" id="explore-log-actions">
+                        <button id="explore-btn-status" class="action-btn" onclick="openPlayerStats()"></button>
+                        <button id="explore-btn-inventory" class="action-btn" onclick="openInventory()"></button>
+                        <button id="explore-btn-escape" class="action-btn" onclick="confirmRetreat()"></button>
                     </div>
                 </div>
             </div>
-
-            <div class="bottom-ui-stack">
-                <div id="shared-log" class="shared-log-area">
-                    <div style="color:#aaa; font-style:italic;">모험이 시작됩니다.</div>
-                </div>
-
-                <div class="action-grid exploration-ui" id="dungeon-actions">
-                    <button class="action-btn" onclick="DungeonSystem.checkRoomEvent()">조사</button>
-                    <button class="action-btn" onclick="openInventory()">🎒 가방</button>
-                    <button class="action-btn" onclick="confirmRetreat()">🏃 탈출</button>
-                </div>
-
-                <div class="control-group battle-ui hidden">
-                    <div id="ap-indicator">
-                        <div class="ap-inner">
-                            <span id="ap-val">3</span><span class="ap-sep">/</span><span id="ap-max">3</span>
-                        </div>
-                        <div class="ap-label">AP</div>
-                    </div>
-
-                    <div id="btn-group-right" class="btn-group-right">
-                        <button id="end-turn-btn" class="action-btn btn-end-turn-side" onclick="endPlayerTurn()">
-                            턴<br>종료
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="hand-area battle-ui hidden" id="hand-container"></div>
         </div>
 
         <!-- 이벤트/휴식/기타 전용 장면 (switchScene('event')) -->
@@ -401,23 +385,22 @@
             <div style="text-align:center; animation: fadeIn 1s;">
                 <h1 style="color:#f1c40f; font-size:3em; margin-bottom:10px; text-shadow:0 0 10px #f1c40f;">MISSION
                     COMPLETE</h1>
-                <p style="color:#aaa; margin-bottom:40px;">의뢰를 성공적으로 완수했습니다.</p>
+                <p id="event-clear-desc" style="color:#aaa; margin-bottom:40px;"></p>
 
                 <div
                     style="background:#222; padding:30px; border-radius:10px; border:1px solid #444; width:300px; margin:0 auto; text-align:left;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <span>💰 의뢰비:</span> <span id="res-gold" style="color:#f1c40f; font-weight:bold;">0 원</span>
+                        <span id="res-gold-label"></span> <span id="res-gold" style="color:#f1c40f; font-weight:bold;"></span>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <span>✨ 경험치:</span> <span id="res-xp" style="color:#3498db; font-weight:bold;">0 XP</span>
+                        <span id="res-xp-label"></span> <span id="res-xp" style="color:#3498db; font-weight:bold;"></span>
                     </div>
                     <div style="display:flex; justify-content:space-between;">
-                        <span>🎁 특별 보상:</span> <span id="res-item" style="color:#2ecc71;">없음</span>
+                        <span id="res-item-label"></span> <span id="res-item" style="color:#2ecc71;"></span>
                     </div>
                 </div>
 
-                <button class="action-btn" style="margin-top:40px; width:200px;" onclick="returnToHub()">🏠 사무소로
-                    복귀</button>
+                <button id="event-return-office" class="action-btn" style="margin-top:40px; width:200px;" onclick="returnToHub()"></button>
             </div>
         </div>
     </div>
@@ -433,8 +416,8 @@
         </div>
 
         <div class="dialog-container" onclick="nextDialog()">
-            <div id="story-name" class="name-tag">이름</div>
-            <div id="story-text" class="dialog-text">대사가 출력됩니다.</div>
+            <div id="story-name" class="name-tag"></div>
+            <div id="story-text" class="dialog-text"></div>
             <div class="next-icon">▼</div>
         </div>
 
@@ -444,8 +427,8 @@
 
     <div id="popup-layer">
         <div class="popup-box" onclick="event.stopPropagation()">
-            <h2 id="popup-title" style="color:#f1c40f;">제목</h2>
-            <div id="popup-desc" style="font-size:1.1em; color:#222; margin:10px 0;">내용</div>
+            <h2 id="popup-title" style="color:#f1c40f;"></h2>
+            <div id="popup-desc" style="font-size:1.1em; color:#222; margin:10px 0;"></div>
             <div id="popup-content"></div>
             <div class="popup-btns" id="popup-buttons"></div>
         </div>

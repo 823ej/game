@@ -1830,6 +1830,75 @@ body {
     display: block;
 }
 
+.explore-hybrid-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 18px;
+    align-items: stretch;
+    width: 100%;
+    height: 100%;
+    padding: 18px;
+    box-sizing: border-box;
+}
+
+.explore-main {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.explore-detail-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.explore-minimap-panel {
+    border: 1px solid #111;
+    background: #ffffff;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.explore-minimap-header {
+    font-weight: 700;
+    font-size: 0.95em;
+    color: #111;
+}
+
+.explore-minimap-body {
+    flex: 0 0 auto;
+    overflow: auto;
+    border: 1px solid #d0d0d0;
+    padding: 6px;
+    background: #ffffff;
+}
+
+.explore-detail-panel .city-dialogue {
+    flex: 1;
+    min-height: 0;
+}
+
+.explore-detail-panel .city-dialogue-log {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    max-height: none;
+}
+
+.explore-log-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.explore-log-actions .action-btn {
+    width: 100%;
+}
+
 /* 2. 레이어 공통 정의 */
 .parallax-layer {
     position: absolute;
@@ -3737,6 +3806,14 @@ body {
     color: #333;
 }
 
+.city-dialogue-line.is-info .text {
+    display: block;
+    background: #f7f7f7;
+    border: 1px solid #d0d0d0;
+    padding: 8px 10px;
+    box-shadow: inset 0 0 0 1px #eee;
+}
+
 .city-dialogue-choices {
     display: flex;
     flex-direction: column;
@@ -3750,6 +3827,30 @@ body {
 .city-dialogue-choices .action-btn {
     width: 100%;
     text-align: left;
+}
+
+.city-dialogue-choices .action-btn {
+    white-space: pre-line;
+}
+
+.city-dialogue-choices.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.city-dialogue-choices.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.city-dialogue-actions {
+    margin-top: auto;
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .global-log-panel {
@@ -4221,6 +4322,10 @@ body {
     gap: 6px;
 }
 
+#btn-area-back-map {
+    grid-column: 1 / -1;
+}
+
 .city-spot-actions .action-btn {
     width: 100%;
 }
@@ -4231,6 +4336,16 @@ body {
 
 #city-area-mode {
     margin-top: 10px;
+}
+
+.explore-hybrid-shell .city-detail-panel {
+    display: flex;
+}
+
+#exploration-scene .city-hybrid-shell,
+#exploration-scene #hub-shell,
+#exploration-scene .event-shell {
+    display: none !important;
 }
 
 .city-side-wrapper {
@@ -4438,7 +4553,7 @@ body {
         flex-wrap: wrap;
         justify-content: center;
         gap: 2px;
-        pointer-events: none;
+        pointer-events: auto;
         z-index: 50;
         margin-bottom: 5px;
         text-shadow: 0 1px 2px #000;
@@ -4451,6 +4566,18 @@ body {
         padding: 2px 4px;
         font-size: 0.75em;
         color: #222;
+        position: relative;
+    }
+
+    .status-badge:hover .tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .status-badge .tooltip {
+        left: 110%;
+        top: 50%;
+        transform: translateY(-50%);
     }
 
 

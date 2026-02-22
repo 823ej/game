@@ -1,6 +1,713 @@
-﻿const CHARACTER_IMAGES = {
+const CHARACTER_IMAGES = {
     detective: "assets/my_detective.png",
     assistant: "assets/my_assistant.png"
+};
+
+// [UI_TEXT] 화면/로그용 텍스트 모음 (로컬라이징 대비)
+const UI_TEXT = {
+    hub: {
+        coffeeNoMoney: "커피 한 잔 마실 돈도 없습니다…",
+        coffeePromptLine: "커피를 마시며 몸과 마음을 휴식해볼까요?",
+        coffeeDrinkOption: "마신다",
+        coffeeSkipOption: "그만둔다",
+        coffeeDrinkResult: "커피로 몸과 마음을 회복했습니다. (HP +[HP], SP +[SP])",
+        coffeeSkip: "커피를 마시지 않기로 했습니다.",
+        actionCaseName: "📁 사건 파일",
+        actionCaseDesc: "의뢰를 선택하고 현장으로 나갑니다.",
+        actionCityName: "🗺️ 도시로 외출",
+        actionCityDesc: "사건 현장이나 상점으로 이동합니다.",
+        actionCoffeeName: "☕ 커피 한 잔",
+        actionCoffeeDesc: "체력과 이성을 회복합니다. (1900원)",
+        actionShopName: "📦 인터넷 주문",
+        actionShopDesc: "장비를 구매합니다.",
+        actionDeckName: "🃏 덱 정비",
+        actionDeckDesc: "전투용/대화용 덱을 편집합니다.",
+        actionStorageName: "📦 창고",
+        actionStorageDesc: "아이템과 유물을 보관합니다."
+    },
+    start: {
+        continue: "이어하기",
+        newGame: "새 게임",
+        infiniteMode: "무한 모드 (Infinite)"
+    },
+    story: {
+        namePlaceholder: "이름",
+        textPlaceholder: "대사가 출력됩니다.",
+        logButton: "LOG",
+        skipButton: "SKIP",
+        skipOn: "SKIP ON ▶▶"
+    },
+    rest: {
+        title: "🔥 휴식처",
+        desc: "따뜻한 모닥불이 있습니다.<br>잠시 쉬어가거나 정비를 할 수 있습니다.",
+        currentHp: "현재 HP: [CUR] / [MAX]",
+        actionRest: "😴 쉬기 (50% 회복)",
+        actionRestDone: "✅ 휴식 완료",
+        actionLeave: "👣 떠나기",
+        completeTitle: "휴식 완료",
+        completeDesc: "체력이 [HP], 이성이 [SP]만큼 회복되었습니다.<br>이제 출발 준비가 되셨나요?"
+    },
+    medical: {
+        noInjury: "치료할 부상이 없습니다.",
+        noOccultCurse: "해주할 오컬트 저주가 없습니다.",
+        noRoomCurse: "해제할 저주가 없습니다.",
+        noMoney: "치료 비용이 부족합니다.",
+        noClinicMoney: "진료 비용이 부족합니다.",
+        clinicFull: "컨디션이 완전히 회복되었습니다.",
+        saunaHeal: "뜨끈한 탕에서 쉬며 체력과 이성을 회복했습니다.",
+        removeTrait: "[TRAIT]이(가) 해제되었습니다.",
+        removeAllCurses: "모든 저주가 해제되었습니다.",
+        clinicBuff: "맞춤 케어로 컨디션이 강화되었습니다.",
+        hospitalTitle: "대학 병원",
+        hospitalDesc: "치료할 부상을 선택하세요.",
+        orientalTitle: "한의원 제생당",
+        orientalDesc: "해주할 오컬트 저주를 선택하세요.",
+        clinicTitle: "힐링 클리닉 사일런스",
+        clinicDesc: "원하시는 서비스를 선택하세요.",
+        btnCancel: "취소",
+        btnHerbalShop: "한방약 구매",
+        btnClinicShop: "약 구매",
+        btnClose: "닫기",
+        optHeal: "회복 진료 - [COST]G",
+        optCureAll: "모든 저주 해제 - [COST]G",
+        optBuff: "컨디션 부스트 - [COST]G"
+    },
+    deck: {
+        notEnoughCards: "최소 5장의 카드는 있어야 합니다.",
+        cannotRemoveCurse: "저주는 제거할 수 없습니다.",
+        removedCard: "[CARD] 카드를 태워버렸습니다.",
+        tabBattle: "⚔️ 전투 덱",
+        tabSocial: "💬 소셜 덱",
+        labelBattle: "전투 덱",
+        labelSocial: "소셜 덱",
+        managerTitle: "🃏 덱 관리",
+        managerClose: "❌ 닫기",
+        activeHeader: "장착 중",
+        storageHeader: "보관함",
+        activeHelp: "전투에 가져갈 카드입니다.",
+        storageHelp: "대기 중인 카드입니다."
+    },
+    shop: {
+        noMoney: "소지금이 부족합니다.",
+        buyCardAdd: "[CARD]을(를) 구매했습니다. [DECK]에 추가되었습니다.",
+        buyItem: "[ITEM]을(를) 구매했습니다.",
+        alreadyHaveEquip: "이미 보유하고 있는 장비입니다.",
+        alreadyHaveRelic: "이미 보유하고 있는 유물입니다.",
+        titleDefault: "상점",
+        titleBlack: "💀 뒷골목 암시장",
+        titlePharmacy: "💊 24시 드럭스토어",
+        titleHighEnd: "💎 아라사카 부티크",
+        titleOccult: "🕯️ 오컬트 숍",
+        titleHerbal: "🌿 허브 상점",
+        titleInternet: "📦 인터넷 주문",
+        titleClinic: "🩺 힐링 클리닉 사일런스",
+        descDefault: "물건을 보고 가세요.",
+        descBlack: "출처는 묻지 마쇼. 싸게 넘길 테니.",
+        descPharmacy: "회복약과 생필품이 있습니다.",
+        descHighEnd: "최고급 장비만을 취급합니다.",
+        descOccult: "기이한 물건들이 모여 있습니다.",
+        descHerbal: "몸과 정신을 다스리는 약초들.",
+        descInternet: "배송은 다음 날 도착합니다.",
+        descClinic: "최상급 약품과 처방만 취급합니다.",
+        sectionEquip: "🎒 장비 및 도구",
+        sectionCard: "🃏 기술 교본",
+        sectionService: "🛠️ 서비스",
+        serviceRemoveTitle: "기술 망각",
+        serviceRemoveDesc: "덱에서 카드 제거",
+        exitLabel: "나가기",
+        exitNextStage: "다음 스테이지로"
+    },
+    scenario: {
+        missingActive: "진행 중인 의뢰 정보를 찾을 수 없습니다.",
+        accepted: "✅ 의뢰 수락: [TITLE] — \"[DISTRICT]\" 구역으로 이동하여 조사를 시작하세요.",
+        caseListTitle: "📁 의뢰 목록",
+        caseListDesc: "해결할 사건을 선택하세요.",
+        caseListClose: "닫기",
+        caseListNoClue: "실마리가 없습니다.",
+        activeTitle: "📌 진행 중 의뢰",
+        activeDesc: "현재 수락된 의뢰 정보입니다.",
+        activeNone: "현재 받은 의뢰가 없습니다.",
+        titleFallback: "의뢰",
+        miniPlaceholder: "의뢰명 | 0%",
+        progressLabel: "진행도",
+        locationLabel: "예상 지역",
+        expiredTitle: "🗂️ 의뢰 정리",
+        expiredDesc: "이 의뢰는 이제 해결할 수 있는 기간이 지났네...",
+        expiredConfirm: "정리한다",
+        ruleMinLevel: "요구 레벨: [LEVEL] 이상",
+        ruleNeedInfo: "필요 정보: [LIST]",
+        ruleNeedItem: "필요 아이템: [LIST]",
+        ruleNeedPrereq: "선행 의뢰: [LIST]",
+        ruleMinCleared: "의뢰 완료 [COUNT]건 필요 (현재 [CURRENT]건)",
+        ruleStartAt: "가능 시점: [DAY]일차 [TIME]",
+        ruleExpireAt: "만료 시점: [DAY]일차 [TIME]",
+        tabMissions: "의뢰",
+        tabClues: "새로운 사건의 실마리",
+        tagActive: "(진행 중)",
+        tagLocked: "(잠김)",
+        unlockHint: "조건을 만족하면 수락할 수 있습니다."
+    },
+    inventory: {
+        noSpace: "가방 공간이 부족합니다.",
+        cannotChangeInBattle: "전투/대화 중에는 장비를 변경할 수 없습니다.",
+        slotMismatch: "[ITEM]은(는) [SLOT] 슬롯에 장착할 수 없습니다.",
+        noSlotInfo: "[ITEM]은(는) 장착 슬롯 정보가 없습니다.",
+        swapNoSpace: "<span style='color:#2ecc71'>[ITEM]</span>을(를) 넣을 공간이 없습니다.<br>대신 버릴 아이템을 선택하세요.",
+        swapGiveUp: "포기하기 (획득 취소)",
+        swapTitle: "🎒 가방 정리",
+        swapDiscard: "▼ 버리기",
+        hint: "아이템을 클릭하여 사용하거나 정보를 확인하세요.",
+        tagRelic: "[유물/지속효과]",
+        tagEquip: "[장비]",
+        tagConsume: "[소모품]",
+        equipSelectTitle: "장착 위치 선택",
+        equipSelectDesc: "<b>[ITEM]</b>을(를) 장착할 슬롯을 선택하세요.",
+        equipCurrent: "현재 장착: [CURRENT][DESC]<br><br>장착할 장비를 선택하세요.",
+        cancelTargeting: "취소",
+        equipSlotCancel: "취소",
+        equipSlotTitle: "장착 위치 선택",
+        equipSlotDesc: "<b>[ITEM]</b>을(를) 장착할 슬롯을 선택하세요.",
+        equipSlotNone: "(비어있음)",
+        equipSlotCurrent: " (현재: [ITEM])",
+        equipSlotUnequip: "해제 ([ITEM])"
+    },
+    storage: {
+        title: "📦 개인 창고",
+        tabConsume: "🎒 소모품",
+        tabEquip: "🧰 장비",
+        tabRelic: "💍 유물",
+        exit: "❌ 나가기",
+        bagTitle: "🎒 가방",
+        bagDesc: "현재 소지 중",
+        warehouseTitle: "📦 창고",
+        warehouseDesc: "보관 중 (유물 효과 꺼짐)"
+    },
+    progress: {
+        pending: "대기 중"
+    },
+    equip: {
+        noneAvailable: "(장착 가능한 장비가 없습니다)"
+    },
+    equipSlots: {
+        head: "머리",
+        body: "상체",
+        legs: "하체",
+        leftHand: "왼손",
+        rightHand: "오른손",
+        accessory1: "장신구1",
+        accessory2: "장신구2"
+    },
+    targeting: {
+        title: "🎯 대상 지정",
+        desc: "사용할 대상을 <b>클릭</b>하세요.",
+        hint: "(적/플레이어)"
+    },
+    battle: {
+        enemyTalkBreakTitle: "🖐️ 대화 결렬",
+        enemyTalkBreakDesc: "\"[NAME]\"이(가) 더 이상 당신의 말을 듣지 않습니다.<br>협상이 불가능해졌습니다.",
+        enemyTalkBreakFight: "무력 행사 (전투 돌입)",
+        enemyTalkBreakRun: "도망치기 (패널티)",
+        defenseTextSocial: "논리 방어",
+        defenseTextBattle: "방어도",
+        surrenderTitle: "🫱 항복 제의",
+        surrenderDesc: "상대가 무기를 내려놓고 항복을 제안합니다.<br>수락하시겠습니까?",
+        surrenderAccept: "수락",
+        surrenderDecline: "거절",
+        winTitle: "전투 승리!",
+        winTitleDecorated: "🎉 전투 승리!",
+        winDefaultMsg: "전투 승리!",
+        winMsg: "승리! <span style=\"color:#f1c40f\">[GOLD]원</span>, <span style=\"color:#3498db\">[XP] XP</span> 획득.",
+        winMsgSurrender: "승리! (항복 수락) <span style=\"color:#f1c40f\">[GOLD]원</span>, <span style=\"color:#3498db\">[XP] XP</span> 획득.",
+        winLuckySuffix: " (🍀럭키피스 효과!)",
+        copyAction: "복사",
+        recoverAction: "회수",
+        damageCritTitle: "CRITICAL!",
+        damageCritPrefix: "⚡CRIT! ",
+        damageDownText: "😵DOWN!",
+        damageBlockText: "BLOCK",
+        damageResistText: "🛡️RESIST",
+        lootOnGround: "✨ 전리품이 바닥에 떨어져 있습니다.",
+        lootPickup: "🖐️ 아이템 줍기",
+        lootPicked: "✔ [ITEM] 획득함.",
+        assistantWinHeal: "🩹 조수가 숨을 고르며 체력을 회복합니다. (+[AMOUNT])",
+        reinforcementSuffix: " (증원)",
+        appearText: "APPEAR!",
+        runAwayPrompt: "전투를 포기하고 도망치시겠습니까? (패널티: HP -5, 위협도 증가)",
+        runAwayConfirm: "도망친다",
+        runAwayCancel: "취소",
+        socialAttackPrompt: "대화를 중단하고 공격하시겠습니까? (적이 전투 태세를 갖춥니다)",
+        socialAttackConfirm: "공격한다",
+        socialAttackCancel: "취소",
+        cannotRunHere: "이곳에서는 도망칠 수 없습니다. 오직 죽음만이 끝입니다."
+    },
+    battleIntent: {
+        unknown: "무슨 행동을 할지 알 수 없습니다.",
+        expectedDamage: " (예상 피해: [DAMAGE])",
+        summon: "소환/지원 요청을 준비 중",
+        socialAttack: "멘탈 공격을 시도하려 함",
+        socialDebuff: "교란/설득을 준비 중",
+        heavyAttack: "강한 공격을 준비 중",
+        attack: "공격하려 함",
+        defend: "방어 태세를 갖추려 함",
+        buff: "자신을 강화하거나 특수 효과를 준비 중",
+        special: "특수 행동을 준비 중",
+        power: "지속 효과를 전개하려 함"
+    },
+    system: {
+        noDungeonData: "던전 데이터가 없습니다.",
+        noBattleNpc: "이 NPC는 전투 데이터를 갖고 있지 않습니다.",
+        socialFail: "협상에 실패했습니다. 전투를 시작합니다.",
+        retreat: "당신은 전투를 포기하고 물러납니다.",
+        loadFail: "화면 로딩에 실패했습니다. 페이지를 새로고침해 주세요.",
+        handFullDiscard: "손이 꽉 찼습니다. [CARD]은(는) 버린 카드로 이동합니다."
+    },
+    status: {
+        reviveTitle: "✨ 부활",
+        reviveDesc: "[ITEM] 효과로 다시 일어났습니다.",
+        deathTitle: "💀 사망",
+        deathDesc: "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.",
+        insanityTitle: "🤪 발광(Insanity)",
+        insanityDesc: "공포를 견디지 못하고 정신이 붕괴되었습니다.<br>당신은 어둠 속으로 사라집니다...",
+        retryButton: "다시 하기 (초기화)"
+    },
+    social: {
+        lossTitle: "😵 말문이 막혔습니다!",
+        lossDesc: "상대의 논리에 압도당해 더 이상 대화를 이어갈 수 없습니다.<br>(내 의지 0 도달)",
+        forceFight: "👊 무력 행사 (전투 돌입)",
+        giveUp: "🏃 포기하고 떠나기",
+        leaveChoice: "떠나기",
+        persuadeSuccess: "🤝 설득 성공!",
+        persuadeBreak: "[NAME]의 의지을 허물었습니다."
+    },
+    misc: {
+        saveReset: "세이브 파일 오류로 데이터를 초기화합니다.",
+        jobTraitLocked: "이 직업의 기본 특성은 해제할 수 없습니다.",
+        survivalFail: "현재 세팅으로는 생존할 수 없습니다. (최대 HP: [HP], 최대 SP: [SP]) 건강/정신 스탯을 높이거나 페널티 특성을 해제해 주세요.",
+        turnOnly: "전투 중 내 턴에만 사용할 수 있습니다.",
+        cannotExitHere: "이곳에서는 나갈 수 없습니다. 던전 입구로 돌아가거나 해결사의 연락처 아이템이 필요합니다.",
+        winClueGain: "[MSG] 단서를 확보했습니다. (+[AMOUNT])",
+        narrationDivider: "[TEXT]",
+        traitGain: "특성 [NAME]을(를) 획득했습니다. [DESC]",
+        traitLose: "[NAME] 특성이 사라졌습니다.",
+        alreadyHaveLabel: "이미 보유하고 있는 [LABEL]입니다.",
+        restShort: "당신은 잠시 휴식을 취합니다.",
+        targetLabel: "대상",
+        targetPlayer: "당신",
+        targetEnemy: "적",
+        assistantLabel: "조수",
+        currencyUnit: "원",
+        doomLabel: "Doom",
+        enemyImageText: "Enemy",
+        noImageText: "No Img"
+    },
+    item: {
+        escapeTitle: "🚁 탈출 성공",
+        escapeDesc: "해결사의 도움으로 안전하게 복귀했습니다.",
+        escapeGoHub: "사무소로"
+    },
+    cityArea: {
+        selectSpotTitle: "지점을 선택하세요",
+        selectSpotDesc: "지도를 눌러 이동할 지점을 선택하세요.",
+        enterLabel: "진입",
+        talkLabel: "대화",
+        talkAction: "대화하기",
+        talkPrompt: "누구와 대화할까?",
+        returnOffice: "사무소로 복귀",
+        enterOffice: "탐정 사무소 내부"
+    },
+    confirm: {
+        resetTitle: "데이터 초기화",
+        resetDesc: "정말 모든 데이터를 삭제하고 처음부터 시작하시겠습니까? (되돌릴 수 없습니다)",
+        resetYes: "예 (삭제)",
+        resetNo: "아니오"
+    },
+    explore: {
+        enterLabel: "진입한다",
+        exitToWorldPrompt: "지금 탐색을 종료하고 세주시 전역 지도로 돌아갑니다.",
+        exitToWorldConfirm: "복귀",
+        exitDungeonPrompt: "던전을 떠나시겠습니까? (입구에서는 안전하게 나갈 수 있습니다)",
+        exitDungeonConfirm: "돌아가기",
+        callFixerPrompt: "이곳에서 나가려면 해결사를 불러야 합니다. [해결사의 연락처]를 사용하시겠습니까?"
+        ,
+        callFixerConfirm: "사용하기 (탈출)",
+        interactionBubble: "! 조사하기",
+        minimapHeader: "🗺️ 지도",
+        actionStatus: "상태",
+        actionInventory: "가방",
+        actionEscape: "탈출",
+        interesting: "무언가 흥미로운 상황입니다...",
+        searchFound: "주변을 뒤져 <span style='color:#2ecc71'>[ITEM]</span>을(를) 발견했습니다!",
+        searchNothing: "주변을 샅샅이 뒤져보았습니다. 별다른 특이사항은 없습니다.",
+        moving: "이동 중...",
+        arrivedDistrict: "[PLACE] 구역에 도착했습니다.",
+        movedElsewhere: "다른 골목으로 이동했습니다.",
+        restStart: "잠시 휴식을 취합니다...",
+        restHeal: "체력을 회복했습니다. (+[HP])",
+        hudExploring: "탐색 중..."
+    },
+    cityUi: {
+        mapTitle: "전역 지도",
+        mapDesc: "구역을 선택하세요.",
+        areaTitle: "지역",
+        areaDesc: "지점을 선택하세요.",
+        backOffice: "🏠 사무소 복귀",
+        backMap: "◀ 전역 지도"
+    },
+    dungeon: {
+        objectDefault: "조사하기",
+        objectBuilding: "건물",
+        objectUnknown: "이름 없는 객체",
+        objectTreasure: "보물상자",
+        objectHeal: "모닥불",
+        objectShop: "상점",
+        objectEvent: "무언가 있다",
+        objectInvestigate: "수상한 흔적",
+        objectBoss: "보스",
+        objectLocked: "잠긴 문",
+        objectBox: "낡은 상자",
+        objectNote: "떨어진 쪽지",
+        objectEmpty: "비어 있음",
+        logNoMoveBattle: "⚠️ 전투 중에는 이동할 수 없습니다.",
+        logEnemyAppear: "⚠️ 적이 나타났습니다! 전투를 시작합니다.",
+        logNoInteractBattle: "⚠️ 전투 중에는 상호작용할 수 없습니다.",
+        logTooFar: "🚫 너무 멉니다. 더 가까이 가세요.",
+        logInspectObject: "▶ [NAME]을(를) 살펴봅니다. (내부 진입 예정)",
+        logInteractPending: "▶ 내부 진입/상호작용은 추후 구현 예정입니다.",
+        roomEnter: "[TYPE] 방에 진입했습니다.",
+        quickMoveLog: "🚀 [TYPE] 구역으로 신속 이동했습니다.",
+        doorExitStart: "🚪 나가기",
+        doorBack: "⬅ 이전 구역",
+        doorExitTitle: "나가기",
+        doorExitDesc: "던전을 벗어납니다.",
+        doorExitLeave: "떠나기",
+        doorExitCancel: "취소",
+        doorNext: "다음 구역",
+        doorNorth: "윗방 진입",
+        doorSouth: "아랫방 진입",
+        subwayTitle: "🚇 이동할 역을 선택하세요",
+        subwayDesc: "목적지를 선택하면 바로 이동합니다.",
+        hecateTitle: "레이디 헤카테",
+        hecateDesc: "의뢰가 필요하면 말만 해요.",
+        hecateOptionCase: "의뢰 목록 보기",
+        dialogEnd: "대화 종료",
+        npcDefaultName: "해결사",
+        npcDefaultDesc: "말을 건다.",
+        npcNewClue: "새로운 단서를 얻었다.",
+        interactionTitleFallback: "상호작용",
+        interactionDescFallback: "무엇을 할까?",
+        interactionLabelFallback: "상호작용",
+        cancel: "취소",
+        treasureTitle: "상자 열기",
+        treasureDesc: "상자를 열었습니다!<br><span style=\"color:#f1c40f\">[GOLD] 골드</span>를 획득했습니다.",
+        treasureConfirm: "확인",
+        boxTitle: "상자 개봉",
+        boxDesc: "상자 안에서 <span style=\"color:#2ecc71\">[ITEM]</span>을(를) 발견했습니다!",
+        noteTitle: "쪽지 읽기",
+        noteDefaultText: "'배달부는 폐기물 처리장으로 갔다'라고 적혀있습니다.",
+        noteDesc: "<i>\"[TEXT]\"</i><br><br><span style=\"color:#f1c40f\">🔍 단서 획득 (+[AMOUNT])</span>",
+        discoveryTitle: "발견",
+        discoveryDesc: "[NAME] 구역을 찾아냈습니다!<br>이제 지도에서 바로 이동할 수 있습니다.",
+        discoveryReturn: "복귀",
+        discoveryContinue: "계속 탐색",
+        bossUnlockTitle: "해금",
+        bossUnlockDesc: "단서를 맞춰보니 보스의 위치가 확실해졌습니다.<br>문이 열립니다.",
+        bossLockedTitle: "잠김",
+        bossLockedDesc: "단서가 부족하여 진입할 수 없습니다.<br>([CURRENT]/[REQUIRED])",
+        bossLockedBack: "돌아가기",
+        investigateTitle: "조사 완료",
+        investigateNoScenarioDesc: "주변을 조사했지만 진행도에 영향이 없습니다.",
+        investigateResult: "단서를 확보했습니다! (+[GAIN])<br>현재 진척도: [CLUES]%",
+        bossFoundSuffix: "<br><br><b style=\"color:#f1c40f\">★ 보스 방의 위치가 파악되었습니다!</b>"
+    },
+    popup: {
+        confirmOk: "확인",
+        confirmCancel: "취소",
+        titlePlaceholder: "제목",
+        descPlaceholder: "내용",
+        chooseCardTitle: "카드를 선택하세요.",
+        levelUpTitle: "🆙 레벨 업!",
+        levelUpDesc: "강화할 능력을 선택하세요.",
+        cardRewardTitle: "🎁 카드 보상",
+        cardRewardDesc: "획득하시겠습니까?",
+        rewardGet: "받기",
+        rewardSkip: "건너뛰기",
+        itemGainTitle: "🎁 아이템 획득",
+        itemGainDesc: "[ICON] <b>[ITEM]</b>을(를) 획득했습니다.[DESC]",
+        lootFailTitle: "획득 불가",
+        lootFailDesc: "이미 보유하고 있는 [LABEL]([ITEM])입니다.<br>전리품을 포기합니다.",
+        playerInfoTitle: "플레이어 정보",
+        playerInfoDesc: "현재 스탯과 트레잇을 확인하세요.",
+        victoryTitle: "전투 승리",
+        victoryDesc: "다음 행동을 선택하세요.",
+        campfireTitle: "모닥불",
+        relicTitle: "유물",
+        pileTitleDraw: "남은 덱",
+        pileTitleDiscard: "버린 카드",
+        pileTitleExhaust: "소멸된 카드",
+        pileDesc: "카드 목록을 확인합니다.",
+        pileCount: "[TITLE] ([COUNT]장)",
+        choiceDefault: "선택",
+        close: "닫기"
+    },
+    dialogue: {
+        playerName: "나",
+        npcFallback: "말을 건다.",
+        endTalk: "대화 종료",
+        choiceDefault: "선택",
+        hecateName: "레이디 헤카테",
+        hecateAdded: "의뢰 목록에 추가됨",
+        hecateAlready: "이미 의뢰 목록에 추가됨",
+        hecateOffer: "새 의뢰 정보 받기",
+        hecateNone: "헤카테 전용 의뢰가 없습니다.",
+        hecateLog: "새 의뢰 정보를 확보했다."
+    },
+    menu: {
+        empty: "비어 있음",
+        use: "사용",
+        equip: "장착",
+        unequip: "해제",
+        view: "보기",
+        tabConsume: "소모품",
+        tabEquip: "장비",
+        tabRelic: "유물",
+        statusTitle: "상태",
+        noCards: "(카드가 없습니다)",
+        none: "없음",
+        emptyParen: "(비어있음)",
+        listEmpty: "비어있음",
+        ownedTraits: "보유 트레잇",
+        sectionCore: "핵심",
+        sectionStats: "스탯",
+        sectionTraits: "특성",
+        skillCardTitle: "스킬/카드",
+        battleDeckLabel: "전투 덱",
+        equipBagLabel: "장비 가방",
+        currentEquipLabel: "현재 장착",
+        equipSlotTitle: "🧰 장착 슬롯",
+        equipSlotHint: "슬롯을 클릭하면 장착을 해제합니다.",
+        slotLabel: "슬롯",
+        itemTabConsume: "🎒 소모품",
+        itemTabEquip: "🧰 장비",
+        itemTabRelic: "💍 유물",
+        itemTitle: "아이템",
+        missionTitle: "의뢰",
+        missionCurrent: "현재 의뢰",
+        missionProgress: "진행도",
+        missionDetail: "의뢰 상세",
+        optionTitle: "옵션",
+        optionDesc: "화면 및 시스템 설정은 여기서 확장 가능합니다.",
+        optionFullscreen: "전체 화면",
+        optionFullscreenDesc: "현재 창에서 전체 화면을 켜거나 끕니다.",
+        optionToggle: "전환",
+        resetTitle: "데이터 초기화",
+        resetWarning: "저장 데이터를 삭제하면 복구할 수 없습니다.",
+        resetAction: "초기화 진행"
+    },
+    menuTile: {
+        title: "GAME MENU",
+        statusTitle: "상태",
+        statusDesc: "스탯과 현재 상태",
+        inventoryTitle: "아이템",
+        inventoryDesc: "가방 및 소모품",
+        cardsTitle: "스킬/카드",
+        cardsDesc: "카드 컬렉션",
+        missionsTitle: "의뢰",
+        missionsDesc: "진행 중 의뢰",
+        optionsTitle: "옵션",
+        optionsDesc: "설정 및 표시",
+        resetTitle: "데이터 초기화",
+        resetDesc: "저장 데이터 삭제",
+        fullscreenTitle: "전체 화면",
+        fullscreenDesc: "화면 전환"
+    },
+    cardCollection: {
+        battleTab: "⚔️ 전투 덱",
+        socialTab: "💬 소셜 덱"
+    },
+    minimap: {
+        title: "🗺️ 지역 지도",
+        legend: "<span style=\"color:#f1c40f\">■</span> 현재 위치 / <span style=\"color:#555\">■</span> 미방문 / <span style=\"color:#ddd\">■</span> 방문함"
+    },
+    battleHud: {
+        deckLabel: "덱",
+        discardLabel: "버림",
+        exhaustLabel: "소멸",
+        forceAction: "👊<br>무력행사",
+        runAway: "🏃<br>도망치기",
+        turnInfo: "나의 턴 (AP: [AP])",
+        apLabel: "AP",
+        endTurn: "턴<br>종료",
+        mentalLabel: "의지",
+        profilingLabel: "프로파일링",
+        intentSleep: "행동 준비 중",
+        intentReady: "준비 중",
+        statusAggro: "🎯어그로",
+        statusThorns: "가시",
+        statusStun: "기절",
+        statusBroken: "흐트러짐",
+        statusClue: "단서"
+    },
+    cardLabel: {
+        status: "상태이상",
+        curse: "저주",
+        plan: "계획",
+        reaction: "반응",
+        attack: "공격",
+        skill: "스킬",
+        power: "파워"
+    },
+    battleAttr: {
+        attackTitle: "공격 속성: [ATTR]",
+        defenseTitle: "방어 속성: [ATTR]",
+        weaknessTitle: "약점: [ATTR]"
+    },
+    stats: {
+        str: "💪 근력",
+        con: "❤️ 건강",
+        dex: "⚡ 민첩",
+        int: "🧠 지능",
+        wil: "👁️ 정신",
+        cha: "💋 매력"
+    },
+    levelUp: {
+        strBtn: "💪 근력 (공격↑)",
+        conBtn: "❤️ 건강 (체력/방어↑)",
+        dexBtn: "⚡ 민첩 (속도↑)",
+        intBtn: "🧠 지능 (논리방어↑)",
+        wilBtn: "👁️ 정신 (이성↑)",
+        chaBtn: "💋 매력 (설득↑)"
+    },
+    city: {
+        selectSpotTitle: "지점",
+        selectSpotDesc: "무엇을 할까?",
+        backAreaPrefix: "◀ ",
+        backAreaFallback: "이전 구역으로",
+        talkFallback: "대화하기",
+        interactionFallback: "상호작용",
+        areaEnter: "진입",
+        areaTalk: "대화",
+        spotArrive: "[NAME] 앞에 섰습니다.",
+        spotEnterPending: "([NAME]) 내부 진입/상호작용은 추후 구현 예정"
+    },
+    cityDungeon: {
+        titleDefault: "도시 던전"
+    },
+    home: {
+        officeFallback: "영진 탐정 사무소",
+        dormFallback: "기숙사",
+        cafeName: "카페 헤카테",
+        cafeTitle: "☕ 카페 헤카테",
+        cafeSub: "해결사들이 쉬어가는 은신처",
+        returnCafeShort: "🏠 카페 복귀",
+        returnCafeLong: "🏠 카페로 복귀",
+        detectiveTitle: "🕵️ [NAME]",
+        returnOfficeShort: "🏠 사무소 복귀",
+        returnOfficeLong: "🏠 사무소로 복귀",
+        wizardTag: "성 주드 아카데미 [NAME]",
+        wizardTitle: "🏫 [NAME]",
+        wizardSub: "캠퍼스의 조용한 밤공기 속 휴식",
+        returnDormShort: "🏠 [NAME] 복귀",
+        returnDormLong: "🏠 [NAME]로 복귀"
+    },
+    assistant: {
+        npcName: "사무소 조수",
+        imgAlt: "조수",
+        imgFallback: "https://placehold.co/220x220/2c3e50/ffffff?text=Assistant"
+    },
+    cityMap: {
+        vibeSafe: "거점",
+        vibeBusy: "번화",
+        vibeCorporate: "빌딩가",
+        vibeDark: "음지",
+        vibeCalm: "주거",
+        vibeOutskirts: "외곽",
+        vibeWater: "해안",
+        vibeNeutral: "기타",
+        tagQuest: "의뢰",
+        tagDungeon: "던전",
+        missionNodeName: "폐쇄된 저택",
+        missionNodeLabel: "의뢰 지역",
+        missionNodeDesc: "저주받은 기운이 느껴지는 저택. 의뢰의 목표 지점이다.",
+        patrolTitle: "[DISTRICT] 순찰",
+        unknownDistrict: "알 수 없는 곳"
+    },
+    timeSlots: {
+        list: ["오전", "낮", "오후", "밤"],
+        dayFormat: "[DAY]일차 [SLOT]"
+    },
+    infinite: {
+        stageClear: "STAGE [STAGE] CLEAR",
+        choosePath: "다음 여정을 선택하세요.",
+        restTitle: "🔥 휴식",
+        restDesc: "체력/정신력 회복",
+        shopTitle: "🛒 상점",
+        shopDesc: "아이템 및 카드 구매",
+        randomTitle: "🎲 랜덤 이벤트",
+        randomDesc: "무슨 일이 일어날지 모릅니다",
+        deckManage: "🃏 덱 관리",
+        statsView: "📊 스탯 확인",
+        campfireDesc: "따뜻한 모닥불 곁에서 잠시 휴식을 취했습니다.",
+        nextStage: "다음 스테이지로",
+        expiredTag: "(만료됨)"
+    },
+    char: {
+        jobSelectTitle: "직업 선택",
+        jobBack: "← 이전 화면",
+        detailTitle: "캐릭터 상세 설정",
+        traitSelectTitle: "🧬 특성 선택",
+        traitRemaining: "남은 포인트",
+        statHint: "최소 8, 기본 10점 기준. (괄호 안은 보정치)",
+        finishBack: "← 돌아가기",
+        finishReady: "결정 완료 (게임 시작)",
+        finishNeedPoints: "포인트 부족! ([POINTS])",
+        statPanelTitle: "📊 능력치 조정",
+        pointsRemaining: "남은 포인트",
+        traitCostBase: "기본",
+        statLabelStr: "💪근력",
+        statLabelCon: "❤️건강",
+        statLabelDex: "⚡민첩",
+        statLabelInt: "🧠지능",
+        statLabelWil: "👁️정신",
+        statLabelCha: "💋매력",
+        statDescStr: "물리 공격력",
+        statDescCon: "체력/물리방어",
+        statDescDex: "행동 속도",
+        statDescInt: "논리 방어(소셜)",
+        statDescWil: "이성/저항(소셜)",
+        statDescCha: "설득/공격(소셜)"
+    },
+    reward: {
+        itemRewardNone: "없음",
+        itemRewardDuplicate: "중복 보상 (+[GOLD] G)"
+    },
+    event: {
+        randomNextStage: "다음 스테이지로",
+        randomConfirm: "확인",
+        clearDesc: "의뢰를 성공적으로 완수했습니다.",
+        rewardGoldLabel: "💰 의뢰비:",
+        rewardXpLabel: "✨ 경험치:",
+        rewardItemLabel: "🎁 특별 보상:",
+        rewardItemNone: "없음",
+        returnOffice: "🏠 사무소로 복귀",
+        vendingInsert: "돈을 넣는다 (800원)",
+        vendingKick: "발로 찬다 (체력 -5, 50% 확률)",
+        vendingIgnore: "무시한다",
+        shadySellBlood: "피를 판다 (HP -10, +5000원)",
+        shadyReject: "거절한다",
+        altarPray: "기도한다 (SP +10, 위협 +10)",
+        altarSmash: "제단을 부순다 (전투)",
+        altarIgnore: "지나친다",
+        altarFight: "전투!",
+        walletTake: "가진다 (+소지금, SP -3)",
+        walletReturn: "경찰서에 맡긴다 (SP +5)",
+        bushInspect: "살펴본다",
+        bushIgnore: "건드리지 않는다",
+        bushFight: "전투 개시"
+    },
+    cardPick: {
+        copyTitle: "복사할 카드를 선택",
+        fetchTitle: "가져올 카드를 선택"
+    }
 };
 
 const CARD_DATA = {
@@ -1844,6 +2551,99 @@ const SCENARIO_RULES = {
     }
 };
 
+// [DISPLAY_TEXT] 표시명 분리용 (로컬라이징 대비)
+// 내부 키는 그대로 유지하고, 화면에 보여줄 이름만 여기서 매핑합니다.
+const DISPLAY_TEXT = {
+    cards: {},
+    items: {},
+    buffs: {},
+    traits: {},
+    scenarios: {},
+    npcs: {},
+    enemies: {},
+    locations: {}
+};
+
+// 표시명 기본값 자동 채우기 (키 기반 기본값 제공)
+(function initDisplayText() {
+    if (typeof DISPLAY_TEXT !== "object" || !DISPLAY_TEXT) return;
+    const root = (typeof globalThis !== "undefined") ? globalThis : (typeof window !== "undefined" ? window : null);
+
+    const ensureBucket = (key) => {
+        if (!DISPLAY_TEXT[key] || typeof DISPLAY_TEXT[key] !== "object") {
+            DISPLAY_TEXT[key] = {};
+        }
+    };
+
+    ensureBucket("cards");
+    ensureBucket("items");
+    ensureBucket("buffs");
+    ensureBucket("traits");
+    ensureBucket("scenarios");
+    ensureBucket("npcs");
+    ensureBucket("enemies");
+    ensureBucket("locations");
+
+    const cardData = root && root.CARD_DATA;
+    if (cardData && typeof cardData === "object") {
+        Object.keys(cardData).forEach((cardKey) => {
+            if (!DISPLAY_TEXT.cards[cardKey]) DISPLAY_TEXT.cards[cardKey] = cardKey;
+        });
+    }
+
+    const itemData = root && root.ITEM_DATA;
+    if (itemData && typeof itemData === "object") {
+        Object.keys(itemData).forEach((itemKey) => {
+            if (!DISPLAY_TEXT.items[itemKey]) DISPLAY_TEXT.items[itemKey] = itemKey;
+        });
+    }
+
+    const buffs = root && root.BUFFS;
+    if (buffs && typeof buffs === "object") {
+        Object.keys(buffs).forEach((buffKey) => {
+            if (!DISPLAY_TEXT.buffs[buffKey]) DISPLAY_TEXT.buffs[buffKey] = buffKey;
+        });
+    }
+
+    const traitData = root && root.TRAIT_DATA;
+    if (traitData && typeof traitData === "object") {
+        Object.keys(traitData).forEach((traitKey) => {
+            const fallbackName = traitData[traitKey]?.name || traitKey;
+            if (!DISPLAY_TEXT.traits[traitKey]) DISPLAY_TEXT.traits[traitKey] = fallbackName;
+        });
+    }
+
+    const npcData = root && root.NPC_DATA;
+    if (npcData && typeof npcData === "object") {
+        Object.keys(npcData).forEach((npcKey) => {
+            if (!DISPLAY_TEXT.npcs[npcKey]) DISPLAY_TEXT.npcs[npcKey] = npcKey;
+        });
+    }
+
+    const enemyData = root && root.ENEMY_DATA;
+    if (enemyData && typeof enemyData === "object") {
+        Object.keys(enemyData).forEach((enemyKey) => {
+            if (!DISPLAY_TEXT.enemies[enemyKey]) DISPLAY_TEXT.enemies[enemyKey] = enemyKey;
+        });
+    }
+
+    const scenarios = root && root.SCENARIOS;
+    if (scenarios && typeof scenarios === "object") {
+        Object.keys(scenarios).forEach((scenarioKey) => {
+            const fallbackTitle = scenarios[scenarioKey]?.title || scenarioKey;
+            if (!DISPLAY_TEXT.scenarios[scenarioKey]) DISPLAY_TEXT.scenarios[scenarioKey] = fallbackTitle;
+        });
+    }
+
+    const districts = root && root.DISTRICTS;
+    if (districts && typeof districts === "object") {
+        Object.keys(districts).forEach((districtKey) => {
+            const fallbackName = districts[districtKey]?.name || districtKey;
+            if (!DISPLAY_TEXT.locations[districtKey]) DISPLAY_TEXT.locations[districtKey] = fallbackName;
+        });
+    }
+})();
+
 // [NARRATION] 내레이션 텍스트 (통합 관리)
 const NARRATION = {
     city: {
@@ -1852,6 +2652,7 @@ const NARRATION = {
             ask: "이곳으로 갈까요?",
             go: "당신은 [PLACE:으로] 향했습니다."
         },
+        npcApproach: "누군가 다가옵니다. 대화가 가능해 보입니다.",
         area: {
             arrive: "당신은 [PLACE:에] 도착했습니다.",
             inspect: "당신은 [PLACE:을를] 살펴봅니다.",
@@ -1861,41 +2662,53 @@ const NARRATION = {
     battle: {
         start: "당신은 전투를 준비합니다.",
         victory: "당신은 전투에서 승리했습니다.",
+        winReward: "전투 보상: [GOLD]원, [XP] XP 획득.",
         defeat: "당신은 더 이상 싸울 수 없습니다.",
         hpDamage: "당신은 체력 피해 [AMOUNT]를 입었습니다. (HP: [HP])",
         enemyHpDamage: "적이 체력 피해 [AMOUNT]를 입었습니다. (HP: [HP])",
         mentalDamage: "당신은 의지 피해 [AMOUNT]를 입었습니다. (남은 벽: [MENTAL])",
         enemyMentalDamage: "적이 의지 피해 [AMOUNT]를 입었습니다. (남은 벽: [MENTAL])",
         critical: "당신은 치명타로 [AMOUNT]의 피해를 주었습니다. (HP: [HP])",
+        enemyCritical: "적이 치명타로 [AMOUNT]의 피해를 입었습니다. (HP: [HP])",
+        enemyCriticalHit: "적이 치명타로 당신에게 [AMOUNT]의 피해를 입혔습니다. (HP: [HP])",
         thorns: "가시 반격으로 [AMOUNT]의 피해를 입었습니다.",
         reflect: "반사 반격으로 [AMOUNT]의 피해를 입었습니다.",
         lastStand: "당신은 간신히 버텼습니다.",
         blockGain: "당신은 방어도를 [AMOUNT] 얻었습니다.",
+        enemyBlockGain: "적이 방어도를 [AMOUNT] 얻었습니다.",
         assistantBlockGain: "조수가 방어도를 [AMOUNT] 얻었습니다.",
         buffApply: "[TARGET:에게] [BUFF] 효과가 적용되었습니다.",
         poison: "독 피해 [AMOUNT]를 입었습니다.",
         regen: "활력으로 HP가 [AMOUNT] 회복되었습니다.",
         assistantTook: "조수가 피해를 대신 받았습니다. (-[AMOUNT])",
         reactionGone: "당신의 반응 준비가 사라졌습니다.",
+        enemyStunned: "적은 기절 상태입니다. 아무것도 할 수 없습니다.",
         stunned: "당신은 기절 상태입니다. 아무것도 할 수 없습니다.",
         postureRecovered: "당신은 자세를 바로잡았습니다.",
+        enemyPostureRecovered: "적이 자세를 바로잡았습니다.",
         comboAction: "당신은 연속 행동으로 방어도를 유지합니다.",
+        enemyComboAction: "적이 연속 행동으로 방어도를 유지합니다.",
         attrExpired: "속성 부여 효과가 사라졌습니다.",
         cardExhausted: "휘발성 카드가 소멸되었습니다.",
         targetStunned: "[TARGET:은는] 기절하여 움직일 수 없습니다.",
         postureRecoverTarget: "[TARGET:이가] 자세를 바로잡습니다.",
         hitStunnedTarget: "당신은 기절한 대상을 가격합니다.",
+        enemyHitStunnedTarget: "적이 기절한 대상을 가격합니다.",
         stunSuccess: "[TARGET:이가] 기절했습니다. (약점 공략 성공)",
         selfStunned: "당신은 기절했습니다. 다음 턴 행동 불가입니다.",
         postureBreakEnemy: "[TARGET:의] 자세가 무너졌습니다. (약점 노출)",
         postureBreakSelf: "당신의 자세가 무너졌습니다. (피해량 증가)",
         cardUse: "당신은 [CARD:을를] 사용합니다.",
+        enemyCardUse: "적이 [CARD:을를] 사용합니다.",
         noAssistant: "조수가 없어 사용할 수 없습니다.",
         reactionOnly: "전투 중에만 반응 카드를 사용할 수 있습니다.",
         reactionReady: "당신은 [CARD] 반응 준비를 합니다.",
+        enemyReactionReady: "적이 [CARD] 반응 준비를 합니다.",
         planOnly: "전투 중에만 계획 카드를 사용할 수 있습니다.",
         planSet: "당신은 [CARD] 계획을 설정합니다.",
+        enemyPlanSet: "적이 [CARD] 계획을 설정합니다.",
         apGain: "당신은 AP [AMOUNT]를 얻었습니다.",
+        enemyApGain: "적이 AP [AMOUNT]를 얻었습니다.",
         drawCards: "당신은 카드를 [AMOUNT]장 뽑았습니다.",
         drawNextTurn: "당신은 다음 턴에 카드를 [AMOUNT]장 추가로 뽑습니다.",
         emptyPile: "대상 카드 더미가 비어있습니다.",
@@ -1919,7 +2732,7 @@ const NARRATION = {
         itemGain: "당신은 [ITEM:을를] 획득했습니다.",
         clueGain: "당신은 단서를 확보했습니다.",
         clueGainAmount: "당신은 단서를 [AMOUNT]개 확보했습니다.",
-        clueGainTarget: "당신은 [TARGET:에] 단서 [AMOUNT]개를 추가했습니다. (현재 [TOTAL])",
+        clueGainTarget: "당신은 [TARGET:에게] 단서 [AMOUNT]개를 추가했습니다. (현재 [TOTAL])",
         clueInsight: "당신은 직감으로 단서를 확보했습니다. (현재 [TOTAL])",
         clueAssistant: "당신은 조수의 보고로 단서를 확보했습니다. (현재 [TOTAL])",
         clueConsume: "당신은 단서 [AMOUNT]개를 소모해 추가 피해를 입혔습니다.",
@@ -1929,10 +2742,13 @@ const NARRATION = {
         assistantShaken: "조수가 흐트러졌습니다.",
         assistFail: "체력이 부족해 조수를 치료할 수 없습니다.",
         assistHeal: "조수가 회복되었습니다. (+[AMOUNT])",
+        assistantTurnHeal: "조수가 숨을 고르며 체력을 회복합니다. (+[AMOUNT])",
         profilingDone: "프로파일링이 완료되었습니다. 결정적 논증을 손에 추가합니다.",
         mansionEnter: "당신은 폐쇄된 저택에 진입했습니다.",
         powerGain: "당신은 파워 [CARD:을를] 획득했습니다.",
         powerGainSocial: "당신은 소셜 파워 [CARD:을를] 획득했습니다.",
+        cardRewardAccept: "카드 보상을 수락했습니다.",
+        cardRewardSkip: "카드 보상을 건너뛰었습니다.",
         powerAp: "당신은 파워 효과로 AP [AMOUNT]를 얻었습니다.",
         powerCostZero: "당신은 손패 [CARD:의] 비용을 0으로 만듭니다.",
         deckMix: "당신의 덱에 [CARD] 카드 [AMOUNT]장이 섞였습니다.",
@@ -2002,7 +2818,17 @@ const NARRATION = {
         walletTake: "죄책감이 들지만 지갑은 두둑합니다. (+[GAIN]원, SP -3)",
         walletReturn: "착한 일을 했다는 뿌듯함이 느껴집니다. (SP +5)",
         bushAmbush: "덤불 속에 숨어있던 적이 튀어나왔습니다!",
-        supplyFound: "[ITEM:을를] 획득했습니다!"
+        supplyFound: "[ITEM:을를] 획득했습니다!",
+        shadyMerchantTitle: "수상한 상인",
+        shadyMerchantDesc: "지나가던 상인이 물건을 강매합니다. (500G 지불)",
+        shadyMerchantPaid: "500G를 내고 <span style='color:#f1c40f'>[ITEM]</span>을(를) 얻었습니다.",
+        shadyMerchantNoMoney: "돈이 없어 무시하고 지나갑니다.",
+        insightTitle: "기습적인 깨달음",
+        insightDesc: "전투의 경험이 머릿속을 스치고 지나갑니다.",
+        insightGain: "경험치를 <span style='color:#3498db'>100 XP</span> 획득했습니다.",
+        trapTitle: "함정!",
+        trapDesc: "이런! 발을 헛디뎠습니다.",
+        trapDamage: "체력이 <span style='color:#e74c3c'>[AMOUNT]</span> 감소했습니다."
     }
 };
 
@@ -2013,6 +2839,7 @@ const EVENT_DATA = [
         descKey: "event.vendingDesc",
         choices: [
             {
+                txtKey: "event.vendingInsert",
                 txt: "돈을 넣는다 (800원)",
                 func: () => {
                     if (player.gold < 800) {
@@ -2032,6 +2859,7 @@ const EVENT_DATA = [
                 }
             },
             {
+                txtKey: "event.vendingKick",
                 txt: "발로 찬다 (체력 -5, 50% 확률)",
                 func: () => {
                     if (Math.random() < 0.5) {
@@ -2050,7 +2878,7 @@ const EVENT_DATA = [
                     }
                 }
             },
-            { txt: "무시한다", func: () => { finishEvent("exploration"); } }
+            { txtKey: "event.vendingIgnore", txt: "무시한다", func: () => { finishEvent("exploration"); } }
         ]
     },
     {
@@ -2059,6 +2887,7 @@ const EVENT_DATA = [
         descKey: "event.shadyDesc",
         choices: [
             {
+                txtKey: "event.shadySellBlood",
                 txt: "피를 판다 (HP -10, +5000원)",
                 func: () => {
                     takeDamage(player, 10);
@@ -2070,6 +2899,7 @@ const EVENT_DATA = [
                 }
             },
             {
+                txtKey: "event.shadyReject",
                 txt: "거절한다",
                 func: () => {
                     logNarration("event.shadyReject");
@@ -2084,6 +2914,7 @@ const EVENT_DATA = [
         descKey: "event.altarDesc",
         choices: [
             {
+                txtKey: "event.altarPray",
                 txt: "기도한다 (SP +10, 위협 +10)",
                 func: () => {
                     player.sp = Math.min(player.maxSp, player.sp + 10);
@@ -2093,14 +2924,15 @@ const EVENT_DATA = [
                 }
             },
             {
+                txtKey: "event.altarSmash",
                 txt: "제단을 부순다 (전투)",
                 func: () => {
                     showNarrationChoice(getNarration("event.altarBattle"), [
-                        { txt: "전투!", func: () => { startBattle(false); } }
+                        { txt: getUIText("event.altarFight", "전투!"), func: () => { startBattle(false); } }
                     ]);
                 }
             },
-            { txt: "지나친다", func: () => { finishEvent("exploration"); } }
+            { txtKey: "event.altarIgnore", txt: "지나친다", func: () => { finishEvent("exploration"); } }
         ]
     },
     {
@@ -2109,6 +2941,7 @@ const EVENT_DATA = [
         descKey: "event.walletDesc",
         choices: [
             {
+                txtKey: "event.walletTake",
                 txt: "가진다 (+소지금, SP -3)",
                 func: () => {
                     let gain = 3000 + Math.floor(Math.random() * 200);
@@ -2119,6 +2952,7 @@ const EVENT_DATA = [
                 }
             },
             {
+                txtKey: "event.walletReturn",
                 txt: "경찰서에 맡긴다 (SP +5)",
                 func: () => {
                     player.sp = Math.min(player.maxSp, player.sp + 5);
@@ -2134,17 +2968,18 @@ const EVENT_DATA = [
         descKey: "event.bushDesc",
         choices: [
             {
+                txtKey: "event.bushInspect",
                 txt: "살펴본다",
                 func: () => {
                     showNarrationChoice(getNarration("event.bushAmbush"), [{
-                        txt: "전투 개시",
+                        txt: getUIText("event.bushFight", "전투 개시"),
                         func: () => {
                             startBattle();
                         }
                     }]);
                 }
             },
-            { txt: "건드리지 않는다", func: () => { finishEvent("exploration"); } }
+            { txtKey: "event.bushIgnore", txt: "건드리지 않는다", func: () => { finishEvent("exploration"); } }
         ]
     },
 
@@ -2159,37 +2994,37 @@ const EVENT_DATA = [
         }
     },
     {
-        title: "수상한 상인",
-        desc: "지나가던 상인이 물건을 강매합니다. (500G 지불)",
+        titleKey: "event.shadyMerchantTitle",
+        descKey: "event.shadyMerchantDesc",
         icon: "💰",
         effect: () => {
             if (player.gold >= 500) {
                 player.gold -= 500;
                 let item = getRandomItem(null, { rank: 2 });
                 addItem(item);
-                return `500G를 내고 <span style='color:#f1c40f'>[${item}]</span>을(를) 얻었습니다.`;
+                return getNarration("event.shadyMerchantPaid", { item });
             } else {
-                return "돈이 없어 무시하고 지나갑니다.";
+                return getNarration("event.shadyMerchantNoMoney");
             }
         }
     },
     {
-        title: "기습적인 깨달음",
-        desc: "전투의 경험이 머릿속을 스치고 지나갑니다.",
+        titleKey: "event.insightTitle",
+        descKey: "event.insightDesc",
         icon: "💡",
         effect: () => {
             player.xp += 100;
-            return `경험치를 <span style='color:#3498db'>100 XP</span> 획득했습니다.`;
+            return getNarration("event.insightGain");
         }
     },
     {
-        title: "함정!",
-        desc: "이런! 발을 헛디뎠습니다.",
+        titleKey: "event.trapTitle",
+        descKey: "event.trapDesc",
         icon: "⚠️",
         effect: () => {
             let dmg = Math.floor(player.maxHp * 0.1);
             player.hp = Math.max(1, player.hp - dmg);
-            return `체력이 <span style='color:#e74c3c'>${dmg}</span> 감소했습니다.`;
+            return getNarration("event.trapDamage", { amount: dmg });
         }
     }
 ];
@@ -2335,6 +3170,8 @@ const ATTR_ICONS = {
     slash: "⚔️", pierce: "🏹", strike: "🔨", // 물리
     holy: "✨", profane: "😈" // 특수
 };
+
+
 
 
 

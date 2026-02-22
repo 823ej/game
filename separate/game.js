@@ -1,4 +1,4 @@
-﻿
+
 
 /* [NEW] 적 덱 생성 헬퍼 함수 */
 function getEnemyDeck(type) {
@@ -87,7 +87,7 @@ class AssistantManager {
         this.hp = 0;
         this.block = 0;
         this.buffs = {};
-        this.stats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
+        this.stats = { con: 0 };
         this.isBroken = false;
         this.isStunned = false;
     }
@@ -202,7 +202,7 @@ function ensureAssistantManager() {
         player.assistantManager.block = block;
     }
     if (!player.assistantManager.buffs) player.assistantManager.buffs = {};
-    if (!player.assistantManager.stats) player.assistantManager.stats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
+    if (!player.assistantManager.stats) player.assistantManager.stats = { con: 0 };
     if (typeof player.assistantManager.isBroken !== "boolean") player.assistantManager.isBroken = false;
     if (typeof player.assistantManager.isStunned !== "boolean") player.assistantManager.isStunned = false;
     // 순환 참조 방지: owner는 사용하지 않으므로 제거
@@ -214,28 +214,17 @@ function initAssistantForDetective() {
     if (!isDetectiveJob()) return;
     const mgr = ensureAssistantManager();
 
-    // [FIX] 조수 체력 설정 (유저 요청: 탐정 초기 체력 + 20 고정)
-    if (!mgr.baseMaxHp || mgr.baseMaxHp <= 0) {
-        // 1. 스탯 동기화 (탐정과 동일한 스탯으로 시작)
-        mgr.stats.con = player.stats.con || 10;
-
-        // 2. 목표 HP 설정: (탐정 HP + 20)
-        const targetHp = player.maxHp + 20;
-
-        // 3. 현재 스탯에 의한 보너스 계산
-        const currentBonus = (mgr.stats.con * 2);
-
-        // 4. 역산하여 BaseMaxHp 설정
-        // 최종 HP = Base + Bonus 이므로, Base = 최종 - Bonus
-        mgr.baseMaxHp = targetHp - currentBonus;
+    if (mgr.baseMaxHp && mgr.baseMaxHp > 0) {
+        return;
     }
 
-    const bonus = Math.max(0, Number(mgr.stats?.con || 0) * 2);
-    // [보정] baseMaxHp가 음수가 되어도 최종 합산은 맞도록 함 (단, 최소 1은 보장)
-    let maxHp = mgr.baseMaxHp + bonus;
-    maxHp = Math.max(1, maxHp);
+    // 캐릭터 생성 시점 한 번만: 탐정 건강 기준으로 조수 건강 결정
+    const detectiveCon = Math.max(1, Number(player.stats?.con || 1));
+    mgr.stats.con = detectiveCon;
+    mgr.baseMaxHp = Math.max(1, Number(player.maxHp || 1));
 
-    mgr.reset(maxHp);
+    const bonus = Math.max(0, Number(mgr.stats?.con || 0) * 2);
+    mgr.reset(Math.max(1, mgr.baseMaxHp + bonus));
 }
 
 function healAssistant(amount, hpCost = 0) {
@@ -287,14 +276,14 @@ function addProfiling(amount) {
 // (기존 SCENARIOS 데이터는 그대로 두셔도 됩니다)
 
 const CITY_VIBE_META = {
-    safe: { label: "거점", color: "#f1c40f" },
-    busy: { label: "번화", color: "#1abc9c" },
-    corporate: { label: "빌딩가", color: "#3498db" },
-    dark: { label: "음지", color: "#c0392b" },
-    calm: { label: "주거", color: "#95a5a6" },
-    outskirts: { label: "외곽", color: "#e67e22" },
-    water: { label: "해안", color: "#00b5d8" },
-    neutral: { label: "기타", color: "#9b59b6" }
+    safe: { label: getUIText("cityMap.vibeSafe"), color: "#f1c40f" },
+    busy: { label: getUIText("cityMap.vibeBusy"), color: "#1abc9c" },
+    corporate: { label: getUIText("cityMap.vibeCorporate"), color: "#3498db" },
+    dark: { label: getUIText("cityMap.vibeDark"), color: "#c0392b" },
+    calm: { label: getUIText("cityMap.vibeCalm"), color: "#95a5a6" },
+    outskirts: { label: getUIText("cityMap.vibeOutskirts"), color: "#e67e22" },
+    water: { label: getUIText("cityMap.vibeWater"), color: "#00b5d8" },
+    neutral: { label: getUIText("cityMap.vibeNeutral"), color: "#9b59b6" }
 };
 
 /* [수정] 도시 지도 렌더링 (전역 거점 배치 확인) */
@@ -325,17 +314,18 @@ function renderCityMap() {
     if (game.activeScenarioId === 'cursed_antique' || (game.scenario && game.scenario.id === 'cursed_antique')) {
         nodes.push({
             id: "abandoned_mansion",
-            name: "폐쇄된 저택",
-            label: "의뢰 지역",
-            desc: "저주받은 기운이 느껴지는 저택. 의뢰의 목표 지점이다.",
+            name: getUIText("cityMap.missionNodeName"),
+            label: getUIText("cityMap.missionNodeLabel"),
+            desc: getUIText("cityMap.missionNodeDesc"),
             vibe: "active", // violet/purple style if available, or just neutral
             pos: { x: 72, y: 35 },
-            tags: ["의뢰", "던전"],
+            tags: [getUIText("cityMap.tagQuest"), getUIText("cityMap.tagDungeon")],
             links: ["east_oldtown"],
             isMissionNode: true,
             scenarioId: "cursed_antique"
         });
     }
+    game.cityMapNodes = nodes;
     const lookup = {};
     nodes.forEach(n => lookup[n.id] = n);
 
@@ -373,22 +363,25 @@ function renderCityMap() {
     const defaultNode = nodes.find(n => n.id === "east_oldtown") || nodes[0];
     if (defaultNode) {
         enterDistrict(defaultNode.id, true);
+        setCityPanelVisible('map', true);
     }
     autoSave();
 }
 
 /* [수정] 도시 거점 선택 (현재는 정보 패널만) */
 function enterDistrict(key, silentAreaOpen) {
-    const nodes = (CITY_MAP && Array.isArray(CITY_MAP.nodes)) ? CITY_MAP.nodes : [];
+    const nodes = (Array.isArray(game.cityMapNodes) && game.cityMapNodes.length > 0)
+        ? game.cityMapNodes
+        : ((CITY_MAP && Array.isArray(CITY_MAP.nodes)) ? CITY_MAP.nodes : []);
     let node = nodes.find(n => n.id === key);
 
     // [Quest] 동적 노드 체크
     if (!node && key === "abandoned_mansion") {
         node = {
             id: "abandoned_mansion",
-            name: "폐쇄된 저택",
-            desc: "저주받은 기운이 느껴지는 저택. 의뢰의 목표 지점이다.",
-            tags: ["의뢰", "던전"],
+            name: getUIText("cityMap.missionNodeName"),
+            desc: getUIText("cityMap.missionNodeDesc"),
+            tags: [getUIText("cityMap.tagQuest"), getUIText("cityMap.tagDungeon")],
             isMissionNode: true,
             scenarioId: "cursed_antique"
         };
@@ -420,7 +413,7 @@ function enterDistrict(key, silentAreaOpen) {
 
     if (exploreBtn) {
         if (node.isMissionNode) {
-            exploreBtn.textContent = "진입한다";
+            exploreBtn.textContent = getUIText("explore.enterLabel");
             exploreBtn.disabled = false;
             exploreBtn.onclick = () => {
                 const scData = SCENARIOS[node.scenarioId];
@@ -428,23 +421,27 @@ function enterDistrict(key, silentAreaOpen) {
                 appendCityLogLine("", getNarration("city.map.ask"), false, true);
                 appendCityLogLine("", getNarration("city.map.go", { place: node.name }), false, true);
                 if (scData && scData.dungeon) {
-                    DungeonSystem.generateDungeon(scData.dungeon);
-                    // [Dungeon Mode Init]
-                    game.state = 'exploration';
+                    game.activeScenarioId = node.scenarioId;
+                    const prevScenario = (game.scenario && game.scenario.id === node.scenarioId) ? game.scenario : null;
+                    game.scenario = {
+                        id: node.scenarioId,
+                        title: scData.title,
+                        clues: prevScenario ? (prevScenario.clues || 0) : 0,
+                        location: (prevScenario && prevScenario.location) ? prevScenario.location : (scData.locations ? scData.locations[0] : ""),
+                        bossReady: prevScenario ? !!prevScenario.bossReady : false,
+                        isActive: true,
+                        enemyPool: prevScenario?.enemyPool || getEnemyPoolFromScenario(scData),
+                        returnToCity: prevScenario?.returnToCity
+                    };
+                    game.dungeonMap = false;
                     DungeonSystem.isCity = false;
-                    switchScene('exploration');
-                    showExplorationView(); // Assuming this shows the dungeon view
-                    logNarration("system.mansionEnter");
-
-                    // 플레이어 이미지 업데이트
-                    const playerEl = document.getElementById('dungeon-player');
-                    if (playerEl) playerEl.src = player.img || "https://placehold.co/150x150/3498db/ffffff?text=Hero";
+                    renderExploration(true);
                 } else {
-                    notifyNarration("던전 데이터가 없습니다.");
+                    notifyNarration(getUIText("system.noDungeonData"));
                 }
             };
         } else if (hasArea) {
-            exploreBtn.textContent = "진입한다";
+            exploreBtn.textContent = getUIText("explore.enterLabel");
             exploreBtn.disabled = false;
             exploreBtn.onclick = () => {
                 appendCityLogLine("", `${node.name} — ${node.desc || ""}`.trim(), false, false);
@@ -453,13 +450,13 @@ function enterDistrict(key, silentAreaOpen) {
                 enterCityAreaMode(key);
             };
         } else {
-            exploreBtn.textContent = "진입한다";
+            exploreBtn.textContent = getUIText("explore.enterLabel");
             exploreBtn.disabled = true;
             exploreBtn.onclick = null;
         }
     }
 
-    if (!silentAreaOpen) setCityPanelVisible('map', true);
+    if (silentAreaOpen !== true) setCityPanelVisible('map', true);
 
     if (mapMode && areaMode) {
         mapMode.classList.remove('hidden');
@@ -542,11 +539,11 @@ function getVisibleCityArea(areaId) {
         if (areaId === "east_oldtown" && spot.id === "youngjin_office") {
             if (isDetectiveJob()) {
                 nextSpot.objects = [
-                    { id: "return_office", name: "사무소로 복귀", icon: "🏠", action: "return_hub" }
+                    { id: "return_office", name: getUIText("cityArea.returnOffice"), icon: "🏠", action: "return_hub" }
                 ];
             } else {
                 nextSpot.objects = [
-                    { id: "enter_office", name: "탐정 사무소 내부", icon: "🕵️", action: "enter_city_area", areaId: "youngjin_office_interior" }
+                    { id: "enter_office", name: getUIText("cityArea.enterOffice"), icon: "🕵️", action: "enter_city_area", areaId: "youngjin_office_interior" }
                 ];
             }
         }
@@ -568,7 +565,7 @@ function getVisibleCityArea(areaId) {
                 const npc = NPC_DATA[npcKey] || {};
                 return {
                     id: `talk_${spot.id}_${idx}`,
-                    name: npc.name || "대화하기",
+                    name: npc.name || getUIText("city.talkFallback"),
                     icon: npc.icon || "💬",
                     action: "npc_dialogue",
                     npcKey
@@ -762,20 +759,20 @@ function updateCityAreaDetail() {
 
     const titleEl = document.getElementById('city-spot-title');
     const descEl = document.getElementById('city-spot-desc');
-    if (titleEl) titleEl.textContent = spot?.name || "지점을 선택하세요";
-    if (descEl) descEl.textContent = spot?.desc || "지도를 눌러 이동할 지점을 선택하세요.";
+    if (titleEl) titleEl.textContent = spot?.name || getUIText("cityArea.selectSpotTitle");
+    if (descEl) descEl.textContent = spot?.desc || getUIText("cityArea.selectSpotDesc");
     const enterBtn = document.getElementById('btn-area-enter');
     if (enterBtn) {
         if (!spot) {
             enterBtn.disabled = true;
             enterBtn.onclick = null;
-            enterBtn.textContent = "진입";
+            enterBtn.textContent = getUIText("cityArea.enterLabel");
         } else {
             const objects = Array.isArray(spot.objects) ? spot.objects : [];
             const npcObjects = objects.filter(obj => obj?.action === 'npc_dialogue');
             const primaryObj = npcObjects[0] || objects[0] || null;
             if (npcObjects.length > 0) {
-                enterBtn.textContent = "대화";
+                enterBtn.textContent = getUIText("cityArea.talkLabel");
                 enterBtn.disabled = false;
                 enterBtn.onclick = () => {
                     if (npcObjects.length === 1) {
@@ -783,21 +780,21 @@ function updateCityAreaDetail() {
                         return;
                     }
                     const options = npcObjects.map(obj => ({
-                        txt: obj.name || "대화하기",
+                        txt: obj.name || getUIText("city.talkFallback"),
                         func: () => { closePopup(); performCityAction(obj, area.id, spot.id); }
                     }));
                     if (typeof showChoice === 'function') {
-                        showChoice(spot.name || "대화", "누구와 대화할까?", options);
+                        showChoice(spot.name || getUIText("cityArea.talkLabel"), getUIText("cityArea.talkPrompt"), options);
                     } else {
-                        showPopup(spot.name || "대화", "누구와 대화할까?", options);
+                        showPopup(spot.name || getUIText("cityArea.talkLabel"), getUIText("cityArea.talkPrompt"), options);
                     }
                 };
             } else if (primaryObj) {
-                enterBtn.textContent = "진입";
+                enterBtn.textContent = getUIText("cityArea.enterLabel");
                 enterBtn.disabled = false;
                 enterBtn.onclick = () => performCityAction(primaryObj, area.id, spot.id);
             } else {
-                enterBtn.textContent = "진입";
+                enterBtn.textContent = getUIText("cityArea.enterLabel");
                 enterBtn.disabled = true;
                 enterBtn.onclick = null;
             }
@@ -810,7 +807,7 @@ function updateCityAreaDetail() {
         if (enterBtn) {
             enterBtn.disabled = true;
             enterBtn.onclick = null;
-            enterBtn.textContent = "대화";
+            enterBtn.textContent = getUIText("cityArea.talkLabel");
             enterBtn.classList.add('hidden');
         }
         setCityPanelVisible('area', false);
@@ -871,7 +868,7 @@ function performCityAction(obj, areaId, spotId) {
         return;
     }
     if (action === 'hecate_dialogue') {
-        startNpcDialogue("레이디 헤카테");
+        startNpcDialogue(getUIText("dialogue.hecateName"));
         return;
     }
     if (action === 'npc_dialogue' && obj.npcKey) {
@@ -920,14 +917,14 @@ function normalizeNpcDialogue(npc, npcKey) {
     if (npc.dialogue && npc.dialogue.nodes && npc.dialogue.start) {
         return npc.dialogue;
     }
-    const fallbackText = npc.desc || "말을 건다.";
+    const fallbackText = npc.desc || getUIText("dialogue.npcFallback");
     return {
         start: "start",
         nodes: {
             start: {
                 speaker: npc.name || npcKey || "NPC",
                 text: fallbackText,
-                choices: [{ text: "대화 종료", action: "close" }]
+                choices: [{ text: getUIText("dialogue.endTalk"), action: "close" }]
             }
         }
     };
@@ -986,7 +983,7 @@ function renderDialogueChoices(choices) {
     const filtered = filterDialogueChoices(choices);
     if (filtered.length === 0) return;
     addCityLogChoices(filtered.map(choice => ({
-        text: choice.text || "선택",
+        text: choice.text || getUIText("dialogue.choiceDefault"),
         onSelect: () => handleDialogueChoice(choice)
     })));
 }
@@ -1011,7 +1008,7 @@ function handleDialogueChoice(choice) {
     if (game.cityDialogue?.typing) {
         completeDialogueTyping();
     }
-    appendDialogueLine("나", choice.text || "", true, false);
+    appendDialogueLine(getUIText("dialogue.playerName"), choice.text || "", true, false);
     applyDialogueEffects(choice.effects || []);
     if (choice.action) {
         handleDialogueAction(choice.action);
@@ -1095,7 +1092,7 @@ function renderHecateOfferPanel(noticeText) {
         btn.innerHTML = `
             <div class="case-title">${sc.title}</div>
             <div class="case-desc">${sc.desc || ""}</div>
-            <div class="case-note">${unlocked ? "이미 의뢰 목록에 추가됨" : "새 의뢰 정보 받기"}</div>
+            <div class="case-note">${unlocked ? getUIText("dialogue.hecateAlready") : getUIText("dialogue.hecateOffer")}</div>
         `;
         if (unlocked) {
             continue;
@@ -1108,8 +1105,8 @@ function renderHecateOfferPanel(noticeText) {
             if (Array.isArray(rule?.requiredFlags) && typeof setGameFlag === 'function') {
                 rule.requiredFlags.forEach(flag => setGameFlag(flag));
             }
-            appendCityLogLine("", "새 의뢰 정보를 확보했다.", false, true);
-            renderHecateOfferPanel("의뢰 목록에 추가됨");
+            appendCityLogLine("", getUIText("dialogue.hecateLog"), false, true);
+            renderHecateOfferPanel(getUIText("dialogue.hecateAdded"));
         };
         listEl.appendChild(btn);
         added += 1;
@@ -1117,7 +1114,7 @@ function renderHecateOfferPanel(noticeText) {
     if (added === 0) {
         const item = document.createElement('div');
         item.className = 'city-case-item';
-        item.innerHTML = `<div class="case-note">헤카테 전용 의뢰가 없습니다.</div>`;
+        item.innerHTML = `<div class="case-note">${getUIText("dialogue.hecateNone")}</div>`;
         listEl.appendChild(item);
     }
 
@@ -1139,6 +1136,9 @@ function appendCityLogLine(speaker, text, isPlayer, useTyping) {
         const textEl = line.querySelector('.text');
         logEl.appendChild(line);
         logEl.scrollTop = logEl.scrollHeight;
+        requestAnimationFrame(() => {
+            logEl.scrollTop = logEl.scrollHeight;
+        });
         if (idx === 0 && useTyping) {
             startDialogueTyping(textEl, text || "");
         } else if (textEl) {
@@ -1184,6 +1184,9 @@ function setCityLogSticky(stickyKey, text, isPlayer) {
         if (textEl) textEl.textContent = text || "";
         logEl.appendChild(line);
         logEl.scrollTop = logEl.scrollHeight;
+        requestAnimationFrame(() => {
+            logEl.scrollTop = logEl.scrollHeight;
+        });
         logEl.onclick = () => {
             if (game.cityDialogue?.typing) completeDialogueTyping();
         };
@@ -1204,7 +1207,7 @@ function updateCityAreaNavButtons(area) {
     if (backAreaBtn) {
         if (area && area.parentAreaId) {
             backAreaBtn.classList.remove('hidden');
-            backAreaBtn.textContent = `◀ ${area.parentLabel || '이전 구역으로'}`;
+            backAreaBtn.textContent = `${getUIText("city.backAreaPrefix")}${area.parentLabel || getUIText("city.backAreaFallback")}`;
             backAreaBtn.onclick = () => enterCityAreaMode(area.parentAreaId, area.parentSpotId || null);
         } else {
             backAreaBtn.classList.add('hidden');
@@ -1224,6 +1227,13 @@ function setCityPanelVisible(mode, visible) {
     if (!shell || !panel) return;
     shell.classList.toggle('panel-hidden', !visible);
     panel.classList.toggle('is-hidden', !visible);
+    if (mode === 'area') {
+        const actions = panel.querySelector('.city-spot-actions');
+        if (actions) actions.classList.toggle('hidden', !visible);
+    } else {
+        const actions = panel.querySelector('.city-detail-actions');
+        if (actions) actions.classList.toggle('hidden', !visible);
+    }
     if (visible) syncCityLogPanels();
 }
 
@@ -1237,14 +1247,14 @@ function syncCityLogPanels() {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'city-dialogue-line is-player';
                 if (entry.resolved) {
-                    wrapper.innerHTML = `<span class="text">선택: ${entry.selectedText || ""}</span>`;
+                    wrapper.innerHTML = `<span class="text">${getUIText("popup.choiceDefault")}: ${entry.selectedText || ""}</span>`;
                 } else {
                     const btnWrap = document.createElement('div');
                     btnWrap.className = 'city-dialogue-choices';
                     entry.choices.forEach((txt, idx) => {
                         const btn = document.createElement('button');
                         btn.className = 'action-btn';
-                        btn.textContent = txt || "선택";
+                        btn.textContent = txt || getUIText("popup.choiceDefault");
                         btn.onclick = () => resolveCityLogChoice(entry.id, idx);
                         btnWrap.appendChild(btn);
                     });
@@ -1298,23 +1308,25 @@ function renderCitySpotObjects(area, spotId, layerEl) {
         el.className = 'city-area-object';
         el.style.left = `${pos.x}%`;
         el.style.top = `${pos.y}%`;
-        el.innerHTML = `${obj.icon ? `${obj.icon} ` : ""}${obj.name || "상호작용"}`;
+        el.innerHTML = `${obj.icon ? `${obj.icon} ` : ""}${obj.name || getUIText("city.interactionFallback")}`;
         el.onclick = () => {
             if (game.cityArea) game.cityArea.explicitSelection = true;
             setCityCasePanelVisible(false);
             setCityPanelVisible('area', true);
             const titleEl = document.getElementById('city-spot-title');
             const descEl = document.getElementById('city-spot-desc');
-            if (titleEl) titleEl.textContent = obj.name || (spot?.name || "지점");
+            if (titleEl) titleEl.textContent = obj.name || (spot?.name || getUIText("city.selectSpotTitle"));
             const npc = obj?.npcKey && (typeof NPC_DATA !== 'undefined') ? NPC_DATA[obj.npcKey] : null;
-            if (descEl) descEl.textContent = obj.desc || npc?.desc || spot?.desc || "무엇을 할까?";
+            if (descEl) descEl.textContent = obj.desc || npc?.desc || spot?.desc || getUIText("city.selectSpotDesc");
             if (npc?.desc) {
                 appendCityLogLine("", `${npc.name} — ${npc.desc}`, false, true);
             }
             const enterBtn = document.getElementById('btn-area-enter');
             if (enterBtn) {
                 enterBtn.disabled = false;
-                enterBtn.textContent = obj.action === 'npc_dialogue' ? "대화" : "진입";
+                enterBtn.textContent = obj.action === 'npc_dialogue'
+                    ? getUIText("city.areaTalk")
+                    : getUIText("city.areaEnter");
                 enterBtn.onclick = () => performCityAction(obj, area.id, spotId);
             }
         };
@@ -1352,7 +1364,8 @@ function pickJosa(word, pair) {
         "은는": ["은", "는"],
         "과와": ["과", "와"],
         "으로": ["으로", "로"],
-        "로": ["으로", "로"]
+        "로": ["으로", "로"],
+        "에게": ["에게", "에게"]
     };
     let first = "";
     let second = "";
@@ -1398,6 +1411,48 @@ function getNarration(path, vars = {}) {
     return out;
 }
 
+function getUIText(path, fallback = "") {
+    const root = (typeof UI_TEXT !== 'undefined') ? UI_TEXT : null;
+    if (!root || !path) return fallback || "";
+    const value = path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : null), root);
+    return (typeof value === 'string') ? value : (fallback || "");
+}
+
+function getDisplayText(category, key, fallback = "") {
+    const root = (typeof DISPLAY_TEXT !== 'undefined') ? DISPLAY_TEXT : null;
+    if (!root || !category || key === undefined || key === null) {
+        return fallback || String(key ?? "");
+    }
+    const bucket = root[category];
+    if (bucket && Object.prototype.hasOwnProperty.call(bucket, key)) {
+        return bucket[key];
+    }
+    return fallback || String(key);
+}
+
+function getCardDisplayName(name) {
+    return getDisplayText("cards", name, String(name ?? ""));
+}
+
+function getItemDisplayName(name) {
+    return getDisplayText("items", name, String(name ?? ""));
+}
+
+function getBuffDisplayName(name) {
+    return getDisplayText("buffs", name, String(name ?? ""));
+}
+
+function getActorDisplayName(name) {
+    const fallback = String(name ?? "");
+    const npcName = getDisplayText("npcs", name, fallback);
+    if (npcName !== fallback) return npcName;
+    return getDisplayText("enemies", name, fallback);
+}
+
+function getLocationDisplayName(name) {
+    return getDisplayText("locations", name, String(name ?? ""));
+}
+
 function getCityObjectPositions(areaId, spotId, objects) {
     if (!game.cityObjectLayout) game.cityObjectLayout = {};
     if (!game.cityObjectLayout[areaId]) game.cityObjectLayout[areaId] = {};
@@ -1419,7 +1474,9 @@ function getCityObjectPositions(areaId, spotId, objects) {
 /* 도시 특수 던전 진입 (화이트 큐브 등) */
 function startCityDungeon(dungeonId) {
     const config = (typeof CITY_DUNGEON_CONFIGS !== 'undefined' && CITY_DUNGEON_CONFIGS[dungeonId]) ? CITY_DUNGEON_CONFIGS[dungeonId] : null;
-    const title = (config && config.title) ? config.title : "도시 던전";
+    const title = (config && config.title)
+        ? config.title
+        : getUIText("cityDungeon.titleDefault");
 
     game.state = 'exploration';
     switchScene('exploration');
@@ -1512,7 +1569,7 @@ function moveCitySide(dir) {
     game.cityArea.currentSpot = target.id;
     game.cityArea.selectedSpot = target.id;
     game.cityArea.sideIndex = idx;
-    setCitySpotStatus(`${target.name} 앞에 섰습니다.`);
+    setCitySpotStatus(getUIText("city.spotArrive").replace("[NAME]", target.name));
     renderCityArea(area.id);
 }
 
@@ -1522,7 +1579,7 @@ function interactCitySpot() {
     if (!area || !currentId) return;
     const spot = getAreaSpot(area, currentId);
     if (!spot) return;
-    setCitySpotStatus(`(${spot.name}) 내부 진입/상호작용은 추후 구현 예정`);
+    setCitySpotStatus(getUIText("city.spotEnterPending").replace("[NAME]", spot.name));
 }
 /* [game.js] 상점 나가기 핸들러 (상황별 복귀) */
 /* [game.js] 상점 나가기 핸들러 (상황별 복귀) */
@@ -1573,7 +1630,7 @@ function beginMission() {
     closePopup();
 
     if (!game.activeScenarioId || !SCENARIOS[game.activeScenarioId]) {
-        notifyNarration("진행 중인 의뢰 정보를 찾을 수 없습니다.");
+        notifyNarration(getUIText("scenario.missingActive"));
         return;
     }
     advanceTimeSlot("mission");
@@ -1611,7 +1668,7 @@ function startPatrol(districtKey) {
     const dist = DISTRICTS[districtKey];
     game.scenario = {
         id: "patrol",
-        title: `${DISTRICTS[districtKey].name} 순찰`,
+        title: getUIText("cityMap.patrolTitle").replace("[DISTRICT]", DISTRICTS[districtKey].name),
         districtKey: districtKey, // ★ 구역 키 저장
         clues: 0,
         isPatrol: true,
@@ -1707,13 +1764,13 @@ let player = {
 };
 
 const EQUIP_SLOT_META = {
-    head: { label: "머리", icon: "🪖" },
-    body: { label: "상체", icon: "🧥" },
-    legs: { label: "하체", icon: "👖" },
-    leftHand: { label: "왼손", icon: "✋" },
-    rightHand: { label: "오른손", icon: "🤚" },
-    accessory1: { label: "장신구1", icon: "💍" },
-    accessory2: { label: "장신구2", icon: "💍" }
+    head: { label: getUIText("equipSlots.head"), icon: "🪖" },
+    body: { label: getUIText("equipSlots.body"), icon: "🧥" },
+    legs: { label: getUIText("equipSlots.legs"), icon: "👖" },
+    leftHand: { label: getUIText("equipSlots.leftHand"), icon: "✋" },
+    rightHand: { label: getUIText("equipSlots.rightHand"), icon: "🤚" },
+    accessory1: { label: getUIText("equipSlots.accessory1"), icon: "💍" },
+    accessory2: { label: getUIText("equipSlots.accessory2"), icon: "💍" }
 };
 
 function ensureEquipmentFields(p) {
@@ -1921,24 +1978,24 @@ function isPenaltyCard(cardName, group = null) {
 
 function getCardGroupLabel(cardData) {
     if (!cardData || !cardData.group) return "";
-    if (cardData.group === 'status') return "상태이상";
-    if (cardData.group === 'curse') return "저주";
+    if (cardData.group === 'status') return getUIText("cardLabel.status");
+    if (cardData.group === 'curse') return getUIText("cardLabel.curse");
     return cardData.group;
 }
 
 function getCardTypeLabel(cardData) {
     if (!cardData || !cardData.type) return "";
-    if (cardData.stakeout) return "계획";
-    if (cardData.reaction) return "반응";
-    if (cardData.type === "attack" || (typeof cardData.type === "string" && cardData.type.includes("attack"))) return "공격";
-    if (cardData.type === "skill") return "스킬";
-    if (cardData.type === "power") return "파워";
+    if (cardData.stakeout) return getUIText("cardLabel.plan");
+    if (cardData.reaction) return getUIText("cardLabel.reaction");
+    if (cardData.type === "attack" || (typeof cardData.type === "string" && cardData.type.includes("attack"))) return getUIText("cardLabel.attack");
+    if (cardData.type === "skill") return getUIText("cardLabel.skill");
+    if (cardData.type === "power") return getUIText("cardLabel.power");
     if (cardData.type === "social") {
         const st = cardData.subtype || "";
-        if (st === "attack") return "공격";
-        if (st === "power") return "파워";
+        if (st === "attack") return getUIText("cardLabel.attack");
+        if (st === "power") return getUIText("cardLabel.power");
         // defend/skill/magic/trick 등은 소셜 내에서 스킬 취급
-        return "스킬";
+        return getUIText("cardLabel.skill");
     }
     return cardData.type;
 }
@@ -1958,6 +2015,17 @@ function ensureReactionSystems(p) {
     if (!Array.isArray(p.persistentReactions)) p.persistentReactions = [];
 }
 
+function logClueGainTarget(name, amount, total) {
+    if (game.state !== "battle" && game.state !== "social") return;
+    logNarration("system.clueGainTarget", { target: name, amount, total });
+}
+
+function logBattleByActor(actor, playerKey, enemyKey, vars = {}) {
+    if (!actor) return;
+    if (actor === player) logNarration(playerKey, vars);
+    else logNarration(enemyKey, vars);
+}
+
 function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
     ensureReactionSystems(player);
     if (!Array.isArray(player.pendingReactions) || player.pendingReactions.length === 0) return incomingDmg;
@@ -1967,7 +2035,7 @@ function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
 
     const applyReaction = (r, label) => {
         if (!r || r.trigger !== "onEnemyAttack") return dmg;
-        const name = label || (r.name ? `[${r.name}]` : "반응");
+        const name = label || (r.name ? `[${r.name}]` : getUIText("cardLabel.reaction"));
         if (r.block) {
             const val = Math.max(0, Number(r.block || 0));
             if (val > 0) {
@@ -1995,7 +2063,7 @@ function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
             const count = Math.max(0, Number(r.addClue || 0));
             if (count > 0) {
                 const next = addClueStacks(source, count);
-                logNarration("system.clueGainTarget", { target: name, amount: count, total: next });
+                logClueGainTarget(name, count, next);
             }
         }
         if (r.debuff && source) {
@@ -2011,7 +2079,7 @@ function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
             keep.push(r);
             return;
         }
-        applyReaction(r, r.name ? `[${r.name}]` : "반응");
+        applyReaction(r, r.name ? `[${r.name}]` : getUIText("cardLabel.reaction"));
         const remaining = Math.max(0, Number(r.remaining ?? 1) - 1);
         if (remaining > 0) keep.push({ ...r, remaining });
     });
@@ -2019,7 +2087,7 @@ function triggerPendingReactionsOnEnemyAttack(source, target, incomingDmg) {
 
     if (Array.isArray(player.persistentReactions) && player.persistentReactions.length > 0) {
         player.persistentReactions.forEach(r => {
-            applyReaction(r, r.name ? `[${r.name}]` : "계획");
+            applyReaction(r, r.name ? `[${r.name}]` : getUIText("cardLabel.plan"));
         });
     }
 
@@ -2481,7 +2549,9 @@ let game = {
 // 현재 전투에서 사용할 적 목록을 전역으로 보관
 let enemies = [];
 
-const TIME_SLOTS = ["오전", "낮", "오후", "밤"];
+const TIME_SLOTS = (typeof UI_TEXT !== "undefined" && UI_TEXT.timeSlots && Array.isArray(UI_TEXT.timeSlots.list))
+    ? UI_TEXT.timeSlots.list
+    : [];
 
 function ensureTimeState() {
     if (!Number.isInteger(game.day)) game.day = 1;
@@ -2490,8 +2560,10 @@ function ensureTimeState() {
 
 function getTimeLabel() {
     ensureTimeState();
-    const slot = TIME_SLOTS[game.timeIndex] || TIME_SLOTS[0];
-    return `${game.day}일차 ${slot}`;
+    const slot = TIME_SLOTS[game.timeIndex] || TIME_SLOTS[0] || "";
+    return getUIText("timeSlots.dayFormat")
+        .replace("[DAY]", game.day)
+        .replace("[SLOT]", slot);
 }
 
 function advanceTimeSlot(reason) {
@@ -2548,7 +2620,7 @@ function triggerRandomEvent() {
         const desc = event.descKey ? getNarration(event.descKey) : (event.desc || "");
         notifyNarration(`${title} ${stripHtml(desc || "")}`.trim());
         addCityLogChoices(event.choices.map(choice => ({
-            text: choice.txt,
+            text: choice.txtKey ? getUIText(choice.txtKey, choice.txt || "") : (choice.txt || ""),
             onSelect: choice.func
         })));
         return;
@@ -2558,14 +2630,16 @@ function triggerRandomEvent() {
         const resultText = event.effect();
         const icon = event.icon || "";
         const desc = event.descKey ? getNarration(event.descKey) : (event.desc || "");
-        const btnLabel = (game.mode === "infinite") ? "다음 스테이지로" : "확인";
+        const btnLabel = (game.mode === "infinite")
+            ? getUIText("event.randomNextStage")
+            : getUIText("event.randomConfirm");
 
         buttons = [{
             txt: btnLabel,
             func: () => finishEvent((game.mode === "infinite") ? "infinite" : "exploration")
         }];
 
-        const title = event.titleKey ? getNarration(event.titleKey) : (event.title || "이벤트");
+        const title = event.titleKey ? getNarration(event.titleKey) : (event.title || getUIText("event.randomConfirm"));
         const parts = [
             title,
             desc ? stripHtml(desc) : "",
@@ -2609,10 +2683,22 @@ function logNarration(type, vars = {}) {
     log({ type, vars });
 }
 
+function mapNarrationVars(vars = {}) {
+    const mapped = { ...vars };
+    if (mapped.card) mapped.card = getCardDisplayName(mapped.card);
+    if (mapped.item) mapped.item = getItemDisplayName(mapped.item);
+    if (mapped.buff) mapped.buff = getBuffDisplayName(mapped.buff);
+    if (mapped.target) mapped.target = getActorDisplayName(mapped.target);
+    if (mapped.boss) mapped.boss = getActorDisplayName(mapped.boss);
+    if (mapped.trait) mapped.trait = getDisplayText("traits", mapped.trait, String(mapped.trait ?? ""));
+    if (mapped.place) mapped.place = getLocationDisplayName(mapped.place);
+    return mapped;
+}
+
 function normalizeLogMessage(msg) {
     if (msg && typeof msg === "object" && !Array.isArray(msg)) {
         const type = msg.type || msg.path || "";
-        const vars = msg.vars || {};
+        const vars = mapNarrationVars(msg.vars || {});
         const fallback = msg.text || msg.raw || "";
         if (type) {
             const narrated = getNarration(type, vars);
@@ -2655,21 +2741,33 @@ function clearGlobalLog() {
 }
 
 function notifyNarration(text) {
-    logNarration("system.notice", { text });
+    log({ type: "system.notice", vars: { text }, text });
 }
 
 function showNarrationChoice(desc, choices) {
     notifyNarration(stripHtml(desc));
+    if (game.state === 'hub') {
+        setHubPanelVisible(true);
+    } else if (game.state === 'city') {
+        const mapMode = document.getElementById('city-map-mode');
+        const areaMode = document.getElementById('city-area-mode');
+        const mapVisible = mapMode && !mapMode.classList.contains('hidden');
+        const areaVisible = areaMode && !areaMode.classList.contains('hidden');
+        if (areaVisible) setCityPanelVisible('area', true);
+        else if (mapVisible) setCityPanelVisible('map', true);
+    }
     addCityLogChoices((choices || []).map(c => ({
-        text: c.txt || "선택",
+        text: c.txt || getUIText("popup.choiceDefault"),
         onSelect: c.func
     })));
+    syncCityLogPanels();
 }
 
 function getLogTargets() {
     return [
         document.getElementById('city-dialogue-log'),
         document.getElementById('city-dialogue-log-map'),
+        document.getElementById('explore-dialogue-log'),
         document.getElementById('global-log'),
         document.getElementById('hub-dialogue-log'),
         document.getElementById('event-dialogue-log')
@@ -2699,7 +2797,8 @@ function resolveCityLogChoice(id, index) {
     if (!entry || entry.resolved) return;
     const handlers = game.cityLogChoiceHandlers[id] || [];
     entry.resolved = true;
-    entry.selectedText = entry.choices[index] || "선택";
+    entry.selectedText = entry.choices[index] || getUIText("popup.choiceDefault");
+    appendCityLogLine("", `${getUIText("popup.choiceDefault")}: ${entry.selectedText}`, true, false);
     syncCityLogPanels();
     const handler = handlers[index];
     if (typeof handler === "function") handler();
@@ -2736,7 +2835,9 @@ function showDamageText(target, msg, isCrit = false) {
         if (isCrit) {
             el.classList.add("crit-text");
             // 텍스트 내용도 조금 더 강조
-            el.innerHTML = `<span style="font-size:0.6em">CRITICAL!</span><br>${msg.replace('⚡CRIT! ', '')}`;
+            const critTitle = getUIText("battle.damageCritTitle");
+            const critPrefix = getUIText("battle.damageCritPrefix");
+            el.innerHTML = `<span style="font-size:0.6em">${critTitle}</span><br>${msg.replace(critPrefix, '')}`;
         } else {
             el.innerText = msg;
         }
@@ -2804,20 +2905,27 @@ function isSurrenderableEnemy(enemy) {
 function triggerSurrenderWin() {
     if (game.state === "win") return;
     game.state = "win";
+    game.winAutoAdvanceDelay = 0;
+    game.winRewardLogged = false;
 
     let rewardGold = 1000 * (player.lucky ? 2 : 1);
     player.gold += rewardGold;
 
     let gainXp = 40 + (game.level * 10);
     player.xp += gainXp;
+    game.lastWinReward = { gold: rewardGold, xp: gainXp };
 
-    game.winMsg = `승리! (항복 수락) <span style="color:#f1c40f">${rewardGold}원</span>, <span style="color:#3498db">${gainXp} XP</span> 획득.`;
-    if (player.lucky) game.winMsg += " (🍀럭키피스 효과!)";
+    game.winMsg = getUIText("battle.winMsgSurrender")
+        .replace("[GOLD]", rewardGold)
+        .replace("[XP]", gainXp);
+    if (player.lucky) game.winMsg += getUIText("battle.winLuckySuffix");
 
+    // 일반 승리와 동일하게 전리품 처리
     game.pendingLoot = null;
     if (Math.random() < 0.5) {
         game.pendingLoot = getRandomItem(null, { categories: ["general"] });
-        game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`;
+        const lootLine = getUIText("battle.lootOnGround");
+        game.winMsg += `<br>${lootLine}`;
     }
 
     updateUI();
@@ -2861,7 +2969,7 @@ function pickEnemyCardForIntent(enemy) {
 
 function describeIntentFromCard(cardName, enemy = null) {
     const data = CARD_DATA[cardName] || {};
-    const result = { icon: "❓", tooltip: "무슨 행동을 할지 알 수 없습니다.", damageText: "" };
+    const result = { icon: "❓", tooltip: getUIText("battleIntent.unknown"), damageText: "" };
     const atkUser = enemy || null;
     const getPerHitDamage = (statType) => {
         if (typeof data.dmg !== 'number') return null;
@@ -2878,19 +2986,23 @@ function describeIntentFromCard(cardName, enemy = null) {
         if (!Number.isFinite(perHit)) return;
         const hits = getHitCount();
         result.damageText = hits > 1 ? `${perHit}x${hits}` : `${perHit}`;
-        result.tooltip += ` (예상 피해: ${result.damageText})`;
+        const expected = getUIText("battleIntent.expectedDamage")
+            .replace("[DAMAGE]", result.damageText);
+        result.tooltip += expected;
     };
 
     if (data.special === "summon") {
         result.icon = "📢";
-        result.tooltip = "소환/지원 요청을 준비 중";
+        result.tooltip = getUIText("battleIntent.summon");
         return result;
     }
 
     if (data.type === "social") {
         const isAttack = data.subtype === "attack";
         result.icon = isAttack ? "💬" : "🗣️";
-        result.tooltip = isAttack ? "멘탈 공격을 시도하려 함" : "교란/설득을 준비 중";
+        result.tooltip = isAttack
+            ? getUIText("battleIntent.socialAttack")
+            : getUIText("battleIntent.socialDebuff");
         if (isAttack) {
             const perHit = getPerHitDamage('socialAtk');
             appendDamageText(perHit);
@@ -2904,7 +3016,9 @@ function describeIntentFromCard(cardName, enemy = null) {
         const totalDmg = (perHit || 0) * hits;
         const isHeavy = totalDmg >= 12 || data.rank >= 3;
         result.icon = isHeavy ? "💥" : "⚔️";
-        result.tooltip = isHeavy ? "강한 공격을 준비 중" : "공격하려 함";
+        result.tooltip = isHeavy
+            ? getUIText("battleIntent.heavyAttack")
+            : getUIText("battleIntent.attack");
         appendDamageText(perHit);
         return result;
     }
@@ -2912,22 +3026,22 @@ function describeIntentFromCard(cardName, enemy = null) {
     if (data.type === "skill") {
         if (data.block && data.block > 0) {
             result.icon = "🛡️";
-            result.tooltip = "방어 태세를 갖추려 함";
+            result.tooltip = getUIText("battleIntent.defend");
             return result;
         }
         if (data.buff || data.power) {
             result.icon = "✨";
-            result.tooltip = "자신을 강화하거나 특수 효과를 준비 중";
+            result.tooltip = getUIText("battleIntent.buff");
             return result;
         }
         result.icon = "🎲";
-        result.tooltip = "특수 행동을 준비 중";
+        result.tooltip = getUIText("battleIntent.special");
         return result;
     }
 
     if (data.type === "power") {
         result.icon = "✨";
-        result.tooltip = "지속 효과를 전개하려 함";
+        result.tooltip = getUIText("battleIntent.power");
         return result;
     }
 
@@ -3017,7 +3131,103 @@ function initGame() {
         }, { once: true }); // ★ 딱 한 번만 실행되고 사라짐
     }
 
+    applyStaticUIText();
     renderStartScreen();
+}
+
+function applyStaticUIText() {
+    const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+    const setHTML = (id, html) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    };
+
+    setText("game-menu-title", getUIText("menuTile.title"));
+    setText("menu-tile-status-title", getUIText("menuTile.statusTitle"));
+    setText("menu-tile-status-desc", getUIText("menuTile.statusDesc"));
+    setText("menu-tile-inventory-title", getUIText("menuTile.inventoryTitle"));
+    setText("menu-tile-inventory-desc", getUIText("menuTile.inventoryDesc"));
+    setText("menu-tile-cards-title", getUIText("menuTile.cardsTitle"));
+    setText("menu-tile-cards-desc", getUIText("menuTile.cardsDesc"));
+    setText("menu-tile-missions-title", getUIText("menuTile.missionsTitle"));
+    setText("menu-tile-missions-desc", getUIText("menuTile.missionsDesc"));
+    setText("menu-tile-options-title", getUIText("menuTile.optionsTitle"));
+    setText("menu-tile-options-desc", getUIText("menuTile.optionsDesc"));
+    setText("menu-tile-reset-title", getUIText("menuTile.resetTitle"));
+    setText("menu-tile-reset-desc", getUIText("menuTile.resetDesc"));
+    setText("menu-tile-fullscreen-title", getUIText("menuTile.fullscreenTitle"));
+    setText("menu-tile-fullscreen-desc", getUIText("menuTile.fullscreenDesc"));
+
+    setText("btn-continue", getUIText("start.continue"));
+    setText("btn-new-game", getUIText("start.newGame"));
+    setText("btn-infinite-mode", getUIText("start.infiniteMode"));
+    setText("sc-title-mini", getUIText("scenario.miniPlaceholder"));
+
+    setHTML("tab-consume", `${getUIText("menu.itemTabConsume")} <span id="cnt-consume" style="font-size:0.8em">(0/6)</span>`);
+    setHTML("tab-equip", `${getUIText("menu.itemTabEquip")} <span id="cnt-equip" style="font-size:0.8em">(0)</span>`);
+    setHTML("tab-relic", `${getUIText("menu.itemTabRelic")} <span id="cnt-relic" style="font-size:0.8em">(0)</span>`);
+    setText("inventory-hint", getUIText("inventory.hint"));
+
+    setText("storage-title", getUIText("storage.title"));
+    setText("tab-storage-consume", getUIText("storage.tabConsume"));
+    setText("tab-storage-equip", getUIText("storage.tabEquip"));
+    setText("tab-storage-relic", getUIText("storage.tabRelic"));
+    setText("storage-exit", getUIText("storage.exit"));
+    setText("storage-bag-title", getUIText("storage.bagTitle"));
+    setText("storage-bag-desc", getUIText("storage.bagDesc"));
+    setText("storage-wh-title", getUIText("storage.warehouseTitle"));
+    setText("storage-wh-desc", getUIText("storage.warehouseDesc"));
+
+    setText("city-map-left-title", getUIText("cityUi.mapTitle"));
+    setText("city-map-left-desc", getUIText("cityUi.mapDesc"));
+    setText("city-action-explore", getUIText("explore.enterLabel"));
+    setText("city-back-office", getUIText("cityUi.backOffice"));
+    setText("city-area-left-title", getUIText("cityUi.areaTitle"));
+    setText("city-area-left-desc", getUIText("cityUi.areaDesc"));
+    setText("btn-case-close", getUIText("scenario.caseListClose"));
+    setText("btn-area-enter", getUIText("cityArea.enterLabel"));
+    setText("btn-area-back-map", getUIText("cityUi.backMap"));
+
+    setText("tab-col-battle-label", getUIText("cardCollection.battleTab"));
+    setText("tab-col-social-label", getUIText("cardCollection.socialTab"));
+
+    setText("minimap-title", getUIText("minimap.title"));
+    setHTML("minimap-legend", getUIText("minimap.legend"));
+
+    setText("deck-title", getUIText("deck.managerTitle"));
+    setText("tab-battle", getUIText("deck.tabBattle"));
+    setText("tab-social", getUIText("deck.tabSocial"));
+    setText("deck-close", getUIText("deck.managerClose"));
+    setText("deck-active-label", getUIText("deck.activeHeader"));
+    setText("deck-active-help", getUIText("deck.activeHelp"));
+    setText("deck-storage-label", getUIText("deck.storageHeader"));
+    setText("deck-storage-help", getUIText("deck.storageHelp"));
+
+    setText("btn-draw-pile-floating", `${getUIText("battleHud.deckLabel")}(0)`);
+    setText("btn-exhaust-pile-floating", `${getUIText("battleHud.exhaustLabel")}(0)`);
+    setText("btn-discard-pile-floating", `${getUIText("battleHud.discardLabel")}(0)`);
+    setText("interaction-bubble", getUIText("explore.interactionBubble"));
+    setText("ap-label", getUIText("battleHud.apLabel"));
+    setHTML("end-turn-btn", getUIText("battleHud.endTurn"));
+    setText("explore-minimap-title", getUIText("explore.minimapHeader"));
+    setText("explore-btn-status", getUIText("explore.actionStatus"));
+    setText("explore-btn-inventory", getUIText("explore.actionInventory"));
+    setText("explore-btn-escape", getUIText("explore.actionEscape"));
+
+    setText("event-clear-desc", getUIText("event.clearDesc"));
+    setText("res-gold-label", getUIText("event.rewardGoldLabel"));
+    setText("res-xp-label", getUIText("event.rewardXpLabel"));
+    setText("res-item-label", getUIText("event.rewardItemLabel"));
+    setText("res-item", getUIText("event.rewardItemNone"));
+    setText("event-return-office", getUIText("event.returnOffice"));
+
+    setText("story-name", getUIText("story.namePlaceholder"));
+    setText("story-text", getUIText("story.textPlaceholder"));
+    setText("popup-title", getUIText("popup.titlePlaceholder"));
+    setText("popup-desc", getUIText("popup.descPlaceholder"));
 }
 
 // [2] 자동 저장 함수 (알림 없이 조용히 저장)
@@ -3140,6 +3350,7 @@ function loadGame() {
                 createBattleCheckpoint();
                 switchScene('battle');
                 showBattleView();
+                syncCityLogPanels();
                 // 플레이어 이미지 동기화 (HTML 기본 이미지를 덮어씀)
                 const loadedPlayerEl = document.getElementById('dungeon-player');
                 if (loadedPlayerEl) {
@@ -3190,7 +3401,7 @@ function loadGame() {
 
     } catch (e) {
         console.error(e);
-        notifyNarration("세이브 파일 오류로 데이터를 초기화합니다.");
+        notifyNarration(getUIText("misc.saveReset"));
         resetGameData();
     }
 }
@@ -3199,11 +3410,11 @@ function loadGame() {
 // [수정] confirmReset: confirm -> showPopup
 function confirmReset() {
     showPopup(
-        "데이터 초기화",
-        "정말 모든 데이터를 삭제하고 처음부터 시작하시겠습니까? (되돌릴 수 없습니다)",
+        getUIText("confirm.resetTitle"),
+        getUIText("confirm.resetDesc"),
         [
-            { txt: "예 (삭제)", func: resetGameData },
-            { txt: "아니오", func: closePopup }
+            { txt: getUIText("confirm.resetYes"), func: resetGameData },
+            { txt: getUIText("confirm.resetNo"), func: closePopup }
         ],
         "",
         { forcePopup: true }
@@ -3237,10 +3448,10 @@ function startCharacterCreation() {
 function renderJobSelection() {
     const container = document.getElementById('char-creation-content');
     container.innerHTML = `
-        <h2 style="color:#f1c40f">직업 선택</h2>
+        <h2 style="color:#f1c40f">${getUIText("char.jobSelectTitle")}</h2>
         <div class="hub-grid" id="job-list"></div>
         <div style="margin-top:20px; text-align:center;">
-             <button class="action-btn" style="background:#7f8c8d; width:200px;" onclick="renderStartScreen()">← 이전 화면</button>
+             <button class="action-btn" style="background:#7f8c8d; width:200px;" onclick="renderStartScreen()">${getUIText("char.jobBack")}</button>
         </div>
     `;
 
@@ -3352,15 +3563,28 @@ function renderTraitSelection() {
 
     // TP 상태 변수 및 UI 텍스트 설정
     let tpColor = currentTP >= 0 ? "#27ae60" : "#c0392b"; // Green / Red (Darker for light theme visibility)
-    let btnText = currentTP >= 0 ? "결정 완료 (게임 시작)" : `포인트 부족! (${currentTP})`;
+    let btnText = currentTP >= 0
+        ? getUIText("char.finishReady")
+        : getUIText("char.finishNeedPoints").replace("[POINTS]", currentTP);
     let btnDisabled = currentTP < 0 ? "disabled" : "";
 
     // 직업 기본 정보 가져오기
     let base = JOB_DATA[tempJob].baseStats;
-    const statLabels = { str: "💪근력", con: "❤️건강", dex: "⚡민첩", int: "🧠지능", wil: "👁️정신", cha: "💋매력" };
+    const statLabels = {
+        str: getUIText("char.statLabelStr"),
+        con: getUIText("char.statLabelCon"),
+        dex: getUIText("char.statLabelDex"),
+        int: getUIText("char.statLabelInt"),
+        wil: getUIText("char.statLabelWil"),
+        cha: getUIText("char.statLabelCha")
+    };
     const statDesc = {
-        str: "물리 공격력", con: "체력/물리방어", dex: "행동 속도",
-        int: "논리 방어(소셜)", wil: "이성/저항(소셜)", cha: "설득/공격(소셜)"
+        str: getUIText("char.statDescStr"),
+        con: getUIText("char.statDescCon"),
+        dex: getUIText("char.statDescDex"),
+        int: getUIText("char.statDescInt"),
+        wil: getUIText("char.statDescWil"),
+        cha: getUIText("char.statDescCha")
     };
 
 
@@ -3369,8 +3593,8 @@ function renderTraitSelection() {
     let statHtml = `
         <div class="hub-card no-hover-move" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#ccc; background:#fff; color:#000;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:8px;">
-                <h3 style="margin:0; color:#2980b9; font-size:1.1em;">📊 능력치 조정</h3>
-                <div style="font-size:0.9em; color:#555;">남은 포인트: <span style="color:#f39c12; font-weight:bold; font-size:1.2em;">${currentStatPoints}</span></div>
+                <h3 style="margin:0; color:#2980b9; font-size:1.1em;">${getUIText("char.statPanelTitle")}</h3>
+                <div style="font-size:0.9em; color:#555;">${getUIText("char.pointsRemaining")}: <span style="color:#f39c12; font-weight:bold; font-size:1.2em;">${currentStatPoints}</span></div>
             </div>
             <div style="display:flex; flex-direction:column; gap:6px;">
     `;
@@ -3395,14 +3619,14 @@ function renderTraitSelection() {
             </div>
         `;
     }
-    statHtml += `</div><div style="font-size:0.8em; color:#777; margin-top:10px; text-align:center;">최소 8, 기본 10점 기준. (괄호 안은 보정치)</div></div>`;
+    statHtml += `</div><div style="font-size:0.8em; color:#777; margin-top:10px; text-align:center;">${getUIText("char.statHint")}</div></div>`;
 
     // --- [UI 2] 특성 선택 패널 (Light Theme) ---
     let traitHtml = `
         <div class="hub-card no-hover-move" style="margin-bottom:15px; cursor:default; text-align:left; border-color:#ccc; height: 100%; background:#fff; display:flex; flex-direction:column;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:8px;">
-                <h3 style="margin:0; color:#8e44ad; font-size:1.1em;">🧬 특성 선택</h3>
-                <div style="font-size:0.9em; color:#555;">남은 포인트: <span style="color:${tpColor}; font-weight:bold; font-size:1.2em;">${currentTP}</span></div>
+                <h3 style="margin:0; color:#8e44ad; font-size:1.1em;">${getUIText("char.traitSelectTitle")}</h3>
+                <div style="font-size:0.9em; color:#555;">${getUIText("char.traitRemaining")}: <span style="color:${tpColor}; font-weight:bold; font-size:1.2em;">${currentTP}</span></div>
             </div>
             
             <div id="trait-list" style="flex:1; overflow-y:auto; padding-right:5px; display:flex; flex-direction:column; gap:6px;"></div>
@@ -3412,7 +3636,7 @@ function renderTraitSelection() {
     // --- [UI 3] 전체 조립 ---
     // [Request] Removed text-shadow from h2
     container.innerHTML = `
-        <h2 style="color:#111; margin-bottom:15px;">캐릭터 상세 설정</h2>
+        <h2 style="color:#111; margin-bottom:15px;">${getUIText("char.detailTitle")}</h2>
         <div class="char-creation-split">
             <div class="char-col-left">
                 ${statHtml}
@@ -3421,7 +3645,7 @@ function renderTraitSelection() {
                     <button id="btn-finish-creation" class="action-btn" style="margin-top:10px; width:100%; height:50px; font-size:1.1em; background:#ffffff; border:1px solid #111; box-shadow:none;" onclick="finishCreation()" ${btnDisabled}>
                         ${btnText}
                     </button>
-                    <button class="action-btn" style="margin-top:8px; width:100%; background:#ffffff; border:1px solid #111; box-shadow:none;" onclick="renderJobSelection()">← 돌아가기</button>
+                    <button class="action-btn" style="margin-top:8px; width:100%; background:#ffffff; border:1px solid #111; box-shadow:none;" onclick="renderJobSelection()">${getUIText("char.finishBack")}</button>
                 </div>
             </div>
             
@@ -3457,7 +3681,7 @@ function renderTraitSelection() {
         let costBadge = "";
         if (t.cost > 0) costBadge = `<span class="trait-cost negative">-${t.cost}P</span>`; // 포인트 차감 (나쁜 효과는 아님, 좋은 특성이라 비싼 것)
         else if (t.cost < 0) costBadge = `<span class="trait-cost positive">+${Math.abs(t.cost)}P</span>`; // 포인트 획득 (나쁜 특성)
-        else costBadge = `<span class="trait-cost neutral">기본</span>`;
+        else costBadge = `<span class="trait-cost neutral">${getUIText("char.traitCostBase")}</span>`;
 
         // 아이콘/체크마크
         let icon = isSelected ? "✅" : "⬜";
@@ -3477,7 +3701,7 @@ function renderTraitSelection() {
         `;
 
         if (isDefault) {
-            el.onclick = () => notifyNarration("이 직업의 기본 특성은 해제할 수 없습니다.");
+            el.onclick = () => notifyNarration(getUIText("misc.jobTraitLocked"));
             el.style.cursor = "default";
             el.style.opacity = "0.8";
         } else {
@@ -3583,7 +3807,11 @@ function finishCreation() {
 
     // ★ [핵심] HP나 SP가 0 이하라면 생성 차단
     if (player.maxHp <= 0 || player.maxSp <= 0) {
-        notifyNarration(`현재 세팅으로는 생존할 수 없습니다. (최대 HP: ${player.maxHp}, 최대 SP: ${player.maxSp}) 건강/정신 스탯을 높이거나 페널티 특성을 해제해 주세요.`);
+        notifyNarration(
+            getUIText("misc.survivalFail")
+                .replace("[HP]", player.maxHp)
+                .replace("[SP]", player.maxSp)
+        );
         return;
     }
 
@@ -3616,7 +3844,7 @@ function getOfficeName() {
         const spot = area.spots.find(s => s.id === "youngjin_office");
         if (spot && spot.name) return spot.name;
     }
-    return "영진 탐정 사무소";
+    return getUIText("home.officeFallback");
 }
 
 function getAcademyDormName() {
@@ -3625,12 +3853,12 @@ function getAcademyDormName() {
         const spot = area.spots.find(s => s.id === "academy_dormitory");
         if (spot && spot.name) return spot.name;
     }
-    return "기숙사";
+    return getUIText("home.dormFallback");
 }
 
 function getHomeMeta() {
     const cafeStyle = {
-        sub: "해결사들이 쉬어가는 은신처",
+        sub: getUIText("home.cafeSub"),
         bg: "https://placehold.co/1400x800/2b1f1a/d9c2a3?text=Cafe+Hecate"
     };
     const officeStyle = {
@@ -3641,31 +3869,31 @@ function getHomeMeta() {
     if (isDetectiveJob()) {
         return {
             tag: officeName,
-            title: `🕵️ ${officeName}`,
+            title: getUIText("home.detectiveTitle").replace("[NAME]", officeName),
             sub: officeStyle.sub,
             bg: officeStyle.bg,
-            returnLabel: "🏠 사무소 복귀",
-            returnLabelLong: "🏠 사무소로 복귀"
+            returnLabel: getUIText("home.returnOfficeShort"),
+            returnLabelLong: getUIText("home.returnOfficeLong")
         };
     }
     if (isWizardJob()) {
         const dormName = getAcademyDormName();
         return {
-            tag: `성 주드 아카데미 ${dormName}`,
-            title: `🏫 ${dormName}`,
-            sub: "캠퍼스의 조용한 밤공기 속 휴식",
+            tag: getUIText("home.wizardTag").replace("[NAME]", dormName),
+            title: getUIText("home.wizardTitle").replace("[NAME]", dormName),
+            sub: getUIText("home.wizardSub"),
             bg: "https://placehold.co/1400x800/141414/ffffff?text=Academy+Dormitory",
-            returnLabel: `🏠 ${dormName} 복귀`,
-            returnLabelLong: `🏠 ${dormName}로 복귀`
+            returnLabel: getUIText("home.returnDormShort").replace("[NAME]", dormName),
+            returnLabelLong: getUIText("home.returnDormLong").replace("[NAME]", dormName)
         };
     }
     return {
-        tag: "카페 헤카테",
-        title: "☕ 카페 헤카테",
+        tag: getUIText("home.cafeName"),
+        title: getUIText("home.cafeTitle"),
         sub: cafeStyle.sub,
         bg: cafeStyle.bg,
-        returnLabel: "🏠 카페 복귀",
-        returnLabelLong: "🏠 카페로 복귀"
+        returnLabel: getUIText("home.returnCafeShort"),
+        returnLabelLong: getUIText("home.returnCafeLong")
     };
 }
 
@@ -3707,12 +3935,12 @@ function renderHub() {
     if (layer) {
         layer.innerHTML = "";
         const actions = [
-            { name: "📁 사건 파일", desc: "의뢰를 선택하고 현장으로 나갑니다.", pos: { x: 20, y: 30 }, func: () => openCaseFiles() },
-            { name: "🗺️ 도시로 외출", desc: "사건 현장이나 상점으로 이동합니다.", pos: { x: 58, y: 24 }, func: () => renderCityMap() },
-            { name: "☕ 커피 한 잔", desc: "체력과 이성을 회복합니다. (1900원)", pos: { x: 28, y: 58 }, func: () => hubRest() },
-            { name: "📦 인터넷 주문", desc: "장비를 구매합니다.", pos: { x: 70, y: 42 }, func: () => renderShopScreen('shop_internet') },
-            { name: "🃏 덱 정비", desc: "전투용/대화용 덱을 편집합니다.", pos: { x: 62, y: 68 }, func: () => openDeckManager() },
-            { name: "📦 창고", desc: "아이템과 유물을 보관합니다.", pos: { x: 36, y: 78 }, func: () => openStorage() }
+            { name: getUIText("hub.actionCaseName"), desc: getUIText("hub.actionCaseDesc"), pos: { x: 20, y: 30 }, func: () => openCaseFiles() },
+            { name: getUIText("hub.actionCityName"), desc: getUIText("hub.actionCityDesc"), pos: { x: 58, y: 24 }, func: () => renderCityMap() },
+            { name: getUIText("hub.actionCoffeeName"), desc: getUIText("hub.actionCoffeeDesc"), pos: { x: 28, y: 58 }, func: () => hubRest() },
+            { name: getUIText("hub.actionShopName"), desc: getUIText("hub.actionShopDesc"), pos: { x: 70, y: 42 }, func: () => renderShopScreen('shop_internet') },
+            { name: getUIText("hub.actionDeckName"), desc: getUIText("hub.actionDeckDesc"), pos: { x: 62, y: 68 }, func: () => openDeckManager() },
+            { name: getUIText("hub.actionStorageName"), desc: getUIText("hub.actionStorageDesc"), pos: { x: 36, y: 78 }, func: () => openStorage() }
         ];
         actions.forEach(action => {
             const btn = document.createElement('button');
@@ -3731,25 +3959,52 @@ function renderHub() {
 
 /* [NEW] 거점 휴식 */
 function hubRest() {
+    const cost = 1900;
     setHubPanelVisible(true);
-    if (player.gold < 1900) {
-        notifyNarration("소지금이 부족합니다.");
+    if (player.gold < cost) {
+        notifyNarration(getUIText("hub.coffeeNoMoney"));
         return;
     }
-
-    player.gold -= 1900;
-    player.hp = player.maxHp;
-    player.sp = player.maxSp;
-
-    updateUI();
-    advanceTimeSlot("rest");
-    notifyNarration("당신은 따뜻한 커피로 안정을 찾았습니다. HP와 SP가 회복되었습니다.");
+    showNarrationChoice(
+        getUIText("hub.coffeePromptLine"),
+        [
+            {
+                txt: getUIText("hub.coffeeDrinkOption"),
+                func: () => {
+                    if (player.gold < cost) {
+                        notifyNarration(getUIText("hub.coffeeNoMoney"));
+                        return;
+                    }
+                    const hpBefore = player.hp;
+                    const spBefore = player.sp;
+                    player.gold -= cost;
+                    player.hp = player.maxHp;
+                    player.sp = player.maxSp;
+                    updateUI();
+                    advanceTimeSlot("rest");
+                    const hpGain = Math.max(0, player.hp - hpBefore);
+                    const spGain = Math.max(0, player.sp - spBefore);
+                    notifyNarration(
+                        getUIText("hub.coffeeDrinkResult")
+                            .replace("[HP]", hpGain)
+                            .replace("[SP]", spGain)
+                    );
+                }
+            },
+            {
+                txt: getUIText("hub.coffeeSkipOption"),
+                func: () => {
+                    notifyNarration(getUIText("hub.coffeeSkip"));
+                }
+            }
+        ]
+    );
 }
 
 function openHospitalCure() {
     const curseTraits = getCureTraitsByTag("medical");
     if (curseTraits.length === 0) {
-        notifyNarration("치료할 부상이 없습니다.");
+        notifyNarration(getUIText("medical.noInjury"));
         return;
     }
 
@@ -3762,19 +4017,23 @@ function openHospitalCure() {
             func: () => {
                 closePopup();
                 if (player.gold < cost) {
-                    notifyNarration("치료 비용이 부족합니다.");
+                    notifyNarration(getUIText("medical.noMoney"));
                     return;
                 }
                 player.gold -= cost;
                 removeTrait(key);
                 if (cardName) removeCardEverywhere(cardName);
                 advanceTimeSlot("hospital_cure");
-                notifyNarration(`${t.name}이(가) 해제되었습니다.`);
+                notifyNarration(getUIText("medical.removeTrait").replace("[TRAIT]", t.name));
             }
         };
     });
-    buttons.push({ txt: "취소", func: closePopup });
-    showPopup("대학 병원", "치료할 부상을 선택하세요.", buttons);
+    buttons.push({ txt: getUIText("medical.btnCancel"), func: closePopup });
+    showPopup(
+        getUIText("medical.hospitalTitle"),
+        getUIText("medical.hospitalDesc"),
+        buttons
+    );
 }
 
 function getCureTraitsByTag(tag) {
@@ -3790,7 +4049,7 @@ function getCureTraitsByTag(tag) {
 function openOccultClinic() {
     const curseTraits = getCureTraitsByTag("occult");
     if (curseTraits.length === 0) {
-        notifyNarration("해주할 오컬트 저주가 없습니다.");
+        notifyNarration(getUIText("medical.noOccultCurse"));
         return;
     }
 
@@ -3803,32 +4062,36 @@ function openOccultClinic() {
             func: () => {
                 closePopup();
                 if (player.gold < cost) {
-                    notifyNarration("치료 비용이 부족합니다.");
+                    notifyNarration(getUIText("medical.noMoney"));
                     return;
                 }
                 player.gold -= cost;
                 removeTrait(key);
                 if (cardName) removeCardEverywhere(cardName);
                 advanceTimeSlot("occult_cure");
-                notifyNarration(`${t.name}이(가) 해제되었습니다.`);
+                notifyNarration(getUIText("medical.removeTrait").replace("[TRAIT]", t.name));
             }
         };
     });
-    buttons.push({ txt: "한방약 구매", func: () => renderShopScreen("shop_herbal") });
-    buttons.push({ txt: "취소", func: closePopup });
-    showPopup("한의원 제생당", "해주할 오컬트 저주를 선택하세요.", buttons);
+    buttons.push({ txt: getUIText("medical.btnHerbalShop"), func: () => renderShopScreen("shop_herbal") });
+    buttons.push({ txt: getUIText("medical.btnCancel"), func: closePopup });
+    showPopup(
+        getUIText("medical.orientalTitle"),
+        getUIText("medical.orientalDesc"),
+        buttons
+    );
 }
 
 function openSaunaRest() {
     if (player.hp >= player.maxHp && player.sp >= player.maxSp) {
-        notifyNarration("이미 충분히 회복되어 있습니다.");
+        notifyNarration(getUIText("medical.clinicFull"));
         return;
     }
     player.hp = player.maxHp;
     player.sp = player.maxSp;
     updateUI();
     advanceTimeSlot("sauna_rest");
-    notifyNarration("뜨끈한 탕에서 쉬며 체력과 이성을 회복했습니다.");
+    notifyNarration(getUIText("medical.saunaHeal"));
 }
 
 function openHealingClinic() {
@@ -3844,11 +4107,11 @@ function openHealingClinic() {
 
     const buttons = [
         {
-            txt: `회복 진료 - ${healCost}G`,
+            txt: getUIText("medical.optHeal").replace("[COST]", healCost),
             func: () => {
                 closePopup();
                 if (player.gold < healCost) {
-                    notifyNarration("진료 비용이 부족합니다.");
+                    notifyNarration(getUIText("medical.noClinicMoney"));
                     return;
                 }
                 player.gold -= healCost;
@@ -3856,19 +4119,19 @@ function openHealingClinic() {
                 player.sp = player.maxSp;
                 updateUI();
                 advanceTimeSlot("clinic_heal");
-                notifyNarration("컨디션이 완전히 회복되었습니다.");
+                notifyNarration(getUIText("medical.clinicFull"));
             }
         },
         {
-            txt: `모든 저주 해제 - ${cureCost}G`,
+            txt: getUIText("medical.optCureAll").replace("[COST]", cureCost),
             func: () => {
                 closePopup();
                 if (cureTraits.length === 0) {
-                    notifyNarration("해제할 저주가 없습니다.");
+                    notifyNarration(getUIText("medical.noRoomCurse"));
                     return;
                 }
                 if (player.gold < cureCost) {
-                    notifyNarration("진료 비용이 부족합니다.");
+                    notifyNarration(getUIText("medical.noClinicMoney"));
                     return;
                 }
                 player.gold -= cureCost;
@@ -3878,15 +4141,15 @@ function openHealingClinic() {
                     if (cardName) removeCardEverywhere(cardName);
                 });
                 advanceTimeSlot("clinic_cure_all");
-                notifyNarration("모든 저주가 해제되었습니다.");
+                notifyNarration(getUIText("medical.removeAllCurses"));
             }
         },
         {
-            txt: `컨디션 부스트 - ${buffCost}G`,
+            txt: getUIText("medical.optBuff").replace("[COST]", buffCost),
             func: () => {
                 closePopup();
                 if (player.gold < buffCost) {
-                    notifyNarration("진료 비용이 부족합니다.");
+                    notifyNarration(getUIText("medical.noClinicMoney"));
                     return;
                 }
                 player.gold -= buffCost;
@@ -3895,14 +4158,18 @@ function openHealingClinic() {
                 applyBuff(player, "쾌속", 2);
                 updateUI();
                 advanceTimeSlot("clinic_buff");
-                notifyNarration("맞춤 케어로 컨디션이 강화되었습니다.");
+                notifyNarration(getUIText("medical.clinicBuff"));
             }
         },
-        { txt: "약 구매", func: () => renderShopScreen("shop_clinic") },
-        { txt: "닫기", func: closePopup }
+        { txt: getUIText("medical.btnClinicShop"), func: () => renderShopScreen("shop_clinic") },
+        { txt: getUIText("medical.btnClose"), func: closePopup }
     ];
 
-    showPopup("힐링 클리닉 사일런스", "원하시는 서비스를 선택하세요.", buttons);
+    showPopup(
+        getUIText("medical.clinicTitle"),
+        getUIText("medical.clinicDesc"),
+        buttons
+    );
 }
 /* [NEW] 덱 관리 시스템 변수 */
 let currentDeckMode = 'battle'; // 'battle' or 'social'
@@ -3936,8 +4203,24 @@ function renderDeckBuilder() {
     // 1. 현재 모드에 맞는 덱 가져오기
     let targetDeck = (currentDeckMode === 'battle') ? player.deck : player.socialDeck;
 
-    // 카운트 갱신
+    // 카운트/라벨 갱신
     document.getElementById('deck-count').innerText = targetDeck.length;
+    const deckTitle = document.getElementById('deck-title');
+    if (deckTitle) deckTitle.textContent = getUIText("deck.managerTitle");
+    const deckClose = document.getElementById('deck-close');
+    if (deckClose) deckClose.textContent = getUIText("deck.managerClose");
+    const tabBattle = document.getElementById('tab-battle');
+    if (tabBattle) tabBattle.textContent = getUIText("deck.tabBattle");
+    const tabSocial = document.getElementById('tab-social');
+    if (tabSocial) tabSocial.textContent = getUIText("deck.tabSocial");
+    const activeLabel = document.getElementById('deck-active-label');
+    if (activeLabel) activeLabel.textContent = getUIText("deck.activeHeader");
+    const storageLabel = document.getElementById('deck-storage-label');
+    if (storageLabel) storageLabel.textContent = getUIText("deck.storageHeader");
+    const activeHelp = document.getElementById('deck-active-help');
+    if (activeHelp) activeHelp.textContent = getUIText("deck.activeHelp");
+    const storageHelp = document.getElementById('deck-storage-help');
+    if (storageHelp) storageHelp.textContent = getUIText("deck.storageHelp");
 
     // --- 왼쪽: 장착 중인 덱 렌더링 ---
     targetDeck.forEach((cName, idx) => {
@@ -3993,13 +4276,13 @@ function moveCardToStorage(deckIdx) {
 
     // 최소 덱 매수 제한 (예: 5장)
     if (targetDeck.length <= 5) {
-        notifyNarration("최소 5장의 카드는 있어야 합니다.");
+        notifyNarration(getUIText("deck.notEnoughCards"));
         return;
     }
 
     let card = targetDeck[deckIdx];
     if (isPenaltyCard(card, 'curse')) {
-        notifyNarration("저주는 제거할 수 없습니다.");
+        notifyNarration(getUIText("deck.cannotRemoveCurse"));
         return;
     }
 
@@ -4109,7 +4392,7 @@ function applySocialImpact(target, val) {
         if (target.block >= absVal) {
             target.block -= absVal;
             effectiveVal = 0;
-            showDamageText(target, "RESIST");
+            showDamageText(target, getUIText("battle.damageResistText"));
         } else {
             effectiveVal -= target.block;
             target.block = 0;
@@ -4154,11 +4437,19 @@ function applySocialImpact(target, val) {
 function openCaseFiles() {
     if (handleExpiredScenarios()) return;
     logNarration("system.openCaseFiles");
+    const cityScene = document.getElementById('city-scene');
+    const hubScene = document.getElementById('hub-scene');
+    if (cityScene && !cityScene.classList.contains('hidden')) {
+        setCityPanelVisible('area', true);
+    }
+    if (hubScene && !hubScene.classList.contains('hidden')) {
+        setHubPanelVisible(true);
+    }
     // 팝업으로 시나리오 목록 보여주기
     let content = `
         <div style="display:flex; gap:6px; justify-content:center; margin-bottom:10px;">
-            <button class="small-btn" onclick="switchCaseTab('missions')">의뢰</button>
-            <button class="small-btn" onclick="switchCaseTab('clues')">새로운 사건의 실마리</button>
+            <button class="small-btn" onclick="switchCaseTab('missions')">${getUIText("scenario.tabMissions")}</button>
+            <button class="small-btn" onclick="switchCaseTab('clues')">${getUIText("scenario.tabClues")}</button>
         </div>
         <div id="case-tab-missions" style="display:flex; flex-direction:column; gap:10px;">
     `;
@@ -4171,7 +4462,7 @@ function openCaseFiles() {
         if (isActive) {
             content += `
                 <button class="action-btn" onclick="openActiveMissions()">
-                    <b>${sc.title}</b> <span style="font-size:0.7em; color:#f1c40f;">(진행 중)</span><br>
+                    <b>${sc.title}</b> <span style="font-size:0.7em; color:#f1c40f;">${getUIText("scenario.tagActive")}</span><br>
                     <span style="font-size:0.7em;">${sc.desc}</span>
                 </button>
             `;
@@ -4197,10 +4488,10 @@ function openCaseFiles() {
         const lines = getScenarioUnlockHints(id);
         const hintHtml = (lines.length > 0)
             ? lines.map(l => `<div style="font-size:0.7em; color:#777;">${l}</div>`).join("")
-            : `<div style="font-size:0.7em; color:#777;">조건을 만족하면 수락할 수 있습니다.</div>`;
+            : `<div style="font-size:0.7em; color:#777;">${getUIText("scenario.unlockHint")}</div>`;
         content += `
             <div class="action-btn" style="cursor:default; opacity:0.9;">
-                <b>${sc.title}</b> <span style="font-size:0.7em; color:#999;">(잠김)</span><br>
+                <b>${sc.title}</b> <span style="font-size:0.7em; color:#999;">${getUIText("scenario.tagLocked")}</span><br>
                 <span style="font-size:0.7em;">${sc.desc}</span>
                 <div style="margin-top:6px;">${hintHtml}</div>
             </div>
@@ -4208,13 +4499,17 @@ function openCaseFiles() {
         clueCount++;
     }
     if (clueCount === 0) {
-        content += `<div style="color:#777; text-align:center; padding:12px 0;">실마리가 없습니다.</div>`;
+        content += `<div style="color:#777; text-align:center; padding:12px 0;">${getUIText("scenario.caseListNoClue")}</div>`;
     }
     content += `</div>`;
 
-    showPopup("📁 의뢰 목록", "해결할 사건을 선택하세요.", [
-        { txt: "닫기", func: closePopup }
-    ], content);
+    showPopup(
+        getUIText("scenario.caseListTitle"),
+        getUIText("scenario.caseListDesc"),
+        [{ txt: getUIText("scenario.caseListClose"), func: closePopup }],
+        content,
+        { forcePopup: true }
+    );
 }
 
 function switchCaseTab(tab) {
@@ -4238,23 +4533,23 @@ function openActiveMissions() {
         const stored = game.activeScenarioState && game.activeScenarioState[game.activeScenarioId];
         const activeScenario = (game.scenario && game.scenario.id === game.activeScenarioId) ? game.scenario : stored;
         const isActive = !!(activeScenario && activeScenario.isActive);
-        const progress = (Number.isFinite(activeScenario?.clues)) ? `${activeScenario.clues}%` : "대기 중";
+        const progress = (Number.isFinite(activeScenario?.clues)) ? `${activeScenario.clues}%` : getUIText("progress.pending");
         const locationText = Array.isArray(sc.locations) ? sc.locations.join(", ") : (sc.location || "");
 
         content = `
             <div style="display:flex; flex-direction:column; gap:8px;">
                 <div style="font-weight:bold; font-size:1.05em;">${sc.title}</div>
                 <div style="font-size:0.85em; color:#aaa;">${sc.desc || ""}</div>
-                <div style="font-size:0.85em; color:#f1c40f;">진행도: ${progress}</div>
-                ${locationText ? `<div style="font-size:0.8em; color:#777;">예상 지역: ${locationText}</div>` : ""}
+                <div style="font-size:0.85em; color:#f1c40f;">${getUIText("scenario.progressLabel")}: ${progress}</div>
+                ${locationText ? `<div style="font-size:0.8em; color:#777;">${getUIText("scenario.locationLabel")}: ${locationText}</div>` : ""}
             </div>
         `;
     } else {
-        content = `<div style="color:#777;">현재 받은 의뢰가 없습니다.</div>`;
+        content = `<div style="color:#777;">${getUIText("scenario.activeNone")}</div>`;
     }
 
-    showPopup("📌 진행 중 의뢰", "현재 수락된 의뢰 정보입니다.", [
-        { txt: "닫기", func: closePopup }
+    showPopup(getUIText("scenario.activeTitle"), getUIText("scenario.activeDesc"), [
+        { txt: getUIText("scenario.caseListClose"), func: closePopup }
     ], content);
 }
 
@@ -4344,7 +4639,7 @@ function acceptMission(id) {
     }
 
     // 3. 알림 메시지 및 화면 복귀
-    let targetDistrictName = "알 수 없는 곳";
+    let targetDistrictName = getUIText("cityMap.unknownDistrict");
     for (let dKey in DISTRICTS) {
         if (DISTRICTS[dKey].scenarios.includes(id)) {
             targetDistrictName = DISTRICTS[dKey].name;
@@ -4354,13 +4649,15 @@ function acceptMission(id) {
 
     // 스토리가 끝난 후에는 'story-scene'에 있으므로, 다시 'hub'나 'city'로 보내줘야 함
     renderHub(); // 사무소 화면으로 복귀
+    setHubPanelVisible(true);
 
-    // 약간의 딜레이를 주어 화면 전환 후 알림이 뜨게 함
+    // 알림은 로그로만 출력 (확인 버튼 제거)
     setTimeout(() => {
-        showPopup("✅ 의뢰 수락",
-            `<b>[${scData.title}]</b><br><br>"${targetDistrictName}" 구역으로 이동하여 조사를 시작하세요.`,
-            [{ txt: "확인", func: closePopup }]
-        );
+    notifyNarration(
+        getUIText("scenario.accepted")
+            .replace("[TITLE]", scData.title)
+            .replace("[DISTRICT]", targetDistrictName)
+    );
     }, 100);
 
     updateUI();
@@ -4368,6 +4665,27 @@ function acceptMission(id) {
 
 // 교체 성공 시 실행할 콜백 저장 변수
 let tempSwapCallback = null;
+
+function showItemGainPopup(name) {
+    if (!name) return;
+    const data = ITEM_DATA ? ITEM_DATA[name] : null;
+    const icon = data?.icon || "🎁";
+    const displayName = getItemDisplayName(name);
+    const desc = data?.desc ? `<br><span style="color:#aaa; font-size:0.9em;">${data.desc}</span>` : "";
+    showPopup(
+        getUIText("popup.itemGainTitle"),
+        getUIText("popup.itemGainDesc")
+            .replace("[ICON]", icon)
+            .replace("[ITEM]", displayName)
+            .replace("[DESC]", desc),
+        [],
+        "",
+        { forcePopup: true }
+    );
+    setTimeout(() => {
+        closePopup();
+    }, 1200);
+}
 
 // [수정] addItem 함수: 중복 체크 범위 확대 (창고 포함)
 function addItem(name, onAcquireCallback = null) {
@@ -4380,7 +4698,7 @@ function addItem(name, onAcquireCallback = null) {
         if (hasItemAnywhere(name)) return false;
 
         player.relics.push(name);
-            logNarration("system.itemGain", { item: name });
+        showItemGainPopup(name);
 
         recalcStats();
         updatePlayerAttribute();
@@ -4396,7 +4714,7 @@ function addItem(name, onAcquireCallback = null) {
 
         ensureEquipmentFields(player);
         player.equipmentBag.push(name);
-        logNarration("system.itemGain", { item: name });
+        showItemGainPopup(name);
 
         recalcStats();
         updatePlayerAttribute();
@@ -4409,7 +4727,7 @@ function addItem(name, onAcquireCallback = null) {
     else {
         if (player.inventory.length < player.maxInventory) {
             player.inventory.push(name);
-            logNarration("system.itemGain", { item: name });
+            showItemGainPopup(name);
             updateInventoryUI();
             if (onAcquireCallback) onAcquireCallback();
             return true;
@@ -4440,7 +4758,7 @@ function switchStorageMode(mode) {
 
     // 제목 업데이트
     document.getElementById('storage-bag-title').innerText =
-        (mode === 'consume') ? "🎒 소모품" : (mode === 'equip' ? "🧰 장비" : "💍 유물");
+        (mode === 'consume') ? getUIText("menu.itemTabConsume") : (mode === 'equip' ? getUIText("menu.itemTabEquip") : getUIText("menu.itemTabRelic"));
 
     renderStorage();
 }
@@ -4503,6 +4821,7 @@ function renderStorage() {
 /* [NEW] 창고 아이템 엘리먼트 생성 헬퍼 */
 function createStorageItemEl(name, onClick) {
     let data = ITEM_DATA[name];
+    const displayName = getItemDisplayName(name);
     let el = document.createElement('div');
     el.className = 'shop-item'; // 기존 스타일 재사용
     el.style.width = "60px";
@@ -4512,7 +4831,7 @@ function createStorageItemEl(name, onClick) {
         <div class="item-icon item-rank-${data.rank}" style="width:50px; height:50px; font-size:1.2em; pointer-events:none;">
             ${data.icon}
         </div>
-        <div style="font-size:0.7em; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:60px;">${name}</div>
+        <div style="font-size:0.7em; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:60px;">${displayName}</div>
     `;
     el.onclick = onClick;
     return el;
@@ -4546,7 +4865,7 @@ function moveItemFromWarehouse(idx) {
 
     // 공간 확인 (소모품인 경우만)
     if (data.usage === 'consume' && player.inventory.length >= player.maxInventory) {
-        notifyNarration("가방 공간이 부족합니다.");
+        notifyNarration(getUIText("inventory.noSpace"));
         return;
     }
 
@@ -4577,11 +4896,12 @@ function showSwapPopup(newItemName, onSuccess) {
 
     player.inventory.forEach((itemName, idx) => {
         let item = ITEM_DATA[itemName];
+        const displayName = getItemDisplayName(itemName);
         content += `
             <button class="hub-card" onclick="processItemSwap(${idx}, '${newItemName}')" style="display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px; border:1px solid #555;">
                 <div class="item-icon item-rank-${item.rank}" style="pointer-events:none;">${item.icon}</div>
-                <div style="font-size:0.8em; font-weight:bold; color:#ddd;">${itemName}</div>
-                <div style="font-size:0.7em; color:#e74c3c;">▼ 버리기</div>
+                <div style="font-size:0.8em; font-weight:bold; color:#ddd;">${displayName}</div>
+                <div style="font-size:0.7em; color:#e74c3c;">${getUIText("inventory.swapDiscard")}</div>
             </button>
         `;
     });
@@ -4592,11 +4912,11 @@ function showSwapPopup(newItemName, onSuccess) {
 
     // 3. 팝업 띄우기
     showPopup(
-        "🎒 가방 정리",
-        `<span style='color:#2ecc71'>[${newItemName}]</span>을(를) 넣을 공간이 없습니다.<br>대신 버릴 아이템을 선택하세요.`,
+        getUIText("inventory.swapTitle"),
+        `${getUIText("inventory.swapNoSpace")}`.replace("[ITEM]", getItemDisplayName(newItemName)),
         [
             {
-                txt: "포기하기 (획득 취소)",
+                txt: getUIText("inventory.swapGiveUp"),
                 func: () => {
                     closePopup();
                     // ★ 핵심 수정: 전투 승리 상태라면 결과 화면을 다시 띄워줌 (닫힘 방지)
@@ -4616,7 +4936,7 @@ function processItemSwap(idx, newItemName) {
 
     // 교체 (덮어쓰기)
     player.inventory[idx] = newItemName;
-    logNarration("system.swapItem", { old: oldItem, new: newItemName });
+    logNarration("system.swapItem", { old: getItemDisplayName(oldItem), new: getItemDisplayName(newItemName) });
 
     // UI 갱신
     updateInventoryUI();
@@ -4752,9 +5072,9 @@ function useItem(index, target) {
 
                 // 잠시 후 복귀 처리
                 setTimeout(() => {
-                    showPopup("🚁 탈출 성공", "해결사의 도움으로 안전하게 복귀했습니다.", [
+                    showPopup(getUIText("item.escapeTitle"), getUIText("item.escapeDesc"), [
                         {
-                            txt: "사무소로",
+                            txt: getUIText("item.escapeGoHub"),
                             func: () => {
                                 closePopup();
                                 // 전투 중이었다면 전투 임시 카드/상태 정리
@@ -4816,12 +5136,13 @@ function updateInventoryUI() {
     }
 
     if (targetArray.length === 0) {
-        list.innerHTML = `<div style="grid-column: 1/-1; color:#777; margin-top:50px;">(비어있음)</div>`;
+        list.innerHTML = `<div style="grid-column: 1/-1; color:#777; margin-top:50px;">${getUIText("menu.emptyParen")}</div>`;
         return;
     }
 
     targetArray.forEach((name, idx) => {
         let data = ITEM_DATA[name];
+        const displayName = getItemDisplayName(name);
         let el = document.createElement('div');
         el.className = `item-icon item-rank-${data.rank}`;
         el.id = `item-el-${idx}`; // 드래그용 ID
@@ -4840,20 +5161,20 @@ function updateInventoryUI() {
         el.innerHTML = `
             ${data.icon}
             <span class="tooltip">
-                <b>${name}</b><br>
-                <span style="font-size:0.8em; color:#aaa;">${data.usage === "passive" ? "[유물/지속효과]" :
-                data.usage === "equip" ? "[장비]" :
-                    "[소모품]"
+                <b>${displayName}</b><br>
+                <span style="font-size:0.8em; color:#aaa;">${data.usage === "passive" ? getUIText("inventory.tagRelic") :
+                data.usage === "equip" ? getUIText("inventory.tagEquip") :
+                    getUIText("inventory.tagConsume")
             }</span><br>
                 ${data.desc}
             </span>
             ${data.usage === "consume" ? `
             <div class="item-actions" id="item-actions-${idx}" style="display:none;">
-                <button class="item-btn btn-confirm" onclick="confirmItemUse(event, ${idx})">사용</button>
+                <button class="item-btn btn-confirm" onclick="confirmItemUse(event, ${idx})">${getUIText("menu.use")}</button>
             </div>` : ""}
             ${data.usage === "equip" ? `
             <div class="item-actions" id="item-actions-${idx}" style="display:none;">
-                <button class="item-btn btn-confirm" onclick="confirmEquipItem(event, ${idx})">장착</button>
+                <button class="item-btn btn-confirm" onclick="confirmEquipItem(event, ${idx})">${getUIText("menu.equip")}</button>
             </div>` : ""}
         `;
 
@@ -4868,7 +5189,7 @@ function updateInventoryUI() {
         }
         // 유물: 클릭 시 정보만 (사용 불가)
         else {
-            el.onclick = () => logNarration("system.relicOwned", { item: name });
+            el.onclick = () => logNarration("system.relicOwned", { item: displayName });
         }
 
         list.appendChild(el);
@@ -4953,22 +5274,23 @@ function showGameMenuView(view) {
 
     const makeItemChips = (names, limit = 10) => {
         const safeNames = Array.isArray(names) ? names.slice(0, limit) : [];
-        if (safeNames.length === 0) return `<div class="menu-item-chip">없음</div>`;
+        if (safeNames.length === 0) return `<div class="menu-item-chip">${getUIText("menu.none")}</div>`;
         return safeNames.map(name => {
             const data = ITEM_DATA?.[name];
             const icon = data?.icon ? escapeHtml(data.icon) : "•";
-            return `<div class="menu-item-chip">${icon} ${escapeHtml(name)}</div>`;
+            const displayName = getItemDisplayName(name);
+            return `<div class="menu-item-chip">${icon} ${escapeHtml(displayName)}</div>`;
         }).join("");
     };
 
     const makeCardChips = (names, limit = 10) => {
         const safeNames = Array.isArray(names) ? names.slice(0, limit) : [];
-        if (safeNames.length === 0) return `<div class="menu-item-chip">없음</div>`;
-        return safeNames.map(name => `<div class="menu-item-chip">🃏 ${escapeHtml(name)}</div>`).join("");
+        if (safeNames.length === 0) return `<div class="menu-item-chip">${getUIText("menu.none")}</div>`;
+        return safeNames.map(name => `<div class="menu-item-chip">🃏 ${escapeHtml(getCardDisplayName(name))}</div>`).join("");
     };
     const makeTraitList = (keys, limit = 12) => {
         const safeKeys = Array.isArray(keys) ? keys.slice(0, limit) : [];
-        if (safeKeys.length === 0) return `<div class="menu-pill">없음</div>`;
+        if (safeKeys.length === 0) return `<div class="menu-pill">${getUIText("menu.none")}</div>`;
         return safeKeys.map(key => {
             const t = TRAIT_DATA?.[key] || {};
             const name = t.name || key;
@@ -4988,16 +5310,17 @@ function showGameMenuView(view) {
     };
     const makeCardList = (names, limit = 12) => {
         const safeNames = Array.isArray(names) ? names.slice(0, limit) : [];
-        if (safeNames.length === 0) return `<div class="menu-pill">없음</div>`;
+        if (safeNames.length === 0) return `<div class="menu-pill">${getUIText("menu.none")}</div>`;
         return safeNames.map(name => {
             const data = getEffectiveCardData(name) || CARD_DATA?.[name] || {};
             const typeLabel = getCardTypeLabel(data);
             const groupLabel = getCardGroupLabel(data);
+            const displayName = getCardDisplayName(name);
             return `
                 <div class="card" style="margin:0;">
                     <div class="card-cost">${data.cost ?? 0}</div>
                     <div class="card-rank">${"★".repeat(data.rank || 1)}</div>
-                    <div class="card-name">${escapeHtml(name)}</div>
+                    <div class="card-name">${escapeHtml(displayName)}</div>
                     ${(typeLabel || groupLabel) ? `<div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:4px;">
                         ${typeLabel ? `<div class="card-group-badge">[${escapeHtml(typeLabel)}]</div>` : ""}
                         ${groupLabel ? `<div class="card-group-badge">[${escapeHtml(groupLabel)}]</div>` : ""}
@@ -5023,7 +5346,7 @@ function showGameMenuView(view) {
     if (view === 'status') {
         const playerContent = `
             <div class="menu-content-section">
-                <div class="menu-content-label">핵심</div>
+                <div class="menu-content-label">${getUIText("menu.sectionCore")}</div>
                 <div class="menu-content-grid">
                     <div class="menu-pill">HP ${player.hp}/${player.maxHp}</div>
                     <div class="menu-pill">SP ${player.sp}/${player.maxSp}</div>
@@ -5032,7 +5355,7 @@ function showGameMenuView(view) {
                 </div>
             </div>
             <div class="menu-content-section">
-                <div class="menu-content-label">스탯</div>
+                <div class="menu-content-label">${getUIText("menu.sectionStats")}</div>
                 <div class="menu-content-grid">
                     <div class="menu-pill">STR ${player.stats?.str ?? "-"}</div>
                     <div class="menu-pill">CON ${player.stats?.con ?? "-"}</div>
@@ -5043,44 +5366,47 @@ function showGameMenuView(view) {
                 </div>
             </div>
             <div class="menu-content-section">
-                <div class="menu-content-label">특성</div>
+                <div class="menu-content-label">${getUIText("menu.sectionTraits")}</div>
                 <div class="menu-list">${makeTraitList(player.traits, 12)}</div>
             </div>
         `;
 
         content.innerHTML = `
-            <div class="menu-content-title">상태</div>
+            <div class="menu-content-title">${getUIText("menu.statusTitle")}</div>
             ${playerContent}
         `;
     } else if (view === 'inventory') {
         const tabs = [
-            { key: 'consume', label: '소모품', action: "setGameMenuInventoryTab('consume')" },
-            { key: 'equip', label: '장비', action: "setGameMenuInventoryTab('equip')" },
-            { key: 'relic', label: '유물', action: "setGameMenuInventoryTab('relic')" }
+            { key: 'consume', label: getUIText("menu.tabConsume"), action: "setGameMenuInventoryTab('consume')" },
+            { key: 'equip', label: getUIText("menu.tabEquip"), action: "setGameMenuInventoryTab('equip')" },
+            { key: 'relic', label: getUIText("menu.tabRelic"), action: "setGameMenuInventoryTab('relic')" }
         ];
         const listData = (gameMenuInventoryTab === 'consume')
             ? (player.inventory || [])
             : (gameMenuInventoryTab === 'equip')
                 ? (player.equipmentBag || [])
                 : (player.relics || []);
+        const relicTitle = getUIText("popup.relicTitle");
+        const confirmOk = getUIText("popup.confirmOk");
 
         const listHtml = (listData.length === 0)
-            ? `<div class="menu-pill">비어 있음</div>`
+            ? `<div class="menu-pill">${getUIText("menu.empty")}</div>`
             : listData.map((name, idx) => {
                 const data = ITEM_DATA?.[name] || {};
                 const icon = data.icon ? escapeHtml(data.icon) : "•";
                 const desc = data.desc ? escapeHtml(data.desc) : "";
+                const displayName = escapeHtml(getItemDisplayName(name));
                 const actionBtn = (gameMenuInventoryTab === 'consume')
-                    ? `<button class="small-btn" onclick="menuUseItem(${idx})">사용</button>`
+                    ? `<button class="small-btn" onclick="menuUseItem(${idx})">${getUIText("menu.use")}</button>`
                     : (gameMenuInventoryTab === 'equip')
-                        ? `<button class="small-btn" onclick="menuEquipItem(${idx})">장착</button>`
-                        : `<button class="small-btn" onclick="showPopup('유물', '${escapeHtml(name)}<br>${desc}', [{ txt: '확인', func: closePopup }])">보기</button>`;
+                        ? `<button class="small-btn" onclick="menuEquipItem(${idx})">${getUIText("menu.equip")}</button>`
+                        : `<button class="small-btn" onclick="showPopup('${escapeHtml(relicTitle)}', '${displayName}<br>${desc}', [{ txt: '${escapeHtml(confirmOk)}', func: closePopup }])">${getUIText("menu.view")}</button>`;
                 return `
                     <div class="menu-list-item">
                         <div class="menu-list-left">
                             <div class="menu-list-icon">${icon}</div>
                             <div class="menu-list-text">
-                                <div class="menu-list-title">${escapeHtml(name)}</div>
+                                <div class="menu-list-title">${displayName}</div>
                                 <div class="menu-list-desc">${desc}</div>
                             </div>
                         </div>
@@ -5094,19 +5420,20 @@ function showGameMenuView(view) {
             const equipOwner = player.equipment;
             const equippedHtml = slotOrder.map(slotKey => {
                 const meta = EQUIP_SLOT_META[slotKey];
-                const equippedName = equipOwner?.[slotKey] || "";
-                const data = equippedName ? ITEM_DATA?.[equippedName] : null;
-                const icon = data?.icon ? escapeHtml(data.icon) : meta.icon;
-                const desc = data?.desc ? escapeHtml(data.desc) : "비어 있음";
-                const canUnequip = !!equippedName;
-                const unequipBtn = canUnequip ? `<button class="small-btn" onclick="unequipSlot('${escapeHtml(slotKey)}')">해제</button>` : "";
+            const equippedName = equipOwner?.[slotKey] || "";
+            const equippedDisplay = equippedName ? escapeHtml(getItemDisplayName(equippedName)) : "";
+            const data = equippedName ? ITEM_DATA?.[equippedName] : null;
+            const icon = data?.icon ? escapeHtml(data.icon) : meta.icon;
+            const desc = data?.desc ? escapeHtml(data.desc) : getUIText("menu.empty");
+            const canUnequip = !!equippedName;
+                const unequipBtn = canUnequip ? `<button class="small-btn" onclick="unequipSlot('${escapeHtml(slotKey)}')">${getUIText("menu.unequip")}</button>` : "";
                 return `
                     <div class="menu-list-item">
                         <div class="menu-list-left">
                             <div class="menu-list-icon">${icon}</div>
                             <div class="menu-list-text">
                                 <div class="menu-list-title">${meta.label}</div>
-                                <div class="menu-list-desc">${equippedName ? escapeHtml(equippedName) : "비어 있음"} · ${desc}</div>
+                                <div class="menu-list-desc">${equippedName ? equippedDisplay : getUIText("menu.empty")} · ${desc}</div>
                             </div>
                         </div>
                         <div>${unequipBtn}</div>
@@ -5115,35 +5442,35 @@ function showGameMenuView(view) {
             }).join("");
 
             content.innerHTML = `
-                <div class="menu-content-title">아이템</div>
+                <div class="menu-content-title">${getUIText("menu.itemTitle")}</div>
                 ${makeMenuTabs(tabs, gameMenuInventoryTab)}
                 <div class="menu-split">
                     <div class="menu-pane">
-                        <div class="menu-content-label">장비 가방 (${player.equipmentBag?.length || 0})</div>
+                        <div class="menu-content-label">${getUIText("menu.equipBagLabel")} (${player.equipmentBag?.length || 0})</div>
                         <div class="menu-list">${listHtml}</div>
                     </div>
                     <div class="menu-pane">
-                        <div class="menu-content-label">현재 장착</div>
+                        <div class="menu-content-label">${getUIText("menu.currentEquipLabel")}</div>
                         <div class="menu-list">${equippedHtml}</div>
                     </div>
                 </div>
             `;
         } else {
             content.innerHTML = `
-                <div class="menu-content-title">아이템</div>
+                <div class="menu-content-title">${getUIText("menu.itemTitle")}</div>
                 ${makeMenuTabs(tabs, gameMenuInventoryTab)}
                 <div class="menu-list">${listHtml}</div>
             `;
         }
     } else if (view === 'cards') {
         content.innerHTML = `
-            <div class="menu-content-title">스킬/카드</div>
+            <div class="menu-content-title">${getUIText("menu.skillCardTitle")}</div>
             <div class="menu-content-section">
-                <div class="menu-content-label">전투 덱 (${player.deck?.length || 0})</div>
+                <div class="menu-content-label">${getUIText("menu.battleDeckLabel")} (${player.deck?.length || 0})</div>
                 <div class="card-grid">${makeCardList(player.deck, 12)}</div>
             </div>
             <div class="menu-content-section">
-                <div class="menu-content-label">소셜 덱 (${player.socialDeck?.length || 0})</div>
+                <div class="menu-content-label">${getUIText("deck.tabSocial")} (${player.socialDeck?.length || 0})</div>
                 <div class="card-grid">${makeCardList(player.socialDeck, 12)}</div>
             </div>
         `;
@@ -5152,46 +5479,46 @@ function showGameMenuView(view) {
         const sc = (scId && SCENARIOS?.[scId]) ? SCENARIOS[scId] : null;
         const stored = game.activeScenarioState?.[scId];
         const activeScenario = (game.scenario && game.scenario.id === scId) ? game.scenario : stored;
-        const progress = Number.isFinite(activeScenario?.clues) ? `${activeScenario.clues}%` : "대기 중";
-        content.innerHTML = `
-            <div class="menu-content-title">의뢰</div>
+        const progress = Number.isFinite(activeScenario?.clues) ? `${activeScenario.clues}%` : getUIText("progress.pending");
+            content.innerHTML = `
+            <div class="menu-content-title">${getUIText("menu.missionTitle")}</div>
             <div class="menu-content-section">
-                <div class="menu-content-label">현재 의뢰</div>
-                <div class="menu-pill">${sc ? escapeHtml(sc.title) : "없음"}</div>
-                <div class="menu-pill">진행도 ${progress}</div>
+                <div class="menu-content-label">${getUIText("menu.missionCurrent")}</div>
+                <div class="menu-pill">${sc ? escapeHtml(sc.title) : getUIText("menu.none")}</div>
+                <div class="menu-pill">${getUIText("menu.missionProgress")} ${progress}</div>
             </div>
             <div class="menu-action-row">
-                <button class="small-btn" onclick="openActiveMissions()">의뢰 상세</button>
+                <button class="small-btn" onclick="openActiveMissions()">${getUIText("menu.missionDetail")}</button>
             </div>
         `;
     } else if (view === 'options') {
         content.innerHTML = `
-            <div class="menu-content-title">옵션</div>
+            <div class="menu-content-title">${getUIText("menu.optionTitle")}</div>
             <div class="menu-content-section">
-                <div class="menu-pill">화면 및 시스템 설정은 여기서 확장 가능합니다.</div>
+                <div class="menu-pill">${getUIText("menu.optionDesc")}</div>
             </div>
             <div class="menu-action-row">
-                <button class="small-btn" onclick="toggleFullScreen()">전체 화면</button>
+                <button class="small-btn" onclick="toggleFullScreen()">${getUIText("menu.optionFullscreen")}</button>
             </div>
         `;
     } else if (view === 'fullscreen') {
         content.innerHTML = `
-            <div class="menu-content-title">전체 화면</div>
+            <div class="menu-content-title">${getUIText("menu.optionFullscreen")}</div>
             <div class="menu-content-section">
-                <div class="menu-pill">현재 창에서 전체 화면을 켜거나 끕니다.</div>
+                <div class="menu-pill">${getUIText("menu.optionFullscreenDesc")}</div>
             </div>
             <div class="menu-action-row">
-                <button class="small-btn" onclick="toggleFullScreen()">전환</button>
+                <button class="small-btn" onclick="toggleFullScreen()">${getUIText("menu.optionToggle")}</button>
             </div>
         `;
     } else if (view === 'reset') {
         content.innerHTML = `
-            <div class="menu-content-title">데이터 초기화</div>
+            <div class="menu-content-title">${getUIText("menu.resetTitle")}</div>
             <div class="menu-content-section">
-                <div class="menu-pill" style="border-color: rgba(231, 76, 60, 0.6);">저장 데이터를 삭제하면 복구할 수 없습니다.</div>
+                <div class="menu-pill" style="border-color: rgba(231, 76, 60, 0.6);">${getUIText("menu.resetWarning")}</div>
             </div>
             <div class="menu-action-row">
-                <button class="small-btn" style="background:#c0392b; border-color:#e74c3c;" onclick="confirmReset()">초기화 진행</button>
+                <button class="small-btn" style="background:#c0392b; border-color:#e74c3c;" onclick="confirmReset()">${getUIText("menu.resetAction")}</button>
             </div>
         `;
     } else {
@@ -5246,9 +5573,9 @@ function renderEquipmentPanel() {
     ensureEquipmentFields(player);
 
     panel.innerHTML = `
-        <div class="equipment-title">🧰 장착 슬롯</div>
+        <div class="equipment-title">${getUIText("menu.equipSlotTitle")}</div>
         <div class="equipment-grid" id="equipment-grid"></div>
-        <div class="equipment-hint">슬롯을 클릭하면 장착을 해제합니다.</div>
+        <div class="equipment-hint">${getUIText("menu.equipSlotHint")}</div>
     `;
 
     const grid = document.getElementById('equipment-grid');
@@ -5265,7 +5592,8 @@ function renderEquipmentPanel() {
         if (equippedData) itemIcon = equippedData.icon;
 
         const desc = (equippedData && equippedData.desc) ? equippedData.desc : "";
-        const titleText = equippedName ? `${equippedName}\n${desc}` : `${meta.label} 슬롯`;
+        const equippedDisplay = equippedName ? getItemDisplayName(equippedName) : "";
+        const titleText = equippedName ? `${equippedDisplay}\n${desc}` : `${meta.label} ${getUIText("menu.slotLabel")}`;
 
         el.innerHTML = `
             <div class="equip-slot-head">
@@ -5274,7 +5602,7 @@ function renderEquipmentPanel() {
             </div>
             <div class="equip-slot-item">
                 <span class="equip-slot-item-icon">${itemIcon}</span>
-                <span class="equip-slot-item-name">${equippedName || "(비어있음)"}</span>
+                <span class="equip-slot-item-name">${equippedName ? equippedDisplay : getUIText("menu.emptyParen")}</span>
             </div>
             ${equippedName ? `<div class="equip-slot-desc">${desc}</div>` : ""}
         `;
@@ -5289,7 +5617,7 @@ function renderEquipmentPanel() {
 function equipItemToSlot(slotKey, name) {
     ensureEquipmentFields(player);
     if (game.state === "battle" || game.state === "social") {
-        notifyNarration("전투/대화 중에는 장비를 변경할 수 없습니다.");
+        notifyNarration(getUIText("inventory.cannotChangeInBattle"));
         return;
     }
     const data = ITEM_DATA[name];
@@ -5297,7 +5625,11 @@ function equipItemToSlot(slotKey, name) {
 
     const slots = data.equipSlots || [];
     if (!slots.includes(slotKey)) {
-        notifyNarration(`[${name}]은(는) ${EQUIP_SLOT_META[slotKey]?.label || slotKey} 슬롯에 장착할 수 없습니다.`);
+        notifyNarration(
+            getUIText("inventory.slotMismatch")
+                .replace("[ITEM]", getItemDisplayName(name))
+                .replace("[SLOT]", EQUIP_SLOT_META[slotKey]?.label || slotKey)
+        );
         return;
     }
 
@@ -5340,16 +5672,17 @@ function openEquipSlotPicker(slotKey) {
 
     let contentHTML = "";
     if (candidates.length === 0) {
-        contentHTML = `<div style="color:#777; padding:10px;">(장착 가능한 장비가 없습니다)</div>`;
+        contentHTML = `<div style="color:#777; padding:10px;">${getUIText("equip.noneAvailable")}</div>`;
     } else {
         contentHTML = `<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; padding:10px;">`;
         candidates.forEach(name => {
             const data = ITEM_DATA[name];
+            const displayName = getItemDisplayName(name);
             contentHTML += `
                 <button class="hub-card" onclick="equipItemToSlot('${escapeJs(slotKey)}','${escapeJs(name)}')" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px; border:1px solid #555;">
                     <div class="item-icon item-rank-${data.rank}" style="pointer-events:none;">${escapeAttr(data.icon)}</div>
-                    <div style="font-size:0.85em; font-weight:bold; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;">${escapeAttr(name)}</div>
-                    <div style="font-size:0.7em; color:#3498db;">장착</div>
+                    <div style="font-size:0.85em; font-weight:bold; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;">${escapeAttr(displayName)}</div>
+                    <div style="font-size:0.7em; color:#3498db;">${getUIText("menu.equip")}</div>
                 </button>
             `;
         });
@@ -5359,20 +5692,22 @@ function openEquipSlotPicker(slotKey) {
     const btns = [];
     if (current) {
         btns.push({
-            txt: `해제 (${current})`,
+            txt: getUIText("inventory.equipSlotUnequip").replace("[ITEM]", getItemDisplayName(current)),
             func: () => {
                 unequipSlot(slotKey);
                 closePopup();
             }
         });
     }
-    btns.push({ txt: "닫기", func: closePopup });
+    btns.push({ txt: getUIText("medical.btnClose"), func: closePopup });
 
-    const currentText = current ? `<span style="color:#f1c40f">${escapeAttr(current)}</span>` : `<span style="color:#777">(비어있음)</span>`;
+    const currentText = current ? `<span style="color:#f1c40f">${escapeAttr(getItemDisplayName(current))}</span>` : `<span style="color:#777">${getUIText("menu.emptyParen")}</span>`;
     const currentDesc = (currentData && currentData.desc) ? `<div style="margin-top:6px; font-size:0.9em; color:#cbd5e1;">${currentData.desc}</div>` : "";
     showPopup(
         `${meta.icon} ${meta.label}`,
-        `현재 장착: ${currentText}${currentDesc}<br><br>장착할 장비를 선택하세요.`,
+        getUIText("inventory.equipCurrent")
+            .replace("[CURRENT]", currentText)
+            .replace("[DESC]", currentDesc),
         btns,
         contentHTML
     );
@@ -5395,7 +5730,10 @@ function equipItemFromBag(idx) {
 
     const slots = data.equipSlots || [];
     if (slots.length === 0) {
-        notifyNarration(`[${name}]은(는) 장착 슬롯 정보가 없습니다.`);
+        notifyNarration(
+            getUIText("inventory.noSlotInfo")
+                .replace("[ITEM]", getItemDisplayName(name))
+        );
         return;
     }
 
@@ -5424,14 +5762,14 @@ function equipItemFromBag(idx) {
     const buttons = slots.map(slotKey => {
         const meta = EQUIP_SLOT_META[slotKey];
         const cur = player.equipment[slotKey];
-        const curText = cur ? ` (현재: ${cur})` : "";
+        const curText = cur ? getUIText("inventory.equipSlotCurrent").replace("[ITEM]", getItemDisplayName(cur)) : "";
         return { txt: `${meta.icon} ${meta.label}${curText}`, func: () => equipTo(slotKey) };
     });
-    buttons.push({ txt: "취소", func: closePopup });
+    buttons.push({ txt: getUIText("inventory.equipSlotCancel"), func: closePopup });
 
     showPopup(
-        "장착 위치 선택",
-        `<b>[${name}]</b>을(를) 장착할 슬롯을 선택하세요.`,
+        getUIText("inventory.equipSlotTitle"),
+        getUIText("inventory.equipSlotDesc").replace("[ITEM]", getItemDisplayName(name)),
         buttons
     );
 }
@@ -5478,13 +5816,13 @@ function ensureItemTargetingOverlay() {
 
     overlay.innerHTML = `
         <div style="background:#111a24; border:1px solid #3a4b5d; border-radius:12px; padding:12px 14px; text-align:center; color:#ddd; width:min(420px, 90%); pointer-events:none;">
-            <div style="color:#f1c40f; font-weight:bold; margin-bottom:6px;">🎯 대상 지정</div>
+            <div style="color:#f1c40f; font-weight:bold; margin-bottom:6px;">${getUIText("targeting.title")}</div>
             <div style="font-size:0.95em; color:#cbd5e1;">
-                사용할 대상을 <b>클릭</b>하세요.
-                <div style="margin-top:6px; font-size:0.85em; color:#94a3b8;">(적/플레이어)</div>
+                ${getUIText("targeting.desc")}
+                <div style="margin-top:6px; font-size:0.85em; color:#94a3b8;">${getUIText("targeting.hint")}</div>
             </div>
         </div>
-        <button class="small-btn" id="btn-cancel-item-targeting" style="background:#7f8c8d; pointer-events:auto;">취소</button>
+        <button class="small-btn" id="btn-cancel-item-targeting" style="background:#7f8c8d; pointer-events:auto;">${getUIText("inventory.cancelTargeting")}</button>
     `;
 
     document.body.appendChild(overlay);
@@ -5510,7 +5848,7 @@ function cancelItemTargeting() {
 function beginItemTargeting(itemIdx) {
     if (game.state !== 'battle') return false;
     if (game.turnOwner !== 'player') {
-        notifyNarration("전투 중 내 턴에만 사용할 수 있습니다.");
+        notifyNarration(getUIText("misc.turnOnly"));
         return false;
     }
 
@@ -5682,9 +6020,8 @@ function renderExploration(forceReset = false) {
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
 
     // 던전 생성 로직 (우선순위 적용)
+    let dungeonConfig = null;
     if (!game.dungeonMap) {
-        let dungeonConfig = null;
-
         // [0순위] 커스텀 던전(도시 특수/화이트 큐브 등)
         if (game.scenario && game.scenario.customDungeon) {
             dungeonConfig = game.scenario.customDungeon;
@@ -5722,12 +6059,37 @@ function renderExploration(forceReset = false) {
         }
 
         // 던전 생성 실행
-        DungeonSystem.generateDungeon(dungeonConfig);
-        game.dungeonMap = true; // 생성 완료 플래그
+        try {
+            DungeonSystem.generateDungeon(dungeonConfig);
+            game.dungeonMap = true; // 생성 완료 플래그
+        } catch (e) {
+            console.error(e);
+            game.dungeonMap = false;
+        }
+    }
+    // 맵이 비어있다면 강제 재생성
+    if (!Array.isArray(DungeonSystem.map) || DungeonSystem.map.length === 0) {
+        game.dungeonMap = false;
+        const fallbackConfig = dungeonConfig || {
+            width: 5, height: 5, roomCount: 10,
+            data: { "battle": 4, "event": 2, "treasure": 1 }
+        };
+        try {
+            DungeonSystem.generateDungeon(fallbackConfig);
+            game.dungeonMap = true;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    if (forceReset) {
+        game.locationMarkerShown = false;
     }
     // 기존 던전이 있다면 시야/패럴럭스 위치를 현재 진행도로 갱신
     if (game.dungeonMap && typeof DungeonSystem.renderView === 'function') {
         DungeonSystem.renderView();
+    }
+    if (game.dungeonMap && typeof DungeonSystem.renderMinimap === 'function') {
+        DungeonSystem.renderMinimap('minimap-right-grid', 26);
     }
     // 이번 탐사 렌더링 이후에는 리셋 플래그 해제
     game.shouldResetDungeon = false;
@@ -5735,13 +6097,20 @@ function renderExploration(forceReset = false) {
     // 플레이어 이미지 연결
     const playerEl = document.getElementById('dungeon-player');
     if (playerEl) {
+        if (!player.img && player.job && JOB_DATA[player.job]) {
+            player.img = JOB_DATA[player.job].img;
+        }
         playerEl.src = player.img || "https://placehold.co/150x150/3498db/ffffff?text=Hero";
     }
 
     showExplorationView();
+    syncCityLogPanels();
     updateUI();
     autoSave();
-    logNarration("system.locationMarker", { place: game.scenario.location });
+    if (!game.locationMarkerShown) {
+        game.locationMarkerShown = true;
+        logNarration("system.locationMarker", { place: game.scenario.location });
+    }
 }
 
 // 탐사/배틀 UI 토글 헬퍼
@@ -5835,15 +6204,15 @@ function confirmRetreat() {
 
     // [Infinite Mode Check]
     if (game.mode === 'infinite' || (typeof tempGameMode !== 'undefined' && tempGameMode === 'infinite')) {
-        notifyNarration("이곳에서는 도망칠 수 없습니다. 오직 죽음만이 끝입니다.");
+        notifyNarration(getUIText("battle.cannotRunHere"));
         return;
     }
 
     // [도시 모드] 언제든 전역 지도로 복귀
     if (DS && DS.isCity) {
-        showNarrationChoice("지금 탐색을 종료하고 세주시 전역 지도로 돌아갑니다.", [
-            { txt: "복귀", func: () => { resetDungeonState(); renderCityMap(); } },
-            { txt: "취소", func: () => {} }
+        showNarrationChoice(getUIText("explore.exitToWorldPrompt"), [
+            { txt: getUIText("explore.exitToWorldConfirm"), func: () => { resetDungeonState(); renderCityMap(); } },
+            { txt: getUIText("popup.confirmCancel"), func: () => {} }
         ]);
         return;
     }
@@ -5854,9 +6223,9 @@ function confirmRetreat() {
 
     // [CASE 1] 시작 방(입구)에 있을 때 -> 자유롭게 탈출 가능
     if (isStartRoom) {
-        showNarrationChoice("던전을 떠나시겠습니까? (입구에서는 안전하게 나갈 수 있습니다)", [
-            { txt: "돌아가기", func: () => { handleDungeonExit(); } },
-            { txt: "취소", func: () => {} }
+        showNarrationChoice(getUIText("explore.exitDungeonPrompt"), [
+            { txt: getUIText("explore.exitDungeonConfirm"), func: () => { handleDungeonExit(); } },
+            { txt: getUIText("popup.confirmCancel"), func: () => {} }
         ]);
         return;
     }
@@ -5866,16 +6235,16 @@ function confirmRetreat() {
 
     if (itemIdx !== -1) {
         // 아이템이 있다면 사용 권유
-        showNarrationChoice("이곳에서 나가려면 해결사를 불러야 합니다. [해결사의 연락처]를 사용하시겠습니까?", [
+        showNarrationChoice(getUIText("explore.callFixerPrompt"), [
             {
-                txt: "사용하기 (탈출)",
+                txt: getUIText("explore.callFixerConfirm"),
                 func: () => { useItem(itemIdx, player); }
             },
-            { txt: "취소", func: () => {} }
+            { txt: getUIText("popup.confirmCancel"), func: () => {} }
         ]);
     } else {
         // 아이템도 없다면 탈출 불가
-        notifyNarration("이곳에서는 나갈 수 없습니다. 던전 입구로 돌아가거나 해결사의 연락처 아이템이 필요합니다.");
+        notifyNarration(getUIText("misc.cannotExitHere"));
     }
 }
 
@@ -5959,7 +6328,7 @@ function exploreAction(action) {
             let npcKey = keys[Math.floor(Math.random() * keys.length)];
             let npcData = NPC_DATA[npcKey];
 
-            setSharedLogMessage("누군가 다가옵니다. 대화가 가능해 보입니다.");
+            setSharedLogMessage(getNarration("city.npcApproach"));
 
             // 적 데이터 미리 생성 후 프리뷰 렌더링
             enemies = [];
@@ -5985,7 +6354,7 @@ function exploreAction(action) {
         // 3. 랜덤 이벤트 / 파밍
         else {
             if (roll < 0.75) {
-                setSharedLogMessage("무언가 흥미로운 상황입니다...");
+                setSharedLogMessage(getUIText("explore.interesting"));
                 setTimeout(() => { game.inputLocked = false; triggerRandomEvent(); }, 600);
             } else {
                 setTimeout(() => {
@@ -6000,7 +6369,9 @@ function exploreAction(action) {
                         let foundItem = null;
                         if (Math.random() < 0.4) { foundItem = getRandomItem(null, { categories: ["general"] }); addItem(foundItem); }
                         game.doom = Math.min(100, game.doom + 2);
-                        let msg = foundItem ? `주변을 뒤져 <span style='color:#2ecc71'>[${foundItem}]</span>을(를) 발견했습니다!` : "주변을 샅샅이 뒤져보았습니다. 별다른 특이사항은 없습니다.";
+                        let msg = foundItem
+                            ? getUIText("explore.searchFound").replace("[ITEM]", getItemDisplayName(foundItem))
+                            : getUIText("explore.searchNothing");
                         setSharedLogMessage(msg);
                     }
                     renderExploration();
@@ -6015,7 +6386,7 @@ function exploreAction(action) {
         // [연출] 걷는 애니메이션 + 배경 줌 효과
         pArea.classList.add('anim-walk');
         bg.classList.add('anim-bg-move');
-        setSharedLogMessage("이동 중...");
+        setSharedLogMessage(getUIText("explore.moving"));
 
         setTimeout(() => {
             game.inputLocked = false;
@@ -6028,9 +6399,9 @@ function exploreAction(action) {
                     nextLoc = scData.locations[Math.floor(Math.random() * scData.locations.length)];
                 }
                 game.scenario.location = nextLoc;
-                setSharedLogMessage(`[${nextLoc}] 구역에 도착했습니다.`);
+                setSharedLogMessage(getUIText("explore.arrivedDistrict").replace("[PLACE]", `[${nextLoc}]`));
             } else {
-                setSharedLogMessage("다른 골목으로 이동했습니다.");
+                setSharedLogMessage(getUIText("explore.movedElsewhere"));
             }
 
             renderExploration();
@@ -6039,7 +6410,7 @@ function exploreAction(action) {
     // --- [3] 휴식 ---
     else if (action === 'rest') {
         game.inputLocked = true;
-        setSharedLogMessage("잠시 휴식을 취합니다...");
+        setSharedLogMessage(getUIText("explore.restStart"));
 
         setTimeout(() => {
             game.inputLocked = false;
@@ -6049,7 +6420,7 @@ function exploreAction(action) {
             player.hp = Math.min(player.maxHp, player.hp + hpHeal);
             player.sp = Math.min(player.maxSp, player.sp + spHeal);
 
-            setSharedLogMessage(`체력을 회복했습니다. (+${hpHeal})`);
+            setSharedLogMessage(getUIText("explore.restHeal").replace("[HP]", hpHeal));
             renderExploration();
         }, 800);
     }
@@ -6341,10 +6712,15 @@ async function startTurn(unit, type) {
 
             if (unit.patience <= 0) {
                 updateUI();
-                showPopup("🖐️ 대화 결렬", `"${unit.name}"이(가) 더 이상 당신의 말을 듣지 않습니다.<br>협상이 불가능해졌습니다.`, [
-                    { txt: "무력 행사 (전투 돌입)", func: () => { closePopup(); forcePhysicalBattle(); } },
-                    { txt: "도망치기 (패널티)", func: () => { closePopup(); escapeSocialBattle(); } }
-                ]);
+                showPopup(
+                    getUIText("battle.enemyTalkBreakTitle"),
+                    getUIText("battle.enemyTalkBreakDesc")
+                        .replace("[NAME]", unit.name),
+                    [
+                        { txt: getUIText("battle.enemyTalkBreakFight"), func: () => { closePopup(); forcePhysicalBattle(); } },
+                        { txt: getUIText("battle.enemyTalkBreakRun"), func: () => { closePopup(); escapeSocialBattle(); } }
+                    ]
+                );
                 return; // 턴 진행 중단
             }
         }
@@ -6361,7 +6737,10 @@ async function startTurn(unit, type) {
             }
         }
         if (mgr && mgr.isAlive()) {
-            mgr.heal(2);
+            const healed = mgr.heal(2);
+            if (healed > 0) {
+                logNarration("system.assistantTurnHeal", { amount: healed });
+            }
         }
     }
 
@@ -6401,18 +6780,20 @@ function renderEnemies() {
         el.id = `enemy-unit-${e.id}`;
 
         // 이미지 주소 안전장치
+        const enemyPlaceholder = encodeURIComponent(getUIText("misc.enemyImageText"));
+        const noImgText = encodeURIComponent(getUIText("misc.noImageText"));
         let imgSrc = e.img;
         if (!imgSrc || imgSrc === "") {
-            imgSrc = "https://placehold.co/100x100/555/fff?text=Enemy";
+            imgSrc = `https://placehold.co/100x100/555/fff?text=${enemyPlaceholder}`;
         }
 
         // [핵심] 뼈대를 만들 때 이미지 태그를 반드시 포함 (타겟팅 인식용)
         el.innerHTML = `
             <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px;">${e.name}</div>
             <img src="${imgSrc}" alt="${e.name}" class="char-img"
-                 onerror="this.src='https://placehold.co/100x100/555/fff?text=No+Img';">
+                 onerror="this.src='https://placehold.co/100x100/555/fff?text=${noImgText}';">
             <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%"></div></div>
-            <div style="font-size:0.8em;">HP: ${e.hp}/${e.maxHp}</div>
+            <div style="font-size:0.8em;">${getUIText("battleHud.hpLabel")}: ${e.hp}/${e.maxHp}</div>
         `;
 
         wrapper.appendChild(el);
@@ -6504,7 +6885,7 @@ function startPlayerTurnLogic() {
     // [수정] turn-info 요소가 사라졌으므로, 에러가 안 나게 체크합니다.
     const turnInfo = document.getElementById('turn-info');
     if (turnInfo) {
-        turnInfo.innerText = `나의 턴 (AP: ${player.ap})`;
+        turnInfo.innerText = getUIText("battleHud.turnInfo").replace("[AP]", player.ap);
     }
     // ★ [수정] player-char 대신 dungeon-player 사용
     const pImg = document.getElementById('dungeon-player');
@@ -6559,6 +6940,10 @@ function endPlayerTurn() {
 
 /* [game.js] startEnemyTurnLogic 함수 수정 (안전장치 추가) */
 async function startEnemyTurnLogic(actor) {
+    if (game.lastTurnOwner === 'enemy' && game.lastEnemyTurnId === actor.id) {
+        logNarration("battle.enemyComboAction");
+    }
+    game.lastEnemyTurnId = actor.id;
     actor.block = 0;
     actor.ap = actor.baseAp || 2;
 
@@ -6569,7 +6954,7 @@ async function startEnemyTurnLogic(actor) {
     }
     // 1. 기절(Stun) 체크
     if (actor.isStunned) {
-        logNarration("battle.targetStunned", { target: actor.name });
+        logNarration("battle.enemyStunned");
 
         let el = document.getElementById(`enemy-unit-${actor.id}`);
         if (el) {
@@ -6590,7 +6975,7 @@ async function startEnemyTurnLogic(actor) {
 
     // 2. 브레이크 회복 (한 턴 동안 추가타 안 맞으면 회복)
     if (actor.isBroken) {
-        logNarration("battle.postureRecoverTarget", { target: actor.name });
+        logNarration("battle.enemyPostureRecovered");
         actor.isBroken = false;
         let el = document.getElementById(`enemy-unit-${actor.id}`);
         if (el) el.classList.remove('broken');
@@ -6646,8 +7031,8 @@ async function startEnemyTurnLogic(actor) {
 function applyWeaknessHit(atkTarget) {
     if (!atkTarget) return;
     if (atkTarget.isStunned) {
-        logNarration("battle.hitStunnedTarget");
-        showDamageText(atkTarget, "CRITICAL!", true);
+        logNarration(atkTarget === player ? "battle.enemyHitStunnedTarget" : "battle.hitStunnedTarget");
+        showDamageText(atkTarget, getUIText("battle.damageCritTitle"), true);
         return;
     }
     if (atkTarget.isBroken) {
@@ -6655,11 +7040,15 @@ function applyWeaknessHit(atkTarget) {
         atkTarget.block = 0;
         atkTarget.ag = 0;
 
-        logNarration("battle.stunSuccess", { target: atkTarget.name });
+        if (atkTarget === player) {
+            logNarration("battle.selfStunned");
+        } else {
+            logNarration("battle.stunSuccess", { target: atkTarget.name });
+        }
 
         const atkTargetId = (atkTarget === player) ? "dungeon-player" : `enemy-unit-${atkTarget.id}`;
         playAnim(atkTargetId, 'anim-hit');
-        showDamageText(atkTarget, "😵DOWN!", true);
+        showDamageText(atkTarget, getUIText("battle.damageDownText"), true);
 
         if (atkTarget !== player) {
             const el = document.getElementById(atkTargetId);
@@ -6671,7 +7060,11 @@ function applyWeaknessHit(atkTarget) {
     }
 
     atkTarget.isBroken = true;
-    logNarration("battle.postureBreakEnemy", { target: atkTarget.name });
+    if (atkTarget === player) {
+        logNarration("battle.postureBreakSelf");
+    } else {
+        logNarration("battle.postureBreakEnemy", { target: atkTarget.name });
+    }
     showDamageText(atkTarget, "⚡BREAK!");
 
     if (atkTarget !== player) {
@@ -6690,7 +7083,15 @@ function useCard(user, target, cardName) {
     let userId = (user === player) ? "player-char" : `enemy-unit-${user.id}`;
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
 
-    logNarration("battle.cardUse", { card: cardName });
+    if (user === player) {
+    if (user === player) {
+        logNarration("battle.cardUse", { card: cardName });
+    } else {
+        logNarration("battle.enemyCardUse", { card: cardName });
+    }
+    } else {
+        logNarration("battle.enemyCardUse", { card: cardName });
+    }
 
     if (user === player && data.requireAssistant) {
         const mgr = ensureAssistantManager();
@@ -6720,7 +7121,7 @@ function useCard(user, target, cardName) {
             remaining: cfg.remaining ?? 1,
             expiresOnPlayerTurnStart: cfg.expiresOnPlayerTurnStart !== false
         });
-        logNarration("battle.reactionReady", { card: cardName });
+        logBattleByActor(user, "battle.reactionReady", "battle.enemyReactionReady", { card: cardName });
         updateUI();
         return;
     }
@@ -6743,7 +7144,7 @@ function useCard(user, target, cardName) {
             addClue: cfg.addClue,
             debuff: cfg.debuff
         });
-        logNarration("battle.planSet", { card: cardName });
+        logBattleByActor(user, "battle.planSet", "battle.enemyPlanSet", { card: cardName });
         updateUI();
         return;
     }
@@ -6769,7 +7170,7 @@ function useCard(user, target, cardName) {
         const v = Math.max(0, Number(data.gainAp || 0));
         if (v > 0) {
             user.ap += v;
-            logNarration("battle.apGain", { amount: v });
+            logBattleByActor(user, "battle.apGain", "battle.enemyApGain", { amount: v });
         }
     }
 
@@ -6791,12 +7192,12 @@ function useCard(user, target, cardName) {
                     const picked = src[idx];
                     if (!isCopy) src.splice(idx, 1);
                     addCardToHand(picked);
-                    logNarration("battle.copyOrRecover", { card: picked, action: isCopy ? "복사" : "회수" });
+                    logNarration("battle.copyOrRecover", { card: picked, action: isCopy ? getUIText("battle.copyAction") : getUIText("battle.recoverAction") });
                 }
                 updateUI();
                 renderHand();
             } else {
-                showChooseCardFromPile(cfg.from, isCopy ? "복사할 카드를 선택" : "가져올 카드를 선택", (pickedName, pickedIndex) => {
+                showChooseCardFromPile(cfg.from, isCopy ? getUIText("cardPick.copyTitle") : getUIText("cardPick.fetchTitle"), (pickedName, pickedIndex) => {
                     if (!isCopy) {
                         const arr = (cfg.from === 'draw') ? player.drawPile : player.discardPile;
                         if (Array.isArray(arr) && pickedIndex >= 0 && pickedIndex < arr.length && arr[pickedIndex] === pickedName) {
@@ -6806,7 +7207,7 @@ function useCard(user, target, cardName) {
                         }
                     }
                     addCardToHand(pickedName);
-                    logNarration("battle.copyOrRecover", { card: pickedName, action: isCopy ? "복사" : "회수" });
+                    logNarration("battle.copyOrRecover", { card: pickedName, action: isCopy ? getUIText("battle.copyAction") : getUIText("battle.recoverAction") });
                     updateUI();
                     renderHand();
                 });
@@ -7006,7 +7407,7 @@ function useCard(user, target, cardName) {
                 const chance = (typeof cfg === "object" && cfg.chance !== undefined) ? Number(cfg.chance || 0) : 1;
                 if (count > 0 && Math.random() <= chance) {
                     const next = addClueStacks(atkTarget, count);
-                    logNarration("system.clueGainTarget", { target: "대상", amount: count, total: next });
+                    logClueGainTarget(getUIText("misc.targetLabel"), count, next);
                 }
             }
 
@@ -7075,7 +7476,7 @@ function useCard(user, target, cardName) {
                 const count = Math.max(0, Number(typeof cfg === "number" ? cfg : (cfg.count || 0)));
                 if (count > 0) {
                     const next = addClueStacks(target, count);
-                    logNarration("system.clueGainTarget", { target: "대상", amount: count, total: next });
+                    logClueGainTarget(getUIText("misc.targetLabel"), count, next);
                 }
             }
         }
@@ -7095,8 +7496,10 @@ function useCard(user, target, cardName) {
         let statType = (game.state === "social") ? 'socialDef' : 'def';
         let finalBlock = data.block + getStat(user, statType);
         user.block += finalBlock;
-        let defenseText = (game.state === "social") ? "논리 방어" : "방어도";
-        logNarration("battle.blockGain", { amount: finalBlock });
+        let defenseText = (game.state === "social")
+            ? getUIText("battle.defenseTextSocial")
+            : getUIText("battle.defenseTextBattle");
+        logBattleByActor(user, "battle.blockGain", "battle.enemyBlockGain", { amount: finalBlock });
         updateUI();
         if (game.state === "social" && user === player) {
             const gain = Number(data.profilingGain || 5);
@@ -7135,7 +7538,7 @@ function useCard(user, target, cardName) {
         if (count > 0) {
             enemies.filter(e => e && e.hp > 0).forEach(e => {
                 const next = addClueStacks(e, count);
-                logNarration("system.clueGainTarget", { target: "대상", amount: count, total: next });
+                logClueGainTarget(getUIText("misc.targetLabel"), count, next);
             });
         }
     }
@@ -7186,7 +7589,7 @@ function useCard(user, target, cardName) {
             const dur = Math.max(1, Number(buff.val || 1));
             if (!mgr.buffs) mgr.buffs = {};
             mgr.buffs[buff.name] = (mgr.buffs[buff.name] || 0) + dur;
-            logNarration("battle.buffApply", { target: "조수", buff: buff.name });
+            logNarration("battle.buffApply", { target: getUIText("misc.assistantLabel"), buff: buff.name });
         }
         const block = Math.max(0, Number(data.assistantBlock || 0));
         if (mgr && block > 0) {
@@ -7278,7 +7681,7 @@ function summonMinion(enemyKey) {
     // 4. 새 적 객체 생성
     let newEnemy = {
         id: newId,
-        name: `${data.name} (증원)`, // 이름 뒤에 표식 추가
+        name: `${data.name}${getUIText("battle.reinforcementSuffix")}`, // 이름 뒤에 표식 추가
         maxHp: maxHp, hp: maxHp,
         baseAtk: atk, baseDef: def, baseSpd: spd,
         block: 0, buffs: {},
@@ -7305,7 +7708,7 @@ function summonMinion(enemyKey) {
         if (createdEl) {
             createdEl.style.transform = "scale(1.1)";
             setTimeout(() => createdEl.style.transform = "scale(1)", 200);
-            showDamageText(newEnemy, "APPEAR!");
+            showDamageText(newEnemy, getUIText("battle.appearText"));
         }
     }, 50);
 
@@ -7354,7 +7757,7 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
             const hit = attackAttrs.find(a => defAttrs.includes(a));
             if (hit) {
                 dmg = Math.max(0, Math.floor(dmg * 0.75));
-                showDamageText(target, "🛡️RESIST");
+                showDamageText(target, getUIText("battle.damageResistText"));
             }
         }
     }
@@ -7365,7 +7768,7 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
             blocked = dmg;
             target.block -= dmg;
             dmg = 0;
-            showDamageText(target, "BLOCK");
+            showDamageText(target, getUIText("battle.damageBlockText"));
         } else {
             blocked = target.block;
             dmg -= target.block;
@@ -7395,10 +7798,20 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
             target.hp -= dmg;
 
             if (isCrit) {
-                logNarration("battle.critical", { amount: dmg, hp: target.hp });
-                showDamageText(target, `⚡CRIT! -${dmg}`, true); // true = 치명타 스타일 적용
+                if (target === player && source && source !== player) {
+                    logNarration("battle.enemyCriticalHit", { amount: dmg, hp: target.hp });
+                } else if (target === player) {
+                    logNarration("battle.critical", { amount: dmg, hp: target.hp });
+                } else {
+                    logNarration("battle.enemyCritical", { amount: dmg, hp: target.hp });
+                }
+                showDamageText(target, `${getUIText("battle.damageCritPrefix")}-${dmg}`, true); // true = 치명타 스타일 적용
             } else {
-                logNarration("battle.hpDamage", { amount: dmg, hp: target.hp });
+                if (target === player) {
+                    logNarration("battle.hpDamage", { amount: dmg, hp: target.hp });
+                } else {
+                    logNarration("battle.enemyHpDamage", { amount: dmg, hp: target.hp });
+                }
                 showDamageText(target, `💥-${dmg}`, false);
             }
         }
@@ -7460,16 +7873,18 @@ function checkGameOver() {
             updateInventoryUI();
             updateUI();
             autoSave();
-            showPopup("✨ 부활", `[${reviveItem}] 효과로 다시 일어났습니다.`, [
-                { txt: "확인", func: closePopup }
-            ]);
+            showPopup(
+                getUIText("status.reviveTitle"),
+                getUIText("status.reviveDesc").replace("[ITEM]", getItemDisplayName(reviveItem)),
+                [{ txt: getUIText("popup.confirmOk"), func: closePopup }]
+            );
             return false;
         }
         clearGlobalLog();
         game.state = "gameover"; // 상태 잠금
-        showPopup("💀 사망", "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.", [
+        showPopup(getUIText("status.deathTitle"), getUIText("status.deathDesc"), [
             {
-                txt: "다시 하기 (초기화)",
+                txt: getUIText("status.retryButton"),
                 func: () => {
                     // [핵심 수정] 세이브 파일을 지우고 새로고침해야 처음으로 돌아갑니다.
                     localStorage.removeItem('midnight_rpg_save');
@@ -7484,9 +7899,9 @@ function checkGameOver() {
     if (player.sp <= 0) {
         clearGlobalLog();
         game.state = "gameover"; // 상태 잠금
-        showPopup("🤪 발광(Insanity)", "공포를 견디지 못하고 정신이 붕괴되었습니다.<br>당신은 어둠 속으로 사라집니다...", [
+        showPopup(getUIText("status.insanityTitle"), getUIText("status.insanityDesc"), [
             {
-                txt: "다시 하기 (초기화)",
+                txt: getUIText("status.retryButton"),
                 func: () => {
                     // [핵심 수정] 세이브 파일을 지우고 새로고침
                     localStorage.removeItem('midnight_rpg_save');
@@ -7501,7 +7916,7 @@ function checkGameOver() {
 
         // 1. [승리] NPC의 의지이 0이 됨 -> 정보 획득
         if (npc.hp <= 0) {
-            game.winMsg = `<span style='color:#3498db'>🤝 설득 성공!</span><br>${npc.name}의 의지을 허물었습니다.`;
+            game.winMsg = `<span style='color:#3498db'>${getUIText("social.persuadeSuccess")}</span><br>${getUIText("social.persuadeBreak").replace("[NAME]", npc.name)}`;
             endSocialBattle(true);
             return true;
         }
@@ -7524,12 +7939,12 @@ function checkGameOver() {
             if (allSurrenderable && allLowHp) {
                 game.surrenderOffered = true;
                 showConfirm(
-                    "🫱 항복 제의",
-                    "상대가 무기를 내려놓고 항복을 제안합니다.<br>수락하시겠습니까?",
+                    getUIText("battle.surrenderTitle"),
+                    getUIText("battle.surrenderDesc"),
                     () => triggerSurrenderWin(),
                     closePopup,
-                    "수락",
-                    "거절"
+                    getUIText("battle.surrenderAccept"),
+                    getUIText("battle.surrenderDecline")
                 );
                 return true;
             }
@@ -7540,6 +7955,7 @@ function checkGameOver() {
             if (game.state === "win") return true;
 
             game.state = "win";
+            game.winRewardLogged = false;
 
             // --- 보상 계산 ---
             // 1. 골드 (럭키피스 카드 효과가 있다면 2배)
@@ -7549,23 +7965,30 @@ function checkGameOver() {
             // 2. 경험치 (기본 40 + 레벨당 10)
             let gainXp = 40 + (game.level * 10);
             player.xp += gainXp;
+            game.lastWinReward = { gold: rewardGold, xp: gainXp };
 
             // 승리 메시지 생성
-            game.winMsg = `승리! <span style="color:#f1c40f">${rewardGold}원</span>, <span style="color:#3498db">${gainXp} XP</span> 획득.`;
-            if (player.lucky) game.winMsg += " (🍀럭키피스 효과!)";
+            game.winMsg = getUIText("battle.winMsg")
+                .replace("[GOLD]", rewardGold)
+                .replace("[XP]", gainXp);
+            if (player.lucky) game.winMsg += getUIText("battle.winLuckySuffix");
+            game.winAutoAdvanceDelay = 400;
 
             // 3. 전리품(아이템) 드랍 (확률 50%)
             game.pendingLoot = null;
             if (Math.random() < 0.5) {
                 game.pendingLoot = getRandomItem(null, { categories: ["general"] });
-                game.winMsg += `<br>✨ 전리품이 바닥에 떨어져 있습니다.`;
+                const lootLine = getUIText("battle.lootOnGround");
+                game.winMsg += `<br>${lootLine}`;
             }
 
             // [NEW] 조수 회복 특성: 전투 종료 시 HP 6 회복
             if (isDetectiveJob() && player.assistantManager) {
                 const healed = player.assistantManager.heal(6);
                 if (healed > 0) {
-                    game.winMsg += `<br>🩹 조수가 숨을 고르며 체력을 회복합니다. (+${healed})`;
+                    const healText = getUIText("battle.assistantWinHeal")
+                        .replace("[AMOUNT]", healed);
+                    game.winMsg += `<br>${healText}`;
                 }
             }
 
@@ -7588,26 +8011,29 @@ function endSocialBattle(success) {
 
     // UI 갱신 후 팝업
     updateUI();
-    notifyNarration(`${stripHtml(game.winMsg || "")} 단서를 확보했습니다. (+${clueGain})`);
-    addCityLogChoices([{ text: "떠나기", onSelect: nextStepAfterWin }]);
+    notifyNarration(
+        getUIText("misc.winClueGain")
+            .replace("[MSG]", stripHtml(game.winMsg || ""))
+            .replace("[AMOUNT]", clueGain)
+    );
+    addCityLogChoices([{ text: getUIText("social.leaveChoice"), onSelect: nextStepAfterWin }]);
 }
 // [game.js] 적절한 곳(checkGameOver 근처)에 추가
 
 function showSocialLossPopup(npcName) {
     let msg = `
-        <div style="color:#e74c3c; font-size:1.2em; font-weight:bold;">😵 말문이 막혔습니다!</div>
+        <div style="color:#e74c3c; font-size:1.2em; font-weight:bold;">${getUIText("social.lossTitle")}</div>
         <br>
-        상대의 논리에 압도당해 더 이상 대화를 이어갈 수 없습니다.<br>
-        (내 의지 0 도달)
+        ${getUIText("social.lossDesc")}
     `;
 
-    notifyNarration(stripHtml(msg));
+    notifyNarration(getUIText("misc.narrationDivider").replace("[TEXT]", stripHtml(msg)));
     addCityLogChoices([
-        { text: "👊 무력 행사 (전투 돌입)", onSelect: () => forcePhysicalBattle() },
+        { text: getUIText("social.forceFight"), onSelect: () => forcePhysicalBattle() },
         {
-            text: "🏃 포기하고 떠나기",
+            text: getUIText("social.giveUp"),
             onSelect: () => {
-                logNarration("system.retreat");
+                notifyNarration(getUIText("system.retreat"));
                 if (game.scenario && game.scenario.isPatrol) renderCityMap();
                 else renderExploration();
             }
@@ -7616,9 +8042,9 @@ function showSocialLossPopup(npcName) {
 }
 /* [NEW] 무력 행사 확인 팝업 */
 function confirmForceBattle() {
-    showNarrationChoice("대화를 중단하고 공격하시겠습니까? (적이 전투 태세를 갖춥니다)", [
-        { txt: "공격 개시!", func: () => forcePhysicalBattle() },
-        { txt: "취소", func: () => {} }
+    showNarrationChoice(getUIText("battle.socialAttackPrompt"), [
+        { txt: getUIText("battle.socialAttackConfirm"), func: () => forcePhysicalBattle() },
+        { txt: getUIText("battle.socialAttackCancel"), func: () => {} }
     ]);
 }
 
@@ -7632,11 +8058,11 @@ function forcePhysicalBattle() {
     let npcData = NPC_DATA[currentEnemy.name];
 
     if (!npcData || !npcData.battle) {
-        logNarration("system.noBattleNpc");
+    notifyNarration(getUIText("system.noBattleNpc"));
         return;
     }
 
-    logNarration("system.socialFail");
+    notifyNarration(getUIText("system.socialFail"));
 
     // 1. 모드 변경
     game.state = "battle";
@@ -7697,50 +8123,27 @@ function runRandomEvent() {
 }
 /* [수정] renderRestScreen 함수 전체 교체 */
 function renderRestScreen() {
-    switchScene('event');
-    const container = document.getElementById('event-content-box');
-
-    const restNpcKey = "사무소 조수";
-    const restNpc = (typeof NPC_DATA !== "undefined" && NPC_DATA) ? NPC_DATA[restNpcKey] : null;
-    const restNpcName = restNpc?.name || "조수";
-    const restNpcImg = restNpc?.img || "https://placehold.co/120x180/2c3e50/ffffff?text=Assistant";
-
     // 휴식 버튼 HTML 생성 (상태에 따라 다름)
     let restBtnHTML = "";
     if (!game.hasRested) {
         // 아직 휴식 안 함: 버튼 활성화
-        restBtnHTML = `<button class="action-btn" onclick="restAction()">😴 쉬기 (50% 회복)</button>`;
+        restBtnHTML = `<button class="action-btn" onclick="restAction()">${getUIText("rest.actionRest")}</button>`;
     } else {
         // 이미 휴식 함: 버튼 대신 텍스트 표시
-        restBtnHTML = `<button class="action-btn" disabled style="background:#555; cursor:default;">✅ 휴식 완료</button>`;
+        restBtnHTML = `<button class="action-btn" disabled style="background:#555; cursor:default;">${getUIText("rest.actionRestDone")}</button>`;
     }
 
-    container.innerHTML = `
-        <div class="event-title">🔥 휴식처</div>
-        <div class="event-desc">
-            따뜻한 모닥불이 있습니다.<br>
-            잠시 쉬어가거나 정비를 할 수 있습니다.<br><br>
-            <span style="color:#e74c3c">현재 HP: ${player.hp} / ${player.maxHp}</span>
+    const content = `
+        <div class="event-desc" style="text-align:center;">
+            ${getUIText("rest.desc")}<br><br>
+            <span style="color:#e74c3c">${getUIText("rest.currentHp").replace("[CUR]", player.hp).replace("[MAX]", player.maxHp)}</span>
         </div>
-        
-        <div style="display:flex; justify-content:center; gap:20px;">
+        <div style="display:flex; justify-content:center; gap:16px; margin-top:18px;">
             ${restBtnHTML}
-            <button class="action-btn" style="background:#7f8c8d" onclick="exitRestArea()">👣 떠나기</button>
-        </div>
-        
-        <div style="margin-top:16px; display:flex; justify-content:center;">
-            <button class="action-btn" style="display:flex; align-items:center; gap:12px; padding:10px 14px;" onclick="startSocialBattle('${restNpcKey}')">
-                <img src="${restNpcImg}" alt="${restNpcName}" style="width:64px; height:96px; object-fit:cover;">
-                <div style="text-align:left;">
-                    <div style="font-weight:bold;">${restNpcName}</div>
-                    <div style="font-size:0.8em; color:#bbb;">말을 걸어 소셜 전투 테스트</div>
-                </div>
-            </button>
-        </div>
-        <div style="margin-top:20px; font-size:0.9em; color:#aaa;">
-            (떠나기 전에 인벤토리의 아이템을 사용할 수 있습니다)
+            <button class="action-btn" style="background:#7f8c8d" onclick="exitRestArea()">${getUIText("rest.actionLeave")}</button>
         </div>
     `;
+    showPopup(getUIText("rest.title"), "", [], content);
 }
 /* [수정] 휴식 로직 (SP 회복 추가) */
 // [game.js] restAction 함수 수정
@@ -7759,9 +8162,13 @@ function restAction() {
 
     updateUI();
 
-    showPopup("휴식 완료", `체력이 ${actualHeal}, 이성이 ${spHeal}만큼 회복되었습니다.<br>이제 출발 준비가 되셨나요?`, [
+    showPopup(getUIText("rest.completeTitle"),
+        getUIText("rest.completeDesc")
+            .replace("[HP]", actualHeal)
+            .replace("[SP]", spHeal),
+        [
         {
-            txt: "확인",
+            txt: getUIText("popup.confirmOk"),
             func: () => {
                 closePopup();
                 renderRestScreen();
@@ -7794,49 +8201,49 @@ function renderShopScreen(shopType = "shop_black_market") {
     syncCityLogPanels();
 
     // 1. 상점 설정
-    let shopTitle = "상점";
-    let shopDesc = "물건을 보고 가세요.";
+    let shopTitle = getUIText("shop.titleDefault");
+    let shopDesc = getUIText("shop.descDefault");
     let poolRank = 1;
     let cardCount = 3;
     let itemCount = 2;
     let itemCategories = null;
 
     if (shopType === "shop_black_market") {
-        shopTitle = "💀 뒷골목 암시장";
-        shopDesc = "출처는 묻지 마쇼. 싸게 넘길 테니.";
+        shopTitle = getUIText("shop.titleBlack");
+        shopDesc = getUIText("shop.descBlack");
         poolRank = 1;
         itemCategories = ["general"];
     } else if (shopType === "shop_pharmacy") {
-        shopTitle = "💊 24시 드럭스토어";
-        shopDesc = "회복약과 생필품이 있습니다.";
+        shopTitle = getUIText("shop.titlePharmacy");
+        shopDesc = getUIText("shop.descPharmacy");
         poolRank = 1;
         itemCategories = ["pharmacy"];
     } else if (shopType === "shop_high_end") {
-        shopTitle = "💎 아라사카 부티크";
-        shopDesc = "최고급 장비만을 취급합니다.";
+        shopTitle = getUIText("shop.titleHighEnd");
+        shopDesc = getUIText("shop.descHighEnd");
         poolRank = 2;
         itemCategories = ["general"];
     } else if (shopType === "shop_occult") {
-        shopTitle = "🪔 도깨비 만물상";
-        shopDesc = "눈을 속이지 않는 물건들만 모았습니다.";
+        shopTitle = getUIText("shop.titleOccult");
+        shopDesc = getUIText("shop.descOccult");
         poolRank = 1;
         itemCount = 3;
         itemCategories = ["occult"];
     } else if (shopType === "shop_herbal") {
-        shopTitle = "🌿 한의원 제생당";
-        shopDesc = "몸과 기운을 다스리는 한방약을 판매합니다.";
+        shopTitle = getUIText("shop.titleHerbal");
+        shopDesc = getUIText("shop.descHerbal");
         poolRank = 1;
         itemCount = 3;
         itemCategories = ["herbal"];
     } else if (shopType === "shop_clinic") {
-        shopTitle = "🩺 힐링 클리닉 사일런스";
-        shopDesc = "최상급 약품과 처방만 취급합니다.";
+        shopTitle = getUIText("shop.titleClinic");
+        shopDesc = getUIText("shop.descClinic");
         poolRank = 2;
         itemCount = 3;
         itemCategories = ["pharmacy"];
     } else if (shopType === "shop_internet") {
-        shopTitle = "📦 익명 배송 센터";
-        shopDesc = "집에서 편하게 주문하세요. (배송비 포함)";
+        shopTitle = getUIText("shop.titleInternet");
+        shopDesc = getUIText("shop.descInternet");
         poolRank = 1;
         itemCount = 3;
         itemCategories = ["general"];
@@ -7882,22 +8289,22 @@ function renderShopScreen(shopType = "shop_black_market") {
 
         <div class="shop-main-area">
             <div class="shop-col">
-                <h3 class="shop-sec-title">🃏 기술 교본</h3>
+                <h3 class="shop-sec-title">${getUIText("shop.sectionCard")}</h3>
                 <div class="shop-items-grid" id="shop-cards"></div>
             </div>
 
             <div class="shop-col">
-                <h3 class="shop-sec-title">🎒 장비 및 도구</h3>
+                <h3 class="shop-sec-title">${getUIText("shop.sectionEquip")}</h3>
                 <div class="shop-items-grid" id="shop-items"></div>
             </div>
 
             <div class="shop-col">
-                <h3 class="shop-sec-title">🛠️ 서비스</h3>
+                <h3 class="shop-sec-title">${getUIText("shop.sectionService")}</h3>
                 <div class="shop-service-box" onclick="openCardRemoval(${removeCost})">
                     <div class="service-icon">🔥</div>
                     <div class="service-info">
-                        <b>기술 망각</b>
-                        <span style="font-size:0.8em; opacity:0.8;">덱에서 카드 제거</span>
+                        <b>${getUIText("shop.serviceRemoveTitle")}</b>
+                        <span style="font-size:0.8em; opacity:0.8;">${getUIText("shop.serviceRemoveDesc")}</span>
                         <span class="shop-price-tag">${removeCost} G</span>
                     </div>
                 </div>
@@ -7905,7 +8312,7 @@ function renderShopScreen(shopType = "shop_black_market") {
         </div>
         <div class="shop-footer-area">
             <button class="action-btn" onclick="exitShop('${shopType}')" style="background:#7f8c8d; padding: 10px 30px; font-size:1.1em;">
-                🚪 ${game.mode === 'infinite' ? '다음 스테이지로' : '나가기'}
+                🚪 ${game.mode === 'infinite' ? getUIText("shop.exitNextStage") : getUIText("shop.exitLabel")}
             </button>
         </div>
     `;
@@ -7927,11 +8334,12 @@ function renderShopScreen(shopType = "shop_black_market") {
         let el = document.createElement('div');
         el.className = "shop-item";
         // 기존 카드 스타일 재사용하되 크기 조정
+        const cardDisplayName = getCardDisplayName(cName);
         el.innerHTML = `
             <div class="card" style="transform:scale(0.85); margin:0;">
                 <div class="card-cost">${data.cost}</div>
                 <div class="card-rank">${"★".repeat(data.rank)}</div>
-                <div class="card-name">${cName}</div>
+                <div class="card-name">${cardDisplayName}</div>
                 ${(typeLabel || groupLabel) ? `<div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:4px;">
                     ${typeLabel ? `<div class="card-group-badge">[${typeLabel}]</div>` : ""}
                     ${groupLabel ? `<div class="card-group-badge">[${groupLabel}]</div>` : ""}
@@ -7957,12 +8365,13 @@ function renderShopScreen(shopType = "shop_black_market") {
 
         let el = document.createElement('div');
         el.className = "shop-item";
+        const itemDisplayName = getItemDisplayName(iName);
         el.innerHTML = `
             <div class="item-icon item-rank-${data.rank}" style="width:60px; height:60px; font-size:1.5em; margin:0 auto;">
                 ${data.icon}
             </div>
             <div class="shop-price">${price} G</div>
-            <div style="font-size:0.8em; margin-top:5px; color:#ddd;">${iName}</div>
+            <div style="font-size:0.8em; margin-top:5px; color:#ddd;">${itemDisplayName}</div>
         `;
         el.onclick = () => buyShopItem(el, 'item', iName, price);
         itemContainer.appendChild(el);
@@ -7975,11 +8384,11 @@ function addCardToAppropriateDeck(cardName) {
     if (isSocial) {
         if (!Array.isArray(player.socialDeck)) player.socialDeck = [];
         player.socialDeck.push(cardName);
-        return "소셜 덱";
+        return getUIText("deck.labelSocial");
     }
     if (!Array.isArray(player.deck)) player.deck = [];
     player.deck.push(cardName);
-    return "전투 덱";
+    return getUIText("deck.labelBattle");
 }
 
 // [수정] buyShopItem: alert -> showPopup
@@ -7988,16 +8397,19 @@ function buyShopItem(el, type, name, cost) {
 
     // [수정] 잔액 부족 알림
     if (player.gold < cost) {
-        notifyNarration("소지금이 부족합니다.");
+        notifyNarration(getUIText("shop.noMoney"));
         return;
     }
 
     if (type === 'card') {
         player.gold -= cost;
         const deckLabel = addCardToAppropriateDeck(name);
+        const cardDisplayName = getCardDisplayName(name);
 
         // [수정] 구매 완료 알림
-        notifyNarration(`[${name}]을(를) 구매했습니다. ${deckLabel}에 추가되었습니다.`);
+        notifyNarration(getUIText("shop.buyCardAdd")
+            .replace("[CARD]", cardDisplayName)
+            .replace("[DECK]", deckLabel));
 
         el.classList.add('sold-out');
         el.style.opacity = 0.5;
@@ -8008,7 +8420,7 @@ function buyShopItem(el, type, name, cost) {
         const onBuySuccess = () => {
             player.gold -= cost;
             // [수정] 구매 완료 알림
-            notifyNarration(`[${name}]을(를) 구매했습니다.`);
+            notifyNarration(getUIText("shop.buyItem").replace("[ITEM]", getItemDisplayName(name)));
 
             el.classList.add('sold-out');
             el.style.opacity = 0.5;
@@ -8022,7 +8434,11 @@ function buyShopItem(el, type, name, cost) {
             let data = ITEM_DATA[name];
             // [수정] 중복 알림
             if (data.usage === 'passive' || data.usage === 'equip') {
-                notifyNarration(data.usage === 'equip' ? "이미 보유하고 있는 장비입니다." : "이미 보유하고 있는 유물입니다.");
+                notifyNarration(
+                    data.usage === 'equip'
+                        ? getUIText("shop.alreadyHaveEquip")
+                        : getUIText("shop.alreadyHaveRelic")
+                );
             }
         }
     }
@@ -8030,7 +8446,7 @@ function buyShopItem(el, type, name, cost) {
 // [수정] processCardRemoval: alert -> showPopup
 function processCardRemoval(idx, cost) {
     if (player.deck.length <= 5) {
-        notifyNarration("최소 5장의 카드는 남겨야 합니다.");
+        notifyNarration(getUIText("deck.notEnoughCards"));
         return;
     }
 
@@ -8042,7 +8458,7 @@ function processCardRemoval(idx, cost) {
 
     // [수정] 제거 완료 알림
     setTimeout(() => {
-        notifyNarration(`[${removed}] 카드를 태워버렸습니다.`);
+        notifyNarration(getUIText("deck.removedCard").replace("[CARD]", getCardDisplayName(removed)));
     }, 100);
 
     updateUI();
@@ -8058,7 +8474,7 @@ function processCardRemoval(idx, cost) {
 /* [NEW] 실제 카드 삭제 로직 */
 function processCardRemoval(idx, cost) {
     if (player.deck.length <= 5) {
-        notifyNarration("최소 5장의 카드는 남겨야 합니다.");
+        notifyNarration(getUIText("deck.notEnoughCards"));
         return;
     }
 
@@ -8066,7 +8482,7 @@ function processCardRemoval(idx, cost) {
     player.gold -= cost;
 
     closePopup();
-    notifyNarration(`[${removed}] 카드를 태워버렸습니다.`);
+    notifyNarration(getUIText("deck.removedCard").replace("[CARD]", getCardDisplayName(removed)));
 
     // 상점 화면 갱신 (돈 줄어든 거 반영)
     // 현재 상점 타입을 알기 어려우므로 간단히 다시 렌더링하거나 UI만 업데이트
@@ -8124,7 +8540,7 @@ function switchScene(sceneName) {
         updateUI();
     } else {
         console.error(`[Error] 화면을 찾을 수 없습니다: ${targetId}`);
-        notifyNarration("화면 로딩에 실패했습니다. 페이지를 새로고침해 주세요.");
+        notifyNarration(getUIText("system.loadFail"));
         // 강제로 허브로 보내거나 재시도
         if (sceneName !== 'hub') switchScene('hub');
     }
@@ -8138,10 +8554,24 @@ function switchScene(sceneName) {
             sceneName === 'start' ||
             sceneName === 'char-creation' ||
             sceneName === 'deck' ||
-            sceneName === 'storage'
+            sceneName === 'storage' ||
+            sceneName === 'exploration' ||
+            sceneName === 'battle'
         );
         globalLog.classList.toggle('hidden', hideLog);
         if (!hideLog) syncCityLogPanels();
+    }
+
+    // 던전(탐사/전투) 진입 시 도시/허브/이벤트 우측 패널은 확실히 닫기
+    if (sceneName === 'exploration' || sceneName === 'battle') {
+        setHubPanelVisible(false);
+        setCityPanelVisible('map', false);
+        setCityPanelVisible('area', false);
+        const eventLogPanel = document.getElementById('event-log-panel');
+        if (eventLogPanel) eventLogPanel.classList.add('is-hidden');
+        if (typeof DungeonSystem !== 'undefined' && DungeonSystem && typeof DungeonSystem.renderMinimap === 'function') {
+            DungeonSystem.renderMinimap('minimap-right-grid', 26);
+        }
     }
 }
 /* [game.js] renderResultScreen 수정 */
@@ -8160,7 +8590,7 @@ function renderResultScreen() {
     player.xp += finalXp;
 
     // [수정] 아이템 보상 처리
-    let itemReward = "없음";
+    let itemReward = getUIText("reward.itemRewardNone");
     const desiredRank = rewardData.itemRank;
     let newItem = getRandomItem(null, { rank: desiredRank, categories: ["general"] });
 
@@ -8171,14 +8601,14 @@ function renderResultScreen() {
         if (itemData && (itemData.usage === "equip" || itemData.usage === "passive") && hasItemAnywhere(newItem)) {
             const comp = getDuplicateItemCompensation(newItem);
             player.gold += comp;
-            itemReward = `중복 보상 (+${comp} G)`;
+            itemReward = getUIText("reward.itemRewardDuplicate").replace("[GOLD]", comp);
         } else {
             addItem(newItem);
-            itemReward = newItem;
+            itemReward = getItemDisplayName(newItem);
         }
     }
 
-    document.getElementById('res-gold').innerText = `+${finalGold} 원`;
+    document.getElementById('res-gold').innerText = `+${finalGold} ${getUIText("misc.currencyUnit")}`;
     document.getElementById('res-xp').innerText = `+${finalXp} XP`;
     document.getElementById('res-item').innerText = itemReward;
 
@@ -8319,7 +8749,7 @@ function addTrait(key) {
     ensureCurseCardForTrait(key);
 
     recalcStats();
-    notifyNarration(`특성 [${t.name}]을(를) 획득했습니다. ${t.desc}`);
+    notifyNarration(getUIText("misc.traitGain").replace("[NAME]", t.name).replace("[DESC]", t.desc));
 }
 
 function removeTrait(key) {
@@ -8327,7 +8757,7 @@ function removeTrait(key) {
     player.traits = player.traits.filter(k => k !== key);
 
     recalcStats();
-    notifyNarration(`${TRAIT_DATA[key].name} 특성이 사라졌습니다.`);
+    notifyNarration(getUIText("misc.traitLose").replace("[NAME]", TRAIT_DATA[key].name));
 }
 
 function applyBuff(entity, name, dur) {
@@ -8335,12 +8765,12 @@ function applyBuff(entity, name, dur) {
     if (name === "가시") {
         ensureThornsField(entity);
         entity.thorns = (entity.thorns || 0) + Number(dur || 0);
-        logNarration("battle.buffApply", { target: entity === player ? "당신" : "적", buff: name });
+        logNarration("battle.buffApply", { target: entity === player ? getUIText("misc.targetPlayer") : getUIText("misc.targetEnemy"), buff: name });
         return;
     }
     if (name === "독" || name === "활력" || name === "반사") entity.buffs[name] = (entity.buffs[name] || 0) + dur;
     else entity.buffs[name] = dur;
-    logNarration("battle.buffApply", { target: entity === player ? "당신" : "적", buff: name });
+    logNarration("battle.buffApply", { target: entity === player ? getUIText("misc.targetPlayer") : getUIText("misc.targetEnemy"), buff: name });
 }
 function tickBuffs(entity) {
     if (entity.buffs["독"]) { let dmg = entity.buffs["독"]; logNarration("battle.poison", { amount: dmg }); takeDamage(entity, dmg); }
@@ -8522,7 +8952,7 @@ function drawCards(n) {
         } else {
             // 공간이 없으면 바로 버림 패로 이동 (카드가 타버림)
             player.discardPile.push(card);
-            logNarration("system.handFullDiscard", { card });
+        notifyNarration(getUIText("system.handFullDiscard").replace("[CARD]", getCardDisplayName(card)));
 
             // 시각적 효과 (버림 카드 더미가 흔들림)
             playAnim('btn-discard-pile-floating', 'anim-bounce');
@@ -8563,7 +8993,7 @@ function updateUI() {
 
         if (game.started && activeId && activeScenario) {
             topScInfo.classList.remove('hidden');
-            const title = activeScenario.title || (SCENARIOS[activeId]?.title) || "의뢰";
+            const title = activeScenario.title || (SCENARIOS[activeId]?.title) || getUIText("scenario.titleFallback");
             const clues = Number.isFinite(activeScenario.clues) ? activeScenario.clues : 0;
             document.getElementById('sc-title-mini').innerText = `${title} | ${clues}%`;
         } else {
@@ -8575,7 +9005,7 @@ function updateUI() {
     if (doomPill) {
         if (game.started) {
             doomPill.classList.remove('hidden');
-            doomPill.innerText = `Doom ${game.doom}%`;
+            doomPill.innerText = `${getUIText("misc.doomLabel")} ${game.doom}%`;
         } else {
             doomPill.classList.add('hidden');
         }
@@ -8611,12 +9041,12 @@ function updateUI() {
                     <div class="hp-bar-bg" style="width:80px; background:#222; border:1px solid #3498db; height:8px; margin:2px auto;">
                         <div class="hp-bar-fill" style="width:${hpPct}%; background:#3498db;"></div>
                     </div>
-                    <div style="font-size:0.8em; color:#fff;">의지: ${player.mental} <span style="color:#f1c40f">🛡️${player.block}</span></div>
+                    <div style="font-size:0.8em; color:#fff;">${getUIText("battleHud.mentalLabel")}: ${player.mental} <span style="color:#f1c40f">🛡️${player.block}</span></div>
                 `;
                 const gauge = Math.max(0, Math.min(100, Number(game.profilingGauge || 0)));
                 pHud.innerHTML += `
                     <div class="hud-subpanel">
-                        <div class="hud-label">프로파일링</div>
+                        <div class="hud-label">${getUIText("battleHud.profilingLabel")}</div>
                         <div class="hud-bar">
                             <div class="hud-bar-fill" style="width:${gauge}%"></div>
                         </div>
@@ -8630,16 +9060,16 @@ function updateUI() {
                     <div class="hp-bar-bg" style="width:80px; height:8px; margin:2px auto;">
                         <div class="hp-bar-fill" style="width:${hpPct}%"></div>
                     </div>
-                    <div style="font-size:0.8em; color:#fff;">HP: ${player.hp} <span style="color:#f1c40f">🛡️${player.block}</span></div>
+                    <div style="font-size:0.8em; color:#fff;">${getUIText("battleHud.hpLabel")}: ${player.hp} <span style="color:#f1c40f">🛡️${player.block}</span></div>
                 `;
             }
 
             // 버프 표시 (툴팁 적용) + 가시(thorns) 별도 표기
             ensureThornsField(player);
-            const entries = Object.entries(player.buffs || {});
-            if ((player.thorns || 0) > 0) entries.push(["가시", player.thorns]);
-            if (player.isStunned) entries.push(["기절", 1]);
-            else if (player.isBroken) entries.push(["흐트러짐", 1]);
+            const entries = Object.entries(player.buffs || {}).map(([k, v]) => [getBuffDisplayName(k), v]);
+            if ((player.thorns || 0) > 0) entries.push([getUIText("battleHud.statusThorns"), player.thorns]);
+            if (player.isStunned) entries.push([getUIText("battleHud.statusStun"), 1]);
+            else if (player.isBroken) entries.push([getUIText("battleHud.statusBroken"), 1]);
 
             // [FIX] 플레이어 상태이상도 머리 위로 (status-overhead)
             // wrapper 찾기
@@ -8683,7 +9113,7 @@ function updateUI() {
 
         } else {
             // 탐사 모드일 때는 이름만 깔끔하게
-            pHud.innerHTML = `<div style="font-size:0.9em; color:#aaa;">탐색 중...</div>`;
+            pHud.innerHTML = `<div style="font-size:0.9em; color:#aaa;">${getUIText("explore.hudExploring")}</div>`;
         }
 
 
@@ -8737,7 +9167,7 @@ function updateUI() {
 
             const img = document.createElement('img');
             img.id = 'assistant-player';
-            img.alt = '조수';
+        img.alt = getUIText("assistant.imgAlt");
 
             const shadow = document.createElement('img');
             shadow.id = 'assistant-shadow';
@@ -8759,10 +9189,11 @@ function updateUI() {
         const assistantImgEl = document.getElementById('assistant-player');
         if (assistantWrapper && assistantHud && assistantImgEl) {
             if (isDetectiveJob() && game.state === 'battle') {
-                const assistantMeta = (typeof NPC_DATA !== 'undefined' && NPC_DATA && NPC_DATA["사무소 조수"])
-                    ? NPC_DATA["사무소 조수"]
+                const assistantKey = getUIText("assistant.npcName");
+                const assistantMeta = (typeof NPC_DATA !== 'undefined' && NPC_DATA && NPC_DATA[assistantKey])
+                    ? NPC_DATA[assistantKey]
                     : null;
-                const assistantImg = assistantMeta?.img || "https://placehold.co/220x220/2c3e50/ffffff?text=Assistant";
+                const assistantImg = assistantMeta?.img || getUIText("assistant.imgFallback");
                 assistantImgEl.src = assistantImg;
 
                 // [NEW] 조수 그림자 소스 동기화
@@ -8778,17 +9209,17 @@ function updateUI() {
 
                 // [FIX] 조수 상태이상/어그로 -> status-overhead로 이동
                 const aEntries = [];
-                if (game.assistantTauntTurns > 0) aEntries.push(["🎯어그로", ""]); // 어그로 표시
+                if (game.assistantTauntTurns > 0) aEntries.push([getUIText("battleHud.statusAggro"), ""]); // 어그로 표시
 
                 // 버프/디버프 처리
                 if (mgr.buffs) {
                     Object.entries(mgr.buffs).forEach(([k, v]) => {
-                        aEntries.push([k, v]);
+                        aEntries.push([getBuffDisplayName(k), v]);
                     });
                 }
 
-                if (mgr.isStunned) aEntries.push(["기절", 1]);
-                else if (mgr.isBroken) aEntries.push(["흐트러짐", 1]);
+                if (mgr.isStunned) aEntries.push([getUIText("battleHud.statusStun"), 1]);
+                else if (mgr.isBroken) aEntries.push([getUIText("battleHud.statusBroken"), 1]);
 
                 // 기존 오버헤드 제거 및 새로 생성
                 const oldOverhead = assistantWrapper.querySelector('.status-overhead');
@@ -8812,7 +9243,7 @@ function updateUI() {
                     <div class="hp-bar-bg" style="height:8px; margin:2px 0;">
                         <div class="hp-bar-fill" style="width:${pct}%"></div>
                     </div>
-                    <div style="font-size:0.8em; color:#fff;">HP: ${cur} <span style="color:#f1c40f">🛡️${assistantBlock}</span></div>
+                    <div style="font-size:0.8em; color:#fff;">${getUIText("battleHud.hpLabel")}: ${cur} <span style="color:#f1c40f">🛡️${assistantBlock}</span></div>
                 `;
                 assistantWrapper.style.display = '';
             } else {
@@ -8825,10 +9256,12 @@ function updateUI() {
         const defAttrs = getDefenseAttrs(player) || [];
 
         const atkIconsHtml = atkAttrs.map(attr => {
-            return `<div class="player-attr-icon" title="공격 속성: ${attr}">${ATTR_ICONS[attr] || attr}</div>`;
+            const title = getUIText("battleAttr.attackTitle").replace("[ATTR]", attr);
+            return `<div class="player-attr-icon" title="${title}">${ATTR_ICONS[attr] || attr}</div>`;
         }).join("");
         const defIconsHtml = defAttrs.map(attr => {
-            return `<div class="player-attr-icon" style="border-color:#3498db;" title="방어 속성: ${attr}">${ATTR_ICONS[attr] || attr}</div>`;
+            const title = getUIText("battleAttr.defenseTitle").replace("[ATTR]", attr);
+            return `<div class="player-attr-icon" style="border-color:#3498db;" title="${title}">${ATTR_ICONS[attr] || attr}</div>`;
         }).join("");
 
         if (atkIconsHtml || defIconsHtml) {
@@ -8858,7 +9291,7 @@ function updateUI() {
 
             if (e.hp <= 0 && game.state !== "social") {
                 el.classList.add('dead');
-                el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${e.name}</div>`;
+                el.innerHTML = `<div style="margin-top:50px; color:#777; font-size:2em;">💀</div><div style="color:#555;">${getActorDisplayName(e.name)}</div>`;
                 return;
             } else {
                 el.classList.remove('dead');
@@ -8869,28 +9302,28 @@ function updateUI() {
             let hpPct = isSocialEnemy ? Math.min(100, Math.max(0, e.hp)) : Math.max(0, (e.hp / e.maxHp) * 100);
             let barHTML = `<div class="hp-bar-bg" style="width:80px; height:8px; margin:2px auto;"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>`;
 
-            let intentIconsHtml = `<span class="intent-icon" title="행동 준비 중">💤</span>`;
+            let intentIconsHtml = `<span class="intent-icon" title="${getUIText("battleHud.intentSleep")}">💤</span>`;
             if (e.intentQueue && e.intentQueue.length > 0) {
                 intentIconsHtml = e.intentQueue.map((intObj, idx) => {
                     const icon = intObj.icon || "❓";
-                    const tip = intObj.tooltip || "준비 중";
+                    const tip = intObj.tooltip || getUIText("battleHud.intentReady");
                     const dmgText = intObj.damageText ? `<span class="intent-dmg">${intObj.damageText}</span>` : "";
                     return `<span class="intent-icon" title="${tip}" data-int-idx="${idx}">${icon}${dmgText}</span>`;
                 }).join(" ");
             } else if (e.intent && e.intent.icon) {
-                const tip = e.intent.tooltip || "행동 준비 중";
+                const tip = e.intent.tooltip || getUIText("battleHud.intentSleep");
                 const dmgText = e.intent.damageText ? `<span class="intent-dmg">${e.intent.damageText}</span>` : "";
                 intentIconsHtml = `<span class="intent-icon" title="${tip}">${e.intent.icon}${dmgText}</span>`;
             }
 
             // [FIX] 상태이상을 머리 위로 이동 (status-overhead)
             ensureThornsField(e);
-            const eEntries = Object.entries(e.buffs || {});
-            if ((e.thorns || 0) > 0) eEntries.push(["가시", e.thorns]);
+            const eEntries = Object.entries(e.buffs || {}).map(([k, v]) => [getBuffDisplayName(k), v]);
+            if ((e.thorns || 0) > 0) eEntries.push([getUIText("battleHud.statusThorns"), e.thorns]);
             const clueStacks = clueDebuff.getStacks(e);
-            if (clueStacks > 0) eEntries.push(["단서", clueStacks]);
-            if (e.isStunned) eEntries.push(["기절", 1]);
-            else if (e.isBroken) eEntries.push(["흐트러짐", 1]);
+            if (clueStacks > 0) eEntries.push([getUIText("battleHud.statusClue"), clueStacks]);
+            if (e.isStunned) eEntries.push([getUIText("battleHud.statusStun"), 1]);
+            else if (e.isBroken) eEntries.push([getUIText("battleHud.statusBroken"), 1]);
 
             let overheadHTML = "";
             if (eEntries.length > 0) {
@@ -8899,8 +9332,10 @@ function updateUI() {
             }
 
             // ★ [핵심 수정] 이미지 소스 안전 처리 (기본값 + 에러 핸들러)
+            const enemyFallback = encodeURIComponent(getUIText("misc.enemyImageText"));
+            const enemyNoImg = encodeURIComponent(getUIText("misc.noImageText"));
             let imgSrc = e.img;
-            if (!imgSrc || imgSrc === "") imgSrc = "https://placehold.co/100x100/555/fff?text=Enemy";
+            if (!imgSrc || imgSrc === "") imgSrc = `https://placehold.co/100x100/555/fff?text=${enemyFallback}`;
 
             // 약점/상태 아이콘 처리
             let weakIcon = "";
@@ -8916,7 +9351,10 @@ function updateUI() {
                 // 2. 플레이어가 이 적의 약점을 이미 발견했는지 확인
                 let knownWeakness = player.discoveredWeaknesses[e.enemyKey];
                 // 3. 발견했다면 아이콘 표시
-                if (knownWeakness) weakIcon = `<div class="weakness-icon" title="약점: ${knownWeakness}">${ATTR_ICONS[knownWeakness] || knownWeakness}</div>`;
+                if (knownWeakness) {
+                    const tip = getUIText("battleAttr.weaknessTitle").replace("[ATTR]", knownWeakness);
+                    weakIcon = `<div class="weakness-icon" title="${tip}">${ATTR_ICONS[knownWeakness] || knownWeakness}</div>`;
+                }
             }
 
             // [FIX] 적 HTML 구조 변경: status-overhead 추가
@@ -8926,15 +9364,15 @@ function updateUI() {
                     ${overheadHTML}
                     <div style="position:relative; display:inline-block;">
                         <img class="char-shadow" src="${imgSrc}">
-                        <img class="char-img" src="${imgSrc}" loading="lazy" onerror="this.src='https://placehold.co/100x100/555/fff?text=No+Img';">
+                        <img class="char-img" src="${imgSrc}" loading="lazy" onerror="this.src='https://placehold.co/100x100/555/fff?text=${enemyNoImg}';">
                         ${statusIcon}
                     </div>
-                    <div class="enemy-stats">${e.name}</div>
+                    <div class="enemy-stats">${getActorDisplayName(e.name)}</div>
                     ${barHTML}
-                    <div style="font-size:0.8em; color:#fff;">HP: ${e.hp} <span style="color:#f1c40f">🛡️${e.block}</span></div>
-                </div>
-                ${weakIcon}
-            `;
+                    <div style="font-size:0.8em; color:#fff;">${getUIText("battleHud.hpLabel")}: ${e.hp} <span style="color:#f1c40f">🛡️${e.block}</span></div>
+            </div>
+            ${weakIcon}
+        `;
         });
     }
 
@@ -8949,9 +9387,9 @@ function updateUI() {
         const exhaustCount = inCombat ? (player.exhaustPile?.length || 0) : 0;
         const discardCount = inCombat ? (player.discardPile?.length || 0) : 0;
 
-        if (drawBtn) drawBtn.textContent = `덱(${drawCount})`;
-        if (exhaustBtn) exhaustBtn.textContent = `소멸(${exhaustCount})`;
-        if (discardBtn) discardBtn.textContent = `버림(${discardCount})`;
+        if (drawBtn) drawBtn.textContent = `${getUIText("battleHud.deckLabel")}(${drawCount})`;
+        if (exhaustBtn) exhaustBtn.textContent = `${getUIText("battleHud.exhaustLabel")}(${exhaustCount})`;
+        if (discardBtn) discardBtn.textContent = `${getUIText("battleHud.discardLabel")}(${discardCount})`;
     }
 
     if (typeof updateTurnOrderList === "function") updateTurnOrderList();
@@ -8967,12 +9405,12 @@ function updateUI() {
         let btnColor = "";
 
         if (game.state === "social") {
-            btnHTML = "👊<br>무력행사";
+            btnHTML = getUIText("battleHud.forceAction");
             btnColor = "#c0392b";
             btnFunc = () => confirmForceBattle();
         }
         else if (game.state === "battle" && !game.isBossBattle) {
-            btnHTML = "🏃<br>도망치기";
+            btnHTML = getUIText("battleHud.runAway");
             btnColor = "#7f8c8d";
             btnFunc = () => confirmRunAway();
         }
@@ -8993,15 +9431,15 @@ function updateUI() {
 }
 /* [NEW] 도망치기 확인 팝업 */
 function confirmRunAway() {
-    showNarrationChoice("전투를 포기하고 도망치시겠습니까? (패널티: HP -5, 위협도 증가)", [
-        { txt: "도망친다!", func: () => { escapePhysicalBattle(); } },
-        { txt: "취소", func: () => {} }
+    showNarrationChoice(getUIText("battle.runAwayPrompt"), [
+        { txt: getUIText("battle.runAwayConfirm"), func: () => { escapePhysicalBattle(); } },
+        { txt: getUIText("battle.runAwayCancel"), func: () => {} }
     ]);
 }
 
 /* [수정] 전투 도주 처리 함수 (사망 체크 추가) */
 function escapePhysicalBattle() {
-    logNarration("system.retreat");
+    notifyNarration(getUIText("system.retreat"));
 
     // 1. 패널티 적용 (HP -5)
     // takeDamage 함수 내부에서 HP 감소 및 사망 시 팝업 처리를 수행함
@@ -9040,7 +9478,7 @@ function escapePhysicalBattle() {
 
     toggleBattleUI(false); // 이동 버튼 다시 표시
 
-    logNarration("system.retreat");
+    notifyNarration(getUIText("system.retreat"));
     renderExploration();
 }
 
@@ -9092,10 +9530,11 @@ function renderHand() {
         const typeLabel = getCardTypeLabel(data);
         const badges = `${typeLabel ? `<div class="card-group-badge">[${typeLabel}]</div>` : ""}${groupLabel ? `<div class="card-group-badge">[${groupLabel}]</div>` : ""}`;
 
+        const cardDisplayName = getCardDisplayName(cName);
         el.innerHTML = `
             <div class="card-cost">${cost}</div>
             <div class="card-rank">${"★".repeat(data.rank)}</div>
-            <div class="card-name">${cName}</div>
+            <div class="card-name">${cardDisplayName}</div>
             ${badges}
             <div class="card-desc">${applyTooltip(data.desc)}</div>
         `;
@@ -9150,28 +9589,35 @@ function renderHand() {
 // [수정됨] openPileView: 목록 창에서도 일반 카드처럼 보이게 수정
 function openPileView(type) {
     const title = document.getElementById('popup-title'); const content = document.getElementById('popup-content'); const btns = document.getElementById('popup-buttons');
-    content.innerHTML = ""; btns.innerHTML = "<button class='action-btn' onclick='closePopup()'>닫기</button>";
+    content.innerHTML = ""; btns.innerHTML = `<button class='action-btn' onclick='closePopup()'>${getUIText("popup.close")}</button>`;
 
     let sourceArray;
     if (type === 'draw') sourceArray = [...player.drawPile].sort();
     else if (type === 'discard') sourceArray = player.discardPile;
     else if (type === 'exhaust') sourceArray = player.exhaustPile;
 
-    let typeText = (type === 'draw') ? '남은 덱' : (type === 'discard') ? '버린 카드' : '소멸된 카드';
-    title.innerText = `${typeText} (${sourceArray.length}장)`;
-    document.getElementById('popup-desc').innerText = "카드 목록을 확인합니다.";
-    if (sourceArray.length === 0) content.innerHTML = "<div style='padding:20px; color:#777;'>비어있음</div>";
+    let typeText = (type === 'draw')
+        ? getUIText("popup.pileTitleDraw")
+        : (type === 'discard')
+            ? getUIText("popup.pileTitleDiscard")
+            : getUIText("popup.pileTitleExhaust");
+    title.innerText = getUIText("popup.pileCount")
+        .replace("[TITLE]", typeText)
+        .replace("[COUNT]", sourceArray.length);
+    document.getElementById('popup-desc').innerText = getUIText("popup.pileDesc");
+    if (sourceArray.length === 0) content.innerHTML = `<div style='padding:20px; color:#777;'>${getUIText("menu.listEmpty")}</div>`;
     else {
         let listDiv = document.createElement('div'); listDiv.className = 'pile-list';
         sourceArray.forEach(cName => {
             let data = getEffectiveCardData(cName) || CARD_DATA[cName]; let el = document.createElement('div'); el.className = 'mini-card';
+            const displayName = getCardDisplayName(cName);
             const groupLabel = getCardGroupLabel(data);
             const typeLabel = getCardTypeLabel(data);
 
             // [수정] 미니 카드에도 별 추가
             el.innerHTML = `
                 <div>${data.cost} <span style="color:#f1c40f">${"★".repeat(data.rank)}</span></div>
-                <b>${cName}</b>
+                <b>${displayName}</b>
                 ${typeLabel ? `<div style="font-size:0.9em; color:#95a5a6;">[${typeLabel}]</div>` : ""}
                 ${groupLabel ? `<div style="font-size:0.9em; color:#7f8c8d;">[${groupLabel}]</div>` : ""}
                 <div>${applyTooltip(data.desc)}</div>
@@ -9192,6 +9638,7 @@ function showPopup(title, desc, buttons = [], contentHTML = "", options = {}) {
         return;
     }
     const layer = document.getElementById('popup-layer');
+    const box = layer ? layer.querySelector('.popup-box') : null;
     document.getElementById('popup-title').innerText = title;
     document.getElementById('popup-desc').innerHTML = desc;
     document.getElementById('popup-content').innerHTML = contentHTML;
@@ -9206,24 +9653,41 @@ function showPopup(title, desc, buttons = [], contentHTML = "", options = {}) {
         btn.onclick = b.func;
         btnBox.appendChild(btn);
     });
+    if (options && options.dismissOnOverlay) {
+        const dismiss = () => {
+            closePopup();
+            if (typeof options.onDismiss === "function") options.onDismiss();
+        };
+        layer.onclick = dismiss;
+        if (box) box.onclick = dismiss;
+    } else {
+        layer.onclick = null;
+        if (box) box.onclick = (e) => e.stopPropagation();
+    }
     layer.style.display = "flex";
 }
 
 function showAlert(title, desc, onClose) {
     const closeFn = onClose || closePopup;
-    showChoice(title, desc, [{ txt: "확인", func: closeFn }]);
+    showChoice(title, desc, [{ txt: getUIText("popup.confirmOk"), func: closeFn }]);
 }
 
-function showConfirm(title, desc, onYes, onNo, yesText = "확인", noText = "취소") {
-    showNarrationChoice(desc, [
-        { txt: yesText, func: onYes || closePopup },
-        { txt: noText, func: onNo || closePopup }
-    ]);
+function showConfirm(title, desc, onYes, onNo, yesText = getUIText("popup.confirmOk"), noText = getUIText("popup.confirmCancel")) {
+    showPopup(
+        title,
+        desc,
+        [
+            { txt: yesText, func: onYes || closePopup },
+            { txt: noText, func: onNo || closePopup }
+        ],
+        "",
+        { forcePopup: true }
+    );
 }
 
 function showChoice(title, desc, options = [], contentHTML = "") {
     const buttons = (options || []).map(opt => ({
-        txt: opt.txt || opt.label || "선택",
+        txt: opt.txt || opt.label || getUIText("popup.choiceDefault"),
         func: opt.func || closePopup
     }));
     showPopup(title, desc, buttons, contentHTML);
@@ -9234,6 +9698,8 @@ function closePopup() {
     // [핵심] 게임오버 상태일 때는 팝업을 절대 닫지 않음 (새로고침만 가능하게)
     if (game.state === "gameover") return;
 
+    const layer = document.getElementById('popup-layer');
+    if (layer) layer.onclick = null;
     document.getElementById('popup-layer').style.display = 'none';
 }
 
@@ -9252,7 +9718,7 @@ function addCardToHand(cardName) {
 
     if (player.hand.length >= MAX_HAND_SIZE) {
         player.discardPile.push(cardName);
-        logNarration("system.handFullDiscard", { card: cardName });
+        notifyNarration(getUIText("system.handFullDiscard").replace("[CARD]", getCardDisplayName(cardName)));
         playAnim('btn-discard-pile-floating', 'anim-bounce');
         return false;
     }
@@ -9269,7 +9735,7 @@ function showChooseCardFromPile(pileType, title, onPick) {
         return false;
     }
 
-    showPopup(title, "카드를 선택하세요.", [{ txt: "취소", func: closePopup }], `<div id="choose-card-list" class="pile-list"></div>`);
+    showPopup(title, getUIText("popup.chooseCardTitle"), [{ txt: getUIText("popup.confirmCancel"), func: closePopup }], `<div id="choose-card-list" class="pile-list"></div>`);
     const list = document.getElementById('choose-card-list');
     if (!list) return false;
 
@@ -9309,30 +9775,16 @@ function showLevelUp() {
     logNarration("system.levelUp");
     let content = `
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <button class="action-btn" onclick="applyStatUp('str')">💪 근력 (공격↑)</button>
-            <button class="action-btn" onclick="applyStatUp('con')">❤️ 건강 (체력/방어↑)</button>
-            <button class="action-btn" onclick="applyStatUp('dex')">⚡ 민첩 (속도↑)</button>
-            <button class="action-btn" onclick="applyStatUp('int')">🧠 지능 (논리방어↑)</button>
-            <button class="action-btn" onclick="applyStatUp('wil')">👁️ 정신 (이성↑)</button>
-            <button class="action-btn" onclick="applyStatUp('cha')">💋 매력 (설득↑)</button>
+            <button class="action-btn" onclick="applyStatUp('str')">${getUIText("levelUp.strBtn")}</button>
+            <button class="action-btn" onclick="applyStatUp('con')">${getUIText("levelUp.conBtn")}</button>
+            <button class="action-btn" onclick="applyStatUp('dex')">${getUIText("levelUp.dexBtn")}</button>
+            <button class="action-btn" onclick="applyStatUp('int')">${getUIText("levelUp.intBtn")}</button>
+            <button class="action-btn" onclick="applyStatUp('wil')">${getUIText("levelUp.wilBtn")}</button>
+            <button class="action-btn" onclick="applyStatUp('cha')">${getUIText("levelUp.chaBtn")}</button>
         </div>
     `;
 
-    if (isDetectiveJob()) {
-        content += `
-            <div style="margin-top:14px; font-size:0.9em; color:#f1c40f;">조수 스탯 분배</div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
-                <button class="action-btn" onclick="applyAssistantStatUp('str')">💪 조수 근력</button>
-                <button class="action-btn" onclick="applyAssistantStatUp('con')">❤️ 조수 건강</button>
-                <button class="action-btn" onclick="applyAssistantStatUp('dex')">⚡ 조수 민첩</button>
-                <button class="action-btn" onclick="applyAssistantStatUp('int')">🧠 조수 지능</button>
-                <button class="action-btn" onclick="applyAssistantStatUp('wil')">👁️ 조수 정신</button>
-                <button class="action-btn" onclick="applyAssistantStatUp('cha')">💋 조수 매력</button>
-            </div>
-        `;
-    }
-
-    showPopup("🆙 레벨 업!", "강화할 능력을 선택하세요.", [], content);
+    showPopup(getUIText("popup.levelUpTitle"), getUIText("popup.levelUpDesc"), [], content);
 }
 /* [NEW] 스탯 적용 헬퍼 */
 function applyStatUp(type) {
@@ -9347,23 +9799,6 @@ function applyStatUp(type) {
     getCardReward(); // 카드 보상으로 이어짐
 }
 
-function applyAssistantStatUp(type) {
-    if (!isDetectiveJob()) return;
-    const mgr = ensureAssistantManager();
-    if (!mgr.stats) mgr.stats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
-    if (mgr.stats[type] === undefined) return;
-    mgr.stats[type] += 1;
-    if (type === 'con') {
-        const base = Math.max(10, Math.floor(player.maxHp * 3));
-        const bonus = Math.max(0, Number(mgr.stats?.con || 0) * 2);
-        const newMax = base + bonus;
-        const delta = Math.max(0, newMax - mgr.maxHp);
-        mgr.maxHp = newMax;
-        mgr.hp = Math.min(newMax, mgr.hp + delta);
-    }
-    closePopup();
-    getCardReward();
-}
 /* [수정] 카드 보상 획득 로직 (화면 이동 강제 제거) */
 function getCardReward() {
     let newCard = getRandomCard();
@@ -9371,12 +9806,13 @@ function getCardReward() {
     const typeLabel = getCardTypeLabel(data);
     const groupLabel = getCardGroupLabel(data);
 
+    const displayName = getCardDisplayName(newCard);
     let cardHTML = `
     <div style="display:flex; justify-content:center; margin:10px;">
         <div class="card">
             <div class="card-cost">${data.cost}</div>
             <div class="card-rank">${"★".repeat(data.rank)}</div>
-            <div class="card-name">${newCard}</div>
+            <div class="card-name">${displayName}</div>
             ${(typeLabel || groupLabel) ? `<div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:4px;">
                 ${typeLabel ? `<div class="card-group-badge">[${typeLabel}]</div>` : ""}
                 ${groupLabel ? `<div class="card-group-badge">[${groupLabel}]</div>` : ""}
@@ -9402,19 +9838,21 @@ function getCardReward() {
     };
 
     logNarration("system.cardReward");
-    showPopup("🎁 카드 보상", "획득하시겠습니까?", [
+    showPopup(getUIText("popup.cardRewardTitle"), getUIText("popup.cardRewardDesc"), [
         {
-            txt: "받기",
+            txt: getUIText("popup.rewardGet"),
             func: () => {
                 const deckLabel = addCardToAppropriateDeck(newCard);
-                logNarration("system.addCardToDeck", { card: newCard, deck: deckLabel });
-                logNarration("system.learnCard", { card: newCard });
+                logNarration("system.addCardToDeck", { card: displayName, deck: deckLabel });
+                logNarration("system.learnCard", { card: displayName });
+                logNarration("system.cardRewardAccept");
                 finishReward(); // 제자리 유지
             }
         },
         {
-            txt: "건너뛰기",
+            txt: getUIText("popup.rewardSkip"),
             func: () => {
+                logNarration("system.cardRewardSkip");
                 finishReward(); // 제자리 유지
             }
         }
@@ -9432,6 +9870,18 @@ function processLevelUp() {
 
     // 기존 스탯 선택 팝업 호출
     showLevelUp();
+
+    // 조수 건강은 레벨업마다 +1
+    if (isDetectiveJob()) {
+        const mgr = ensureAssistantManager();
+        mgr.stats.con = Math.max(0, Number(mgr.stats?.con || 0)) + 1;
+        const bonus = Math.max(0, Number(mgr.stats?.con || 0) * 2);
+        const base = Math.max(1, Number(mgr.baseMaxHp || 1));
+        const newMax = Math.max(1, base + bonus);
+        const delta = Math.max(0, newMax - mgr.maxHp);
+        mgr.maxHp = newMax;
+        mgr.hp = Math.min(newMax, mgr.hp + delta);
+    }
 }
 
 /* [추가] 애니메이션 실행 함수 */
@@ -9502,7 +9952,7 @@ function renderWinPopup() {
             `;
 
             btns.push({
-                txt: "🖐️ 아이템 줍기",
+                txt: getUIText("battle.lootPickup"),
                 func: () => getLoot()
             });
         } else {
@@ -9513,25 +9963,34 @@ function renderWinPopup() {
 
     // 2. [레벨업 버튼]
     if (player.xp >= player.maxXp) {
-        btns.push({
-            txt: "🆙 레벨업!",
-            func: () => processLevelUp()
-        });
+        processLevelUp();
     }
 
     // 3. [떠나기 버튼]
-    btns.push({
-        txt: "떠나기",
-        func: () => nextStepAfterWin()
-    });
+    btns = btns.filter(Boolean);
 
     // 메시지에 레벨업 알림 추가
-    let finalMsg = game.winMsg || "전투 승리!";
-    if (player.xp >= player.maxXp) {
-        finalMsg += `<br><br><b style="color:#f1c40f; animation:blink 1s infinite;">✨ 레벨 업 가능! ✨</b>`;
+    let finalMsg = game.winMsg || getUIText("battle.winDefaultMsg");
+    if (game.lastWinReward && !game.winRewardLogged) {
+        logNarration("battle.winReward", { gold: game.lastWinReward.gold, xp: game.lastWinReward.xp });
+        game.winRewardLogged = true;
     }
-
-    showPopup("🎉 전투 승리!", finalMsg, btns, contentHTML);
+    showPopup(
+        getUIText("battle.winTitleDecorated"),
+        finalMsg,
+        btns,
+        contentHTML,
+        {
+            forcePopup: true,
+            dismissOnOverlay: true,
+            onDismiss: () => {
+                if (game.pendingLoot) {
+                    getLoot();
+                }
+                if (!game.pendingLoot) nextStepAfterWin();
+            }
+        }
+    );
 }
 
 function getLoot() {
@@ -9540,10 +9999,11 @@ function getLoot() {
         const onLootSuccess = () => {
             // 메시지 갱신 (기존 텍스트에서 '떨어져 있습니다' 제거 후 획득 메시지 추가)
             if (game.winMsg) {
-                game.winMsg = game.winMsg.replace("전리품이 바닥에 떨어져 있습니다.", "");
-                game.winMsg = game.winMsg.replace("<br>✨", ""); // 아이콘 잔여물 제거
+                const lootLine = getUIText("battle.lootOnGround");
+                game.winMsg = game.winMsg.replace(`<br>${lootLine}`, "");
             }
-            game.winMsg += `<br><span style="color:#2ecc71">✔ [${game.pendingLoot}] 획득함.</span>`;
+            const lootPicked = getUIText("battle.lootPicked").replace("[ITEM]", getItemDisplayName(game.pendingLoot));
+            game.winMsg += `<br><span style="color:#2ecc71">${lootPicked}</span>`;
 
             game.pendingLoot = null; // 바닥에서 삭제
 
@@ -9563,11 +10023,18 @@ function getLoot() {
 
             // 소모품이 꽉 찬 게 아니라, '중복 불가 유물/장비'라서 실패한 경우
             if (itemData.usage === 'passive' || itemData.usage === 'equip') {
-                const label = (itemData.usage === 'equip') ? "장비" : "유물";
-                notifyNarration(`이미 보유하고 있는 ${label}입니다.`);
-                showPopup("획득 불가", `이미 보유하고 있는 ${label}([${game.pendingLoot}])입니다.<br>전리품을 포기합니다.`, [
+                const label = (itemData.usage === 'equip')
+                    ? getUIText("menu.tabEquip")
+                    : getUIText("menu.tabRelic");
+                notifyNarration(getUIText("misc.alreadyHaveLabel").replace("[LABEL]", label));
+                showPopup(
+                    getUIText("popup.lootFailTitle"),
+                    getUIText("popup.lootFailDesc")
+                        .replace("[LABEL]", label)
+                        .replace("[ITEM]", getItemDisplayName(game.pendingLoot)),
+                    [
                     {
-                        txt: "확인",
+                        txt: getUIText("popup.confirmOk"),
                         func: () => {
                             game.pendingLoot = null; // 포기 처리
                             renderWinPopup(); // 결과 화면 복귀
@@ -9992,16 +10459,16 @@ function openPlayerStats() {
     const s = player.stats;
     const statRows = `
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:left;">
-            <div>💪 근력: <b>${s.str}</b></div>
-            <div>❤️ 건강: <b>${s.con}</b></div>
-            <div>⚡ 민첩: <b>${s.dex}</b></div>
-            <div>🧠 지능: <b>${s.int}</b></div>
-            <div>👁️ 정신: <b>${s.wil}</b></div>
-            <div>💋 매력: <b>${s.cha}</b></div>
+            <div>${getUIText("stats.str")}: <b>${s.str}</b></div>
+            <div>${getUIText("stats.con")}: <b>${s.con}</b></div>
+            <div>${getUIText("stats.dex")}: <b>${s.dex}</b></div>
+            <div>${getUIText("stats.int")}: <b>${s.int}</b></div>
+            <div>${getUIText("stats.wil")}: <b>${s.wil}</b></div>
+            <div>${getUIText("stats.cha")}: <b>${s.cha}</b></div>
         </div>
     `;
 
-    let traitList = "없음";
+    let traitList = getUIText("menu.none");
     if (player.traits && player.traits.length > 0) {
         traitList = player.traits.map(tKey => {
             const t = TRAIT_DATA[tKey] || { name: tKey, desc: "" };
@@ -10014,13 +10481,18 @@ function openPlayerStats() {
         <div style="text-align:left; display:flex; flex-direction:column; gap:10px;">
             <div>${statRows}</div>
             <div>
-                <div style="color:#f1c40f; font-weight:bold; margin-bottom:4px;">보유 트레잇</div>
+                <div style="color:#f1c40f; font-weight:bold; margin-bottom:4px;">${getUIText("menu.ownedTraits")}</div>
                 ${traitList}
             </div>
         </div>
     `;
 
-    showPopup("플레이어 정보", "현재 스탯과 트레잇을 확인하세요.", [{ txt: "닫기", func: closePopup }], content);
+    showPopup(
+        getUIText("popup.playerInfoTitle"),
+        getUIText("popup.playerInfoDesc"),
+        [{ txt: getUIText("popup.confirmOk"), func: closePopup }],
+        content
+    );
 }
 // 현재 보고 있는 덱 탭 ('battle' or 'social')
 let currentCollectionTab = 'battle';
@@ -10075,7 +10547,7 @@ function renderCardCollection() {
     });
 
     if (sortedDeck.length === 0) {
-        list.innerHTML = `<div style="grid-column: 1/-1; color:#777; margin-top:50px;">(카드가 없습니다)</div>`;
+        list.innerHTML = `<div style="grid-column: 1/-1; color:#777; margin-top:50px;">${getUIText("menu.noCards")}</div>`;
         return;
     }
 
@@ -10089,10 +10561,11 @@ function renderCardCollection() {
         el.className = 'card collection-card-view';
 
         // 카드 내용 HTML 구성 (기존 renderHand와 동일한 구조)
+        const displayName = getCardDisplayName(cName);
         el.innerHTML = `
             <div class="card-cost">${data.cost}</div>
             <div class="card-rank">${"★".repeat(data.rank)}</div>
-            <div class="card-name">${cName}</div>
+            <div class="card-name">${displayName}</div>
             ${(typeLabel || groupLabel) ? `<div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:4px;">
                 ${typeLabel ? `<div class="card-group-badge">[${typeLabel}]</div>` : ""}
                 ${groupLabel ? `<div class="card-group-badge">[${groupLabel}]</div>` : ""}
@@ -10205,35 +10678,35 @@ function showInfiniteIntermissionChoices() {
 
     let html = `
         <div style="text-align:center; padding:20px;">
-            <h2 style="color:#f1c40f;">STAGE ${infiniteStage} CLEAR</h2>
-            <p style="color:#bdc3c7; margin-bottom:20px;">다음 여정을 선택하세요.</p>
+            <h2 style="color:#f1c40f;">${getUIText("infinite.stageClear").replace("[STAGE]", infiniteStage)}</h2>
+            <p style="color:#bdc3c7; margin-bottom:20px;">${getUIText("infinite.choosePath")}</p>
             
             <div style="display:flex; flex-direction:column; gap:15px; width:100%;">
                 <button class="action-btn" style="background:#27ae60;" onclick="handleInfiniteRest()">
-                    <div style="font-size:1.3em;">🔥 휴식</div>
-                    <div style="font-size:0.8em; color:#ddd;">체력/정신력 회복</div>
+                    <div style="font-size:1.3em;">${getUIText("infinite.restTitle")}</div>
+                    <div style="font-size:0.8em; color:#ddd;">${getUIText("infinite.restDesc")}</div>
                 </button>
                 
                 <button class="action-btn" style="background:#d35400;" onclick="handleInfiniteShop()">
-                    <div style="font-size:1.3em;">🛒 상점</div>
-                    <div style="font-size:0.8em; color:#ddd;">아이템 및 카드 구매</div>
+                    <div style="font-size:1.3em;">${getUIText("infinite.shopTitle")}</div>
+                    <div style="font-size:0.8em; color:#ddd;">${getUIText("infinite.shopDesc")}</div>
                 </button>
                 
                 <button class="action-btn" style="background:#8e44ad;" onclick="handleInfiniteRandom()">
-                    <div style="font-size:1.3em;">🎲 랜덤 이벤트</div>
-                    <div style="font-size:0.8em; color:#ddd;">무슨 일이 일어날지 모릅니다</div>
+                    <div style="font-size:1.3em;">${getUIText("infinite.randomTitle")}</div>
+                    <div style="font-size:0.8em; color:#ddd;">${getUIText("infinite.randomDesc")}</div>
                 </button>
             </div>
 
              <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
-                <button class="action-btn" onclick="openAllCards()" style="font-size:0.9em; padding:8px 15px;">🃏 덱 관리</button>
-                <button class="action-btn" onclick="openPlayerStats()" style="font-size:0.9em; padding:8px 15px;">📊 스탯 확인</button>
+                <button class="action-btn" onclick="openAllCards()" style="font-size:0.9em; padding:8px 15px;">${getUIText("infinite.deckManage")}</button>
+                <button class="action-btn" onclick="openPlayerStats()" style="font-size:0.9em; padding:8px 15px;">${getUIText("infinite.statsView")}</button>
             </div>
         </div>
     `;
 
     logNarration("battle.victory");
-    showPopup("전투 승리", "다음 행동을 선택하세요.", [], html);
+    showPopup(getUIText("popup.victoryTitle"), getUIText("popup.victoryDesc"), [], html);
 }
 
 function handleInfiniteRest() {
@@ -10248,17 +10721,17 @@ function handleInfiniteRest() {
 
     updateUI(); // [CI] UI 갱신 추가
 
-    notifyNarration("당신은 잠시 휴식을 취합니다.");
-    showPopup("모닥불", `
+    notifyNarration(getUIText("misc.restShort"));
+    showPopup(getUIText("popup.campfireTitle"), `
         <div style="text-align:center;">
             <div style="font-size:3em; margin-bottom:10px;">🔥</div>
-            <p>따뜻한 모닥불 곁에서 잠시 휴식을 취했습니다.</p>
+            <p>${getUIText("infinite.campfireDesc")}</p>
             <p style="color:#2ecc71; font-weight:bold; margin-top:10px;">
                 HP +${hpHeal} / SP +${spHeal}
             </p>
         </div>
     `, [{
-        txt: "다음 스테이지로",
+        txt: getUIText("infinite.nextStage"),
         func: () => {
             closePopup();
             nextInfiniteStage();
@@ -10354,13 +10827,13 @@ function handleExpiredScenarios() {
 
     const list = newlyExpired.map(id => {
         const title = SCENARIOS[id]?.title || id;
-        return `<div style="color:#777;">${title} <span style="color:#c0392b;">(만료됨)</span></div>`;
+        return `<div style="color:#777;">${title} <span style="color:#c0392b;">${getUIText("infinite.expiredTag")}</span></div>`;
     }).join("");
 
-    showPopup("🗂️ 의뢰 정리",
-        "이 의뢰는 이제 해결할 수 있는 기간이 지났네...",
+    showPopup(getUIText("scenario.expiredTitle"),
+        getUIText("scenario.expiredDesc"),
         [{
-            txt: "정리한다",
+            txt: getUIText("scenario.expiredConfirm"),
             func: () => {
                 newlyExpired.forEach(id => {
                     SCENARIOS[id].expired = true;
@@ -10432,28 +10905,40 @@ function getScenarioUnlockHints(id) {
     if (!rule) return [];
 
     const lines = [];
-    if (Number.isFinite(rule.minLevel)) lines.push(`요구 레벨: ${rule.minLevel} 이상`);
+    if (Number.isFinite(rule.minLevel)) lines.push(getUIText("scenario.ruleMinLevel").replace("[LEVEL]", rule.minLevel));
     if (Array.isArray(rule.requiredFlags) && rule.requiredFlags.length > 0) {
         const remaining = rule.requiredFlags.filter(f => !hasGameFlag(f));
-        if (remaining.length > 0) lines.push(`필요 정보: ${remaining.join(", ")}`);
+        if (remaining.length > 0) lines.push(getUIText("scenario.ruleNeedInfo").replace("[LIST]", remaining.join(", ")));
     }
     if (Array.isArray(rule.requiredItems) && rule.requiredItems.length > 0) {
         const missing = rule.requiredItems.filter(item => !hasItemAnywhere(item));
-        if (missing.length > 0) lines.push(`필요 아이템: ${missing.join(", ")}`);
+        if (missing.length > 0) lines.push(getUIText("scenario.ruleNeedItem").replace("[LIST]", missing.join(", ")));
     }
     if (Array.isArray(rule.requiredScenariosCleared) && rule.requiredScenariosCleared.length > 0) {
         const missing = rule.requiredScenariosCleared.filter(sid => !SCENARIOS[sid] || !SCENARIOS[sid].cleared);
-        if (missing.length > 0) lines.push(`선행 의뢰: ${missing.join(", ")}`);
+        if (missing.length > 0) lines.push(getUIText("scenario.ruleNeedPrereq").replace("[LIST]", missing.join(", ")));
     }
     if (Number.isFinite(rule.minClearedCount)) {
         const cur = getClearedScenarioCount();
-        if (cur < rule.minClearedCount) lines.push(`의뢰 완료 ${rule.minClearedCount}건 필요 (현재 ${cur}건)`);
+        if (cur < rule.minClearedCount) {
+            lines.push(
+                getUIText("scenario.ruleMinCleared")
+                    .replace("[COUNT]", rule.minClearedCount)
+                    .replace("[CURRENT]", cur)
+            );
+        }
     }
     if (rule.startAt) {
-        lines.push(`가능 시점: ${rule.startAt.day}일차 ${TIME_SLOTS[rule.startAt.timeIndex || 0] || ""}`.trim());
+        lines.push(getUIText("scenario.ruleStartAt")
+            .replace("[DAY]", rule.startAt.day)
+            .replace("[TIME]", TIME_SLOTS[rule.startAt.timeIndex || 0] || "")
+            .trim());
     }
     if (rule.expireAt) {
-        lines.push(`만료 시점: ${rule.expireAt.day}일차 ${TIME_SLOTS[rule.expireAt.timeIndex || 0] || ""}`.trim());
+        lines.push(getUIText("scenario.ruleExpireAt")
+            .replace("[DAY]", rule.expireAt.day)
+            .replace("[TIME]", TIME_SLOTS[rule.expireAt.timeIndex || 0] || "")
+            .trim());
     }
     return lines;
 }
@@ -10479,3 +10964,4 @@ function nextInfiniteStage() {
 }
 
 window.onload = initGame;
+
