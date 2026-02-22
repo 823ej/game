@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Midnight Detective RPG</title>
 
-    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="manifest" href="manifest.webmanifest?v=8">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=8">
 </head>
 
 <body>
@@ -434,17 +434,19 @@
         </div>
     </div>
 
-    <script src="data.js"></script>
-    <script src="dungeon.js"></script>
-    <script src="game.js?v=7"></script>
-    <script src="story.js"></script>
+    <script src="data.js?v=8"></script>
+    <script src="dungeon.js?v=8"></script>
+    <script src="game.js?v=8"></script>
+    <script src="story.js?v=8"></script>
     <script>
         // file://에서는 ServiceWorker/PWA가 막히므로 http/https에서만 등록
         const proto = location.protocol;
         const canUseSW = proto === 'https:' || proto === 'http:';
         if (canUseSW && 'serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(console.error);
+                navigator.serviceWorker.register('sw.js?v=8').then(reg => {
+                    if (reg && typeof reg.update === 'function') reg.update();
+                }).catch(console.error);
             });
         } else {
             console.log('ServiceWorker skipped (requires http/https)');
