@@ -3712,21 +3712,27 @@ body {
 
 .city-hybrid-shell {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr);
     gap: 18px;
     align-items: stretch;
     width: 100%;
     height: 100%;
     padding: 18px;
     box-sizing: border-box;
+    position: relative;
 }
 
 .city-hybrid-shell.panel-hidden {
-    grid-template-columns: minmax(0, 1fr) 0px;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .city-detail-panel {
     transition: opacity 0.2s ease, transform 0.2s ease;
+    position: absolute;
+    right: 18px;
+    top: 18px;
+    bottom: 18px;
+    width: 360px;
 }
 
 .city-left-info {
@@ -3935,14 +3941,26 @@ body {
     min-height: 430px;
     height: 100%;
     width: 100%;
-    background: #ffffff;
     border: 1px solid #111;
     border-radius: 0;
     overflow: hidden;
     box-shadow: none;
 }
 
-.city-map-canvas::before {
+.city-map-zoom {
+    position: absolute;
+    inset: 0;
+    background: #ffffff;
+    transform: scale(var(--city-map-zoom, 1));
+    transform-origin: var(--city-map-origin-x, 50%) var(--city-map-origin-y, 50%);
+    transition: transform 320ms ease, transform-origin 320ms ease;
+}
+
+.city-map-zoom.is-zoomed {
+    will-change: transform;
+}
+
+.city-map-zoom::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -4133,6 +4151,22 @@ body {
     box-shadow: 0 10px 16px rgba(0, 0, 0, 0.28);
 }
 
+.city-object-tooltip {
+    position: fixed;
+    z-index: 9999;
+    max-width: 320px;
+    padding: 10px 12px;
+    border-radius: 0;
+    background: #ffffff;
+    color: #111111;
+    border: 1px solid #111;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    display: none;
+}
+
 .city-area-object:hover {
     background: #f4f4f4;
     transform: translate(-50%, -50%) scale(1.02);
@@ -4193,6 +4227,21 @@ body {
     max-height: none;
 }
 
+/* 우측 패널 로그/텍스트 좌측 정렬 통일 */
+.city-detail-panel,
+.city-detail-panel .city-dialogue,
+.city-detail-panel .city-dialogue-log,
+.explore-detail-panel,
+.explore-detail-panel .city-dialogue,
+.explore-detail-panel .city-dialogue-log,
+.event-log-panel,
+.event-log-panel .city-dialogue-log,
+#hub-detail-panel,
+#hub-detail-panel .city-dialogue,
+#hub-detail-panel .city-dialogue-log {
+    text-align: left;
+}
+
 .city-detail-actions .action-btn {
     width: 100%;
 }
@@ -4249,11 +4298,23 @@ body {
     width: 100%;
     border: 1px solid #111;
     border-radius: 0;
-    background: #ffffff;
     overflow: hidden;
 }
 
-.city-area-map::before {
+.city-area-zoom {
+    position: absolute;
+    inset: 0;
+    background: #ffffff;
+    transform: scale(var(--city-map-zoom, 1));
+    transform-origin: var(--city-map-origin-x, 50%) var(--city-map-origin-y, 50%);
+    transition: transform 320ms ease, transform-origin 320ms ease;
+}
+
+.city-area-zoom.is-zoomed {
+    will-change: transform;
+}
+
+.city-area-zoom::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -4264,9 +4325,14 @@ body {
     pointer-events: none;
 }
 
-.city-area-lines {
+.city-area-lines,
+.city-area-node-layer,
+.city-area-object-layer {
     position: absolute;
     inset: 0;
+}
+
+.city-area-lines {
     width: 100%;
     height: 100%;
     opacity: 0.6;
@@ -4276,11 +4342,6 @@ body {
     stroke: #888;
     stroke-width: 1.4;
     stroke-dasharray: 3 3;
-}
-
-.city-area-node-layer {
-    position: absolute;
-    inset: 0;
 }
 
 .city-area-node {

@@ -1904,7 +1904,8 @@ const CITY_AREA_DATA = {
                 tags: ["성지", "기도"],
                 icon: "⛪",
                 objects: [
-                    { id: "cathedral_priest", name: "신부님", icon: "💬", action: "npc_dialogue", npcKey: "성당 신부", pos: { x: 55, y: 60 } }
+                    { id: "enter_cathedral", name: "성당 내부", icon: "⛪", action: "enter_city_area", areaId: "cathedral_interior", pos: { x: 55, y: 60 }, hideOnMap: true },
+                    { id: "cathedral_priest", name: "신부님", icon: "💬", action: "npc_dialogue", npcKey: "성당 신부", pos: { x: 55, y: 60 }, hideOnMap: true, hideInArea: true }
                 ]
             },
             {
@@ -1953,6 +1954,35 @@ const CITY_AREA_DATA = {
                 keepBaseName: true,
                 fixedNpcKeys: ["레이디 헤카테"],
                 objects: []
+            }
+        ]
+    },
+    cathedral_interior: {
+        name: "성당 내부",
+        desc: "촛불과 기도가 가득한 조용한 예배당.",
+        bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EC%84%B1%EB%8B%B9+%EB%82%B4%EB%B6%80",
+        parentAreaId: "east_oldtown",
+        parentSpotId: "cathedral",
+        parentLabel: "구시가지로",
+        hideNodes: true,
+        showNpcObjects: true,
+        start: "cathedral_hall",
+        npcSpotIds: ["cathedral_hall"],
+        npcSpotCounts: { cathedral_hall: { min: 1, max: 1 } },
+        spots: [
+            {
+                id: "cathedral_hall",
+                name: "성당 내부",
+                desc: "성스러운 공기가 감도는 예배당.",
+                bg: "https://placehold.co/1400x900/f4f4f4/333?text=%EC%84%B1%EB%8B%B9+%EB%82%B4%EB%B6%80",
+                pos: { x: 50, y: 50 },
+                links: [],
+                tags: ["성지", "기도"],
+                icon: "⛪",
+                objects: [
+                    { id: "cathedral_priest_inside", name: "성당 신부", icon: "💬", action: "npc_dialogue", npcKey: "성당 신부", pos: { x: 55, y: 60 } },
+                    { id: "cathedral_exit", name: "구시가지로 돌아가기", icon: "🚪", action: "enter_city_area", areaId: "east_oldtown", spotId: "cathedral", pos: { x: 35, y: 62 } }
+                ]
             }
         ]
     },

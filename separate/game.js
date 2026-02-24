@@ -294,19 +294,40 @@ function renderCityMap() {
     switchScene('city');
     game.inputLocked = false;
     document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
+    game.cityAutoPanelEnabled = false;
 
     const mapEl = document.getElementById('city-map');
     if (!mapEl) return;
     setCityPanelVisible('map', false);
+    hideCityObjectTooltip();
+    resetCityZoom('map');
     clearCityLogSticky("city_area_desc");
 
     mapEl.innerHTML = `
-        <svg class="city-map-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
-        <div class="city-map-node-layer"></div>
+        <div class="city-map-zoom">
+            <svg class="city-map-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+            <div class="city-map-node-layer"></div>
+        </div>
     `;
 
-    const lineLayer = mapEl.querySelector('.city-map-lines');
-    const nodeLayer = mapEl.querySelector('.city-map-node-layer');
+    const zoomLayer = mapEl.querySelector('.city-map-zoom');
+    if (zoomLayer && game.cityMapZoom) {
+        zoomLayer.style.setProperty('--city-map-origin-x', game.cityMapZoom.originX);
+        zoomLayer.style.setProperty('--city-map-origin-y', game.cityMapZoom.originY);
+        zoomLayer.style.setProperty('--city-map-zoom', String(game.cityMapZoom.scale || 1));
+        if ((game.cityMapZoom.scale || 1) > 1) zoomLayer.classList.add('is-zoomed');
+    }
+    mapEl.onclick = (e) => {
+        if (e.target && e.target.closest('.city-node')) return;
+        resetCityZoom('map');
+        hideCityObjectTooltip();
+        if (game.cityAutoPanelEnabled) {
+            setCityPanelVisible('map', false);
+            game.cityAutoPanelEnabled = false;
+        }
+    };
+    const lineLayer = zoomLayer ? zoomLayer.querySelector('.city-map-lines') : null;
+    const nodeLayer = zoomLayer ? zoomLayer.querySelector('.city-map-node-layer') : null;
     // [Mod] const nodes -> let nodes for dynamic injection
     let nodes = (CITY_MAP && Array.isArray(CITY_MAP.nodes)) ? [...CITY_MAP.nodes] : [];
 
@@ -356,20 +377,28 @@ function renderCityMap() {
             <span class="city-node-name">${node.name}</span>
             <span class="city-node-sub">${node.label || ""}</span>
         `;
-        el.onclick = () => enterDistrict(node.id);
+        el.onclick = () => {
+            game.cityAutoPanelEnabled = true;
+            game.cityLastAnchor = el;
+            game.cityLastMode = 'map';
+            setCityWorldMapZoom(el);
+            enterDistrict(node.id, false, el);
+        };
         nodeLayer.appendChild(el);
     });
 
     const defaultNode = nodes.find(n => n.id === "east_oldtown") || nodes[0];
     if (defaultNode) {
         enterDistrict(defaultNode.id, true);
-        setCityPanelVisible('map', true);
+        hideCityObjectTooltip();
+        resetCityZoom('map');
+        setCityPanelVisible('map', false);
     }
     autoSave();
 }
 
 /* [수정] 도시 거점 선택 (현재는 정보 패널만) */
-function enterDistrict(key, silentAreaOpen) {
+function enterDistrict(key, silentAreaOpen, anchorEl) {
     const nodes = (Array.isArray(game.cityMapNodes) && game.cityMapNodes.length > 0)
         ? game.cityMapNodes
         : ((CITY_MAP && Array.isArray(CITY_MAP.nodes)) ? CITY_MAP.nodes : []);
@@ -390,6 +419,10 @@ function enterDistrict(key, silentAreaOpen) {
     if (!node) return;
 
     game.selectedCityNode = key;
+    if (anchorEl) {
+        game.cityLastAnchor = anchorEl;
+        game.cityLastMode = 'map';
+    }
 
     document.querySelectorAll('.city-node').forEach(el => {
         el.classList.toggle('active', el.dataset.id === key);
@@ -404,11 +437,20 @@ function enterDistrict(key, silentAreaOpen) {
     if (titleEl) titleEl.textContent = node.name;
     if (descEl) descEl.textContent = node.desc;
     updateCityLeftInfo('map', node.name, node.desc);
+    if (!silentAreaOpen) {
+        const anchor = anchorEl || document.querySelector(`.city-node[data-id="${key}"]`);
+        if (anchor) {
+            showCityObjectTooltip(`${node.name} — ${node.desc || ""}`.trim(), anchor);
+        } else {
+            hideCityObjectTooltip();
+        }
+    } else {
+        hideCityObjectTooltip();
+    }
     if (!game.cityMapNarrated) {
         appendCityLogLine("", getNarration("city.map.idle"), false, true);
         game.cityMapNarrated = true;
     }
-    setCityLogSticky("city_map_desc", `${node.name} — ${node.desc || ""}`.trim(), false);
     const hasArea = CITY_AREA_DATA && CITY_AREA_DATA[key];
 
     if (exploreBtn) {
@@ -456,7 +498,7 @@ function enterDistrict(key, silentAreaOpen) {
         }
     }
 
-    if (silentAreaOpen !== true) setCityPanelVisible('map', true);
+    if (silentAreaOpen !== true && game.cityAutoPanelEnabled) setCityPanelVisible('map', true);
 
     if (mapMode && areaMode) {
         mapMode.classList.remove('hidden');
@@ -470,19 +512,25 @@ function enterCityAreaMode(areaId, targetSpotId) {
     if (mapMode) mapMode.classList.add('hidden');
     if (areaMode) areaMode.classList.remove('hidden');
     setCityPanelVisible('area', false);
+    game.cityAutoPanelEnabled = false;
+    closeAllCityNarrationPanels();
     setCityDialogueMode(false);
     setCityCasePanelVisible(false);
     game.cityDialogue = null;
+    hideCityObjectTooltip();
     clearCityLogSticky("city_map_desc");
     if (!game.cityArea) game.cityArea = {};
+    if (game.cityArea.areaId && game.cityArea.areaId !== areaId) {
+        resetCityZoom('area');
+        game.cityArea.lastZoom = null;
+    }
     game.cityArea.explicitSelection = !!targetSpotId;
     if (!targetSpotId) game.cityArea.selectedSpot = null;
+    game.cityArea.selectedObjectId = null;
     renderCityArea(areaId, targetSpotId);
     const area = getCityArea(areaId);
     if (area) {
         updateCityLeftInfo('area', area.name, area.desc);
-        appendCityLogLine("", `${area.name} — ${area.desc || ""}`.trim(), false, false);
-        appendCityLogLine("", getNarration("city.area.next"), false, true);
     }
 }
 
@@ -492,9 +540,12 @@ function exitCityAreaMode() {
     if (mapMode) mapMode.classList.remove('hidden');
     if (areaMode) areaMode.classList.add('hidden');
     setCityPanelVisible('map', false);
+    game.cityAutoPanelEnabled = false;
     setCityDialogueMode(false);
     setCityCasePanelVisible(false);
     game.cityDialogue = null;
+    resetCityZoom('area');
+    hideCityObjectTooltip();
     clearCityLogSticky("city_area_desc");
     game.cityMapNarrated = false;
 }
@@ -698,11 +749,21 @@ function renderCityArea(areaId, targetSpotId) {
     const mapEl = document.getElementById('city-area-map');
     if (!mapEl) return;
     mapEl.innerHTML = `
-        <div class="city-area-node-layer"></div>
-        <div class="city-area-object-layer"></div>
+        <div class="city-area-zoom">
+            <svg class="city-area-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+            <div class="city-area-node-layer"></div>
+            <div class="city-area-object-layer"></div>
+        </div>
     `;
-    const nodeLayer = mapEl.querySelector('.city-area-node-layer');
-    const objectLayer = mapEl.querySelector('.city-area-object-layer');
+    const zoomLayer = mapEl.querySelector('.city-area-zoom');
+    if (zoomLayer && game.cityArea?.lastZoom) {
+        zoomLayer.style.setProperty('--city-map-origin-x', game.cityArea.lastZoom.originX);
+        zoomLayer.style.setProperty('--city-map-origin-y', game.cityArea.lastZoom.originY);
+        zoomLayer.style.setProperty('--city-map-zoom', String(game.cityArea.lastZoom.scale || 1));
+        if ((game.cityArea.lastZoom.scale || 1) > 1) zoomLayer.classList.add('is-zoomed');
+    }
+    const nodeLayer = zoomLayer ? zoomLayer.querySelector('.city-area-node-layer') : null;
+    const objectLayer = zoomLayer ? zoomLayer.querySelector('.city-area-object-layer') : null;
 
     if (!area.hideNodes) {
         (area.spots || []).forEach(spot => {
@@ -718,7 +779,7 @@ function renderCityArea(areaId, targetSpotId) {
             el.innerHTML = `
                 <span class="city-node-name">${spot.name}</span>
             `;
-            el.onclick = () => selectCityAreaSpot(spot.id);
+            el.onclick = () => selectCityAreaSpot(spot.id, el);
             nodeLayer.appendChild(el);
         });
     }
@@ -731,21 +792,48 @@ function renderCityArea(areaId, targetSpotId) {
         if (objectLayer) objectLayer.innerHTML = "";
     }
     updateCityAreaDetail();
+    if (game.cityArea?.pendingSpotTooltip) {
+        const pending = game.cityArea.pendingSpotTooltip;
+        if (pending.spotId === game.cityArea.selectedSpot) {
+            const anchor = document.querySelector(`.city-area-node[data-id="${pending.spotId}"]`);
+            if (anchor) {
+                setCityMapZoom(anchor);
+                showCityObjectTooltip(pending.text, anchor);
+            }
+        }
+        game.cityArea.pendingSpotTooltip = null;
+    }
+
+    if (mapEl) {
+        mapEl.onclick = (e) => {
+            if (e.target && e.target.closest('.city-area-node, .city-area-object')) return;
+            resetCityZoom('area');
+            hideCityObjectTooltip();
+            if (game.cityAutoPanelEnabled) {
+                setCityPanelVisible('area', false);
+                game.cityAutoPanelEnabled = false;
+            }
+        };
+    }
 }
 
-function selectCityAreaSpot(spotId) {
+function selectCityAreaSpot(spotId, anchorEl) {
     if (!game.cityArea) game.cityArea = {};
     game.cityArea.selectedSpot = spotId;
     game.cityArea.explicitSelection = true;
+    game.cityArea.selectedObjectId = null;
+    if (anchorEl) {
+        game.cityAutoPanelEnabled = true;
+        game.cityLastAnchor = anchorEl;
+        game.cityLastMode = 'area';
+    }
     const area = getVisibleCityArea(game.cityArea.areaId);
     const spot = area ? getAreaSpot(area, spotId) : null;
     if (spot) {
         updateCityLeftInfo('area', spot.name, spot.desc);
-        if (game.cityArea.inspectNarratedAreaId !== area?.id) {
-            appendCityLogLine("", getNarration("city.area.inspect", { place: spot.name }), false, true);
-            game.cityArea.inspectNarratedAreaId = area?.id || null;
-        }
-        setCityLogSticky("city_area_desc", `${spot.name} — ${spot.desc || ""}`.trim(), false);
+        const text = `${spot.name} — ${spot.desc || ""}`.trim();
+        hideCityObjectTooltip();
+        game.cityArea.pendingSpotTooltip = { spotId, text };
     }
     updateCityAreaDetail();
     renderCityArea(game.cityArea.areaId);
@@ -756,6 +844,7 @@ function updateCityAreaDetail() {
     if (!area) return;
     const targetId = game.cityArea.selectedSpot;
     const spot = targetId ? getAreaSpot(area, targetId) : null;
+    const selectedObjectId = game.cityArea?.selectedObjectId || null;
 
     const titleEl = document.getElementById('city-spot-title');
     const descEl = document.getElementById('city-spot-desc');
@@ -768,10 +857,38 @@ function updateCityAreaDetail() {
             enterBtn.onclick = null;
             enterBtn.textContent = getUIText("cityArea.enterLabel");
         } else {
-            const objects = Array.isArray(spot.objects) ? spot.objects : [];
+            const allowNpcObjects = !!area?.showNpcObjects;
+            const objects = Array.isArray(spot.objects)
+                ? spot.objects.filter(obj => !obj?.hideInArea && (allowNpcObjects || obj?.action !== 'npc_dialogue'))
+                : [];
             const npcObjects = objects.filter(obj => obj?.action === 'npc_dialogue');
-            const primaryObj = npcObjects[0] || objects[0] || null;
-            if (npcObjects.length > 0) {
+            const selectedObj = selectedObjectId
+                ? objects.find(obj => obj?.id === selectedObjectId)
+                : null;
+            const primaryObj = selectedObj || npcObjects[0] || objects[0] || null;
+            if (objects.length > 1) {
+                if (selectedObj) {
+                    enterBtn.textContent = selectedObj.action === 'npc_dialogue'
+                        ? getUIText("cityArea.talkLabel")
+                        : getUIText("cityArea.enterLabel");
+                    enterBtn.disabled = false;
+                    enterBtn.onclick = () => performCityAction(selectedObj, area.id, spot.id);
+                } else {
+                enterBtn.textContent = getUIText("city.interactionFallback");
+                enterBtn.disabled = false;
+                enterBtn.onclick = () => {
+                    const options = objects.map(obj => ({
+                        txt: obj.name || getUIText("city.interactionFallback"),
+                        func: () => { closePopup(); performCityAction(obj, area.id, spot.id); }
+                    }));
+                    if (typeof showChoice === 'function') {
+                        showChoice(spot.name || getUIText("city.selectSpotTitle"), getUIText("city.selectSpotDesc"), options);
+                    } else {
+                        showPopup(spot.name || getUIText("city.selectSpotTitle"), getUIText("city.selectSpotDesc"), options);
+                    }
+                };
+                }
+            } else if (npcObjects.length > 0) {
                 enterBtn.textContent = getUIText("cityArea.talkLabel");
                 enterBtn.disabled = false;
                 enterBtn.onclick = () => {
@@ -800,7 +917,7 @@ function updateCityAreaDetail() {
             }
         }
     }
-    if (spot) setCityPanelVisible('area', true);
+    if (spot && game.cityAutoPanelEnabled) setCityPanelVisible('area', true);
     else setCityPanelVisible('area', false);
 
     if (area.hideNodes && !game.cityArea.explicitSelection) {
@@ -828,6 +945,9 @@ function performCityAction(obj, areaId, spotId) {
     if (!obj || !obj.action) return;
     const action = obj.action;
     if (action === 'enter_city_area' && obj.areaId) {
+        closeAllCityNarrationPanels();
+        hideCityObjectTooltip();
+        game.cityAutoPanelEnabled = false;
         enterCityAreaMode(obj.areaId, obj.spotId || null);
         return;
     }
@@ -1150,6 +1270,9 @@ function appendCityLogLine(speaker, text, isPlayer, useTyping) {
     });
     if (!game.cityLog) game.cityLog = [];
     game.cityLog.push({ speaker, text: text || "", isPlayer: !!isPlayer });
+    if (game.state === 'city' && game.cityAutoPanelEnabled) {
+        openCityNarrationPanel(game.cityLastMode || 'map', game.cityLastAnchor || null);
+    }
 }
 
 function clearCityLogSticky(stickyKey) {
@@ -1235,6 +1358,9 @@ function setCityPanelVisible(mode, visible) {
         if (actions) actions.classList.toggle('hidden', !visible);
     }
     if (visible) syncCityLogPanels();
+    if (mode === 'area' || mode === 'map') {
+        requestAnimationFrame(() => positionCityObjectTooltip());
+    }
 }
 
 function syncCityLogPanels() {
@@ -1285,19 +1411,21 @@ function renderCitySpotBackground(area, spotId) {
     if (!mapEl) return;
     const spot = getAreaSpot(area, spotId);
     const title = spot?.name || area?.name || "City";
-    const bg = spot?.bg || area?.bg || `https://placehold.co/1400x900/efefef/333?text=${encodeURIComponent(title)}`;
-    mapEl.style.backgroundImage = `url('${bg}')`;
-    mapEl.style.backgroundSize = 'cover';
-    mapEl.style.backgroundPosition = 'center';
+    const bg = area?.bg || spot?.bg || `https://placehold.co/1400x900/efefef/333?text=${encodeURIComponent(title)}`;
+    const zoomLayer = mapEl.querySelector('.city-area-zoom') || mapEl;
+    zoomLayer.style.backgroundImage = `url('${bg}')`;
+    zoomLayer.style.backgroundSize = 'cover';
+    zoomLayer.style.backgroundPosition = 'center';
 }
 
 function renderCitySpotObjects(area, spotId, layerEl) {
     if (!layerEl) return;
     layerEl.innerHTML = "";
+    if (!game.cityObjectLayout) game.cityObjectLayout = {};
     const spot = getAreaSpot(area, spotId);
     const allowNpcObjects = !!area?.showNpcObjects;
     const objects = Array.isArray(spot?.objects)
-        ? spot.objects.filter(obj => !obj?.hideOnMap && (allowNpcObjects || obj?.action !== 'npc_dialogue'))
+        ? spot.objects.filter(obj => !obj?.hideOnMap && !obj?.hideInArea && (allowNpcObjects || obj?.action !== 'npc_dialogue'))
         : [];
     if (objects.length === 0) return;
 
@@ -1309,8 +1437,17 @@ function renderCitySpotObjects(area, spotId, layerEl) {
         el.style.left = `${pos.x}%`;
         el.style.top = `${pos.y}%`;
         el.innerHTML = `${obj.icon ? `${obj.icon} ` : ""}${obj.name || getUIText("city.interactionFallback")}`;
-        el.onclick = () => {
+        el.onclick = (e) => {
             if (game.cityArea) game.cityArea.explicitSelection = true;
+            if (game.cityArea) game.cityArea.selectedObjectId = obj?.id || null;
+            game.cityAutoPanelEnabled = true;
+            game.cityLastAnchor = el;
+            game.cityLastMode = 'area';
+            if (area?.hideNodes && obj?.action === 'enter_city_area') {
+                performCityAction(obj, area.id, spotId);
+                return;
+            }
+            setCityMapZoom(el);
             setCityCasePanelVisible(false);
             setCityPanelVisible('area', true);
             const titleEl = document.getElementById('city-spot-title');
@@ -1318,15 +1455,13 @@ function renderCitySpotObjects(area, spotId, layerEl) {
             if (titleEl) titleEl.textContent = obj.name || (spot?.name || getUIText("city.selectSpotTitle"));
             const npc = obj?.npcKey && (typeof NPC_DATA !== 'undefined') ? NPC_DATA[obj.npcKey] : null;
             if (descEl) descEl.textContent = obj.desc || npc?.desc || spot?.desc || getUIText("city.selectSpotDesc");
-            if (npc?.desc) {
-                appendCityLogLine("", `${npc.name} — ${npc.desc}`, false, true);
-            }
+            showCityObjectTooltip(obj.desc || npc?.desc || spot?.desc || getUIText("city.selectSpotDesc"), el, e?.clientX, e?.clientY);
             const enterBtn = document.getElementById('btn-area-enter');
             if (enterBtn) {
                 enterBtn.disabled = false;
                 enterBtn.textContent = obj.action === 'npc_dialogue'
-                    ? getUIText("city.areaTalk")
-                    : getUIText("city.areaEnter");
+                    ? getUIText("cityArea.talkLabel")
+                    : getUIText("cityArea.enterLabel");
                 enterBtn.onclick = () => performCityAction(obj, area.id, spotId);
             }
         };
@@ -1455,8 +1590,11 @@ function getLocationDisplayName(name) {
 
 function getCityObjectPositions(areaId, spotId, objects) {
     if (!game.cityObjectLayout) game.cityObjectLayout = {};
+    if (!game.cityObjectLayoutMeta) game.cityObjectLayoutMeta = {};
     if (!game.cityObjectLayout[areaId]) game.cityObjectLayout[areaId] = {};
-    if (!game.cityObjectLayout[areaId][spotId]) {
+    if (!game.cityObjectLayoutMeta[areaId]) game.cityObjectLayoutMeta[areaId] = {};
+    const layoutKey = (objects || []).map(o => o?.id || o?.name || "").join("|");
+    if (!game.cityObjectLayout[areaId][spotId] || game.cityObjectLayoutMeta[areaId][spotId] !== layoutKey) {
         const layout = objects.map((obj, i) => {
             if (obj.pos && Number.isFinite(obj.pos.x) && Number.isFinite(obj.pos.y)) return obj.pos;
             const angle = (i / Math.max(1, objects.length)) * Math.PI * 2;
@@ -1467,6 +1605,7 @@ function getCityObjectPositions(areaId, spotId, objects) {
             };
         });
         game.cityObjectLayout[areaId][spotId] = layout;
+        game.cityObjectLayoutMeta[areaId][spotId] = layoutKey;
     }
     return game.cityObjectLayout[areaId][spotId];
 }

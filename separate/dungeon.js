@@ -836,8 +836,13 @@ const DungeonSystem = {
                 showPopup(
                     getUIText("dungeon.boxTitle"),
                     getUIText("dungeon.boxDesc").replace("[ITEM]", `[${displayName}]`),
-                    [{ txt: getUIText("dungeon.treasureConfirm"), func: closePopup }]
+                    [],
+                    "",
+                    { forcePopup: true, dismissOnOverlay: true }
                 );
+                setTimeout(() => {
+                    closePopup();
+                }, 900);
             });
             this.checkObjectVisibility(); // 아이콘 갱신 (빈 상자 처리)
         }
