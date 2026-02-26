@@ -3301,7 +3301,8 @@ function applyStaticUIText() {
     setText("menu-tile-fullscreen-desc", getUIText("menuTile.fullscreenDesc"));
 
     setText("btn-continue", getUIText("start.continue"));
-    setText("btn-new-game", getUIText("start.newGame"));
+    setText("btn-story-mode", getUIText("start.storyMode"));
+    setText("btn-case-mode", getUIText("start.caseMode"));
     setText("btn-infinite-mode", getUIText("start.infiniteMode"));
     setText("sc-title-mini", getUIText("scenario.miniPlaceholder"));
 
@@ -3433,6 +3434,7 @@ function loadGame() {
         game = loadedData.game;
         ensureTimeState();
         if (!game.cityDiscoveries) game.cityDiscoveries = {};
+        if (game.storyMode === undefined) game.storyMode = false;
 
         if (loadedData.version !== "2.5") {
             const remapCardName = (list, from, to) => {
@@ -3885,6 +3887,7 @@ function finishCreation() {
         game.mode = 'normal';
         game.state = 'hub';
     }
+    game.storyMode = (tempGameMode === 'story');
 
     game.activeScenarioId = null;
     game.scenario = null;
@@ -4071,6 +4074,13 @@ function renderHub() {
     updateHomeUI();
     setHubPanelVisible(false);
     const layer = document.getElementById('hub-object-layer');
+    const hubMap = document.getElementById('hub-map');
+    if (hubMap) {
+        hubMap.onclick = (e) => {
+            if (e.target && e.target.closest('.city-area-object')) return;
+            setHubPanelVisible(false);
+        };
+    }
     if (layer) {
         layer.innerHTML = "";
         const actions = [
@@ -4706,6 +4716,12 @@ function startScenario(id) {
     let scData = SCENARIOS[id];
     console.log("데이터 확인:", scData.introStory); // [확인용 로그]
 
+    if (game.storyMode && scData && Array.isArray(scData.introStory) && scData.introStory.length > 0 && typeof StoryEngine !== 'undefined') {
+        StoryEngine.start(scData.introStory, function () {
+            acceptMission(id);
+        });
+        return;
+    }
     console.log("스토리 엔진 비활성화: 바로 수락.");
     acceptMission(id);
 }
@@ -8658,6 +8674,11 @@ function switchScene(sceneName) {
     // 2. 선택된 장면만 보여주기
     if (sceneName === 'battle') sceneName = 'exploration';
 
+    if (sceneName === 'story' && game && game.storyMode === false) {
+        renderHub();
+        return;
+    }
+
     let targetId = sceneName + '-scene';
     let targetEl = document.getElementById(targetId);
 
@@ -10721,7 +10742,7 @@ function renderCardCollection() {
    [NEW] Start Screen & Infinite Mode Logic
    ============================================================ */
 
-let tempGameMode = 'normal'; // 'normal' or 'infinite'
+let tempGameMode = 'case'; // 'case' | 'story' | 'infinite'
 let infiniteStage = 1;
 
 function renderStartScreen() {
@@ -10739,6 +10760,16 @@ function renderStartScreen() {
 
 function startInfiniteJobSelection() {
     tempGameMode = 'infinite';
+    startCharacterCreation();
+}
+
+function startStoryMode() {
+    tempGameMode = 'story';
+    startCharacterCreation();
+}
+
+function startCaseMode() {
+    tempGameMode = 'case';
     startCharacterCreation();
 }
 

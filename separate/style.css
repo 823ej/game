@@ -1457,7 +1457,7 @@ body {
 /* --- ??쎈꽅???뚮９??(Visual Novel) --- */
 #story-scene {
     --story-padding: clamp(12px, 3vw, 48px);
-    --dialog-height: clamp(140px, 22vh, 200px);
+    --dialog-height: 0px;
     --stage-max-height: max(240px, calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--dialog-height) - var(--story-padding)));
     --stage-max-width: calc(var(--stage-max-height) * 16 / 9);
     width: 100vw;
@@ -1472,9 +1472,10 @@ body {
     flex-direction: column;
     justify-content: flex-end;
     align-items: center;
-    padding: calc(var(--safe-top) + var(--story-padding)) max(var(--story-padding), calc((100vw - var(--stage-max-width)) / 2)) calc(var(--safe-bottom) + var(--story-padding)) max(var(--story-padding), calc((100vw - var(--stage-max-width)) / 2));
+    padding: calc(var(--safe-top) + var(--story-padding)) max(var(--story-padding), calc((100vw - var(--stage-max-width)) / 2)) 0 max(var(--story-padding), calc((100vw - var(--stage-max-width)) / 2));
     box-sizing: border-box;
     overflow: hidden;
+    background: #ffffff !important;
 }
 
 /* 揶쎛嚥≪뮄? ?蹂? ??띻펾?癒?퐣??餓λ쵐釉??類ｌ졊???얜?? ?醫? */
@@ -1490,6 +1491,7 @@ body {
     transform: none;
     background-size: cover;
     background-position: center;
+    opacity: 0.85 !important;
 }
 
 #story-standing {
@@ -1541,43 +1543,78 @@ body {
 /* ???遺욧갯 */
 .dialog-container {
     position: absolute;
-    bottom: clamp(12px, 4vh, 36px);
-    left: 50%;
-    right: auto;
-    width: min(1200px, 90vw, var(--stage-max-width));
-    height: clamp(140px, 22vh, 200px);
-    transform: translateX(-50%);
-    background: #fff;
-    border: 2px solid #fff;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100vw;
+    margin: 0;
+    height: auto;
+    background: transparent;
+    border: none;
     border-radius: 0;
-    padding: clamp(16px, 2.5vw, 24px);
+    padding: clamp(48px, 5.6vw, 72px) clamp(28px, 5vw, 72px) 0;
+    min-height: clamp(220px, 28vh, 320px);
+    height: 32vh;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     cursor: pointer;
     z-index: 100;
     text-align: left;
+    box-shadow: none;
+    outline: none;
+    overflow: hidden;
+    position: relative;
 }
 
-.name-tag {
-    background: #e67e22;
-    color: #222;
-    padding: 5px 15px;
-    border-radius: 0;
-    font-weight: bold;
-    font-size: 1.1em;
+.dialog-container::before {
+    content: "";
     position: absolute;
-    top: -15px;
-    left: clamp(14px, 2vw, 24px);
-    border: 2px solid #fff;
+    inset: 0;
+    background: #000;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 8%, rgba(0,0,0,0.6) 18%, rgba(0,0,0,1) 32%, rgba(0,0,0,1) 100%);
+    mask-image: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 8%, rgba(0,0,0,0.6) 18%, rgba(0,0,0,1) 32%, rgba(0,0,0,1) 100%);
+    filter: none;
+    pointer-events: none;
+    z-index: 0;
+}
+
+
+
+.name-tag {
+    background: transparent;
+    color: #e8dcc5;
+    padding: 0;
+    border-radius: 0;
+    font-weight: 600;
+    font-size: clamp(1.15em, 2.6vw, 1.6em);
+    position: relative;
+    top: 0;
+    left: 0;
+    border: none;
+    letter-spacing: 0.02em;
+    font-family: "Noto Serif KR", "Nanum Myeongjo", "Batang", "Times New Roman", serif;
+    max-width: min(1100px, 86vw);
+    width: 100%;
+    margin: 0 auto;
+    padding-left: clamp(0px, 0vw, 0px);
+    position: relative;
+    z-index: 2;
 }
 
 .dialog-text {
-    color: #222;
-    font-size: 1.1em;
-    line-height: 1.6;
-    margin-top: 10px;
+    color: #ffffff;
+    font-size: clamp(1.05em, 2vw, 1.35em);
+    line-height: 1.7;
+    margin-top: 12px;
     white-space: pre-wrap;
+    font-family: "Noto Serif KR", "Nanum Myeongjo", "Batang", "Times New Roman", serif;
+    max-width: min(1100px, 86vw);
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    z-index: 2;
 }
 
 
@@ -1673,9 +1710,9 @@ body {
 
 .next-icon {
     position: absolute;
-    bottom: 10px;
-    right: 15px;
-    color: #f1c40f;
+    bottom: 12px;
+    right: clamp(16px, 4vw, 40px);
+    color: #e8dcc5;
     animation: blink 1s infinite;
 }
 

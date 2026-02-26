@@ -28,6 +28,8 @@ const UI_TEXT = {
     start: {
         continue: "이어하기",
         newGame: "새 게임",
+        storyMode: "스토리 모드",
+        caseMode: "사건 모드",
         infiniteMode: "무한 모드 (Infinite)"
     },
     story: {
@@ -2439,7 +2441,7 @@ const SCENARIOS = {
         events: [{ type: "battle", chance: 0.4 }, { type: "text", chance: 0.3 }, { type: "nothing", chance: 0.3 }],
         boss: "boss_gang_leader",
         introStory: [
-            { type: "bg", src: "https://placehold.co/800x600/111/333?text=Rainy+Street" },
+            { type: "bg", src: "https://placehold.co/1200x800/ffffff/cccccc?text=Story+BG" },
             { type: "char", id: "client", name: "???", src: "https://placehold.co/400x600/555/fff?text=Client", pos: "center" },
             { type: "talk", id: "client", name: "의뢰인", text: "탐정님... 제발 도와주세요." },
             { type: "talk", id: "client", name: "의뢰인", text: "제 동생이 배달을 나갔다가 3일째 돌아오지 않고 있어요." },

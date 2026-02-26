@@ -7,6 +7,10 @@ const StoryEngine = {
     logData: [], isSkipping: false, skipSpeed: 50, // 속도: 0.05초
 
     start: function(scriptData, onComplete) {
+        if (typeof game !== 'undefined' && game && game.storyMode === false) {
+            if (typeof onComplete === 'function') onComplete();
+            return;
+        }
         this.script = scriptData;
         this.index = 0;
         this.callback = onComplete;
@@ -175,6 +179,9 @@ const StoryEngine = {
     },
 
     initControlUI: function() {
+        if (typeof game !== 'undefined' && game && game.storyMode === false) {
+            return;
+        }
         // 기존 UI가 있다면 제거 후 재생성
         if (document.getElementById("story-ui-controls")) document.getElementById("story-ui-controls").remove();
         if (document.getElementById("story-log-overlay")) document.getElementById("story-log-overlay").remove();
