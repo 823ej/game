@@ -3483,6 +3483,17 @@ function loadGame() {
 
         // [★수정] 화면 복구 로직: game.state를 최우선으로 확인합니다.
         switch (game.state) {
+            case 'story': {
+                const st = game.storyState;
+                if (game.storyMode && st && st.scenarioId && SCENARIOS[st.scenarioId] && Array.isArray(SCENARIOS[st.scenarioId].introStory)) {
+                    StoryEngine.start(SCENARIOS[st.scenarioId].introStory, function () {
+                        acceptMission(st.scenarioId);
+                    }, st.index || 0);
+                } else {
+                    renderHub();
+                }
+                break;
+            }
             case 'battle':
             case 'social':
                 // 전투/소셜: 시작 시점으로 리셋하여 복구
@@ -4585,7 +4596,10 @@ function applySocialImpact(target, val) {
 /* [NEW] 사건 파일 열기 (시나리오 선택) */
 function openCaseFiles() {
     if (handleExpiredScenarios()) return;
-    logNarration("system.openCaseFiles");
+    if (!game._lastOpenCaseLog || Date.now() - game._lastOpenCaseLog > 800) {
+        logNarration("system.openCaseFiles");
+        game._lastOpenCaseLog = Date.now();
+    }
     const cityScene = document.getElementById('city-scene');
     const hubScene = document.getElementById('hub-scene');
     if (cityScene && !cityScene.classList.contains('hidden')) {
@@ -4717,9 +4731,12 @@ function startScenario(id) {
     console.log("데이터 확인:", scData.introStory); // [확인용 로그]
 
     if (game.storyMode && scData && Array.isArray(scData.introStory) && scData.introStory.length > 0 && typeof StoryEngine !== 'undefined') {
+        game.state = 'story';
+        game.storyState = { scenarioId: id, index: 0 };
+        if (typeof autoSave === 'function') autoSave();
         StoryEngine.start(scData.introStory, function () {
             acceptMission(id);
-        });
+        }, game.storyState.index);
         return;
     }
     console.log("스토리 엔진 비활성화: 바로 수락.");

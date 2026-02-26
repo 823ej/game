@@ -38,6 +38,10 @@ const UI_TEXT = {
         logButton: "LOG",
         skipButton: "SKIP",
         skipOn: "SKIP ON ▶▶"
+        ,
+        autoButton: "AUTO",
+        autoOn: "AUTO ON ▶▶",
+        uiToggle: "HIDE UI"
     },
     rest: {
         title: "🔥 휴식처",
@@ -2442,14 +2446,15 @@ const SCENARIOS = {
         boss: "boss_gang_leader",
         introStory: [
             { type: "bg", src: "https://placehold.co/1200x800/ffffff/cccccc?text=Story+BG" },
-            { type: "char", id: "client", name: "???", src: "https://placehold.co/400x600/555/fff?text=Client", pos: "center" },
+            { type: "char", id: "detective", name: "탐정", src: "assets/standing/detective.png", pos: "left" },
+            { type: "char", id: "client", name: "???", src: "assets/standing/tutorial_client.png", pos: "right" },
             { type: "talk", id: "client", name: "의뢰인", text: "탐정님... 제발 도와주세요." },
             { type: "talk", id: "client", name: "의뢰인", text: "제 동생이 배달을 나갔다가 3일째 돌아오지 않고 있어요." },
             { type: "talk", id: "none", name: "나", text: "(흠... 단순 가출일까, 아니면 사고일까.)" },
             {
                 type: "choice", options: [
-                    { txt: "자세한 이야기를 듣는다", next: 6 },
-                    { txt: "귀찮으니 돌려보낸다 (하지만 의뢰는 받아야 한다)", next: 6 }
+                    { txt: "자세한 이야기를 듣는다", next: 7 },
+                    { txt: "귀찮으니 돌려보낸다 (하지만 의뢰는 받아야 한다)", next: 7 }
                 ]
             },
             { type: "talk", id: "client", name: "의뢰인", text: "마지막으로 연락된 곳이 '뒷골목' 근처였어요. 사례는 넉넉히 하겠습니다." },
