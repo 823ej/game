@@ -2792,6 +2792,9 @@ function triggerRandomEvent() {
 
 function finishEvent(resume = "exploration") {
     closePopup();
+    if (game && game.mode === 'infinite' && resume !== "infinite") {
+        resume = "infinite";
+    }
     if (resume === "infinite") {
         nextInfiniteStage();
         return;
@@ -2909,6 +2912,7 @@ function getLogTargets() {
         document.getElementById('explore-dialogue-log'),
         document.getElementById('global-log'),
         document.getElementById('hub-dialogue-log'),
+        document.getElementById('case-board-log'),
         document.getElementById('event-dialogue-log')
     ].filter(Boolean);
 }
@@ -2928,6 +2932,7 @@ function addCityLogChoices(choices) {
         selectedText: null
     });
     syncCityLogPanels();
+    return id;
 }
 
 function resolveCityLogChoice(id, index) {
@@ -2937,7 +2942,6 @@ function resolveCityLogChoice(id, index) {
     const handlers = game.cityLogChoiceHandlers[id] || [];
     entry.resolved = true;
     entry.selectedText = entry.choices[index] || getUIText("popup.choiceDefault");
-    appendCityLogLine("", `${getUIText("popup.choiceDefault")}: ${entry.selectedText}`, true, false);
     syncCityLogPanels();
     const handler = handlers[index];
     if (typeof handler === "function") handler();
@@ -3331,6 +3335,11 @@ function applyStaticUIText() {
     setText("btn-area-enter", getUIText("cityArea.enterLabel"));
     setText("btn-area-back-map", getUIText("cityUi.backMap"));
 
+    setText("case-board-title", getUIText("caseBoard.title"));
+    setText("case-board-subtitle", getUIText("caseBoard.subtitle"));
+    setText("case-board-loose-title", getUIText("caseBoard.looseTitle"));
+    setText("case-board-assistant-label", getUIText("caseBoard.assistantLabel"));
+
     setText("tab-col-battle-label", getUIText("cardCollection.battleTab"));
     setText("tab-col-social-label", getUIText("cardCollection.socialTab"));
 
@@ -3433,6 +3442,7 @@ function loadGame() {
         player = loadedData.player;
         game = loadedData.game;
         ensureTimeState();
+        ensureCaseBoardData();
         if (!game.cityDiscoveries) game.cityDiscoveries = {};
         if (game.storyMode === undefined) game.storyMode = false;
 
@@ -4083,6 +4093,7 @@ function renderHub() {
     resetDungeonState();
     switchScene('hub');
     updateHomeUI();
+    closeCaseBoard();
     setHubPanelVisible(false);
     const layer = document.getElementById('hub-object-layer');
     const hubMap = document.getElementById('hub-map');
@@ -4115,6 +4126,485 @@ function renderHub() {
     }
     updateUI(); // 상단 바 갱신
     autoSave();
+}
+
+function ensureCaseBoardData() {
+    if (!game.caseBoard) game.caseBoard = {};
+    if (!Array.isArray(game.caseBoard.looseClues)) game.caseBoard.looseClues = [];
+    if (!Array.isArray(game.caseBoard.links)) game.caseBoard.links = [];
+    if (!game.caseBoard.ui) game.caseBoard.ui = { selected: null };
+}
+
+function addLooseClueEntry(payload) {
+    ensureCaseBoardData();
+    if (!payload) return;
+    const title = payload.title || payload.text || "";
+    if (!title) return;
+    autoCloseAssistantDialogue();
+    const exists = game.caseBoard.looseClues.some(c => c && c.title === title);
+    if (exists) return;
+    game.caseBoard.looseClues.push({
+        id: payload.id || `clue_${Date.now()}_${Math.floor(Math.random() * 999)}`,
+        title,
+        desc: payload.desc || ""
+    });
+}
+
+function addLooseClueById(clueId) {
+    if (!clueId) return;
+    if (typeof CASE_BOARD_DATA === 'undefined' || !CASE_BOARD_DATA.clues) return;
+    const clue = CASE_BOARD_DATA.clues[clueId];
+    if (!clue) return;
+    addLooseClueEntry({ id: clueId, title: clue.title, desc: clue.desc });
+}
+
+function openCaseBoard() {
+    const hubScene = document.getElementById('hub-scene');
+    if (!hubScene || hubScene.classList.contains('hidden')) return;
+    if (hubScene.classList.contains('case-board-open')) return;
+    ensureCaseBoardData();
+    if (!game._lastOpenCaseBoardLog || Date.now() - game._lastOpenCaseBoardLog > 800) {
+        notifyNarration(getUIText("caseBoard.openLog"));
+        game._lastOpenCaseBoardLog = Date.now();
+    }
+    renderCaseBoard();
+    syncCityLogPanels();
+    hubScene.classList.add('case-board-open');
+    setHubPanelVisible(false);
+}
+
+function closeCaseBoard() {
+    const hubScene = document.getElementById('hub-scene');
+    if (hubScene) hubScene.classList.remove('case-board-open');
+}
+
+function renderCaseBoard() {
+    ensureCaseBoardData();
+    const looseBody = document.getElementById('case-board-loose-body');
+    if (!looseBody) return;
+    const assistantAvatar = document.querySelector('#case-board-assistant .assistant-avatar');
+    if (assistantAvatar && typeof CHARACTER_IMAGES !== 'undefined') {
+        assistantAvatar.style.backgroundImage = `url('${CHARACTER_IMAGES.assistant}')`;
+    }
+
+    const createNote = (title, lines = []) => {
+        const note = document.createElement('div');
+        note.className = 'case-board-note';
+        const t = document.createElement('div');
+        t.className = 'case-board-note-title';
+        t.textContent = title;
+        note.appendChild(t);
+        lines.forEach(line => {
+            const p = document.createElement('div');
+            p.textContent = line;
+            note.appendChild(p);
+        });
+        return note;
+    };
+
+    looseBody.innerHTML = "";
+    const linesSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    linesSvg.id = "case-board-lines";
+    linesSvg.classList.add("case-board-lines");
+    linesSvg.setAttribute("viewBox", "0 0 100 100");
+    linesSvg.setAttribute("preserveAspectRatio", "none");
+    looseBody.appendChild(linesSvg);
+    looseBody.onclick = (e) => {
+        if (e.target && e.target.closest('.case-board-note')) return;
+        game.caseBoard.ui.selected = null;
+        highlightCaseBoardSelection();
+    };
+    if (game.caseBoard.looseClues.length > 0) {
+        game.caseBoard.looseClues.forEach(clue => {
+            const title = clue.title || getUIText("popup.choiceDefault");
+            const lines = [];
+            if (clue.desc) lines.push(clue.desc);
+            const note = createNote(title, lines);
+            note.dataset.clueId = clue.id || title;
+            note.classList.add('case-board-clue');
+            note.onclick = () => handleCaseBoardClueClick(note.dataset.clueId);
+            note.onpointerdown = (e) => beginCaseBoardDrag(e, note.dataset.clueId);
+            if (!clue.pos) {
+                clue.pos = { x: 10 + Math.random() * 70, y: 10 + Math.random() * 70 };
+            }
+            note.style.position = 'absolute';
+            note.style.left = `${clue.pos.x}%`;
+            note.style.top = `${clue.pos.y}%`;
+            looseBody.appendChild(note);
+        });
+    }
+    renderCaseBoardLinks();
+}
+
+function hasAvailableCaseMerge() {
+    if (typeof CASE_BOARD_DATA === 'undefined' || !Array.isArray(CASE_BOARD_DATA.merges)) return false;
+    const ids = new Set((game.caseBoard.looseClues || []).map(c => c.id));
+    return CASE_BOARD_DATA.merges.some(m => Array.isArray(m.requires) && m.requires.every(id => ids.has(id)));
+}
+
+function autoCloseAssistantDialogue() {
+    if (!game.assistantDialogueActive) return;
+    const id = game.assistantChoiceId;
+    const idx = game.assistantChoiceCloseIndex;
+    if (id && Number.isFinite(idx)) {
+        resolveCityLogChoice(id, idx);
+    }
+    game.assistantDialogueActive = false;
+    game.assistantChoiceId = null;
+    game.assistantChoiceCloseIndex = null;
+}
+
+function openAssistantDialogue(used = null) {
+    ensureCaseBoardData();
+    const options = [];
+    if (used !== "talk") {
+        options.push({
+            txt: getUIText("caseBoard.assistantOptionTalk"),
+            func: () => {
+                notifyNarration(getUIText("caseBoard.assistantSmallTalk"));
+                openAssistantDialogue("talk");
+            }
+        });
+    }
+    if (used !== "active") {
+        options.push({
+            txt: getUIText("caseBoard.assistantOptionActive"),
+            func: () => {
+                const activeId = game.activeScenarioId;
+                if (activeId === "tutorial") {
+                    const hasClue = game.caseBoard.looseClues.some(c => c.id === "tutorial_noisy_alley");
+                    if (!hasClue) {
+                        addLooseClueById("tutorial_noisy_alley");
+                        notifyNarration(getUIText("caseBoard.assistantHintGiven"));
+                        renderCaseBoard();
+                        openAssistantDialogue("active");
+                        return;
+                    }
+                }
+                notifyNarration(getUIText("caseBoard.assistantCaseTalk"));
+                openAssistantDialogue("active");
+            }
+        });
+    }
+    if (used !== "solved") {
+        options.push({
+            txt: getUIText("caseBoard.assistantOptionSolved"),
+            func: () => {
+                const solved = Object.keys(SCENARIOS).filter(id => SCENARIOS[id]?.cleared);
+                notifyNarration(solved.length ? getUIText("caseBoard.assistantSolvedTalk") : getUIText("caseBoard.assistantSolvedNone"));
+                openAssistantDialogue("solved");
+            }
+        });
+    }
+    if (used !== "concern") {
+        options.push({
+            txt: getUIText("caseBoard.assistantOptionConcern"),
+            func: () => {
+                notifyNarration(hasAvailableCaseMerge() ? getUIText("caseBoard.assistantMergeHint") : getUIText("caseBoard.assistantNoConcern"));
+                openAssistantDialogue("concern");
+            }
+        });
+    }
+    const closeIndex = options.length;
+    options.push({
+        txt: getUIText("caseBoard.assistantOptionClose"),
+        func: () => {}
+    });
+    const promptText = used ? getUIText("caseBoard.assistantFollowup") : getUIText("caseBoard.assistantPrompt");
+    notifyNarration(promptText);
+    const id = addCityLogChoices(options.map(o => ({ text: o.txt, onSelect: o.func })));
+    game.assistantDialogueActive = true;
+    game.assistantChoiceId = id;
+    game.assistantChoiceCloseIndex = closeIndex;
+}
+
+let caseBoardDragState = null;
+let caseBoardDragging = false;
+let caseBoardLinkState = null;
+let caseBoardSuppressLogUntil = 0;
+const CASE_BOARD_DRAG_THRESHOLD = 4;
+function beginCaseBoardDrag(e, clueId) {
+    if (!e || !clueId) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    const note = e.currentTarget;
+    const board = document.getElementById('case-board-loose-body') || note.parentElement;
+    if (!note || !board) return;
+    e.stopPropagation();
+    const layoutRect = board.getBoundingClientRect();
+    const noteRect = note.getBoundingClientRect();
+    const isLinkMode = (game.caseBoard?.ui?.selected === clueId);
+    if (isLinkMode) {
+        const centerX = noteRect.left + (noteRect.width / 2);
+        const centerY = noteRect.top + (noteRect.height / 2);
+        caseBoardLinkState = {
+            clueId,
+            board,
+            layoutRect,
+            startX: centerX,
+            startY: centerY,
+            lastX: centerX,
+            lastY: centerY
+        };
+        caseBoardSuppressLogUntil = Date.now() + 800;
+        updateCaseBoardTempLink(e.clientX, e.clientY);
+    } else {
+        caseBoardDragState = {
+            clueId,
+            note,
+            layoutRect,
+            startX: e.clientX,
+            startY: e.clientY,
+            offsetX: e.clientX - noteRect.left,
+            offsetY: e.clientY - noteRect.top
+        };
+        caseBoardDragging = false;
+    }
+    note.setPointerCapture?.(e.pointerId);
+    document.addEventListener('pointermove', onCaseBoardDragMove);
+    document.addEventListener('pointerup', endCaseBoardDrag, { once: true });
+}
+
+function onCaseBoardDragMove(e) {
+    if (!caseBoardDragState && !caseBoardLinkState) return;
+    e.preventDefault();
+    if (caseBoardLinkState) {
+        const dx = Math.abs(e.clientX - caseBoardLinkState.startX);
+        const dy = Math.abs(e.clientY - caseBoardLinkState.startY);
+        if (dx > CASE_BOARD_DRAG_THRESHOLD || dy > CASE_BOARD_DRAG_THRESHOLD) {
+            caseBoardDragging = true;
+        }
+        caseBoardLinkState.lastX = e.clientX;
+        caseBoardLinkState.lastY = e.clientY;
+        updateCaseBoardTempLink(e.clientX, e.clientY);
+        return;
+    }
+    const dx = Math.abs(e.clientX - caseBoardDragState.startX);
+    const dy = Math.abs(e.clientY - caseBoardDragState.startY);
+    if (dx > CASE_BOARD_DRAG_THRESHOLD || dy > CASE_BOARD_DRAG_THRESHOLD) {
+        caseBoardDragging = true;
+    }
+    if (!caseBoardDragging) return;
+    const { note, layoutRect, offsetX, offsetY } = caseBoardDragState;
+    const x = e.clientX - layoutRect.left - offsetX;
+    const y = e.clientY - layoutRect.top - offsetY;
+    const maxX = Math.max(0, layoutRect.width - note.offsetWidth);
+    const maxY = Math.max(0, layoutRect.height - note.offsetHeight);
+    const clampedX = Math.max(0, Math.min(maxX, x));
+    const clampedY = Math.max(0, Math.min(maxY, y));
+    const px = (clampedX / layoutRect.width) * 100;
+    const py = (clampedY / layoutRect.height) * 100;
+    note.style.position = 'absolute';
+    note.style.left = `${px}%`;
+    note.style.top = `${py}%`;
+    renderCaseBoardLinks();
+}
+
+function endCaseBoardDrag(e) {
+    if (!caseBoardDragState && !caseBoardLinkState) return;
+    if (caseBoardLinkState) {
+        finalizeCaseBoardLink(e);
+        caseBoardSuppressLogUntil = Date.now() + 800;
+        caseBoardLinkState = null;
+        caseBoardDragging = false;
+        document.removeEventListener('pointermove', onCaseBoardDragMove);
+        return;
+    }
+    const { clueId, note, layoutRect } = caseBoardDragState;
+    const left = parseFloat(note.style.left || "0");
+    const top = parseFloat(note.style.top || "0");
+    ensureCaseBoardData();
+    const entry = game.caseBoard.looseClues.find(c => c && (c.id === clueId || c.title === clueId));
+    if (entry) entry.pos = { x: left, y: top };
+    caseBoardDragState = null;
+    const wasDragging = caseBoardDragging;
+    caseBoardDragging = false;
+    document.removeEventListener('pointermove', onCaseBoardDragMove);
+    if (wasDragging && note) {
+        note.dataset.justDragged = "1";
+        setTimeout(() => {
+            if (note) delete note.dataset.justDragged;
+        }, 0);
+    }
+}
+
+function updateCaseBoardTempLink(clientX, clientY) {
+    const svg = document.getElementById('case-board-lines');
+    const board = document.getElementById('case-board-loose-body');
+    if (!svg || !board || !caseBoardLinkState) return;
+    svg.style.zIndex = "1";
+    const rect = board.getBoundingClientRect();
+    const w = Math.max(1, rect.width);
+    const h = Math.max(1, rect.height);
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    const x1 = caseBoardLinkState.startX - rect.left;
+    const y1 = caseBoardLinkState.startY - rect.top;
+    const x2 = clientX - rect.left;
+    const y2 = clientY - rect.top;
+    let line = svg.querySelector('#case-board-link-temp');
+    if (!line) {
+        line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.id = "case-board-link-temp";
+        line.setAttribute("stroke", "#3a3328");
+        line.setAttribute("stroke-width", "2");
+        line.setAttribute("stroke-linecap", "round");
+        line.setAttribute("vector-effect", "non-scaling-stroke");
+        svg.appendChild(line);
+    }
+    line.setAttribute("x1", x1);
+    line.setAttribute("y1", y1);
+    line.setAttribute("x2", x2);
+    line.setAttribute("y2", y2);
+}
+
+function finalizeCaseBoardLink(e) {
+    const svg = document.getElementById('case-board-lines');
+    if (svg) {
+        const temp = svg.querySelector('#case-board-link-temp');
+        if (temp) temp.remove();
+    }
+    const fromId = caseBoardLinkState?.clueId;
+    if (!fromId) return;
+    const targetEl = document.elementFromPoint(e?.clientX || caseBoardLinkState.lastX || caseBoardLinkState.startX, e?.clientY || caseBoardLinkState.lastY || caseBoardLinkState.startY);
+    const clueEl = targetEl?.closest?.('.case-board-note.case-board-clue');
+    const toId = clueEl?.dataset?.clueId;
+    if (!toId || toId === fromId) {
+        game.caseBoard.ui.selected = null;
+        highlightCaseBoardSelection();
+        return;
+    }
+    const exists = game.caseBoard.links.some(l => (l[0] === fromId && l[1] === toId) || (l[0] === toId && l[1] === fromId));
+    if (!exists) {
+        game.caseBoard.links.push([fromId, toId]);
+    }
+    game.caseBoard.ui.selected = null;
+    highlightCaseBoardSelection();
+    attemptCaseBoardMerge(fromId, toId);
+    renderCaseBoardLinks();
+}
+
+function handleCaseBoardClueClick(clueId) {
+    ensureCaseBoardData();
+    const noteEl = document.querySelector(`.case-board-note.case-board-clue[data-clue-id="${CSS.escape(clueId)}"]`);
+    if (noteEl && noteEl.dataset.justDragged === "1") {
+        return;
+    }
+    if (Date.now() < caseBoardSuppressLogUntil) return;
+    if (!caseBoardDragging && !caseBoardLinkState) {
+        const clue = game.caseBoard.looseClues.find(c => c && c.id === clueId);
+        if (clue) {
+            const text = clue.desc ? `${clue.title} — ${clue.desc}` : clue.title;
+            notifyNarration(text);
+        }
+    }
+    const prev = game.caseBoard.ui.selected;
+    if (!prev) {
+        game.caseBoard.ui.selected = clueId;
+        highlightCaseBoardSelection();
+        return;
+    }
+    if (prev === clueId) {
+        game.caseBoard.ui.selected = null;
+        highlightCaseBoardSelection();
+        return;
+    }
+    const exists = game.caseBoard.links.some(l => (l[0] === prev && l[1] === clueId) || (l[0] === clueId && l[1] === prev));
+    if (!exists) {
+        game.caseBoard.links.push([prev, clueId]);
+    }
+    game.caseBoard.ui.selected = null;
+    highlightCaseBoardSelection();
+    attemptCaseBoardMerge(prev, clueId);
+    renderCaseBoardLinks();
+}
+
+function highlightCaseBoardSelection() {
+    const notes = document.querySelectorAll('.case-board-note.case-board-clue');
+    notes.forEach(note => {
+        note.classList.toggle('is-selected', note.dataset.clueId === game.caseBoard.ui.selected);
+    });
+}
+
+function renderCaseBoardLinks() {
+    const svg = document.getElementById('case-board-lines');
+    const board = document.getElementById('case-board-loose-body');
+    if (!svg || !board) return;
+    const rect = board.getBoundingClientRect();
+    const w = Math.max(1, rect.width);
+    const h = Math.max(1, rect.height);
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    const temp = svg.querySelector('#case-board-link-temp');
+    svg.innerHTML = "";
+    if (temp) svg.appendChild(temp);
+    const getCenter = (clueId) => {
+        const el = document.querySelector(`.case-board-note.case-board-clue[data-clue-id="${CSS.escape(clueId)}"]`);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return {
+            x: (r.left + r.width / 2) - rect.left,
+            y: (r.top + r.height / 2) - rect.top
+        };
+    };
+    game.caseBoard.links.forEach(link => {
+        const a = getCenter(link[0]);
+        const b = getCenter(link[1]);
+        if (!a || !b) return;
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", a.x);
+        line.setAttribute("y1", a.y);
+        line.setAttribute("x2", b.x);
+        line.setAttribute("y2", b.y);
+        line.setAttribute("stroke", "#3a3328");
+        line.setAttribute("stroke-width", "1.2");
+        line.setAttribute("stroke-linecap", "round");
+        svg.appendChild(line);
+    });
+}
+
+function attemptCaseBoardMerge(aId, bId) {
+    if (typeof CASE_BOARD_DATA === 'undefined' || !Array.isArray(CASE_BOARD_DATA.merges)) return;
+    const pair = [aId, bId];
+    const match = CASE_BOARD_DATA.merges.find(m => {
+        if (!m || !Array.isArray(m.requires)) return false;
+        return m.requires.length === 2 && m.requires.every(req => pair.includes(req));
+    });
+    if (!match || !match.result) return;
+    showPopup(getUIText("caseBoard.mergePopupTitle"), "", [], "", { forcePopup: true });
+    setTimeout(() => {
+        closePopup();
+        performCaseBoardMerge(match);
+    }, 700);
+}
+
+function performCaseBoardMerge(match) {
+    ensureCaseBoardData();
+
+    const removeIds = match.requires;
+    game.caseBoard.looseClues = game.caseBoard.looseClues.filter(c => !removeIds.includes(c.id));
+    game.caseBoard.links = game.caseBoard.links.filter(l => !removeIds.includes(l[0]) && !removeIds.includes(l[1]));
+
+    const result = match.result;
+    autoCloseAssistantDialogue();
+    addLooseClueEntry({
+        id: result.id,
+        title: result.title,
+        desc: result.desc
+    });
+    if (result.addHint && result.addHint.scenarioId && result.addHint.text) {
+        if (!game.caseBoard.caseHints) game.caseBoard.caseHints = {};
+        if (!Array.isArray(game.caseBoard.caseHints[result.addHint.scenarioId])) {
+            game.caseBoard.caseHints[result.addHint.scenarioId] = [];
+        }
+        game.caseBoard.caseHints[result.addHint.scenarioId].push(result.addHint.text);
+    }
+
+    if (result.kind === "case") {
+        notifyNarration(getUIText("caseBoard.mergeCaseLog"));
+    } else {
+        notifyNarration(getUIText("caseBoard.mergeClueLog"));
+    }
+    notifyNarration(getUIText("caseBoard.mergeCleanupLog"));
+
+    renderCaseBoard();
 }
 
 /* [NEW] 거점 휴식 */
@@ -4333,10 +4823,46 @@ function openHealingClinic() {
 }
 /* [NEW] 덱 관리 시스템 변수 */
 let currentDeckMode = 'battle'; // 'battle' or 'social'
+let deckReturnScene = 'hub';
+let deckReturnState = 'hub';
 
 /* [NEW] 덱 관리 화면 열기 */
 function openDeckManager() {
+    deckReturnState = game.state || 'hub';
+    if (deckReturnState === 'battle') deckReturnScene = 'battle';
+    else if (deckReturnState === 'exploration') deckReturnScene = 'exploration';
+    else if (deckReturnState === 'city') deckReturnScene = 'city';
+    else deckReturnScene = 'hub';
     switchDeckMode('battle'); // 기본은 배틀 덱
+}
+
+function closeDeckManager() {
+    const returnScene = deckReturnScene || 'hub';
+    if (returnScene === 'battle') {
+        game.state = 'battle';
+        switchScene('battle');
+        showBattleView();
+        syncCityLogPanels();
+        renderEnemies();
+        renderHand();
+        updateUI();
+        processTimeline();
+        return;
+    }
+    if (returnScene === 'exploration') {
+        game.state = 'exploration';
+        switchScene('exploration');
+        showExplorationView();
+        syncCityLogPanels();
+        updateUI();
+        return;
+    }
+    if (returnScene === 'city') {
+        game.state = 'city';
+        renderCityMap();
+        return;
+    }
+    renderHub();
 }
 
 /* [NEW] 탭 전환 및 렌더링 */
@@ -4596,6 +5122,9 @@ function applySocialImpact(target, val) {
 /* [NEW] 사건 파일 열기 (시나리오 선택) */
 function openCaseFiles() {
     if (handleExpiredScenarios()) return;
+    if (game._caseFilesOpening) return;
+    game._caseFilesOpening = true;
+    setTimeout(() => { game._caseFilesOpening = false; }, 300);
     if (!game._lastOpenCaseLog || Date.now() - game._lastOpenCaseLog > 800) {
         logNarration("system.openCaseFiles");
         game._lastOpenCaseLog = Date.now();
@@ -4612,7 +5141,7 @@ function openCaseFiles() {
     let content = `
         <div style="display:flex; gap:6px; justify-content:center; margin-bottom:10px;">
             <button class="small-btn" onclick="switchCaseTab('missions')">${getUIText("scenario.tabMissions")}</button>
-            <button class="small-btn" onclick="switchCaseTab('clues')">${getUIText("scenario.tabClues")}</button>
+            <button class="small-btn" onclick="switchCaseTab('solved')">${getUIText("scenario.tabSolved")}</button>
         </div>
         <div id="case-tab-missions" style="display:flex; flex-direction:column; gap:10px;">
     `;
@@ -4640,29 +5169,23 @@ function openCaseFiles() {
     }
     content += `</div>`;
 
-    // 실마리 탭
-    content += `<div id="case-tab-clues" style="display:none; flex-direction:column; gap:10px;">`;
-    let clueCount = 0;
-    for (let id in SCENARIOS) {
-        if (isScenarioAvailable(id)) continue;
-        if (!isScenarioLeadUnlocked(id)) continue;
-        if (isScenarioExpired(id)) continue;
-        const sc = SCENARIOS[id];
-        const lines = getScenarioUnlockHints(id);
-        const hintHtml = (lines.length > 0)
-            ? lines.map(l => `<div style="font-size:0.7em; color:#777;">${l}</div>`).join("")
-            : `<div style="font-size:0.7em; color:#777;">${getUIText("scenario.unlockHint")}</div>`;
-        content += `
-            <div class="action-btn" style="cursor:default; opacity:0.9;">
-                <b>${sc.title}</b> <span style="font-size:0.7em; color:#999;">${getUIText("scenario.tagLocked")}</span><br>
-                <span style="font-size:0.7em;">${sc.desc}</span>
-                <div style="margin-top:6px;">${hintHtml}</div>
-            </div>
-        `;
-        clueCount++;
-    }
-    if (clueCount === 0) {
-        content += `<div style="color:#777; text-align:center; padding:12px 0;">${getUIText("scenario.caseListNoClue")}</div>`;
+    content += `</div>`;
+
+    // 해결된 사건 탭
+    content += `<div id="case-tab-solved" style="display:none; flex-direction:column; gap:10px;">`;
+    const solvedIds = Object.keys(SCENARIOS).filter(id => SCENARIOS[id]?.cleared);
+    if (solvedIds.length === 0) {
+        content += `<div style="color:#777; text-align:center; padding:12px 0;">${getUIText("caseBoard.emptySolved")}</div>`;
+    } else {
+        solvedIds.forEach(id => {
+            const sc = SCENARIOS[id];
+            content += `
+                <div class="action-btn" style="cursor:default; opacity:0.9;">
+                    <b>${sc.title}</b><br>
+                    <span style="font-size:0.7em;">${sc.desc || ""}</span>
+                </div>
+            `;
+        });
     }
     content += `</div>`;
 
@@ -4677,14 +5200,14 @@ function openCaseFiles() {
 
 function switchCaseTab(tab) {
     const missions = document.getElementById('case-tab-missions');
-    const clues = document.getElementById('case-tab-clues');
-    if (!missions || !clues) return;
-    if (tab === 'clues') {
+    const solved = document.getElementById('case-tab-solved');
+    if (!missions || !solved) return;
+    if (tab === 'solved') {
         missions.style.display = 'none';
-        clues.style.display = 'flex';
+        solved.style.display = 'flex';
     } else {
         missions.style.display = 'flex';
-        clues.style.display = 'none';
+        solved.style.display = 'none';
     }
 }
 
@@ -4788,13 +5311,14 @@ function acceptMission(id) {
 
     // 1. 현재 수행 중인 의뢰로 등록
     game.activeScenarioId = id;
+    ensureCaseBoardData();
 
     // 2. 게임 상태에 초기 데이터 세팅
     game.scenario = {
         id: id,
         title: scData.title,
         clues: 0,
-        location: scData.locations[0],
+        location: getUIText("scenario.unknownLocation"),
         bossReady: false,
         isActive: false,
         enemyPool: getEnemyPoolFromScenario(scData)
@@ -4810,14 +5334,11 @@ function acceptMission(id) {
         });
     }
 
-    // 3. 알림 메시지 및 화면 복귀
-    let targetDistrictName = getUIText("cityMap.unknownDistrict");
-    for (let dKey in DISTRICTS) {
-        if (DISTRICTS[dKey].scenarios.includes(id)) {
-            targetDistrictName = DISTRICTS[dKey].name;
-            break;
-        }
+    if (id === "tutorial") {
+        addLooseClueById("tutorial_missing_delivery");
     }
+
+    // 3. 알림 메시지 및 화면 복귀
 
     // 스토리가 끝난 후에는 'story-scene'에 있으므로, 다시 'hub'나 'city'로 보내줘야 함
     renderHub(); // 사무소 화면으로 복귀
@@ -4828,7 +5349,6 @@ function acceptMission(id) {
     notifyNarration(
         getUIText("scenario.accepted")
             .replace("[TITLE]", scData.title)
-            .replace("[DISTRICT]", targetDistrictName)
     );
     }, 100);
 
@@ -5039,6 +5559,10 @@ function moveItemFromWarehouse(idx) {
     if (data.usage === 'consume' && player.inventory.length >= player.maxInventory) {
         notifyNarration(getUIText("inventory.noSpace"));
         return;
+    }
+
+    if (id === "tutorial") {
+        addLooseClueById("tutorial_missing_delivery");
     }
 
     // 창고에서 제거
@@ -6260,7 +6784,7 @@ function renderExploration(forceReset = false) {
     if (game.dungeonMap && typeof DungeonSystem.renderView === 'function') {
         DungeonSystem.renderView();
     }
-    if (game.dungeonMap && typeof DungeonSystem.renderMinimap === 'function') {
+    if (game.dungeonMap && typeof DungeonSystem.renderMinimap === 'function' && game.mode !== 'infinite') {
         DungeonSystem.renderMinimap('minimap-right-grid', 26);
     }
     // 이번 탐사 렌더링 이후에는 리셋 플래그 해제
@@ -6276,6 +6800,19 @@ function renderExploration(forceReset = false) {
     }
 
     showExplorationView();
+    const minimapPanel = document.querySelector('.explore-minimap-panel');
+    if (minimapPanel) {
+        minimapPanel.style.display = (game.mode === 'infinite') ? 'none' : '';
+    }
+    const minimapOverlay = document.getElementById('minimap-overlay');
+    if (minimapOverlay && game.mode === 'infinite') {
+        minimapOverlay.classList.add('hidden');
+    }
+    const escapeBtn = document.getElementById('explore-btn-escape');
+    if (escapeBtn) {
+        escapeBtn.style.display = (game.mode === 'infinite') ? 'none' : '';
+        escapeBtn.disabled = (game.mode === 'infinite');
+    }
     syncCityLogPanels();
     updateUI();
     autoSave();
@@ -6343,22 +6880,32 @@ function toggleBattleUI(isBattle) {
         // [탐사 복귀]
         if (moveControls) moveControls.style.display = 'flex';   // 이동 키 복구
         if (dungeonActions) dungeonActions.style.display = 'grid';
-        if (minimapBtn) {
-            minimapBtn.style.display = 'block'; // 버튼만 복구 (지도는 닫힌 상태 유지)
-            minimapBtn.classList.remove('hidden'); // 상시 미니맵이 숨겼던 클래스도 제거
-        }
-        if (DS) {
-            if (DS.minimapOverlayWasOpen && minimapOverlay) {
-                minimapOverlay.classList.remove('hidden');
-                DS.renderMinimap();
+        if (game.mode !== 'infinite') {
+            if (minimapBtn) {
+                minimapBtn.style.display = 'block'; // 버튼만 복구 (지도는 닫힌 상태 유지)
+                minimapBtn.classList.remove('hidden'); // 상시 미니맵이 숨겼던 클래스도 제거
             }
-            if (DS.minimapInlineWasOpen && minimapInline) {
-                minimapInline.classList.remove('hidden');
-                DS.renderMinimap('minimap-inline-grid', 22);
-                if (minimapBtn) minimapBtn.classList.add('hidden');
+            if (DS) {
+                if (DS.minimapOverlayWasOpen && minimapOverlay) {
+                    minimapOverlay.classList.remove('hidden');
+                    DS.renderMinimap();
+                }
+                if (DS.minimapInlineWasOpen && minimapInline) {
+                    minimapInline.classList.remove('hidden');
+                    DS.renderMinimap('minimap-inline-grid', 22);
+                    if (minimapBtn) minimapBtn.classList.add('hidden');
+                }
+                DS.minimapOverlayWasOpen = false;
+                DS.minimapInlineWasOpen = false;
             }
-            DS.minimapOverlayWasOpen = false;
-            DS.minimapInlineWasOpen = false;
+        } else {
+            if (minimapBtn) minimapBtn.style.display = 'none';
+            if (minimapOverlay) minimapOverlay.classList.add('hidden');
+            if (minimapInline) minimapInline.classList.add('hidden');
+            if (DS) {
+                DS.minimapOverlayWasOpen = false;
+                DS.minimapInlineWasOpen = false;
+            }
         }
 
         // 전투 UI 숨김
@@ -6537,6 +7084,8 @@ function exploreAction(action) {
                         game.doom = Math.min(100, game.doom + 5);
                         logNarration("system.clueGain");
                         setSharedLogMessage(`${evt.text}`);
+                        if (evt.id) addLooseClueById(evt.id);
+                        else addLooseClueEntry({ title: evt.text, desc: scData ? scData.title : "" });
                     } else {
                         let foundItem = null;
                         if (Math.random() < 0.4) { foundItem = getRandomItem(null, { categories: ["general"] }); addItem(foundItem); }

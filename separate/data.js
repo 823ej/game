@@ -125,8 +125,8 @@ const UI_TEXT = {
     },
     scenario: {
         missingActive: "진행 중인 의뢰 정보를 찾을 수 없습니다.",
-        accepted: "✅ 의뢰 수락: [TITLE] — \"[DISTRICT]\" 구역으로 이동하여 조사를 시작하세요.",
-        caseListTitle: "📁 의뢰 목록",
+        accepted: "✅ 의뢰 수락: [TITLE]. 사건을 조사해봅시다.",
+        caseListTitle: "📁 사건 목록",
         caseListDesc: "해결할 사건을 선택하세요.",
         caseListClose: "닫기",
         caseListNoClue: "실마리가 없습니다.",
@@ -137,6 +137,7 @@ const UI_TEXT = {
         miniPlaceholder: "의뢰명 | 0%",
         progressLabel: "진행도",
         locationLabel: "예상 지역",
+        unknownLocation: "(알 수 없음)",
         expiredTitle: "🗂️ 의뢰 정리",
         expiredDesc: "이 의뢰는 이제 해결할 수 있는 기간이 지났네...",
         expiredConfirm: "정리한다",
@@ -149,9 +150,40 @@ const UI_TEXT = {
         ruleExpireAt: "만료 시점: [DAY]일차 [TIME]",
         tabMissions: "의뢰",
         tabClues: "새로운 사건의 실마리",
+        tabSolved: "해결한 사건",
         tagActive: "(진행 중)",
         tagLocked: "(잠김)",
         unlockHint: "조건을 만족하면 수락할 수 있습니다."
+    },
+    caseBoard: {
+        title: "사건 보드",
+        subtitle: "수집한 실마리와 사건의 흐름을 연결합니다.",
+        activeTitle: "진행 중 사건",
+        solvedTitle: "해결된 사건",
+        looseTitle: "미분류 실마리",
+        emptyActive: "진행 중인 사건이 없습니다.",
+        emptySolved: "아직 해결된 사건이 없습니다.",
+        emptyLoose: "미분류 실마리가 없습니다.",
+        assistantLabel: "조수에게 사건 문의",
+        openLog: "당신은 사건에 대해 고찰해보기로 합니다...",
+        mergeClueLog: "이 단서, 연결되어 있다! 당신은 새로운 단서를 깨달았습니다.",
+        mergeCaseLog: "이 단서, 연결되어 있다! 당신은 새로운 사건의 조짐을 깨달았습니다.",
+        mergeCleanupLog: "새로운 단서를 얻은 뒤에 필요없는 단서를 정리했다.",
+        mergePopupTitle: "추리 성공!",
+        assistantPrompt: "무엇을 할까?",
+        assistantOptionTalk: "잡담을 한다",
+        assistantOptionActive: "진행 중 사건에 대해서",
+        assistantOptionSolved: "해결된 사건에 대해서",
+        assistantOptionConcern: "뭔가 신경쓰이는 일 있어?",
+        assistantOptionClose: "아무것도 아냐",
+        assistantSmallTalk: "조수가 요즘 날씨가 이상하다며 가볍게 이야기를 건넨다.",
+        assistantCaseTalk: "조수가 현재 사건의 흐름을 정리해준다.",
+        assistantHintGiven: "조수가 최근 소문을 들었다며 단서를 건넨다.",
+        assistantSolvedTalk: "조수가 해결된 사건을 떠올리며 소감을 말한다.",
+        assistantSolvedNone: "아직 해결된 사건이 없다고 조수가 말한다.",
+        assistantMergeHint: "조수가 단서들 사이의 연관을 떠올려보자고 제안한다.",
+        assistantNoConcern: "조수는 지금 당장 떠오르는 것은 없다고 말한다.",
+        assistantFollowup: "뭔가 또 용건이 있으신가요?"
     },
     inventory: {
         noSpace: "가방 공간이 부족합니다.",
@@ -714,6 +746,104 @@ const UI_TEXT = {
         copyTitle: "복사할 카드를 선택",
         fetchTitle: "가져올 카드를 선택"
     }
+};
+
+// 사건 보드용 단서/합성 규칙 (옵션 A: 데이터 정의형)
+const CASE_BOARD_DATA = {
+    clues: {
+        sample_receipt: {
+            title: "찢어진 전표",
+            desc: "거칠게 찢긴 종이 조각. 누군가 급하게 숨겼다."
+        },
+        sample_fragment: {
+            title: "파편 조각",
+            desc: "깨진 금속 파편. 흔적은 뒷골목과 닮았다."
+        },
+        sample_photo: {
+            title: "흐릿한 사진",
+            desc: "어딘가 익숙한 인물의 실루엣이 보인다."
+        },
+        sample_card: {
+            title: "수상한 명함",
+            desc: "이름이 지워진 명함. 뒤편에 희미한 위치 표시."
+        },
+        sample_key: {
+            title: "녹슨 열쇠",
+            desc: "특정 문에만 맞을 것 같은 작은 열쇠."
+        },
+        sample_schedule: {
+            title: "찢긴 일정표",
+            desc: "시간대별로 지워진 이름들이 남아 있다."
+        },
+        sample_voice: {
+            title: "의심스러운 녹음",
+            desc: "짧은 대화. 장소를 가리키는 단서가 있다."
+        },
+        sample_stamp: {
+            title: "낡은 도장",
+            desc: "특정 기관에서만 쓰는 오래된 인장."
+        },
+        tutorial_missing_delivery: {
+            title: "배달부의 실종",
+            desc: "사라진 배달부에 대한 간단한 소문이 돌고 있다."
+        },
+        tutorial_noisy_alley: {
+            title: "최근 시끄러워진 뒷골목",
+            desc: "밤마다 소란이 들린다는 뒷골목에 대한 이야기."
+        }
+    },
+    merges: [
+        {
+            requires: ["sample_receipt", "sample_fragment"],
+            result: {
+                id: "sample_linked_clue",
+                title: "연결된 단서",
+                desc: "두 조각의 문양이 하나로 이어진다."
+            }
+        },
+        {
+            requires: ["sample_photo", "sample_card"],
+            result: {
+                id: "sample_identity",
+                title: "신원 단서",
+                desc: "사진 속 인물이 명함의 주인일 가능성이 높다."
+            }
+        },
+        {
+            requires: ["sample_key", "sample_schedule"],
+            result: {
+                id: "sample_meeting",
+                title: "은밀한 약속",
+                desc: "열쇠가 가리키는 장소와 일정이 맞물린다."
+            }
+        },
+        {
+            requires: ["sample_voice", "sample_stamp"],
+            result: {
+                id: "sample_institution",
+                title: "기관 개입 흔적",
+                desc: "대화와 인장이 동일 기관을 가리킨다."
+            }
+        },
+        {
+            requires: ["sample_identity", "sample_meeting"],
+            result: {
+                id: "sample_case_start",
+                title: "새 사건의 단서",
+                desc: "개별 단서가 하나의 사건으로 수렴한다."
+            }
+        },
+        {
+            requires: ["tutorial_missing_delivery", "tutorial_noisy_alley"],
+            result: {
+                id: "tutorial_back_alley_hint",
+                title: "뒷골목으로 향하는 실마리",
+                desc: "두 단서가 같은 장소를 가리킨다.",
+                kind: "case",
+                addHint: { scenarioId: "tutorial", text: "단서는 '뒷골목'을 가리킨다." }
+            }
+        }
+    ]
 };
 
 const CARD_DATA = {
@@ -2457,7 +2587,7 @@ const SCENARIOS = {
                     { txt: "귀찮으니 돌려보낸다 (하지만 의뢰는 받아야 한다)", next: 7 }
                 ]
             },
-            { type: "talk", id: "client", name: "의뢰인", text: "마지막으로 연락된 곳이 '뒷골목' 근처였어요. 사례는 넉넉히 하겠습니다." },
+            { type: "talk", id: "client", name: "의뢰인", text: "부디 잘 부탁드립니다. 사례는 넉넉히 하겠습니다." },
             { type: "end" } // 스토리가 끝나면 자동으로 callback(의뢰 수락) 실행
         ],
         // ★ [추가] 던전 생성 설정 (여기서 방 개수를 조절하세요)
@@ -2475,7 +2605,10 @@ const SCENARIOS = {
             }
         },
         unlocks: [],
-        clueEvents: [{ text: "찢어진 전표 발견.", gain: 15 }, { text: "파편 발견.", gain: 20 }],
+        clueEvents: [
+            { id: "sample_receipt", text: "찢어진 전표 발견.", gain: 15 },
+            { id: "sample_fragment", text: "파편 발견.", gain: 20 }
+        ],
         reward: { gold: 500, xp: 100, itemRank: 1 },
 
         // [NEW] 복귀 가능 여부 (켜고 끄기)

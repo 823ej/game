@@ -160,17 +160,45 @@
             </div>
         </div>
         <div id="hub-scene" class="scene hidden hub-scene">
-            <div id="hub-shell" class="city-hybrid-shell panel-hidden">
-                <div class="city-left-info">
-                    <div id="hub-left-title" class="city-left-title"></div>
-                    <div id="hub-left-desc" class="city-left-desc"></div>
+            <div class="hub-view-stack">
+                <div id="hub-shell" class="city-hybrid-shell panel-hidden">
+                    <button id="hub-caseboard-open" class="hub-edge-arrow" onclick="openCaseBoard()">→</button>
+                    <div class="city-left-info">
+                        <div id="hub-left-title" class="city-left-title"></div>
+                        <div id="hub-left-desc" class="city-left-desc"></div>
+                    </div>
+                    <div id="hub-map" class="city-area-map hub-map">
+                        <div id="hub-object-layer" class="city-area-object-layer"></div>
+                    </div>
+                    <div class="city-detail-panel is-hidden" id="hub-detail-panel">
+                        <div class="city-dialogue">
+                            <div class="city-dialogue-log" id="hub-dialogue-log"></div>
+                        </div>
+                    </div>
                 </div>
-                <div id="hub-map" class="city-area-map hub-map">
-                    <div id="hub-object-layer" class="city-area-object-layer"></div>
-                </div>
-                <div class="city-detail-panel is-hidden" id="hub-detail-panel">
-                    <div class="city-dialogue">
-                        <div class="city-dialogue-log" id="hub-dialogue-log"></div>
+
+                <div id="case-board-screen" class="case-board-screen">
+                    <button id="caseboard-back" class="hub-edge-arrow left" onclick="closeCaseBoard()">←</button>
+                    <div class="case-board-header">
+                        <div id="case-board-title" class="case-board-title"></div>
+                        <div id="case-board-subtitle" class="case-board-subtitle"></div>
+                    </div>
+                    <div class="case-board-layout">
+                        <div class="case-board-panel case-board-clues">
+                            <div class="case-board-section">
+                                <div id="case-board-loose-title" class="case-board-section-title"></div>
+                                <div id="case-board-loose-body" class="case-board-section-body case-board-loose-body">
+                                    <svg id="case-board-lines" class="case-board-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="case-board-log-panel" class="case-board-log-panel">
+                            <div class="city-dialogue-log" id="case-board-log"></div>
+                        </div>
+                        <button id="case-board-assistant" class="case-board-assistant" onclick="openAssistantDialogue()">
+                            <div class="assistant-avatar"></div>
+                            <div id="case-board-assistant-label" class="assistant-label"></div>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -185,7 +213,7 @@
                     <button id="tab-social" class="small-btn" style="background:#8e44ad; font-weight:bold; opacity:0.5;"
                         onclick="switchDeckMode('social')"></button>
                 </div>
-                <button id="deck-close" class="small-btn" onclick="renderHub()"></button>
+                <button id="deck-close" class="small-btn" onclick="closeDeckManager()"></button>
             </div>
 
             <div class="deck-builder-container">
