@@ -516,6 +516,7 @@ function enterCityAreaMode(areaId, targetSpotId) {
     closeAllCityNarrationPanels();
     setCityDialogueMode(false);
     setCityCasePanelVisible(false);
+    closePopup();
     game.cityDialogue = null;
     hideCityObjectTooltip();
     clearCityLogSticky("city_map_desc");
@@ -543,6 +544,7 @@ function exitCityAreaMode() {
     game.cityAutoPanelEnabled = false;
     setCityDialogueMode(false);
     setCityCasePanelVisible(false);
+    closePopup();
     game.cityDialogue = null;
     resetCityZoom('area');
     hideCityObjectTooltip();
@@ -1102,10 +1104,21 @@ function completeDialogueTyping() {
 function renderDialogueChoices(choices) {
     const filtered = filterDialogueChoices(choices);
     if (filtered.length === 0) return;
-    addCityLogChoices(filtered.map(choice => ({
-        text: choice.text || getUIText("dialogue.choiceDefault"),
-        onSelect: () => handleDialogueChoice(choice)
-    })));
+    const state = game.cityDialogue;
+    const title = state ? (NPC_DATA[state.npcKey]?.name || state.npcKey || getUIText("cityArea.talkLabel")) : getUIText("cityArea.talkLabel");
+    showPopup(
+        title,
+        getUIText("dialogue.choicePrompt"),
+        filtered.map(choice => ({
+            txt: choice.text || getUIText("dialogue.choiceDefault"),
+            func: () => {
+                closePopup();
+                handleDialogueChoice(choice);
+            }
+        })),
+        "",
+        { forcePopup: true }
+    );
 }
 
 function filterDialogueChoices(choices) {
@@ -1163,8 +1176,9 @@ function handleDialogueAction(action) {
 }
 
 function endNpcDialogue() {
+    if (game.cityDialogue?.typing) completeDialogueTyping();
+    closePopup();
     if (!game.cityDialogue) return;
-    if (game.cityDialogue.typing) completeDialogueTyping();
     game.cityDialogue = null;
     setCityDialogueMode(false);
     setCityCasePanelVisible(false);
@@ -1177,7 +1191,7 @@ function setCityDialogueMode(active) {
     if (panel) panel.classList.remove('hidden');
     if (enterBtn) enterBtn.classList.toggle('hidden', active);
     const choices = document.getElementById('city-dialogue-choices');
-    if (choices) choices.classList.toggle('hidden', !active);
+    if (choices) choices.classList.add('hidden');
 }
 
 function setCityCasePanelVisible(active) {
@@ -4244,11 +4258,7 @@ function hasAvailableCaseMerge() {
 
 function autoCloseAssistantDialogue() {
     if (!game.assistantDialogueActive) return;
-    const id = game.assistantChoiceId;
-    const idx = game.assistantChoiceCloseIndex;
-    if (id && Number.isFinite(idx)) {
-        resolveCityLogChoice(id, idx);
-    }
+    closePopup();
     game.assistantDialogueActive = false;
     game.assistantChoiceId = null;
     game.assistantChoiceCloseIndex = null;
@@ -4256,6 +4266,7 @@ function autoCloseAssistantDialogue() {
 
 function openAssistantDialogue(used = null) {
     ensureCaseBoardData();
+    autoCloseAssistantDialogue();
     const options = [];
     if (used !== "talk") {
         options.push({
@@ -4308,13 +4319,27 @@ function openAssistantDialogue(used = null) {
     const closeIndex = options.length;
     options.push({
         txt: getUIText("caseBoard.assistantOptionClose"),
-        func: () => {}
+        func: () => {
+            autoCloseAssistantDialogue();
+        }
     });
     const promptText = used ? getUIText("caseBoard.assistantFollowup") : getUIText("caseBoard.assistantPrompt");
     notifyNarration(promptText);
-    const id = addCityLogChoices(options.map(o => ({ text: o.txt, onSelect: o.func })));
+    showPopup(
+        getUIText("caseBoard.assistantLabel"),
+        promptText,
+        options.map(o => ({
+            txt: o.txt,
+            func: () => {
+                closePopup();
+                o.func();
+            }
+        })),
+        "",
+        { forcePopup: true }
+    );
     game.assistantDialogueActive = true;
-    game.assistantChoiceId = id;
+    game.assistantChoiceId = null;
     game.assistantChoiceCloseIndex = closeIndex;
 }
 

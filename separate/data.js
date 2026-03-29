@@ -491,6 +491,7 @@ const UI_TEXT = {
         playerName: "나",
         npcFallback: "말을 건다.",
         endTalk: "대화 종료",
+        choicePrompt: "어떻게 답할까?",
         choiceDefault: "선택",
         hecateName: "레이디 헤카테",
         hecateAdded: "의뢰 목록에 추가됨",
