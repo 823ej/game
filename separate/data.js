@@ -1,4 +1,4 @@
-const CHARACTER_IMAGES = {
+﻿const CHARACTER_IMAGES = {
     detective: "assets/my_detective.png",
     assistant: "assets/my_assistant.png"
 };
@@ -3341,7 +3341,6 @@ const ATTR_ICONS = {
     slash: "⚔️", pierce: "🏹", strike: "🔨", // 물리
     holy: "✨", profane: "😈" // 특수
 };
-
 
 
 

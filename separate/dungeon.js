@@ -812,7 +812,9 @@ const DungeonSystem = {
             );
         }
         else if (room.type === 'heal') {
+            room.cleared = true;
             renderRestScreen();
+            this.checkObjectVisibility();
         }
         else if (room.type === 'shop') {
             renderShopScreen();

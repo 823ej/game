@@ -1892,7 +1892,7 @@ button {
 
 .explore-hybrid-shell {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
     gap: 18px;
     align-items: stretch;
     width: 100%;
@@ -3794,6 +3794,7 @@ font-weight: bold;
     top: 18px;
     bottom: 18px;
     width: 360px;
+    box-sizing: border-box;
 }
 
 .city-left-info {
@@ -4427,8 +4428,8 @@ font-weight: bold;
     flex-direction: column;
     text-align: left;
     width: 100%;
-    height: calc(100% + 56px);
-    margin-top: -56px;
+    height: 100%;
+    box-sizing: border-box;
     min-height: 0;
 }
 
@@ -4706,6 +4707,13 @@ font-weight: bold;
 
 .explore-hybrid-shell .city-detail-panel {
     display: flex;
+    position: relative;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
 }
 
 #exploration-scene .city-hybrid-shell,

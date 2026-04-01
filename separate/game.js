@@ -8895,6 +8895,10 @@ function renderRestScreen() {
 // [game.js] restAction 함수 수정
 
 function restAction() {
+    if (game.hasRested) {
+        renderRestScreen();
+        return;
+    }
     let maxHeal = Math.floor(player.maxHp / 2); // 체력 50%
     let missingHp = player.maxHp - player.hp;
     let actualHeal = Math.min(maxHeal, missingHp);
