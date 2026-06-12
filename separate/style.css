@@ -5063,5 +5063,240 @@ font-weight: bold;
     z-index: 1000;
 }
 
+/* ============================================================
+   [Mobile] 좁은 화면 공통 보정
+   ============================================================ */
+@media (max-width: 800px) {
+
+    /* 데스크탑용 max-width 계산(calc(100% - 380px))이 좁은 화면에서
+       음수가 되어 팝업이 찌그러지는 문제 방지 */
+    .popup-box {
+        max-width: min(92vw, 480px);
+    }
+}
+
+/* ============================================================
+   [Mobile Landscape] 모바일 가로 모드 최적화
+   - 높이가 짧은 가로 화면에서 가림/잘림 없이 모든 UI 접근 보장
+   ============================================================ */
+@media (orientation: landscape) and (max-height: 560px) {
+
+    :root {
+        --battle-char-height: 72px;
+    }
+
+    /* --- 상단 유틸리티 바 압축 --- */
+    .utility-dock {
+        padding: calc(var(--safe-top) + 2px) max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));
+    }
+
+    .utility-pill,
+    .scenario-pill {
+        font-size: 0.8em;
+    }
+
+    /* --- 컨테이너: 가로 꽉 채우고 여백 최소화 --- */
+    .container {
+        width: 100%;
+        padding: 4px max(8px, env(safe-area-inset-right)) calc(var(--safe-bottom) + 4px) max(8px, env(safe-area-inset-left));
+        gap: 4px;
+    }
+
+    /* --- 시작 화면: 세로 공간에 맞게 압축 + 넘치면 스크롤 --- */
+    .start-scene {
+        justify-content: flex-start;
+        overflow-y: auto;
+    }
+
+    .start-content {
+        margin: auto;
+        /* 공간이 남으면 중앙, 넘치면 스크롤 가능 */
+        padding: 12px 28px;
+    }
+
+    .game-title {
+        font-size: 1.6em;
+        margin: 0 0 2px;
+    }
+
+    .game-subtitle {
+        font-size: 0.95em;
+        margin-bottom: 12px;
+    }
+
+    .start-menu {
+        gap: 8px;
+    }
+
+    .start-menu .action-btn {
+        padding: 9px;
+        font-size: 1em;
+    }
+
+    .version-info {
+        margin-top: 10px;
+    }
+
+    /* --- 캐릭터 생성: 여백 축소 (이미 스크롤 가능) --- */
+    .char-creation-scene {
+        padding: 8px;
+    }
+
+    .char-creation-content {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    /* --- 도시 지도: 고정 최소 높이 제거 → 화면 높이에 맞춤 --- */
+    .city-hybrid-shell {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .city-map-canvas,
+    .city-area-map {
+        min-height: 0;
+    }
+
+    #city-area-mode {
+        margin-top: 0;
+    }
+
+    .city-left-info {
+        width: min(230px, 30vw);
+        padding: 6px 8px;
+        font-size: 0.9em;
+    }
+
+    /* --- 탐색/전투 화면 --- */
+    .explore-hybrid-shell {
+        padding: 6px 8px;
+        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 230px);
+    }
+
+    /* 스테이지가 남는 높이를 모두 차지하고, 전투 UI(컨트롤/손패)는
+       아래 고정 높이로 배치 → 어떤 높이에서도 잘리지 않음 */
+    .explore-main {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 0;
+    }
+
+    .stage-view {
+        flex: 1 1 auto;
+        min-height: 110px;
+        height: auto;
+        margin-bottom: 0;
+    }
+
+    .explore-detail-panel {
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    /* 전투 중에는 미니맵을 숨겨 좁은 세로 공간 확보 */
+    body.is-battle .explore-minimap-panel {
+        display: none;
+    }
+
+    .control-group {
+        height: 38px;
+        flex: 0 0 auto;
+        margin-bottom: 0;
+        padding: 0 6px;
+    }
+
+    #ap-indicator {
+        width: 40px;
+        height: 40px;
+        border-width: 2px;
+        font-size: 0.85em;
+    }
+
+    .btn-end-turn-side {
+        height: 38px;
+        width: 56px;
+        font-size: 0.8em;
+    }
+
+    .hand-area {
+        height: 80px;
+        flex: 0 0 auto;
+        margin-top: 0;
+        padding: 4px;
+    }
+
+    /* 적 유닛: 의도 아이콘/스탯 줄까지 포함해 스테이지 높이 안에 들어오도록 축소 */
+    .enemy-unit {
+        font-size: 0.75em;
+    }
+
+    .card {
+        width: 82px;
+        height: 106px;
+        font-size: 0.6em;
+        padding: 5px;
+        margin: 0 3px;
+    }
+
+    /* --- 스토리 대화창: 화면의 40%만 사용 --- */
+    .dialog-container {
+        min-height: 0;
+        height: 40vh;
+        padding: 20px 24px 0;
+    }
+
+    .dialog-text {
+        margin-top: 6px;
+        line-height: 1.5;
+    }
+
+    /* --- 결과 화면: 넘치면 스크롤 --- */
+    #result-scene {
+        overflow-y: auto;
+        justify-content: flex-start !important;
+    }
+
+    #result-scene>div {
+        margin: auto;
+    }
+
+    /* --- 이벤트(휴식/상점) 화면 --- */
+    #event-scene {
+        padding: 8px !important;
+        overflow-y: auto;
+    }
+
+    /* --- 인벤토리/팝업/게임 메뉴: 화면 높이 안으로 --- */
+    .inventory-panel {
+        height: min(500px, calc(100dvh - 12px));
+        box-sizing: border-box;
+    }
+
+    .popup-box {
+        max-height: calc(100dvh - 12px);
+        box-sizing: border-box;
+        overflow-y: auto;
+        padding: 16px 20px;
+    }
+
+    .game-menu-panel {
+        height: 100dvh;
+        box-sizing: border-box;
+        padding: 10px 16px 12px;
+    }
+
+    .game-menu-header {
+        margin-bottom: 6px;
+    }
+
+    .game-menu-body {
+        min-height: 0;
+        overflow-y: auto;
+    }
+}
+
 
 
