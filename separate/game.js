@@ -10749,7 +10749,9 @@ function renderWinPopup() {
 }
 
 function getLoot() {
+    if (game.lootChoiceActive) return;
     if (game.pendingLoot) {
+        game.lootChoiceActive = true;
         // [성공 콜백] 아이템 획득에 성공했을 때 실행
         const onLootSuccess = () => {
             // 메시지 갱신 (기존 텍스트에서 '떨어져 있습니다' 제거 후 획득 메시지 추가)
@@ -10761,6 +10763,7 @@ function getLoot() {
             game.winMsg += `<br><span style="color:#2ecc71">${lootPicked}</span>`;
 
             game.pendingLoot = null; // 바닥에서 삭제
+            game.lootChoiceActive = false;
 
             // ★ 핵심: 획득 후 즉시 결과 화면을 다시 그려서 '레벨업' 버튼 등이 유지되게 함
             setTimeout(() => {
@@ -10791,13 +10794,22 @@ function getLoot() {
                     {
                         txt: getUIText("popup.confirmOk"),
                         func: () => {
+                            closePopup();
                             game.pendingLoot = null; // 포기 처리
+                            game.lootChoiceActive = false;
                             renderWinPopup(); // 결과 화면 복귀
                         }
                     }
-                ]);
+                ],
+                    "",
+                    { forcePopup: true }
+                );
+            } else {
+                game.lootChoiceActive = false;
             }
             // 가방이 꽉 찬 경우는 showSwapPopup이 떴을 것이므로 여기서 처리 안 함
+        } else if (result !== true) {
+            game.lootChoiceActive = false;
         }
     }
 }
