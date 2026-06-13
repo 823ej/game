@@ -2980,29 +2980,55 @@ function forwardClickThrough(e) {
     e.preventDefault();
 }
 // 대미지 폰트
+// [FIX] 데미지 숫자 전용 플로팅 레이어 (뷰포트 고정)
+// 적 유닛 안에 직접 붙이면 updateUI()가 innerHTML을 다시 그릴 때 즉시 지워지므로,
+// 갱신되지 않는 별도의 고정 레이어에 타겟의 화면 좌표로 띄운다.
+function getFloatingTextLayer() {
+    let layer = document.getElementById('floating-text-layer');
+    if (!layer) {
+        layer = document.createElement('div');
+        layer.id = 'floating-text-layer';
+        layer.style.cssText = 'position:fixed; inset:0; pointer-events:none; z-index:9999; overflow:hidden;';
+        document.body.appendChild(layer);
+    }
+    return layer;
+}
+
 function showDamageText(target, msg, isCrit = false) {
     let targetId = (target === player) ? "player-char" : `enemy-unit-${target.id}`;
     let targetEl = document.getElementById(targetId);
 
-    if (targetEl) {
-        let el = document.createElement("div");
-        el.className = "damage-number";
-
-        // [추가] 치명타일 경우 클래스 추가
-        if (isCrit) {
-            el.classList.add("crit-text");
-            // 텍스트 내용도 조금 더 강조
-            const critTitle = getUIText("battle.damageCritTitle");
-            const critPrefix = getUIText("battle.damageCritPrefix");
-            el.innerHTML = `<span style="font-size:0.6em">${critTitle}</span><br>${msg.replace(critPrefix, '')}`;
-        } else {
-            el.innerText = msg;
-        }
-
-        targetEl.appendChild(el);
-
-        setTimeout(() => { el.remove(); }, 800);
+    // 전투 화면에서 플레이어는 dungeon-player로 렌더되므로 폴백
+    if (!targetEl && target === player) {
+        targetEl = document.getElementById('dungeon-player') || document.getElementById('dungeon-player-wrapper');
     }
+    if (!targetEl) return;
+
+    const rect = targetEl.getBoundingClientRect();
+    // 화면에 보이지 않는 타겟이면 스킵
+    if (!rect.width && !rect.height) return;
+
+    let el = document.createElement("div");
+    el.className = "damage-number";
+
+    // [추가] 치명타일 경우 클래스 추가
+    if (isCrit) {
+        el.classList.add("crit-text");
+        // 텍스트 내용도 조금 더 강조
+        const critTitle = getUIText("battle.damageCritTitle");
+        const critPrefix = getUIText("battle.damageCritPrefix");
+        el.innerHTML = `<span style="font-size:0.6em">${critTitle}</span><br>${msg.replace(critPrefix, '')}`;
+    } else {
+        el.innerText = msg;
+    }
+
+    // 타겟 머리 위 중앙(뷰포트 좌표)에 배치. CSS의 translateX(-50%)가 가로 중앙을 잡는다.
+    el.style.left = (rect.left + rect.width / 2) + 'px';
+    el.style.top = (rect.top + rect.height * 0.1) + 'px';
+
+    getFloatingTextLayer().appendChild(el);
+
+    setTimeout(() => { el.remove(); }, 800);
 }
 function createBattleCheckpoint() {
     const safeClone = (obj) => JSON.parse(JSON.stringify(obj, (key, value) => {
@@ -10663,8 +10689,11 @@ function playAnim(elementId, animClass) {
     const target = shouldAnimateGroup ? el.parentElement : (isEnemyUnit ? el : (img || el));
 
     // 기존 애니메이션 클래스가 있다면 제거 (연속 재생을 위해)
+    // [FIX] 'anim-popup'(등장 애니메이션)도 함께 제거한다.
+    // 적 등장 시 붙은 anim-popup이 남아있으면, CSS 정의 순서상 .anim-popup이
+    // .anim-hit보다 뒤에 있어 피격 애니메이션을 덮어써 '등장 팝업'이 재생되어 보인다.
     const animTargets = new Set([el, img, target].filter(Boolean));
-    animTargets.forEach(node => node.classList.remove('anim-atk-p', 'anim-atk-e', 'anim-hit', 'anim-bounce'));
+    animTargets.forEach(node => node.classList.remove('anim-atk-p', 'anim-atk-e', 'anim-hit', 'anim-bounce', 'anim-popup'));
 
     // 강제 리플로우 (브라우저가 변경사항을 즉시 인식하게 함)
     void target.offsetWidth;
