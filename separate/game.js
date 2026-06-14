@@ -10020,18 +10020,38 @@ function updateUI() {
                 const old = pWrapper.querySelector('.status-overhead');
                 if (old) old.remove();
 
-                if (entries.length > 0) {
-                    const badges = entries.map(([k, v]) => `<div class="status-badge">${k} ${v}</div>`).join("");
+                // [FIX] 속성(공격/방어) 아이콘도 머리 위 오버헤드에 표시한다.
+                // (예전엔 pHud(머리 아래)에 추가되어 HUD가 커지면서 캐릭터가 밀려 올라갔음)
+                const pAtkAttrs = getAttackAttrs(player) || [];
+                const pDefAttrs = getDefenseAttrs(player) || [];
+                const pAtkIcons = pAtkAttrs.map(attr => {
+                    const t = getUIText("battleAttr.attackTitle").replace("[ATTR]", attr);
+                    return `<div class="player-attr-icon" title="${t}">${ATTR_ICONS[attr] || attr}</div>`;
+                }).join("");
+                const pDefIcons = pDefAttrs.map(attr => {
+                    const t = getUIText("battleAttr.defenseTitle").replace("[ATTR]", attr);
+                    return `<div class="player-attr-icon" style="border-color:#3498db;" title="${t}">${ATTR_ICONS[attr] || attr}</div>`;
+                }).join("");
+                let attrRow = "";
+                if (pAtkIcons || pDefIcons) {
+                    attrRow = `<div class="overhead-attr-row">`
+                        + (pAtkIcons ? `<span class="overhead-attr-label" style="color:#f1c40f;">⚔️</span>${pAtkIcons}` : "")
+                        + (pDefIcons ? `<span class="overhead-attr-label" style="color:#3498db;">🛡️</span>${pDefIcons}` : "")
+                        + `</div>`;
+                }
+
+                const badges = entries.map(([k, v]) => `<div class="status-badge">${k} ${v}</div>`).join("");
+                if (badges || attrRow) {
                     const overhead = document.createElement('div');
                     overhead.className = 'status-overhead';
-                    overhead.innerHTML = badges;
+                    overhead.innerHTML = `${badges}${attrRow}`;
                     // 이미지가 컨테이너로 이동되어 있을 수 있으므로 부모 기준으로 삽입
                     const img = document.getElementById('dungeon-player');
                     if (img && img.parentNode) img.parentNode.insertBefore(overhead, img);
                     else pWrapper.prepend(overhead);
                 }
             }
-            // pHud에서는 제거됨
+            // 속성 아이콘은 위 오버헤드(머리 위)로 이동됨 — pHud(머리 아래)에는 추가하지 않는다.
 
         } else {
             // 탐사 모드일 때는 이름만 깔끔하게
@@ -10173,27 +10193,7 @@ function updateUI() {
                 assistantHud.innerHTML = '';
             }
         }
-        // 내 현재 속성 아이콘들 표시 (공격/방어 분리)
-        const atkAttrs = getAttackAttrs(player) || [];
-        const defAttrs = getDefenseAttrs(player) || [];
-
-        const atkIconsHtml = atkAttrs.map(attr => {
-            const title = getUIText("battleAttr.attackTitle").replace("[ATTR]", attr);
-            return `<div class="player-attr-icon" title="${title}">${ATTR_ICONS[attr] || attr}</div>`;
-        }).join("");
-        const defIconsHtml = defAttrs.map(attr => {
-            const title = getUIText("battleAttr.defenseTitle").replace("[ATTR]", attr);
-            return `<div class="player-attr-icon" style="border-color:#3498db;" title="${title}">${ATTR_ICONS[attr] || attr}</div>`;
-        }).join("");
-
-        if (atkIconsHtml || defIconsHtml) {
-            pHud.innerHTML += `
-            <div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:4px; align-items:center;">
-                ${atkIconsHtml ? `<span style="font-size:0.75em; color:#f1c40f; margin-right:4px;">⚔️</span>${atkIconsHtml}` : ""}
-                ${defIconsHtml ? `<span style="font-size:0.75em; color:#3498db; margin-left:8px; margin-right:4px;">🛡️</span>${defIconsHtml}` : ""}
-            </div>
-        `;
-        }
+        // (속성 아이콘은 위쪽 status-overhead(머리 위)에서 함께 그린다 — pHud에는 넣지 않음)
     }
     /* [game.js] updateUI 함수 내 적 렌더링 부분 수정 */
 

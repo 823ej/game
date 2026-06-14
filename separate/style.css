@@ -4883,6 +4883,29 @@ font-weight: bold;
         transform: translateY(-50%);
     }
 
+    /* [NEW] 머리 위 오버헤드 안의 속성(공격/방어) 아이콘 행 */
+    .overhead-attr-row {
+        flex-basis: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+    }
+
+    .overhead-attr-label {
+        font-size: 0.7em;
+        line-height: 1;
+    }
+
+    .status-overhead .player-attr-icon {
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        font-size: 12px;
+        margin-left: 2px;
+    }
+
 
 
 
