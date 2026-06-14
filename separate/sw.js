@@ -1,15 +1,15 @@
 // Simple passthrough service worker for PWA installability.
 // Bump the cache version whenever static assets (HUD/UI, styles, scripts) change.
-const CACHE_NAME = 'midnight-shell-v4.57';
+const CACHE_NAME = 'midnight-shell-v4.58';
 const SHELL_FILES = [
   './',
   './index.html',
-  './style.css?v=19',
-  './game.js?v=19',
-  './data.js?v=19',
-  './dungeon.js?v=19',
-  './story.js?v=19',
-  './manifest.webmanifest?v=19'
+  './style.css?v=20',
+  './game.js?v=20',
+  './data.js?v=20',
+  './dungeon.js?v=20',
+  './story.js?v=20',
+  './manifest.webmanifest?v=20'
 ];
 
 self.addEventListener('install', event => {

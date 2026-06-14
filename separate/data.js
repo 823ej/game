@@ -1494,7 +1494,7 @@ const CITY_AREA_DATA = {
                 tags: ["교육", "연구"],
                 icon: "🏫",
                 objects: [
-                    { id: "academy_entry", name: "아카데미 내부", icon: "🚪", action: "enter_city_area", areaId: "st_jude_academy_interior", spotId: "academy_courtyard", pos: { x: 55, y: 60 } }
+                    { id: "academy_entry", name: "아카데미 내부", icon: "🚪", action: "enter_city_area", areaId: "st_jude_academy_interior", pos: { x: 55, y: 60 } }
                 ]
             },
             {
