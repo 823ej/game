@@ -1039,6 +1039,10 @@ function performCityAction(obj, areaId, spotId) {
         if (typeof openCaseFiles === 'function') openCaseFiles();
         return;
     }
+    if (action === 'open_job_board') {
+        if (typeof openJobBoard === 'function') openJobBoard(obj.boardId);
+        return;
+    }
     if (action === 'open_black_market') {
         if (typeof renderShopScreen === 'function') renderShopScreen("shop_black_market");
         return;
@@ -1260,9 +1264,13 @@ function applyDialogueEffects(effects) {
     });
 }
 
-function handleDialogueAction(action) {
+function handleDialogueAction(action, payload) {
     if (action === 'open_casefiles' && typeof openCaseFiles === 'function') {
         renderHecateOfferPanel();
+        return;
+    }
+    if (action === 'open_job_board' && typeof openJobBoard === 'function') {
+        openJobBoard(payload && payload.boardId ? payload.boardId : 'detective_office');
         return;
     }
     if (action === 'close') {
@@ -2818,8 +2826,13 @@ function getTimeLabel() {
 
 function advanceTimeSlot(reason) {
     ensureTimeState();
+    const prevDay = game.day;
     game.timeIndex = (game.timeIndex + 1) % TIME_SLOTS.length;
     if (game.timeIndex === 0) game.day += 1;
+    // 날짜가 바뀌면 본거지 게시판 의뢰를 갱신
+    if (game.day !== prevDay && typeof refreshCaseBoards === 'function') {
+        refreshCaseBoards(false);
+    }
     updateUI();
     autoSave();
 }
@@ -3649,6 +3662,9 @@ function loadGame() {
         if (game.activeScenarioId === undefined) game.activeScenarioId = null;
         enemies = loadedData.enemies || [];
 
+        // [NEW] 저장된 생성 의뢰를 SCENARIOS에 재주입 (cleared 반영보다 먼저)
+        if (typeof rehydrateGeneratedCases === 'function') rehydrateGeneratedCases();
+
         if (loadedData.clearedScenarios) {
             loadedData.clearedScenarios.forEach(id => {
                 if (SCENARIOS[id]) SCENARIOS[id].cleared = true;
@@ -4288,6 +4304,7 @@ function renderHub() {
         layer.innerHTML = "";
         const actions = [
             { name: getUIText("hub.actionCaseName"), desc: getUIText("hub.actionCaseDesc"), pos: { x: 20, y: 30 }, func: () => openCaseFiles() },
+            { name: getUIText("hub.actionBoardName"), desc: getUIText("hub.actionBoardDesc"), pos: { x: 44, y: 40 }, func: () => openJobBoard('detective_office') },
             { name: getUIText("hub.actionCityName"), desc: getUIText("hub.actionCityDesc"), pos: { x: 58, y: 24 }, func: () => renderCityMap() },
             { name: getUIText("hub.actionCoffeeName"), desc: getUIText("hub.actionCoffeeDesc"), pos: { x: 28, y: 58 }, func: () => hubRest() },
             { name: getUIText("hub.actionShopName"), desc: getUIText("hub.actionShopDesc"), pos: { x: 70, y: 42 }, func: () => renderShopScreen('shop_internet') },
@@ -5312,6 +5329,178 @@ function applySocialImpact(target, val) {
 }
 
 /* [NEW] 사건 파일 열기 (시나리오 선택) */
+/* ============================================================
+   [의뢰 게시판 / 자동 생성 의뢰] 런타임 로직
+   - 생성 의뢰는 런타임에 SCENARIOS에 주입되고(기존 코드 그대로 동작),
+     game.generatedCases에 보관되어 세이브에 자동 저장된다.
+   ============================================================ */
+function ensureCaseGenState() {
+    if (!game.generatedCases || typeof game.generatedCases !== 'object') game.generatedCases = {};
+    if (!game.boardOffers || typeof game.boardOffers !== 'object') game.boardOffers = {};
+    if (!Number.isInteger(game.caseGenSeq)) game.caseGenSeq = 0;
+}
+
+function cgPick(arr) { return (Array.isArray(arr) && arr.length) ? arr[Math.floor(Math.random() * arr.length)] : null; }
+function cgRand(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+function cgClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function cgShuffleN(arr, n) {
+    const a = [...(arr || [])];
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a.slice(0, n);
+}
+
+// 생성 의뢰를 SCENARIOS에 주입(런타임) + game.generatedCases에 보관(저장 대상)
+function registerGeneratedCase(id, caseObj) {
+    ensureCaseGenState();
+    game.generatedCases[id] = caseObj;
+    if (typeof SCENARIOS !== 'undefined') SCENARIOS[id] = caseObj;
+}
+
+// 세이브 로드 후, 보관된 생성 의뢰를 다시 SCENARIOS에 주입
+function rehydrateGeneratedCases() {
+    if (!game.generatedCases || typeof SCENARIOS === 'undefined') return;
+    for (const id in game.generatedCases) {
+        SCENARIOS[id] = game.generatedCases[id];
+    }
+}
+
+function generateCase(boardId) {
+    if (typeof CASE_BOARDS === 'undefined' || typeof CASE_ARCHETYPES === 'undefined') return null;
+    const board = CASE_BOARDS[boardId];
+    if (!board) return null;
+    const archetypes = CASE_ARCHETYPES[board.boardClass] || [];
+    if (archetypes.length === 0) return null;
+    ensureCaseGenState();
+    ensureTimeState();
+
+    const arc = cgPick(archetypes);
+    const lvl = Math.max(1, game.level || 1);
+    const who = arc.who ? cgPick(arc.who) : "";
+    // [WHO] 치환 + 뒤따르는 조사 이중표기(이(가)/을(를)…)를 받침에 맞게 정리
+    const josaMap = { "이(가)": "이가", "을(를)": "을를", "은(는)": "은는", "과(와)": "과와", "와(과)": "과와" };
+    const rep = (s) => {
+        let out = String(s || "");
+        out = out.replace(/\[WHO\](이\(가\)|을\(를\)|은\(는\)|과\(와\)|와\(과\))/g,
+            (m, j) => who + ((typeof pickJosa === 'function' && who) ? pickJosa(who, josaMap[j]) : j));
+        return out.replace(/\[WHO\]/g, who);
+    };
+    const title = rep(cgPick(arc.titles));
+    const desc = rep(cgPick(arc.descs));
+
+    const roomCount = cgClamp(8 + Math.floor(lvl * 0.8) + cgRand(0, 2), 8, 18);
+    const reward = {
+        gold: 250 + lvl * 120 + cgRand(0, 150),
+        xp: 50 + lvl * 25,
+        itemRank: cgClamp(1 + Math.floor((lvl - 1) / 4), 1, 3)
+    };
+
+    const id = `gen_${board.boardClass}_${++game.caseGenSeq}`;
+    const caseObj = {
+        title,
+        desc,
+        locations: arc.locs ? cgShuffleN(arc.locs, Math.min(3, arc.locs.length)) : ["미상의 장소"],
+        events: arc.eventMix || [{ type: "battle", chance: 0.4 }, { type: "text", chance: 0.3 }, { type: "nothing", chance: 0.3 }],
+        boss: (arc.bossPool ? cgPick(arc.bossPool) : "boss_gang_leader"),
+        enemyPool: arc.enemyPool || null,
+        dungeon: {
+            width: 5,
+            height: 5,
+            roomCount,
+            data: {
+                battle: Math.max(3, Math.round(roomCount * 0.4)),
+                investigate: Math.max(2, Math.round(roomCount * 0.25)),
+                event: 2,
+                treasure: 1,
+                heal: 1
+            }
+        },
+        clueEvents: arc.clueEvents || [{ text: "단서를 발견했다.", gain: 15 }, { text: "중요한 흔적을 찾았다.", gain: 20 }],
+        reward,
+        canRetreat: true,
+        // 메타데이터
+        caseClass: board.boardClass,
+        source: boardId,
+        generated: true,
+        generatedDay: game.day || 1,
+        archetypeKey: arc.key
+    };
+    return { id, caseObj };
+}
+
+// 게시판 갱신: 미수락·미클리어 신규 의뢰를 폐기하고 새로 채운다(하루 1회).
+function refreshCaseBoards(force) {
+    if (typeof CASE_BOARDS === 'undefined') return;
+    ensureCaseGenState();
+    ensureTimeState();
+    if (!force && game.boardRefreshDay === game.day) return;
+    game.boardRefreshDay = game.day;
+
+    for (const boardId in CASE_BOARDS) {
+        // 기존 오퍼 중 진행 중(active)·클리어된 것은 보존, 나머지는 폐기
+        (game.boardOffers[boardId] || []).forEach(cid => {
+            const sc = game.generatedCases[cid];
+            if (!sc) return;
+            const isActive = (game.activeScenarioId === cid);
+            if (isActive || sc.cleared) return; // 보존
+            delete game.generatedCases[cid];
+            if (typeof SCENARIOS !== 'undefined') delete SCENARIOS[cid];
+        });
+        // 새 의뢰 생성
+        const count = CASE_BOARDS[boardId].count || 3;
+        const fresh = [];
+        for (let i = 0; i < count; i++) {
+            const g = generateCase(boardId);
+            if (g) { registerGeneratedCase(g.id, g.caseObj); fresh.push(g.id); }
+        }
+        game.boardOffers[boardId] = fresh;
+    }
+    if (typeof autoSave === 'function') autoSave();
+}
+
+// 본거지 게시판 열기. 플레이어 직업과 다른 성격의 사건은 '하청'으로 표시.
+function openJobBoard(boardId) {
+    if (typeof CASE_BOARDS === 'undefined' || !CASE_BOARDS[boardId]) return;
+    ensureCaseGenState();
+    if (!Array.isArray(game.boardOffers[boardId]) || game.boardOffers[boardId].length === 0) {
+        refreshCaseBoards(true);
+    } else {
+        refreshCaseBoards(false);
+    }
+    const board = CASE_BOARDS[boardId];
+    const offers = (game.boardOffers[boardId] || []).filter(cid =>
+        game.generatedCases[cid] && !game.generatedCases[cid].cleared && cid !== game.activeScenarioId);
+
+    let content = `<div style="display:flex; flex-direction:column; gap:10px;">`;
+
+    // 진행 중인 의뢰가 이 게시판 소속이면 상단에 안내
+    const activeId = game.activeScenarioId;
+    if (activeId && game.generatedCases[activeId] && game.generatedCases[activeId].source === boardId) {
+        const sc = game.generatedCases[activeId];
+        content += `<button class="action-btn" onclick="openActiveMissions()"><b>${sc.title}</b> <span style="font-size:0.7em; color:#f1c40f;">진행 중</span><br><span style="font-size:0.7em;">${sc.desc}</span></button>`;
+    }
+
+    if (offers.length === 0) {
+        content += `<div style="color:#777; text-align:center; padding:10px 0;">지금은 들어온 의뢰가 없습니다.</div>`;
+    } else {
+        offers.forEach(cid => {
+            const sc = game.generatedCases[cid];
+            if (!sc) return;
+            const subcontract = (sc.caseClass !== player.job);
+            const tag = subcontract ? `<span style="font-size:0.7em; color:#9b59b6;">하청</span>` : "";
+            const r = sc.reward || {};
+            content += `
+                <button class="action-btn" onclick="startScenario('${cid}')">
+                    <b>${sc.title}</b> ${tag}<br>
+                    <span style="font-size:0.7em;">${sc.desc}</span><br>
+                    <span style="font-size:0.7em; color:#f1c40f;">보상: ${r.gold || 0}G · ${r.xp || 0}XP</span>
+                </button>`;
+        });
+    }
+    content += `</div>`;
+
+    showPopup(board.name, board.desc, [{ txt: getUIText("scenario.caseListClose"), func: closePopup }], content, { forcePopup: true });
+}
+
 function openCaseFiles() {
     if (handleExpiredScenarios()) return;
     if (game._caseFilesOpening) return;
@@ -5340,6 +5529,7 @@ function openCaseFiles() {
 
     // SCENARIOS 데이터를 순회하며 버튼 생성
     for (let id in SCENARIOS) {
+        if (SCENARIOS[id] && SCENARIOS[id].generated) continue; // 생성 의뢰는 본거지 게시판에서만 노출
         if (!isScenarioAvailable(id)) continue;
         const sc = SCENARIOS[id];
         const isActive = (game.activeScenarioId === id);

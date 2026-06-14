@@ -14,6 +14,8 @@ const UI_TEXT = {
         coffeeSkip: "커피를 마시지 않기로 했습니다.",
         actionCaseName: "📁 사건 파일",
         actionCaseDesc: "의뢰를 선택하고 현장으로 나갑니다.",
+        actionBoardName: "📋 의뢰 게시판",
+        actionBoardDesc: "사무소로 들어온 의뢰를 확인하고 접수합니다.",
         actionCityName: "🗺️ 도시로 외출",
         actionCityDesc: "사건 현장이나 상점으로 이동합니다.",
         actionCoffeeName: "☕ 커피 한 잔",
@@ -2091,7 +2093,9 @@ const CITY_AREA_DATA = {
                 npcSlot: true,
                 keepBaseName: true,
                 fixedNpcKeys: ["레이디 헤카테"],
-                objects: []
+                objects: [
+                    { id: "hecate_job_board", name: "의뢰 게시판", icon: "📋", action: "open_job_board", boardId: "hecate_cafe", pos: { x: 30, y: 55 } }
+                ]
             }
         ]
     },
@@ -2721,6 +2725,123 @@ const SCENARIO_RULES = {
     cursed_antique: {
         requiredScenariosCleared: ["cult_investigation"]
     }
+};
+
+/* ============================================================
+   [의뢰 게시판 / 자동 생성 의뢰]
+   - 수기 사건(SCENARIOS)과 별개로, 각 직업 본거지의 '게시판'에서
+     아키타입+풀 조합으로 사건을 자동 생성한다.
+   - 게시판의 class가 곧 그 사건의 성격. 플레이어 직업과 다르면 '하청'.
+   ============================================================ */
+
+// 본거지 게시판 정의 (class: detective | fixer | wizard)
+const CASE_BOARDS = {
+    detective_office: {
+        name: "탐정 사무소 의뢰",
+        boardClass: "detective",
+        desc: "사무소로 들어온 사건 의뢰들. 추리와 조사가 필요한 일.",
+        count: 3
+    },
+    hecate_cafe: {
+        name: "카페 헤카테 게시판",
+        boardClass: "fixer",
+        desc: "해결사들에게 들어오는 거칠고 험한 일거리.",
+        count: 3
+    },
+    mage_circle: {
+        name: "마법사 회합 의뢰",
+        boardClass: "wizard",
+        desc: "괴이와 저주, 봉인에 관한 은밀한 의뢰.",
+        count: 3
+    }
+};
+
+// 직업별 사건 아키타입. [WHO] 토큰은 who 풀에서 치환된다.
+const CASE_ARCHETYPES = {
+    detective: [
+        {
+            key: "missing_person",
+            titles: ["사라진 [WHO]", "[WHO]의 실종", "돌아오지 않는 [WHO]"],
+            who: ["배달부", "여학생", "회사원", "노점상", "무명 가수", "사립학교 교사"],
+            descs: [
+                "[WHO]이(가) 흔적도 없이 사라졌다. 마지막 행적을 쫓아라.",
+                "며칠째 [WHO]의 연락이 끊겼다. 가족이 행방을 의뢰했다."
+            ],
+            locs: ["뒷골목", "지하철 승강장", "낡은 여관", "폐상가", "강변 산책로"],
+            bossPool: ["boss_gang_leader"],
+            enemyPool: ["불량배", "괴물 쥐"],
+            clueEvents: [{ text: "버려진 소지품을 발견했다.", gain: 15 }, { text: "목격자의 증언을 확보했다.", gain: 20 }]
+        },
+        {
+            key: "theft_track",
+            titles: ["도난당한 [WHO]", "[WHO] 회수 의뢰", "사라진 [WHO]의 행방"],
+            who: ["가보", "장부", "시제품", "유품", "금고 열쇠"],
+            descs: [
+                "[WHO]을(를) 훔쳐간 자를 쫓아 회수해 달라는 의뢰.",
+                "[WHO]이(가) 감쪽같이 사라졌다. 범인의 동선을 추적하라."
+            ],
+            locs: ["전당포 뒷방", "화물 집하장", "구시가지 시장", "고가도로 아래"],
+            bossPool: ["boss_gang_leader"],
+            enemyPool: ["불량배", "폭주족"],
+            clueEvents: [{ text: "장물의 흔적을 찾았다.", gain: 15 }, { text: "거래 정황을 포착했다.", gain: 25 }]
+        }
+    ],
+    fixer: [
+        {
+            key: "guard_job",
+            titles: ["[WHO] 경비", "[WHO]을(를) 지켜라", "[WHO] 호위"],
+            who: ["밀수 거래", "야간 창고", "도박장", "비밀 경매", "거물의 행차"],
+            descs: [
+                "[WHO]에 끼어들 불청객들을 힘으로 막아달라는 일.",
+                "[WHO] 자리에서 소란을 일으킬 패거리를 정리하라."
+            ],
+            locs: ["폐공장 단지", "암시장", "클럽 뒷문", "부두 창고"],
+            bossPool: ["boss_gang_leader"],
+            enemyPool: ["불량배", "폭주족", "좀비"],
+            clueEvents: [{ text: "적의 위치를 파악했다.", gain: 15 }, { text: "퇴로를 차단했다.", gain: 20 }]
+        },
+        {
+            key: "collect_debt",
+            titles: ["[WHO] 받아내기", "[WHO] 정리", "[WHO] 처리"],
+            who: ["밀린 빚", "묵은 원한", "약속 위반", "구역 다툼"],
+            descs: [
+                "말로는 안 되는 [WHO]을(를) 해결사 방식으로 처리하는 일.",
+                "[WHO] 때문에 골치인 의뢰인이 험한 손을 빌렸다."
+            ],
+            locs: ["뒷골목", "공업지대 국도", "철거 예정 건물", "지하 주차장"],
+            bossPool: ["boss_gang_leader"],
+            enemyPool: ["불량배", "폭주족"],
+            clueEvents: [{ text: "상대의 약점을 잡았다.", gain: 20 }, { text: "기선을 제압했다.", gain: 20 }]
+        }
+    ],
+    wizard: [
+        {
+            key: "haunting",
+            titles: ["[WHO]의 괴이", "[WHO]에 깃든 것", "[WHO] 정화"],
+            who: ["폐가", "낡은 인형", "버려진 병원", "오래된 우물", "골동품점"],
+            descs: [
+                "[WHO]에서 비롯된 괴이가 사람들을 위협한다. 근원을 봉인하라.",
+                "[WHO] 주변에서 이상한 일이 끊이지 않는다. 원인을 캐라."
+            ],
+            locs: ["먼지 쌓인 응접실", "어두운 복도", "지하 제단", "버려진 병동"],
+            bossPool: ["boss_cursed_doll", "boss_cult_leader"],
+            enemyPool: ["사교도", "허수아비", "좀비"],
+            clueEvents: [{ text: "기이한 부적을 발견했다.", gain: 15 }, { text: "의식의 흔적을 읽어냈다.", gain: 25 }]
+        },
+        {
+            key: "curse_break",
+            titles: ["[WHO]의 저주", "[WHO] 해주", "[WHO]을(를) 끊어라"],
+            who: ["가문", "계약", "유물", "이름"],
+            descs: [
+                "[WHO]에 걸린 저주가 사람을 갉아먹는다. 고리를 끊어라.",
+                "[WHO]을(를) 둘러싼 저주의 근원을 찾아 해주하라."
+            ],
+            locs: ["봉인된 서고", "제물 보관소", "환기구 통로", "오랜 사당"],
+            bossPool: ["boss_cult_leader", "boss_cursed_doll"],
+            enemyPool: ["사교도", "허수아비"],
+            clueEvents: [{ text: "저주의 매개를 찾았다.", gain: 20 }, { text: "봉인의 단서를 모았다.", gain: 25 }]
+        }
+    ]
 };
 
 // [DISPLAY_TEXT] 표시명 분리용 (로컬라이징 대비)
