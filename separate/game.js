@@ -301,6 +301,7 @@ function renderCityMap() {
     setCityPanelVisible('map', false);
     hideCityObjectTooltip();
     resetCityZoom('map');
+    clearPendingNarrationChoices();
     clearCityLogSticky("city_area_desc");
 
     mapEl.innerHTML = `
@@ -519,6 +520,7 @@ function enterCityAreaMode(areaId, targetSpotId) {
     closePopup();
     game.cityDialogue = null;
     hideCityObjectTooltip();
+    clearPendingNarrationChoices();
     clearCityLogSticky("city_map_desc");
     if (!game.cityArea) game.cityArea = {};
     if (game.cityArea.areaId && game.cityArea.areaId !== areaId) {
@@ -526,7 +528,11 @@ function enterCityAreaMode(areaId, targetSpotId) {
         game.cityArea.lastZoom = null;
     }
     game.cityArea.explicitSelection = !!targetSpotId;
-    if (!targetSpotId) game.cityArea.selectedSpot = null;
+    if (!targetSpotId) {
+        // 구역 지도(노드 뷰)로 진입: 스팟 내부 상태 초기화
+        game.cityArea.selectedSpot = null;
+        game.cityArea.enteredSpot = null;
+    }
     game.cityArea.selectedObjectId = null;
     renderCityArea(areaId, targetSpotId);
     const area = getCityArea(areaId);
@@ -548,6 +554,7 @@ function exitCityAreaMode() {
     game.cityDialogue = null;
     resetCityZoom('area');
     hideCityObjectTooltip();
+    clearPendingNarrationChoices();
     clearCityLogSticky("city_area_desc");
     game.cityMapNarrated = false;
 }
@@ -733,10 +740,16 @@ function renderCityArea(areaId, targetSpotId) {
     if (!validIds.includes(game.cityArea.currentSpot)) {
         game.cityArea.currentSpot = area.start || validIds[0];
     }
+    // [NEW] targetSpotId가 주어지면 해당 스팟 '내부'로 바로 진입한다.
     if (targetSpotId && validIds.includes(targetSpotId)) {
         game.cityArea.selectedSpot = targetSpotId;
+        if (!area.hideNodes) game.cityArea.enteredSpot = targetSpotId;
     } else if (!validIds.includes(game.cityArea.selectedSpot)) {
         game.cityArea.selectedSpot = null;
+    }
+    // 진입 스팟이 이 구역에 없으면(다른 구역 잔재) 초기화
+    if (game.cityArea.enteredSpot && !validIds.includes(game.cityArea.enteredSpot)) {
+        game.cityArea.enteredSpot = null;
     }
 
     if (area.hideNodes) {
@@ -746,6 +759,18 @@ function renderCityArea(areaId, targetSpotId) {
         if (!targetSpotId && !game.cityArea.explicitSelection) {
             game.cityArea.explicitSelection = false;
         }
+    }
+
+    // [NEW] 인테리어(스팟 내부) 모드 판정
+    // - hideNodes 구역은 항상 내부 뷰(단일 스팟)
+    // - 일반 구역은 노드를 눌러 진입(enteredSpot)했을 때만 내부 뷰
+    const inInterior = !!area.hideNodes || !!game.cityArea.enteredSpot;
+    const interiorSpotId = area.hideNodes
+        ? game.cityArea.selectedSpot
+        : game.cityArea.enteredSpot;
+    if (inInterior && interiorSpotId) {
+        // 내부 뷰에서는 진입한 스팟의 오브젝트만 표시
+        game.cityArea.selectedSpot = interiorSpotId;
     }
 
     const mapEl = document.getElementById('city-area-map');
@@ -758,7 +783,8 @@ function renderCityArea(areaId, targetSpotId) {
         </div>
     `;
     const zoomLayer = mapEl.querySelector('.city-area-zoom');
-    if (zoomLayer && game.cityArea?.lastZoom) {
+    // 내부 뷰에서는 줌을 쓰지 않는다(스팟 배경이 화면을 가득 채움).
+    if (!inInterior && zoomLayer && game.cityArea?.lastZoom) {
         zoomLayer.style.setProperty('--city-map-origin-x', game.cityArea.lastZoom.originX);
         zoomLayer.style.setProperty('--city-map-origin-y', game.cityArea.lastZoom.originY);
         zoomLayer.style.setProperty('--city-map-zoom', String(game.cityArea.lastZoom.scale || 1));
@@ -767,7 +793,8 @@ function renderCityArea(areaId, targetSpotId) {
     const nodeLayer = zoomLayer ? zoomLayer.querySelector('.city-area-node-layer') : null;
     const objectLayer = zoomLayer ? zoomLayer.querySelector('.city-area-object-layer') : null;
 
-    if (!area.hideNodes) {
+    if (!inInterior) {
+        // 구역 지도: 스팟 노드들을 표시. 노드를 누르면 그 스팟 내부로 진입.
         (area.spots || []).forEach(spot => {
             const el = document.createElement('button');
             el.className = 'city-area-node';
@@ -781,20 +808,24 @@ function renderCityArea(areaId, targetSpotId) {
             el.innerHTML = `
                 <span class="city-node-name">${spot.name}</span>
             `;
-            el.onclick = () => selectCityAreaSpot(spot.id, el);
+            el.onclick = () => enterCityAreaSpot(spot.id);
             nodeLayer.appendChild(el);
         });
     }
 
-    if (game.cityArea.selectedSpot) {
-        renderCitySpotBackground(area, game.cityArea.selectedSpot);
-        renderCitySpotObjects(area, game.cityArea.selectedSpot, objectLayer);
+    if (inInterior && interiorSpotId) {
+        renderCitySpotBackground(area, interiorSpotId);
+        renderCitySpotObjects(area, interiorSpotId, objectLayer);
     } else {
         renderCitySpotBackground(area, null);
         if (objectLayer) objectLayer.innerHTML = "";
     }
+
+    // [NEW] 항상 보이는 뒤로가기 버튼 (내부→구역지도, 구역지도→전역지도/상위구역)
+    renderCityAreaBackButton(mapEl, area, inInterior);
+
     updateCityAreaDetail();
-    if (game.cityArea?.pendingSpotTooltip) {
+    if (!inInterior && game.cityArea?.pendingSpotTooltip) {
         const pending = game.cityArea.pendingSpotTooltip;
         if (pending.spotId === game.cityArea.selectedSpot) {
             const anchor = document.querySelector(`.city-area-node[data-id="${pending.spotId}"]`);
@@ -808,7 +839,7 @@ function renderCityArea(areaId, targetSpotId) {
 
     if (mapEl) {
         mapEl.onclick = (e) => {
-            if (e.target && e.target.closest('.city-area-node, .city-area-object')) return;
+            if (e.target && e.target.closest('.city-area-node, .city-area-object, .city-area-back-fab')) return;
             resetCityZoom('area');
             hideCityObjectTooltip();
             if (game.cityAutoPanelEnabled) {
@@ -819,26 +850,73 @@ function renderCityArea(areaId, targetSpotId) {
     }
 }
 
-function selectCityAreaSpot(spotId, anchorEl) {
-    if (!game.cityArea) game.cityArea = {};
-    game.cityArea.selectedSpot = spotId;
-    game.cityArea.explicitSelection = true;
-    game.cityArea.selectedObjectId = null;
-    if (anchorEl) {
-        game.cityAutoPanelEnabled = true;
-        game.cityLastAnchor = anchorEl;
-        game.cityLastMode = 'area';
+// [NEW] 구역 지도 위 항상 보이는 뒤로가기 버튼
+function renderCityAreaBackButton(mapEl, area, inInterior) {
+    if (!mapEl) return;
+    const old = mapEl.querySelector('.city-area-back-fab');
+    if (old) old.remove();
+    const btn = document.createElement('button');
+    btn.className = 'city-area-back-fab';
+
+    // 스팟이 2개 이상일 때만 '구역 노드 지도'로 돌아갈 가치가 있다.
+    // (지하철 플랫폼처럼 스팟이 1개뿐인 구역은 노드 지도를 건너뛰고 바로 상위/전역으로)
+    const spotCount = (area.spots || []).length;
+    const interiorBack = inInterior && !area.hideNodes && game.cityArea?.enteredSpot && spotCount > 1;
+    if (interiorBack) {
+        // 스팟 내부 → 구역 지도(노드)로
+        btn.textContent = `◀ ${area.name || getUIText("city.backAreaFallback")}`;
+        btn.onclick = (e) => { e.stopPropagation(); exitCityAreaSpot(); };
+    } else if (area.parentAreaId) {
+        // 상위 구역이 있는 내부(예: 카페/성당 내부) → 상위 구역으로
+        btn.textContent = `◀ ${area.parentLabel || getUIText("city.backAreaFallback")}`;
+        btn.onclick = (e) => { e.stopPropagation(); enterCityAreaMode(area.parentAreaId, area.parentSpotId || null); };
+    } else {
+        // 구역 지도 → 전역(도시) 지도
+        btn.textContent = getUIText("cityUi.backMap");
+        btn.onclick = (e) => { e.stopPropagation(); exitCityAreaMode(); };
     }
+    mapEl.appendChild(btn);
+}
+
+// [NEW] 구역 지도에서 스팟 노드를 눌러 그 스팟 '내부'로 진입
+function enterCityAreaSpot(spotId, anchorEl) {
+    if (!game.cityArea) game.cityArea = {};
     const area = getVisibleCityArea(game.cityArea.areaId);
     const spot = area ? getAreaSpot(area, spotId) : null;
-    if (spot) {
-        updateCityLeftInfo('area', spot.name, spot.desc);
-        const text = `${spot.name} — ${spot.desc || ""}`.trim();
-        hideCityObjectTooltip();
-        game.cityArea.pendingSpotTooltip = { spotId, text };
-    }
-    updateCityAreaDetail();
+    if (!area || !spot) return;
+    game.cityArea.selectedSpot = spotId;
+    game.cityArea.enteredSpot = area.hideNodes ? null : spotId;
+    game.cityArea.explicitSelection = true;
+    game.cityArea.selectedObjectId = null;
+    game.cityAutoPanelEnabled = false;
+    clearPendingNarrationChoices();
+    updateCityLeftInfo('area', spot.name, spot.desc);
+    hideCityObjectTooltip();
+    setCityPanelVisible('area', false);
+    resetCityZoom('area');
     renderCityArea(game.cityArea.areaId);
+}
+
+// [NEW] 스팟 내부에서 구역 지도(노드)로 복귀
+function exitCityAreaSpot() {
+    if (!game.cityArea) return;
+    game.cityArea.enteredSpot = null;
+    game.cityArea.selectedSpot = null;
+    game.cityArea.selectedObjectId = null;
+    game.cityArea.explicitSelection = false;
+    game.cityAutoPanelEnabled = false;
+    clearPendingNarrationChoices();
+    setCityPanelVisible('area', false);
+    hideCityObjectTooltip();
+    resetCityZoom('area');
+    const area = getCityArea(game.cityArea.areaId);
+    if (area) updateCityLeftInfo('area', area.name, area.desc);
+    renderCityArea(game.cityArea.areaId);
+}
+
+// 호환용: 기존 selectCityAreaSpot 호출은 진입과 동일하게 동작
+function selectCityAreaSpot(spotId, anchorEl) {
+    enterCityAreaSpot(spotId, anchorEl);
 }
 
 function updateCityAreaDetail() {
@@ -881,13 +959,11 @@ function updateCityAreaDetail() {
                 enterBtn.onclick = () => {
                     const options = objects.map(obj => ({
                         txt: obj.name || getUIText("city.interactionFallback"),
-                        func: () => { closePopup(); performCityAction(obj, area.id, spot.id); }
+                        func: () => performCityAction(obj, area.id, spot.id)
                     }));
-                    if (typeof showChoice === 'function') {
-                        showChoice(spot.name || getUIText("city.selectSpotTitle"), getUIText("city.selectSpotDesc"), options);
-                    } else {
-                        showPopup(spot.name || getUIText("city.selectSpotTitle"), getUIText("city.selectSpotDesc"), options);
-                    }
+                    options.push({ txt: getUIText("popup.confirmCancel"), func: () => {} });
+                    // 오브젝트 선택은 '메뉴' → 모달 팝업
+                    presentChoice('system', spot.name || getUIText("city.selectSpotTitle"), getUIText("city.selectSpotDesc"), options);
                 };
                 }
             } else if (npcObjects.length > 0) {
@@ -900,13 +976,11 @@ function updateCityAreaDetail() {
                     }
                     const options = npcObjects.map(obj => ({
                         txt: obj.name || getUIText("city.talkFallback"),
-                        func: () => { closePopup(); performCityAction(obj, area.id, spot.id); }
+                        func: () => performCityAction(obj, area.id, spot.id)
                     }));
-                    if (typeof showChoice === 'function') {
-                        showChoice(spot.name || getUIText("cityArea.talkLabel"), getUIText("cityArea.talkPrompt"), options);
-                    } else {
-                        showPopup(spot.name || getUIText("cityArea.talkLabel"), getUIText("cityArea.talkPrompt"), options);
-                    }
+                    options.push({ txt: getUIText("popup.confirmCancel"), func: () => {} });
+                    // 대화 상대 선택은 '메뉴' → 모달 팝업
+                    presentChoice('system', spot.name || getUIText("cityArea.talkLabel"), getUIText("cityArea.talkPrompt"), options);
                 };
             } else if (primaryObj) {
                 enterBtn.textContent = getUIText("cityArea.enterLabel");
@@ -999,6 +1073,28 @@ function performCityAction(obj, areaId, spotId) {
     }
     if (action === 'return_hub') {
         if (typeof renderHub === 'function') renderHub();
+        return;
+    }
+    // [NEW] 지하철 스크린도어: 다른 역/환승 구역으로 이동 선택 (목적지 메뉴 → 팝업)
+    if (action === 'subway_transfer_select') {
+        const options = Array.isArray(obj.options) ? obj.options : [];
+        if (options.length === 0) return;
+        closeAllCityNarrationPanels();
+        hideCityObjectTooltip();
+        const buttons = options.map(opt => ({
+            txt: opt.label || getUIText("city.interactionFallback"),
+            func: () => {
+                game.cityAutoPanelEnabled = false;
+                enterCityAreaMode(opt.areaId, opt.spotId || null);
+            }
+        }));
+        buttons.push({ txt: getUIText("popup.confirmCancel"), func: () => {} });
+        presentChoice(
+            'system',
+            obj.name || getUIText("city.selectSpotTitle"),
+            getUIText("cityArea.transferPrompt"),
+            buttons
+        );
         return;
     }
 }
@@ -1425,7 +1521,8 @@ function renderCitySpotBackground(area, spotId) {
     if (!mapEl) return;
     const spot = getAreaSpot(area, spotId);
     const title = spot?.name || area?.name || "City";
-    const bg = area?.bg || spot?.bg || `https://placehold.co/1400x900/efefef/333?text=${encodeURIComponent(title)}`;
+    // 스팟에 진입한 상태면 그 스팟 고유 배경을 우선 사용(없으면 구역 배경)
+    const bg = (spot && spot.bg) || area?.bg || spot?.bg || `https://placehold.co/1400x900/efefef/333?text=${encodeURIComponent(title)}`;
     const zoomLayer = mapEl.querySelector('.city-area-zoom') || mapEl;
     zoomLayer.style.backgroundImage = `url('${bg}')`;
     zoomLayer.style.backgroundSize = 'cover';
@@ -1457,7 +1554,7 @@ function renderCitySpotObjects(area, spotId, layerEl) {
             game.cityAutoPanelEnabled = true;
             game.cityLastAnchor = el;
             game.cityLastMode = 'area';
-            if (area?.hideNodes && obj?.action === 'enter_city_area') {
+            if ((area?.hideNodes || game.cityArea?.enteredSpot) && obj?.action === 'enter_city_area') {
                 performCityAction(obj, area.id, spotId);
                 return;
             }
@@ -2959,6 +3056,50 @@ function resolveCityLogChoice(id, index) {
     syncCityLogPanels();
     const handler = handlers[index];
     if (typeof handler === "function") handler();
+}
+
+/* ============================================================
+   [선택지 표시 규칙] presentChoice — 선택지를 띄우는 단일 진입점
+   - kind: 'dialogue' → 오른쪽 내레이션 로그. 장면/대화의 '진행'에 해당하는
+     선택(이벤트 분기, 대화 응답, 전투/탐색 중 결정 등).
+   - kind: 'system'   → 모달 팝업. 목적지/대상/오브젝트를 고르는 '메뉴'나
+     거래·확인 등(지하철 환승, 다중 오브젝트 선택, 상점 등).
+   위치를 우연(forcePopup/contentHTML 유무)이 아니라 의도로 결정하기 위한 함수.
+   ============================================================ */
+function presentChoice(kind, title, desc, options, opts = {}) {
+    const list = Array.isArray(options) ? options : [];
+    if (kind === 'system') {
+        const buttons = list.map(o => {
+            const label = o.txt || o.label || getUIText("popup.choiceDefault");
+            const fn = (typeof o.func === 'function') ? o.func : () => {};
+            // 시스템 팝업은 선택 시 항상 팝업을 닫고 동작을 실행한다.
+            return { txt: label, func: () => { closePopup(); fn(); } };
+        });
+        showPopup(title || "", desc || "", buttons, opts.contentHTML || "", { forcePopup: true });
+    } else {
+        const choices = list.map(o => ({
+            txt: o.txt || o.label || getUIText("popup.choiceDefault"),
+            func: o.func
+        }));
+        showNarrationChoice(desc || title || "", choices);
+    }
+}
+
+/* [NEW] 아직 선택하지 않은 내레이션 선택지를 제거한다.
+   장소를 이동하면(스팟/구역 전환 등) 이전 장소에서 띄운 선택 버튼이
+   로그에 그대로 남던 문제를 막기 위해 이동 시점에 호출한다. */
+function clearPendingNarrationChoices() {
+    if (!Array.isArray(game.cityLog) || game.cityLog.length === 0) return;
+    let changed = false;
+    game.cityLog = game.cityLog.filter(e => {
+        if (e && e.type === 'choices' && !e.resolved) {
+            if (game.cityLogChoiceHandlers && e.id != null) delete game.cityLogChoiceHandlers[e.id];
+            changed = true;
+            return false;
+        }
+        return true;
+    });
+    if (changed) syncCityLogPanels();
 }
 
 // 클릭을 통과시키면서 툴팁 호버를 유지하기 위한 헬퍼

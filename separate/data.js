@@ -350,6 +350,7 @@ const UI_TEXT = {
         talkLabel: "대화",
         talkAction: "대화하기",
         talkPrompt: "누구와 대화할까?",
+        transferPrompt: "어느 역으로 이동할까요?",
         returnOffice: "사무소로 복귀",
         enterOffice: "탐정 사무소 내부"
     },

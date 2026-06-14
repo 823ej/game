@@ -4607,6 +4607,29 @@ font-weight: bold;
     overflow: hidden;
 }
 
+/* [NEW] 구역 지도 위 항상 보이는 뒤로가기 버튼 (줌 영향 안 받게 맵 직속 배치) */
+.city-area-back-fab {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 40;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #111;
+    border-radius: 0;
+    color: #111;
+    font-family: var(--font-main);
+    font-size: 0.85em;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    pointer-events: auto;
+}
+
+.city-area-back-fab:hover {
+    background: #f1c40f;
+}
+
 .city-area-zoom {
     position: absolute;
     inset: 0;

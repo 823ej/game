@@ -699,16 +699,16 @@ const DungeonSystem = {
                     const buttons = options.map(opt => ({
                         txt: opt.label,
                         func: () => {
-                            closePopup();
                             if (typeof startCityExploration === 'function') {
                                 startCityExploration(opt.areaId, opt.spotId);
                             }
                         }
                     }));
-                    if (typeof showChoice === 'function') {
-                        showChoice(getUIText("dungeon.subwayTitle"), getUIText("dungeon.subwayDesc"), buttons);
+                    buttons.push({ txt: getUIText("dungeon.cancel"), func: closePopup });
+                    if (typeof presentChoice === 'function') {
+                        presentChoice('system', getUIText("dungeon.subwayTitle"), getUIText("dungeon.subwayDesc"), buttons);
                     } else {
-                        showPopup(getUIText("dungeon.subwayTitle"), getUIText("dungeon.subwayDesc"), buttons);
+                        showPopup(getUIText("dungeon.subwayTitle"), getUIText("dungeon.subwayDesc"), buttons, "", { forcePopup: true });
                     }
                 } else if (action === 'open_casefiles') {
                     if (typeof closePopup === 'function') closePopup();
@@ -736,10 +736,10 @@ const DungeonSystem = {
                         },
                         { txt: getUIText("dungeon.dialogEnd"), func: closePopup }
                     ];
-                    if (typeof showChoice === 'function') {
-                        showChoice(getUIText("dungeon.hecateTitle"), getUIText("dungeon.hecateDesc"), options);
+                    if (typeof presentChoice === 'function') {
+                        presentChoice('system', getUIText("dungeon.hecateTitle"), getUIText("dungeon.hecateDesc"), options);
                     } else {
-                        showPopup(getUIText("dungeon.hecateTitle"), getUIText("dungeon.hecateDesc"), options);
+                        showPopup(getUIText("dungeon.hecateTitle"), getUIText("dungeon.hecateDesc"), options, "", { forcePopup: true });
                     }
                 } else if (action === 'npc_dialogue' && obj.npcKey) {
                     const npc = (typeof NPC_DATA !== 'undefined') ? NPC_DATA[obj.npcKey] : null;
@@ -754,10 +754,10 @@ const DungeonSystem = {
                             desc += `<br><br><span style='color:#c0392b;'>${getUIText("dungeon.npcNewClue")}</span>`;
                         }
                     }
-                    if (typeof showChoice === 'function') {
-                        showChoice(title, desc, [{ txt: getUIText("dungeon.dialogEnd"), func: closePopup }]);
+                    if (typeof presentChoice === 'function') {
+                        presentChoice('system', title, desc, [{ txt: getUIText("dungeon.dialogEnd"), func: closePopup }]);
                     } else {
-                        showPopup(title, desc, [{ txt: getUIText("dungeon.dialogEnd"), func: closePopup }]);
+                        showPopup(title, desc, [{ txt: getUIText("dungeon.dialogEnd"), func: closePopup }], "", { forcePopup: true });
                     }
                 } else {
                     log(getUIText("dungeon.logInspectObject").replace("[NAME]", name));
@@ -784,10 +784,10 @@ const DungeonSystem = {
                         };
                     });
                     buttons.push({ txt: getUIText("dungeon.cancel"), func: closePopup });
-                    if (typeof showChoice === 'function') {
-                        showChoice(title, desc, buttons);
+                    if (typeof presentChoice === 'function') {
+                        presentChoice('system', title, desc, buttons);
                     } else {
-                        showPopup(title, desc, buttons);
+                        showPopup(title, desc, buttons, "", { forcePopup: true });
                     }
                 }
             } else {
