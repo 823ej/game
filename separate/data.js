@@ -1599,16 +1599,17 @@ const CITY_AREA_DATA = {
             },
             {
                 id: "academy_clubroom",
-                name: "동아리실",
-                desc: "아카데미 동아리 활동을 진행하는 공간.",
-                bg: "https://placehold.co/1400x900/f5f5f5/333?text=%EB%8F%99%EC%95%84%EB%A6%AC%EC%8B%A4",
+                name: "사건 해결 동아리실",
+                desc: "괴이와 저주를 연구하며 의뢰를 받는 학생 동아리의 거점. 마법사들의 본거지.",
+                bg: "https://placehold.co/1400x900/f5f5f5/333?text=%EC%82%AC%EA%B1%B4+%ED%95%B4%EA%B2%B0+%EB%8F%99%EC%95%84%EB%A6%AC%EC%8B%A4",
                 pos: { x: 78, y: 62 },
                 grid: { x: 2, y: 1 },
                 links: ["academy_courtyard"],
-                tags: ["동아리", "의뢰"],
+                tags: ["동아리", "의뢰", "마법사"],
                 icon: "📚",
                 objects: [
-                    { id: "club_leader", name: "동아리 부장", icon: "🧑‍🏫", action: "open_casefiles", pos: { x: 55, y: 60 } }
+                    { id: "clubroom_job_board", name: "의뢰 게시판", icon: "📋", action: "open_job_board", boardId: "mage_circle", pos: { x: 38, y: 56 } },
+                    { id: "club_leader", name: "동아리 부장", icon: "🧑‍🏫", action: "open_casefiles", pos: { x: 70, y: 60 } }
                 ]
             }
         ]
@@ -2749,9 +2750,9 @@ const CASE_BOARDS = {
         count: 3
     },
     mage_circle: {
-        name: "마법사 회합 의뢰",
+        name: "사건 해결 동아리 의뢰",
         boardClass: "wizard",
-        desc: "괴이와 저주, 봉인에 관한 은밀한 의뢰.",
+        desc: "동아리로 들어온 괴이·저주·봉인에 관한 의뢰.",
         count: 3
     }
 };
