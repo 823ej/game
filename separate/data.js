@@ -6,7 +6,7 @@
 // [UI_TEXT] 화면/로그용 텍스트 모음 (로컬라이징 대비)
 const UI_TEXT = {
     hub: {
-        coffeeNoMoney: "커피 한 잔 마실 돈도 없습니다…",
+        coffeeNoMoney: "커피 한 잔 마실 돈도 없습니다.",
         coffeePromptLine: "커피를 마시며 몸과 마음을 휴식해볼까요?",
         coffeeDrinkOption: "마신다",
         coffeeSkipOption: "그만둔다",
@@ -14,14 +14,18 @@ const UI_TEXT = {
         coffeeSkip: "커피를 마시지 않기로 했습니다.",
         actionCaseName: "📁 사건 파일",
         actionCaseDesc: "의뢰를 선택하고 현장으로 나갑니다.",
-        actionBoardName: "📋 의뢰 게시판",
-        actionBoardDesc: "사무소로 들어온 의뢰를 확인하고 접수합니다.",
         actionCityName: "🗺️ 도시로 외출",
         actionCityDesc: "사건 현장이나 상점으로 이동합니다.",
+        actionDoorName: "🚪 문",
+        actionDoorDesc: "사무소 밖, 구시가지로 나선다.",
         actionCoffeeName: "☕ 커피 한 잔",
         actionCoffeeDesc: "체력과 이성을 회복합니다. (1900원)",
-        actionShopName: "📦 인터넷 주문",
-        actionShopDesc: "장비를 구매합니다.",
+        actionComputerName: "💻 컴퓨터",
+        actionComputerDesc: "사무소 컴퓨터로 의뢰 게시판과 온라인 쇼핑몰을 엽니다.",
+        computerTitle: "💻 사무소 컴퓨터",
+        computerDesc: "바탕화면에서 실행할 프로그램을 선택하세요.",
+        computerJobBoard: "의뢰 게시판",
+        computerShop: "온라인 쇼핑몰",
         actionDeckName: "🃏 덱 정비",
         actionDeckDesc: "전투용/대화용 덱을 편집합니다.",
         actionStorageName: "📦 창고",
@@ -32,7 +36,7 @@ const UI_TEXT = {
         newGame: "새 게임",
         storyMode: "스토리 모드",
         caseMode: "사건 모드",
-        infiniteMode: "무한 모드 (Infinite)"
+        infiniteMode: "무한 모드"
     },
     story: {
         namePlaceholder: "이름",
@@ -107,7 +111,7 @@ const UI_TEXT = {
         titleHighEnd: "💎 아라사카 부티크",
         titleOccult: "🕯️ 오컬트 숍",
         titleHerbal: "🌿 허브 상점",
-        titleInternet: "📦 인터넷 주문",
+        titleInternet: "🛒 온라인 쇼핑몰",
         titleClinic: "🩺 힐링 클리닉 사일런스",
         descDefault: "물건을 보고 가세요.",
         descBlack: "출처는 묻지 마쇼. 싸게 넘길 테니.",
@@ -167,7 +171,7 @@ const UI_TEXT = {
         emptySolved: "아직 해결된 사건이 없습니다.",
         emptyLoose: "미분류 실마리가 없습니다.",
         assistantLabel: "조수에게 사건 문의",
-        openLog: "당신은 사건에 대해 고찰해보기로 합니다...",
+        openLog: "당신은 사건에 대해 고찰해보기로 했습니다.",
         mergeClueLog: "이 단서, 연결되어 있다! 당신은 새로운 단서를 깨달았습니다.",
         mergeCaseLog: "이 단서, 연결되어 있다! 당신은 새로운 사건의 조짐을 깨달았습니다.",
         mergeCleanupLog: "새로운 단서를 얻은 뒤에 필요없는 단서를 정리했다.",
@@ -306,7 +310,7 @@ const UI_TEXT = {
         reviveDesc: "[ITEM] 효과로 다시 일어났습니다.",
         deathTitle: "💀 사망",
         deathDesc: "체력이 다했습니다...<br>차가운 도시의 바닥에서 눈을 감습니다.",
-        insanityTitle: "🤪 발광(Insanity)",
+        insanityTitle: "🤪 발광",
         insanityDesc: "공포를 견디지 못하고 정신이 붕괴되었습니다.<br>당신은 어둠 속으로 사라집니다...",
         retryButton: "다시 하기 (초기화)"
     },
@@ -439,7 +443,7 @@ const UI_TEXT = {
         interactionLabelFallback: "상호작용",
         cancel: "취소",
         treasureTitle: "상자 열기",
-        treasureDesc: "상자를 열었습니다!<br><span style=\"color:#f1c40f\">[GOLD] 골드</span>를 획득했습니다.",
+        treasureDesc: "상자를 열었습니다!<br><span style=\"color:#f1c40f\">[GOLD]원</span>을 획득했습니다.",
         treasureConfirm: "확인",
         boxTitle: "상자 개봉",
         boxDesc: "상자 안에서 <span style=\"color:#2ecc71\">[ITEM]</span>을(를) 발견했습니다!",
@@ -720,7 +724,7 @@ const UI_TEXT = {
     },
     reward: {
         itemRewardNone: "없음",
-        itemRewardDuplicate: "중복 보상 (+[GOLD] G)"
+        itemRewardDuplicate: "중복 보상 (+[GOLD]원)"
     },
     event: {
         randomNextStage: "다음 스테이지로",
@@ -794,9 +798,26 @@ const CASE_BOARD_DATA = {
         tutorial_noisy_alley: {
             title: "최근 시끄러워진 뒷골목",
             desc: "밤마다 소란이 들린다는 뒷골목에 대한 이야기."
+        },
+        // [프롤로그/1화 연결] 소년 조사 + 유나 문자 → 합치면 고양이 수색 의뢰
+        prologue_memory: {
+            title: "기억나지 않는 어제의 일",
+            desc: "과음 탓에 어제의 기억이 통째로 비어 있다. (임시 설명)"
+        },
+        cat_returned: {
+            title: "돌아온 고양이",
+            desc: "유나가 고양이를 무사히 찾았다는 문자. 내가 찾아준 모양이다. (임시 설명)"
         }
     },
     merges: [
+        {
+            requires: ["prologue_memory", "cat_returned"],
+            result: {
+                id: "cat_search_request",
+                title: "고양이 수색 의뢰",
+                desc: "어제 누군가에게 고양이 수색을 의뢰받았던 것 같다. (임시 설명)"
+            }
+        },
         {
             requires: ["sample_receipt", "sample_fragment"],
             result: {
@@ -853,6 +874,10 @@ const CASE_BOARD_DATA = {
 const CARD_DATA = {
     // [공용] 누구나 사용 가능
     "테스트용": { rank: 1, cost: 0, type: "attack", desc: "테스트용, 적 HP -50", dmg: 50, job: "common" },
+    // [프롤로그 전용] 빈사에 몰렸을 때 쥐어주는 특수 기술. 쓰면 적을 즉시 쓰러뜨린다.
+    "최후의 의지": { rank: 1, cost: 0, type: "attack", desc: "악몽을 떨치는 최후의 한 수. 적을 즉시 쓰러뜨린다.", dmg: 9999, job: "common" },
+    // [프롤로그 전용] '어머니 괴물'의 공격. (한 대당 피해 ≈ dmg + 적 baseAtk) — 3턴 정도에 빈사가 되도록 튜닝.
+    "어머니의 일격": { rank: 1, cost: 1, type: "attack", desc: "어머니 괴물의 강타.", dmg: 5, job: "enemy" },
     "타격": { rank: 1, cost: 1, type: "attack", desc: "적 HP -5", dmg: 5, job: "common" },
     "수비": { rank: 1, cost: 1, type: "skill", desc: "방어도 +4", block: 4, job: "common" },
     "심호흡": { rank: 1, cost: 1, type: "social", subtype: "skill", desc: "내 의지 +15 회복", heal: 15, target: "self", job: "common" },
@@ -1080,6 +1105,19 @@ const ENEMY_DATA = {
         deckType: "custom",
         deck: ["광신의 춤", "독 뿌리기", "검은 연기", "광신의 비명", "광신의 채찍", "사격"], // 하이브리드 패턴
         img: "https://placehold.co/120x120/4b0082/fff?text=BOSS+2"
+    },
+    // [프롤로그 전용] 임시 이름 '어머니 괴물'. boss_ 접두사로 일반 랜덤 전투 풀에서 제외된다.
+    //   baseHp가 매우 높아 정공법으론 못 잡고, '최후의 의지'로만 격파된다.
+    //   3턴 정도에 플레이어(HP 20)의 체력이 바닥나도록 공격을 맞춰둠. (어머니의 일격 dmg로 조절)
+    "boss_mother": {
+        name: "어머니 괴물",
+        baseHp: 999,
+        stats: { atk: 3, def: 1, spd: 2 }, // 플레이어와 비슷한 속도(턴 교대), atk는 타격 보정치
+        weakness: "none",
+        growth: { hp: 0, atk: 0, def: 0, spd: 0 },
+        deckType: "custom",
+        deck: ["어머니의 일격"], // 매 턴 같은 강공격만
+        img: "https://placehold.co/120x120/2a0d2a/e0a0e0?text=Mother"
     },
     "boss_cursed_doll": {
         name: "💀 저주받은 인형",
@@ -2031,7 +2069,9 @@ const CITY_AREA_DATA = {
                 icon: "🏠",
                 objects: [
                     { id: "yonggung_sauna", name: "용궁 사우나", icon: "♨️", action: "open_sauna", pos: { x: 45, y: 60 } },
-                    { id: "jesaengdang", name: "한의원 제생당 (마고 원장님)", icon: "🌿", action: "open_occult_clinic", pos: { x: 70, y: 62 } }
+                    { id: "jesaengdang", name: "한의원 제생당 (마고 원장님)", icon: "🌿", action: "open_occult_clinic", pos: { x: 70, y: 62 } },
+                    // [1화] 잃어버린 고양이 — 골목 끝 낡은 맨홀(던전 입구). 1화 수락 중일 때만 나타난다.
+                    { id: "lost_cat_manhole", name: "낡은 맨홀", icon: "🕳️", action: "enter_scenario", scenarioId: "lost_cat_meeting", pos: { x: 28, y: 78 }, requiresActiveScenario: "lost_cat_meeting" }
                 ]
             },
             {
@@ -2574,6 +2614,8 @@ const ITEM_DATA = {
 };
 
 /* [수정] 시나리오 데이터 (복귀 가능 여부 플래그 추가) */
+// ※ 새로 쓰는 사건은 이 파일이 아니라 scenarios.js 에 추가하세요.
+//    (아래 항목들은 기존 예시 사건이며, 참고용으로 그대로 둡니다.)
 const SCENARIOS = {
     "tutorial": {
         title: "사라진 배달부",
@@ -3114,7 +3156,7 @@ const NARRATION = {
         bushAmbush: "덤불 속에 숨어있던 적이 튀어나왔습니다!",
         supplyFound: "[ITEM:을를] 획득했습니다!",
         shadyMerchantTitle: "수상한 상인",
-        shadyMerchantDesc: "지나가던 상인이 물건을 강매합니다. (500G 지불)",
+        shadyMerchantDesc: "지나가던 상인이 물건을 강매합니다. (500원 지불)",
         shadyMerchantPaid: "500G를 내고 <span style='color:#f1c40f'>[ITEM]</span>을(를) 얻었습니다.",
         shadyMerchantNoMoney: "돈이 없어 무시하고 지나갑니다.",
         insightTitle: "기습적인 깨달음",

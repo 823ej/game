@@ -16,7 +16,18 @@ const StoryEngine = {
             return;
         }
         this.script = scriptData;
+        // [이름표 점프] { type:"label", name:"xxx" } 위치를 미리 기록해 둔다.
+        // goto:"xxx" 로 줄 번호 대신 이름으로 점프할 수 있게 한다.
+        this.labels = {};
+        if (Array.isArray(scriptData)) {
+            scriptData.forEach((c, i) => {
+                if (c && c.type === 'label' && c.name) this.labels[c.name] = i;
+            });
+        }
         this.index = Math.max(0, startIndex | 0);
+        this.currentLocation = "";   // 장소 배너 표시용(배경 loc 변화 추적)
+        this.cgWaiting = false;
+        this.hideCg();               // 이전 컷신의 CG 잔재 정리
         this.callback = onComplete;
         this.chars = {};
         this.sceneState = { bgSrc: "", chars: {} };
@@ -82,7 +93,27 @@ const StoryEngine = {
             const bgEl = document.getElementById("story-bg");
             if (bgEl) bgEl.style.backgroundImage = `url('${cmd.src}')`;
             this.sceneState.bgSrc = cmd.src || "";
-            this.index++; this.playNext(); 
+            // 배경에 장소명(loc)이 지정돼 있고, 직전 장소와 다르면 장소 배너를 한 번 띄운다.
+            if (cmd.loc && cmd.loc !== this.currentLocation) {
+                this.currentLocation = cmd.loc;
+                this.showLocationBanner(cmd.loc);
+            }
+            this.index++; this.playNext();
+        }
+        else if (cmd.type === "cg") {
+            // 풀 일러스트. src가 있으면 CG를 띄우고 대사창을 숨긴 채 '클릭 대기'(다른 게임의 CG 연출).
+            // 한 번 클릭하면 대사창이 나타나며 다음 줄로 진행한다. src가 비면("") CG를 치운다.
+            if (cmd.src) {
+                this.showCg(cmd.src);
+                this.index++;
+                this.cgWaiting = true;
+                if (this.isSkipping) { this.revealCgDialog(); this.playNext(); }
+                else if (this.isAuto) { setTimeout(() => { if (this.cgWaiting && this.isAuto) { this.revealCgDialog(); this.playNext(); } }, this.autoDelay); }
+                // 그 외엔 클릭(nextDialog)을 기다린다.
+            } else {
+                this.hideCg();
+                this.index++; this.playNext();
+            }
         }
         else if (cmd.type === "char") {
             this.showCharacter(cmd.id, cmd.src, cmd.pos);
@@ -104,12 +135,94 @@ const StoryEngine = {
             if (this.isAuto) this.toggleAuto(); // 선택지에서는 오토 정지
             this.showChoices(cmd.options);
         }
+        else if (cmd.type === "label") {
+            // 이름표는 점프 목적지 표시일 뿐, 그냥 다음 줄로 넘어간다.
+            this.index++; this.playNext();
+        }
         else if (cmd.type === "jump") {
-            this.index = cmd.next; this.playNext();
+            const target = this.resolveIndex(cmd);
+            this.index = (target >= 0) ? target : (this.index + 1);
+            this.playNext();
         }
         else if (cmd.type === "end") {
             this.end();
         }
+    },
+
+    // 점프 목적지 계산: goto("이름표") 우선, 없으면 next(줄 번호) 사용.
+    // 둘 다 못 찾으면 -1 을 돌려준다(호출한 쪽에서 안전하게 처리).
+    resolveIndex: function(target) {
+        if (target && target.goto != null) {
+            if (this.labels && Object.prototype.hasOwnProperty.call(this.labels, target.goto)) {
+                return this.labels[target.goto];
+            }
+            console.warn("[StoryEngine] goto 이름표를 찾을 수 없습니다:", target.goto);
+            return -1;
+        }
+        const n = Number(target && target.next);
+        return Number.isFinite(n) ? n : -1;
+    },
+
+    // 장소 배너: 컷신 중 배경(loc)이 바뀔 때 화면 상단에 장소명을 잠깐 띄운다.
+    showLocationBanner: function(name) {
+        if (!name) return;
+        let el = document.getElementById("story-location-banner");
+        if (!el) {
+            el = document.createElement("div");
+            el.id = "story-location-banner";
+            // 네모/배경 없이 왼쪽 상단에 글자만. 어떤 배경에서도 읽히도록 그림자만 준다.
+            el.style.cssText = "position:fixed; top:16px; left:20px; z-index:21000; color:#fff; font-size:1.05em; letter-spacing:1px; pointer-events:none; opacity:0; transition:opacity 0.4s ease; white-space:nowrap; text-shadow:0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.7);";
+            document.body.appendChild(el);
+        }
+        el.textContent = name;
+        void el.offsetWidth;          // 리플로우 강제 → 트랜지션 적용
+        el.style.opacity = "1";
+        if (this._locBannerTimer) clearTimeout(this._locBannerTimer);
+        this._locBannerTimer = setTimeout(() => { el.style.opacity = "0"; }, 2200);
+    },
+
+    hideLocationBanner: function() {
+        if (this._locBannerTimer) { clearTimeout(this._locBannerTimer); this._locBannerTimer = null; }
+        const el = document.getElementById("story-location-banner");
+        if (el) el.remove();
+    },
+
+    // [CG] 풀 일러스트 레이어. 입상 위·대사창 앞(DOM상 대사창 직전)에 끼워, 대사창을 끄면 CG만,
+    // 켜면 CG 위에 대사창이 보이도록 한다.
+    ensureCgLayer: function() {
+        let el = document.getElementById("story-cg");
+        if (!el) {
+            el = document.createElement("div");
+            el.id = "story-cg";
+            el.style.cssText = "position:absolute; inset:0; width:100%; height:100%; background-size:contain; background-position:center; background-repeat:no-repeat; background-color:#000; display:none; cursor:pointer;";
+            el.onclick = function () { nextDialog(); };
+            const scene = document.getElementById("story-scene");
+            const box = scene ? scene.querySelector(".dialog-container") : null;
+            if (scene) { box ? scene.insertBefore(el, box) : scene.appendChild(el); }
+        }
+        return el;
+    },
+    getDialogBox: function() { return document.querySelector("#story-scene .dialog-container"); },
+    showCg: function(src) {
+        const el = this.ensureCgLayer();
+        el.style.backgroundImage = `url('${src}')`;
+        el.style.display = "block";
+        const box = this.getDialogBox();
+        if (box) box.style.display = "none";   // 대사창 숨김
+        this.cgVisible = true;
+    },
+    revealCgDialog: function() {              // CG는 유지한 채 대사창만 다시 표시
+        const box = this.getDialogBox();
+        if (box) box.style.display = "";
+        this.cgWaiting = false;
+    },
+    hideCg: function() {
+        const el = document.getElementById("story-cg");
+        if (el) el.style.display = "none";
+        const box = this.getDialogBox();
+        if (box) box.style.display = "";
+        this.cgVisible = false;
+        this.cgWaiting = false;
     },
 
     showCharacter: function(id, src, pos) {
@@ -210,7 +323,9 @@ const StoryEngine = {
             btn.className = "story-choice-btn";
             btn.innerText = opt.txt;
             btn.type = "button";
-            btn.dataset.next = String(opt.next);
+            // goto("이름표") 또는 next(줄 번호)를 실제 목적지 줄 번호로 변환.
+            const target = this.resolveIndex(opt);
+            btn.dataset.next = String(target >= 0 ? target : (this.index + 1));
             btn.style.pointerEvents = "auto";
             btn.addEventListener("click", (e) => {
                 e.preventDefault();
@@ -232,6 +347,9 @@ const StoryEngine = {
         
         const logOverlay = document.getElementById("story-log-overlay");
         if (logOverlay) logOverlay.remove();
+
+        this.hideLocationBanner();
+        this.hideCg();
 
         if (game && game.storyState) {
             game.storyState = null;
@@ -430,6 +548,13 @@ function nextDialog() {
     if (logOverlay && logOverlay.style.display === "flex") return;
     if (StoryEngine.isUiHidden) {
         StoryEngine.toggleUi();
+        return;
+    }
+
+    // [CG] 대사창을 숨긴 풀 일러스트 상태에서 클릭하면, 대사창을 띄우고 다음 줄로 진행한다.
+    if (StoryEngine.cgWaiting) {
+        StoryEngine.revealCgDialog();
+        StoryEngine.playNext();
         return;
     }
 

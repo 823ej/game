@@ -939,7 +939,7 @@ function updateCityAreaDetail() {
         } else {
             const allowNpcObjects = !!area?.showNpcObjects;
             const objects = Array.isArray(spot.objects)
-                ? spot.objects.filter(obj => !obj?.hideInArea && (allowNpcObjects || obj?.action !== 'npc_dialogue'))
+                ? spot.objects.filter(obj => !obj?.hideInArea && isCityObjectVisible(obj) && (allowNpcObjects || obj?.action !== 'npc_dialogue'))
                 : [];
             const npcObjects = objects.filter(obj => obj?.action === 'npc_dialogue');
             const selectedObj = selectedObjectId
@@ -1015,6 +1015,15 @@ function updateCityAreaDetail() {
     }
 
     updateCityAreaNavButtons(area);
+}
+
+/* [NEW] 도시 오브젝트 조건부 표시.
+   - requiresActiveScenario: 지정한 시나리오가 '진행 중'일 때만 보인다.
+     (예: 1화 수락 후 주택가에 나타나는 던전 입구 '낡은 맨홀'. 클리어하면 사라짐) */
+function isCityObjectVisible(obj) {
+    if (!obj) return false;
+    if (obj.requiresActiveScenario && game.activeScenarioId !== obj.requiresActiveScenario) return false;
+    return true;
 }
 
 function performCityAction(obj, areaId, spotId) {
@@ -1544,7 +1553,7 @@ function renderCitySpotObjects(area, spotId, layerEl) {
     const spot = getAreaSpot(area, spotId);
     const allowNpcObjects = !!area?.showNpcObjects;
     const objects = Array.isArray(spot?.objects)
-        ? spot.objects.filter(obj => !obj?.hideOnMap && !obj?.hideInArea && (allowNpcObjects || obj?.action !== 'npc_dialogue'))
+        ? spot.objects.filter(obj => !obj?.hideOnMap && !obj?.hideInArea && isCityObjectVisible(obj) && (allowNpcObjects || obj?.action !== 'npc_dialogue'))
         : [];
     if (objects.length === 0) return;
 
@@ -1856,9 +1865,10 @@ function exitShop(shopType) {
     const eventLogPanel = document.getElementById('event-log-panel');
     if (eventLogPanel) eventLogPanel.classList.add('is-hidden');
 
-    // 인터넷 쇼핑이면 무조건 허브로
+    // 온라인 쇼핑몰(사무소 컴퓨터)에서 나가면 컴퓨터 바탕화면으로 복귀
     if (shopType === 'shop_internet') {
         renderHub();
+        openComputer();
         return;
     }
 
@@ -2979,7 +2989,12 @@ function normalizeLogMessage(msg) {
 }
 
 function stripHtml(text) {
-    return String(text).replace(/<[^>]*>/g, '').trim();
+    // <br> 등 줄바꿈 태그는 공백으로 치환해 문장이 붙지 않도록 한다.
+    return String(text)
+        .replace(/<br\s*\/?>/gi, ' ')
+        .replace(/<[^>]*>/g, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
 }
 
 function setSharedLogMessage(msg) {
@@ -3008,10 +3023,13 @@ function clearGlobalLog() {
 
 function notifyNarration(text) {
     log({ type: "system.notice", vars: { text }, text });
+    // 새 나레이션이 생기면 (허브/도시에서) 우측 패널을 자동으로 연다.
+    if (typeof openNarrationPanel === 'function') openNarrationPanel();
 }
 
-function showNarrationChoice(desc, choices) {
-    notifyNarration(stripHtml(desc));
+/* [NEW] 현재 화면(허브/도시)의 우측 나레이션 패널을 연다.
+   나레이션을 띄울 때 패널이 닫혀 있으면 글이 안 보이므로, notifyNarration과 함께 호출한다. */
+function openNarrationPanel() {
     if (game.state === 'hub') {
         setHubPanelVisible(true);
     } else if (game.state === 'city') {
@@ -3022,6 +3040,18 @@ function showNarrationChoice(desc, choices) {
         if (areaVisible) setCityPanelVisible('area', true);
         else if (mapVisible) setCityPanelVisible('map', true);
     }
+}
+
+/* [NEW] 나레이션 한 줄을 띄우면서 우측 패널도 함께 연다. */
+function notifyNarrationPanel(text) {
+    notifyNarration(text);
+    openNarrationPanel();
+    syncCityLogPanels();
+}
+
+function showNarrationChoice(desc, choices) {
+    notifyNarration(stripHtml(desc));
+    openNarrationPanel();
     addCityLogChoices((choices || []).map(c => ({
         text: c.txt || getUIText("popup.choiceDefault"),
         onSelect: c.func
@@ -4181,6 +4211,11 @@ function finishCreation() {
 
     if (game.mode === 'infinite') {
         startInfiniteLoop();
+    } else if (game.storyMode && typeof MAIN_STORY !== 'undefined' && MAIN_STORY[player.job]
+               && Array.isArray(MAIN_STORY[player.job].prologue) && MAIN_STORY[player.job].prologue.length > 0) {
+        // 스토리 모드: 프롤로그(악몽 → 튜토리얼 전투 → 기상 → 1화)로 진입
+        autoSave();
+        startMainStoryPrologue(player.job);
     } else {
         renderHub();
         autoSave(); // [추가] 생성 직후 저장
@@ -4304,13 +4339,17 @@ function renderHub() {
         layer.innerHTML = "";
         const actions = [
             { name: getUIText("hub.actionCaseName"), desc: getUIText("hub.actionCaseDesc"), pos: { x: 20, y: 30 }, func: () => openCaseFiles() },
-            { name: getUIText("hub.actionBoardName"), desc: getUIText("hub.actionBoardDesc"), pos: { x: 44, y: 40 }, func: () => openJobBoard('detective_office') },
-            { name: getUIText("hub.actionCityName"), desc: getUIText("hub.actionCityDesc"), pos: { x: 58, y: 24 }, func: () => renderCityMap() },
+            { name: getUIText("hub.actionComputerName"), desc: getUIText("hub.actionComputerDesc"), pos: { x: 50, y: 42 }, func: () => openComputer() },
+            { name: getUIText("hub.actionDoorName"), desc: getUIText("hub.actionDoorDesc"), pos: { x: 58, y: 24 }, func: () => goOutside() },
             { name: getUIText("hub.actionCoffeeName"), desc: getUIText("hub.actionCoffeeDesc"), pos: { x: 28, y: 58 }, func: () => hubRest() },
-            { name: getUIText("hub.actionShopName"), desc: getUIText("hub.actionShopDesc"), pos: { x: 70, y: 42 }, func: () => renderShopScreen('shop_internet') },
             { name: getUIText("hub.actionDeckName"), desc: getUIText("hub.actionDeckDesc"), pos: { x: 62, y: 68 }, func: () => openDeckManager() },
             { name: getUIText("hub.actionStorageName"), desc: getUIText("hub.actionStorageDesc"), pos: { x: 36, y: 78 }, func: () => openStorage() }
         ];
+
+        // [프롤로그] 소년 시신 발견 후, 1화 진행 전까지만 사무소에 조사 포인트 [소년]을 띄운다.
+        if (isPrologueInvestigationActive()) {
+            actions.push({ name: "🧒 소년", desc: "사무소 바닥에 쓰러진 소년", pos: { x: 44, y: 56 }, func: () => investigatePrologueBoy() });
+        }
         actions.forEach(action => {
             const btn = document.createElement('button');
             btn.className = 'city-area-object';
@@ -4324,6 +4363,203 @@ function renderHub() {
     }
     updateUI(); // 상단 바 갱신
     autoSave();
+}
+
+/* [NEW] 현재 주인공(직업)의 메인 스토리 1화 id를 돌려준다. 없으면 null. */
+function getMainStoryEpisode1() {
+    const job = player && player.job;
+    if (typeof MAIN_STORY !== 'undefined' && job && MAIN_STORY[job]) {
+        return MAIN_STORY[job].episode1 || null;
+    }
+    return null;
+}
+
+/* [NEW] 프롤로그 '소년 조사' 단계인가? (시신 발견 후 ~ 1화 시작 전) */
+function isPrologueInvestigationActive() {
+    if (typeof hasGameFlag !== 'function' || !hasGameFlag('story:prologue:bodyFound')) return false;
+    const ep1 = getMainStoryEpisode1();
+    if (!ep1) return false;
+    if (game.activeScenarioId === ep1) return false;            // 이미 1화 진행 중이면 끝
+    if (SCENARIOS[ep1] && SCENARIOS[ep1].cleared) return false; // 1화 클리어 후면 끝
+    return true;
+}
+
+/* [NEW] 사무소의 소년 시신을 조사한다 → 풀 일러스트(CG)+탐정의 고찰 컷신 → 단서 추가 */
+function investigatePrologueBoy() {
+    const job = player && player.job;
+    const story = (typeof MAIN_STORY !== 'undefined' && job) ? MAIN_STORY[job] : null;
+    const script = (story && Array.isArray(story.bodyInvestigateStory)) ? story.bodyInvestigateStory : null;
+    const onDone = () => {
+        if (typeof addLooseClueById === 'function') addLooseClueById('prologue_memory');
+        if (typeof renderCaseBoard === 'function') renderCaseBoard();
+        renderHub();   // 컷신 후 사무소로 복귀
+        notifyNarrationPanel("사건 보드에 단서 [기억나지 않는 어제의 일]을(를) 추가했다.");
+        // 잠시 후, 유나의 '고양이 찾아줘서 고마워요' 문자가 지금 도착(한 번 붕).
+        setTimeout(() => {
+            if (typeof phoneDeliver === 'function') phoneDeliver('sms:cafe_alba');
+            notifyNarration("(휴대폰이 짧게 울렸다. 문자가 온 모양이군. …확인해 봐야겠어.)");
+        }, 900);
+    };
+    if (game.storyMode && script && script.length > 0 && typeof StoryEngine !== 'undefined') {
+        StoryEngine.start(script, onDone);
+    } else {
+        onDone();
+    }
+}
+
+/* [NEW] 휴대폰 문자/메신저를 '읽었을 때' 발동 (onRead). 단서 id면 사건 보드에 추가. */
+function onPhoneRead(value) {
+    if (!value) return;
+    if (typeof CASE_BOARD_DATA !== 'undefined' && CASE_BOARD_DATA.clues && CASE_BOARD_DATA.clues[value]) {
+        if (typeof addLooseClueById === 'function') addLooseClueById(value);
+        if (typeof renderCaseBoard === 'function') renderCaseBoard();
+        const t = CASE_BOARD_DATA.clues[value].title;
+        notifyNarration(`사건 보드에 단서 [${t}]을(를) 추가했다.`);
+    }
+}
+
+/* [NEW] 사건 보드에서 특정 단서가 '조합으로 완성'됐을 때 발동 */
+function onCaseClueFormed(id) {
+    if (id !== 'cat_search_request') return;
+    const job = player && player.job;
+    const story = (typeof MAIN_STORY !== 'undefined' && job) ? MAIN_STORY[job] : null;
+    const flashback = (story && Array.isArray(story.flashbackStory)) ? story.flashbackStory : null;
+    const ep1 = getMainStoryEpisode1();
+    // 회상이 곧 의뢰 수락(의뢰인=집주인 통일). 1화 인트로는 재생하지 않고 바로 수락 처리.
+    const proceed = () => {
+        if (ep1 && SCENARIOS[ep1] && typeof acceptMission === 'function') acceptMission(ep1);
+        else renderHub();
+    };
+    if (typeof closeCaseBoard === 'function') closeCaseBoard();
+    if (game.storyMode && Array.isArray(flashback) && flashback.length > 0 && typeof StoryEngine !== 'undefined') {
+        StoryEngine.start(flashback, proceed);
+    } else {
+        proceed();
+    }
+}
+
+/* [NEW] 사무소 [문] — 구시가지로 나간다.
+   - 메인 스토리 1화가 아직 안 끝났으면 그 진행으로 연결:
+     · 아직 수락 전 → 1화 인트로부터 시작
+     · 수락했지만 미클리어 → 현장(던전)으로 진입
+   - 1화를 이미 끝냈으면 구시가지를 자유롭게 돌아다닌다. */
+function goOutside() {
+    const ep1 = getMainStoryEpisode1();
+    // 스토리 모드에서 아직 1화 의뢰를 받기(회상) 전이면 외출을 막는다.
+    // (1화 수락은 사무소 조사 → 단서 조합 → 회상으로 이뤄진다.)
+    if (game.storyMode && ep1 && SCENARIOS[ep1] && !SCENARIOS[ep1].cleared && game.activeScenarioId !== ep1) {
+        notifyNarrationPanel("(지금 외출을 할 때가 아니다.)");
+        return;
+    }
+    // 그 외에는 구시가지로 나간다.
+    // 1화 수락 중이면 주택가에 던전 입구('낡은 맨홀')가 나타나며, 직접 찾아 들어가야 한다.
+    enterCityAreaMode('east_oldtown');
+}
+
+/* [NEW] 메인 스토리 프롤로그 시작: 악몽 컷신 → (끝나면) 튜토리얼 전투 */
+function startMainStoryPrologue(job) {
+    const story = (typeof MAIN_STORY !== 'undefined') ? MAIN_STORY[job] : null;
+    if (!story) { renderHub(); return; }
+    const beginBattle = () => startPrologueBattle(job);
+    if (game.storyMode && Array.isArray(story.prologue) && story.prologue.length > 0 && typeof StoryEngine !== 'undefined') {
+        StoryEngine.start(story.prologue, beginBattle);
+    } else {
+        beginBattle();
+    }
+}
+
+/* [NEW] 프롤로그 튜토리얼 전투: 교주와의 단독 전투(시나리오 없음).
+   game.prologueFight 플래그로 '죽지 않음 + 빈사 시 자동승리 카드' 동작을 켠다. */
+function startPrologueBattle(job) {
+    const story = (typeof MAIN_STORY !== 'undefined') ? MAIN_STORY[job] : null;
+    const bossKey = (story && story.prologueBattle && story.prologueBattle.boss) || 'boss_cult_leader';
+    game.prologueFight = true;
+    game.prologueCrisisDone = false;
+    game.scenario = null;
+    game.activeScenarioId = null;
+    // 과거 시점이라 조수가 없으므로, 조수 관련 카드가 없는 기본 덱으로 싸운다.
+    // (원래 덱은 따로 보관했다가 프롤로그가 끝나면 복구한다.)
+    game._prologueSavedDeck = Array.isArray(player.deck) ? player.deck.slice() : null;
+    player.deck = ["타격", "타격", "타격", "타격", "수비", "수비"];
+    // 교주(어머니 괴물)를 단독 적으로 등장시킨다 (보스 보상 흐름을 타지 않도록 isBoss=false).
+    startBattle(false, [bossKey]);
+}
+
+/* [NEW] 빈사 위기: 손패/덱을 비우고 '최후의 의지' 한 장만 쥐어준다. (1회만) */
+function triggerPrologueCrisis() {
+    if (!game.prologueFight || game.prologueCrisisDone) return;
+    game.prologueCrisisDone = true;
+    ensureCardSystems(player);
+    const WIN_CARD = "최후의 의지";
+    // 활성 카드는 '손패의 1장'만 존재하도록 한다. (드로우 더미에도 넣으면 다음 턴에 1장 더 뽑혀 2장이 됨)
+    player.deck = [WIN_CARD];
+    player.drawPile = [];
+    player.discardPile = [];
+    player.exhaustPile = [];
+    player.hand = [WIN_CARD];
+    player.handCostOverride = [];
+    if (typeof renderHand === 'function') renderHand();
+    updateUI();
+    notifyNarration("…더는 버틸 수 없다. 하지만 손끝에 마지막 한 수가 남아 있다. [최후의 의지]를 쓰자.");
+}
+
+/* [NEW] 프롤로그 전투 종료(교주 격파) → 기상 컷신 → 1화 인트로 */
+function finishPrologueBattle() {
+    game.prologueFight = false;
+    game.isBossBattle = false;
+    // 프롤로그용 기본 덱 → 원래(직업) 덱으로 복구
+    if (game._prologueSavedDeck) {
+        player.deck = game._prologueSavedDeck;
+        game._prologueSavedDeck = null;
+    }
+    enemies = [];
+    const ew = document.getElementById('dungeon-enemies');
+    if (ew) ew.innerHTML = "";
+    if (typeof toggleBattleUI === 'function') toggleBattleUI(false);
+
+    const job = player.job;
+    const story = (typeof MAIN_STORY !== 'undefined') ? MAIN_STORY[job] : null;
+    const wake = (story && Array.isArray(story.wakeStory)) ? story.wakeStory : null;
+    const afterWake = () => {
+        // 기상 후 회복시켜 사무소로 복귀. '소년 시신 발견' 단계 플래그를 세워
+        // 사무소에 조사 포인트 [소년]이 나타나게 한다.
+        player.hp = player.maxHp;
+        player.sp = player.maxSp;
+        if (typeof setGameFlag === 'function') setGameFlag('story:prologue:bodyFound');
+        renderHub();
+    };
+    if (game.storyMode && Array.isArray(wake) && wake.length > 0 && typeof StoryEngine !== 'undefined') {
+        StoryEngine.start(wake, afterWake);
+    } else {
+        afterWake();
+    }
+}
+
+/* [NEW] 사무소 컴퓨터 — 바탕화면에서 [의뢰 게시판]/[온라인 쇼핑몰]을 실행 */
+function openComputer() {
+    const html = `
+        <div class="pc-desktop">
+            <button type="button" class="pc-shortcut" id="pc-shortcut-jobboard">
+                <span class="pc-icon">📋</span>
+                <span class="pc-label">${getUIText("hub.computerJobBoard")}</span>
+            </button>
+            <button type="button" class="pc-shortcut" id="pc-shortcut-shop">
+                <span class="pc-icon">🛒</span>
+                <span class="pc-label">${getUIText("hub.computerShop")}</span>
+            </button>
+        </div>
+    `;
+    showPopup(
+        getUIText("hub.computerTitle"),
+        getUIText("hub.computerDesc"),
+        [{ txt: getUIText("popup.confirmCancel"), func: closePopup }],
+        html,
+        { forcePopup: true }
+    );
+    const jobBoardBtn = document.getElementById('pc-shortcut-jobboard');
+    if (jobBoardBtn) jobBoardBtn.onclick = () => openJobBoard('detective_office', openComputer);
+    const shopBtn = document.getElementById('pc-shortcut-shop');
+    if (shopBtn) shopBtn.onclick = () => { closePopup(); renderShopScreen('shop_internet'); };
 }
 
 function ensureCaseBoardData() {
@@ -4380,8 +4616,12 @@ function renderCaseBoard() {
     ensureCaseBoardData();
     const looseBody = document.getElementById('case-board-loose-body');
     if (!looseBody) return;
+    // 스토리 모드에서 아직 조수가 합류하기 전(1화 클리어 전)에는 사건 보드의 조수도 숨긴다.
+    const assistantBtn = document.getElementById('case-board-assistant');
+    const assistantAbsent = (game.storyMode && !game.assistantJoined);
+    if (assistantBtn) assistantBtn.style.display = assistantAbsent ? 'none' : '';
     const assistantAvatar = document.querySelector('#case-board-assistant .assistant-avatar');
-    if (assistantAvatar && typeof CHARACTER_IMAGES !== 'undefined') {
+    if (!assistantAbsent && assistantAvatar && typeof CHARACTER_IMAGES !== 'undefined') {
         assistantAvatar.style.backgroundImage = `url('${CHARACTER_IMAGES.assistant}')`;
     }
 
@@ -4814,6 +5054,9 @@ function performCaseBoardMerge(match) {
     notifyNarration(getUIText("caseBoard.mergeCleanupLog"));
 
     renderCaseBoard();
+
+    // 특정 단서가 완성되면 스토리 훅 발동 (예: 고양이 수색 의뢰 → 회상 → 1화)
+    if (typeof onCaseClueFormed === 'function') onCaseClueFormed(result.id);
 }
 
 /* [NEW] 거점 휴식 */
@@ -4872,7 +5115,7 @@ function openHospitalCure() {
         const t = TRAIT_DATA[key] || { name: key };
         const cost = Number.isFinite(t.cureCost) ? t.cureCost : 1000;
         return {
-            txt: `${t.name}${cardName ? ` (${cardName})` : ""} - ${cost}G`,
+            txt: `${t.name}${cardName ? ` (${cardName})` : ""} - ${cost}원`,
             func: () => {
                 closePopup();
                 if (player.gold < cost) {
@@ -4917,7 +5160,7 @@ function openOccultClinic() {
         const t = TRAIT_DATA[key] || { name: key };
         const cost = Number.isFinite(t.cureCost) ? t.cureCost : 1500;
         return {
-            txt: `${t.name}${cardName ? ` (${cardName})` : ""} - ${cost}G`,
+            txt: `${t.name}${cardName ? ` (${cardName})` : ""} - ${cost}원`,
             func: () => {
                 closePopup();
                 if (player.gold < cost) {
@@ -5458,7 +5701,7 @@ function refreshCaseBoards(force) {
 }
 
 // 본거지 게시판 열기. 플레이어 직업과 다른 성격의 사건은 '하청'으로 표시.
-function openJobBoard(boardId) {
+function openJobBoard(boardId, onClose) {
     if (typeof CASE_BOARDS === 'undefined' || !CASE_BOARDS[boardId]) return;
     ensureCaseGenState();
     if (!Array.isArray(game.boardOffers[boardId]) || game.boardOffers[boardId].length === 0) {
@@ -5492,13 +5735,14 @@ function openJobBoard(boardId) {
                 <button class="action-btn" onclick="startScenario('${cid}')">
                     <b>${sc.title}</b> ${tag}<br>
                     <span style="font-size:0.7em;">${sc.desc}</span><br>
-                    <span style="font-size:0.7em; color:#f1c40f;">보상: ${r.gold || 0}G · ${r.xp || 0}XP</span>
+                    <span style="font-size:0.7em; color:#f1c40f;">보상: ${r.gold || 0}원 · ${r.xp || 0}XP</span>
                 </button>`;
         });
     }
     content += `</div>`;
 
-    showPopup(board.name, board.desc, [{ txt: getUIText("scenario.caseListClose"), func: closePopup }], content, { forcePopup: true });
+    const closeFunc = (typeof onClose === 'function') ? onClose : closePopup;
+    showPopup(board.name, board.desc, [{ txt: getUIText("scenario.caseListClose"), func: closeFunc }], content, { forcePopup: true });
 }
 
 function openCaseFiles() {
@@ -6428,7 +6672,7 @@ function showGameMenuView(view) {
                 <div class="menu-content-grid">
                     <div class="menu-pill">HP ${player.hp}/${player.maxHp}</div>
                     <div class="menu-pill">SP ${player.sp}/${player.maxSp}</div>
-                    <div class="menu-pill">Gold ${player.gold}G</div>
+                    <div class="menu-pill">소지금 ${player.gold}원</div>
                     <div class="menu-pill">Lv ${game.level || 1} · XP ${player.xp}/${player.maxXp}</div>
                 </div>
             </div>
@@ -7091,6 +7335,13 @@ function toggleItemSelect(e, idx) {
     }
 }
 function renderExploration(forceReset = false) {
+    // 던전을 처음 생성하는 순간(= 입구를 발견하고 막 들어서는 순간) 컷신.
+    // 컷신이 끝나면 다시 이 함수를 호출해 정상적으로 던전 생성/탐사를 이어간다.
+    if (!game.dungeonMap && hasScenarioStory('dungeonEnterStory')) {
+        playScenarioStory('dungeonEnterStory', () => renderExploration(forceReset));
+        return;
+    }
+
     game.state = 'exploration';
     switchScene('exploration');
     // ★ [추가] 버튼/이동 잠금 해제
@@ -7580,10 +7831,10 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     game.innateDrawn = false;
     game.assistantDamageReductionPct = 0;
     game.assistantTauntTurns = 0;
-    if (isDetectiveJob()) {
+    if (isDetectiveJob() && !game.prologueFight) {
         initAssistantForDetective();
     } else if (player.assistantManager) {
-        player.assistantManager.reset(0);
+        player.assistantManager.reset(0); // 프롤로그(악몽)에는 조수가 없음
     }
 
     // 4. UI 모드 전환 (이동 버튼 숨김, 전투 UI 표시)
@@ -7674,6 +7925,35 @@ function startBossBattle() {
     startBattle(true);
 }
 
+/* [NEW] 지금 이 시나리오에 '아직 재생 안 한' 컷신이 있는지 확인.
+   - field: SCENARIOS[id] 안의 스토리 배열 이름 (introStory/dungeonEnterStory/midStory/outroStory 등)
+   스토리 모드가 아니거나, 해당 컷신이 없거나, 이미 재생했으면 false. */
+function hasScenarioStory(field) {
+    const scId = (game.scenario && game.scenario.id) || game.activeScenarioId;
+    const scData = scId ? SCENARIOS[scId] : null;
+    const script = (scData && Array.isArray(scData[field])) ? scData[field] : null;
+    if (!game.storyMode || !script || script.length === 0 || typeof StoryEngine === 'undefined') return false;
+    const key = scId + ":" + field;
+    return !(game.playedStory && game.playedStory[key]);
+}
+
+/* [NEW] 시나리오 컷신 재생 헬퍼.
+   - field: SCENARIOS[id] 안의 스토리 배열 이름
+   - onDone: 컷신이 끝난 뒤(또는 띄울 게 없을 때) 실행할 함수
+   같은 컷신은 한 번만 재생되도록 game.playedStory에 기록한다.
+   ※ 새 컷신 포인트를 추가하려면: 원하는 코드 위치에서 이 함수를 한 줄 호출하면 된다.
+     화면 전환이 필요한 자리(탐사/허브 등)에서는 hasScenarioStory()로 먼저 검사해
+     컷신이 있을 때만 호출하고, onDone에서 원래 진행을 이어가도록 한다. */
+function playScenarioStory(field, onDone) {
+    const done = (typeof onDone === 'function') ? onDone : function () {};
+    if (!hasScenarioStory(field)) { done(); return; }
+    const scId = (game.scenario && game.scenario.id) || game.activeScenarioId;
+    if (!game.playedStory) game.playedStory = {};
+    game.playedStory[scId + ":" + field] = true;
+    if (typeof autoSave === 'function') autoSave();
+    StoryEngine.start(SCENARIOS[scId][field], done);
+}
+
 /* [수정] 전투 승리 후 이동 로직 */
 function nextStepAfterWin() {
     closePopup();
@@ -7699,9 +7979,11 @@ function nextStepAfterWin() {
     player.ag = 0;
 
     if (wasBoss) {
-        // [수정] 보스전 승리 -> 결과 정산 화면으로 이동
-        game.state = 'result';
-        renderResultScreen();
+        // [수정] 보스전 승리 -> (엔딩 컷신이 있으면 재생 후) 결과 정산 화면으로 이동
+        playScenarioStory('outroStory', () => {
+            game.state = 'result';
+            renderResultScreen();
+        });
     }
     // [Infinite Mode] 무한 모드 승리 처리
     else if (game.mode === 'infinite') {
@@ -8828,7 +9110,8 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
         dmg = triggerPendingReactionsOnEnemyAttack(source, target, dmg);
     }
 
-    if (game.state === "battle" && target === player && isDetectiveJob()) {
+    if (game.state === "battle" && target === player && isDetectiveJob() && !game.prologueFight) {
+        // 프롤로그(과거 악몽)에는 조수가 없으므로 조수 메커니즘(피해 분산/조수 다운 시 2배)을 전부 끈다.
         const mgr = ensureAssistantManager();
         const isEnemyAttack = !!(meta && meta.isAttack && source && source !== player);
         if (mgr && mgr.isAlive() && isEnemyAttack) {
@@ -8944,7 +9227,12 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
     // 3. 사망/패배 체크 (즉시 호출하지 않고 checkGameOver가 턴 루프에서 감지하게 함)
     // 단, 플레이어 주마등 처리는 즉시 해야 함
     if (game.state !== "social" && target === player && target.hp <= 0) {
-        if (!target.jumadeung) {
+        if (game.prologueFight) {
+            // 프롤로그 전투: 절대 죽지 않고 HP 1에서 버티며, 첫 빈사 때 자동승리 카드를 쥐어준다.
+            target.hp = 1;
+            updateUI();
+            triggerPrologueCrisis();
+        } else if (!target.jumadeung) {
             target.hp = 1;
             target.jumadeung = true;
         logNarration("battle.lastStand");
@@ -8967,6 +9255,12 @@ function checkGameOver() {
     if (game.state === "gameover") return true;
     // 승리 상태면 추가 진행 중단
     if (game.state === "win") return true;
+
+    // [프롤로그] 죽지 않는다: HP/SP가 0 이하로 떨어져도 1로 되돌리고 위기 연출만 한다.
+    if (game.prologueFight) {
+        if (player.hp <= 0) { player.hp = 1; triggerPrologueCrisis(); updateUI(); }
+        if (player.sp <= 0) { player.sp = 1; updateUI(); }
+    }
 
     // 1. [물리적 사망] HP 0
     if (player.hp <= 0) {
@@ -9036,7 +9330,7 @@ function checkGameOver() {
     else if (game.state === "battle") {
         // 모든 적의 HP가 0 이하인지 확인 (유효한 적만 판단)
         const aliveEnemies = enemies.filter(e => e && e.hp > 0);
-        if (aliveEnemies.length > 0 && !game.surrenderOffered) {
+        if (aliveEnemies.length > 0 && !game.surrenderOffered && !game.prologueFight) {
             const allSurrenderable = aliveEnemies.every(isSurrenderableEnemy);
             const allLowHp = aliveEnemies.every(e => e.hp <= e.maxHp * 0.2);
             if (allSurrenderable && allLowHp) {
@@ -9056,6 +9350,13 @@ function checkGameOver() {
         if (!enemies || enemies.length === 0 || aliveEnemies.length === 0) {
             // 중복 승리 처리 방지
             if (game.state === "win") return true;
+
+            // [프롤로그] 보상 팝업 대신 기상 컷신 → 1화로 이어지는 전용 마무리
+            if (game.prologueFight) {
+                game.state = "win";
+                finishPrologueBattle();
+                return true;
+            }
 
             game.state = "win";
             game.winRewardLogged = false;
@@ -9412,7 +9713,7 @@ function renderShopScreen(shopType = "shop_black_market") {
                     <div class="service-info">
                         <b>${getUIText("shop.serviceRemoveTitle")}</b>
                         <span style="font-size:0.8em; opacity:0.8;">${getUIText("shop.serviceRemoveDesc")}</span>
-                        <span class="shop-price-tag">${removeCost} G</span>
+                        <span class="shop-price-tag">${removeCost}원</span>
                     </div>
                 </div>
             </div>
@@ -9453,7 +9754,7 @@ function renderShopScreen(shopType = "shop_black_market") {
                 </div>` : ""}
                 <div class="card-desc">${applyTooltip(data.desc)}</div>
             </div>
-            <div class="shop-price">${price} G</div>
+            <div class="shop-price">${price}원</div>
         `;
         el.onclick = () => buyShopItem(el, 'card', cName, price);
         cardContainer.appendChild(el);
@@ -9477,7 +9778,7 @@ function renderShopScreen(shopType = "shop_black_market") {
             <div class="item-icon item-rank-${data.rank}" style="width:60px; height:60px; font-size:1.5em; margin:0 auto;">
                 ${data.icon}
             </div>
-            <div class="shop-price">${price} G</div>
+            <div class="shop-price">${price}원</div>
             <div style="font-size:0.8em; margin-top:5px; color:#ddd;">${itemDisplayName}</div>
         `;
         el.onclick = () => buyShopItem(el, 'item', iName, price);
@@ -9685,6 +9986,9 @@ function switchScene(sceneName) {
             DungeonSystem.renderMinimap('minimap-right-grid', 26);
         }
     }
+
+    // [휴대폰] 플로팅 버튼 표시 여부 갱신 (걸어다니는 화면에서만 노출)
+    if (typeof updatePhoneButtonVisibility === 'function') updatePhoneButtonVisibility();
 }
 /* [game.js] renderResultScreen 수정 */
 function renderResultScreen() {
@@ -9726,6 +10030,10 @@ function renderResultScreen() {
 
     if (scId && SCENARIOS[scId]) {
         SCENARIOS[scId].cleared = true;
+    }
+    // 메인 스토리 1화(탐정과 조수의 만남)를 끝내면 조수가 정식 합류한다.
+    if (scId && typeof getMainStoryEpisode1 === 'function' && scId === getMainStoryEpisode1()) {
+        game.assistantJoined = true;
     }
 }
 
@@ -10089,7 +10397,7 @@ function updateUI() {
         } else {
             ensureTimeState();
             infoEl.classList.remove('hidden');
-            infoEl.textContent = `${getTimeLabel()} | Lv.${game.level} | ${player.gold}G | HP ${player.hp}/${player.maxHp} | SP ${player.sp}/${player.maxSp}`;
+            infoEl.textContent = `${getTimeLabel()} | Lv.${game.level} | ${player.gold}원 | HP ${player.hp}/${player.maxHp} | SP ${player.sp}/${player.maxSp}`;
         }
     }
 
@@ -10320,7 +10628,7 @@ function updateUI() {
         const assistantHud = document.getElementById('assistant-hud');
         const assistantImgEl = document.getElementById('assistant-player');
         if (assistantWrapper && assistantHud && assistantImgEl) {
-            if (isDetectiveJob() && game.state === 'battle') {
+            if (isDetectiveJob() && game.state === 'battle' && !game.prologueFight) {
                 const assistantKey = getUIText("assistant.npcName");
                 const assistantMeta = (typeof NPC_DATA !== 'undefined' && NPC_DATA && NPC_DATA[assistantKey])
                     ? NPC_DATA[assistantKey]
@@ -10521,7 +10829,8 @@ function updateUI() {
             btnColor = "#c0392b";
             btnFunc = () => confirmForceBattle();
         }
-        else if (game.state === "battle" && !game.isBossBattle) {
+        else if (game.state === "battle" && !game.isBossBattle && !game.prologueFight) {
+            // 프롤로그(악몽) 전투에서는 도망칠 수 없으므로 버튼을 띄우지 않는다.
             btnHTML = getUIText("battleHud.runAway");
             btnColor = "#7f8c8d";
             btnFunc = () => confirmRunAway();
@@ -10543,6 +10852,7 @@ function updateUI() {
 }
 /* [NEW] 도망치기 확인 팝업 */
 function confirmRunAway() {
+    if (game.prologueFight) { notifyNarration("이 악몽에서는… 도망칠 수 없다."); return; }
     showNarrationChoice(getUIText("battle.runAwayPrompt"), [
         { txt: getUIText("battle.runAwayConfirm"), func: () => { escapePhysicalBattle(); } },
         { txt: getUIText("battle.runAwayCancel"), func: () => {} }
@@ -10746,7 +11056,10 @@ function showPopup(title, desc, buttons = [], contentHTML = "", options = {}) {
     const forcePopup = !!(options && options.forcePopup) || btns.some(b => b && b.keepPopup);
     // 전용 UI(장비창 등)만 팝업 유지. 콘텐츠 없는 단순 선택지는 로그 버튼으로 이동.
     if (!hasContent && !forcePopup) {
-        showNarrationChoice(desc, btns.map(b => ({ txt: b.txt, func: b.func })));
+        // 단순히 닫기만 하는 [확인] 버튼 하나뿐이면 버튼 없이 내레이션만 표시한다.
+        const onlyDismiss = btns.length <= 1 && (!btns[0] || !btns[0].func || btns[0].func === closePopup);
+        const choiceBtns = onlyDismiss ? [] : btns.map(b => ({ txt: b.txt, func: b.func }));
+        showNarrationChoice(desc, choiceBtns);
         return;
     }
     const layer = document.getElementById('popup-layer');
@@ -11732,7 +12045,16 @@ function startInfiniteJobSelection() {
 
 function startStoryMode() {
     tempGameMode = 'story';
-    startCharacterCreation();
+    // 스토리 모드는 (지금은) 탐정 고정 — 캐릭터 생성을 건너뛰고 기본 셋업 후 바로 진행.
+    // 다른 직업 스토리가 MAIN_STORY에 추가되면 그 직업으로 분기/선택을 넣으면 된다.
+    if (typeof MAIN_STORY !== 'undefined' && MAIN_STORY['detective']) {
+        tempJob = 'detective';
+        tempTraits = [];
+        tempBonusStats = { str: 0, con: 0, dex: 0, int: 0, wil: 0, cha: 0 };
+        finishCreation();   // 탐정 기본 셋업 후, 프롤로그가 있으면 자동으로 시작됨
+    } else {
+        startCharacterCreation();
+    }
 }
 
 function startCaseMode() {

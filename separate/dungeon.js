@@ -899,7 +899,12 @@ const DungeonSystem = {
                 const objEl = document.getElementById('dungeon-objects');
                 if (objEl) objEl.classList.add('hidden');
 
-                startBossBattle();
+                // 보스 방 진입 직후 중간 컷신(midStory)이 있으면 먼저 재생하고, 끝나면 보스전 시작.
+                if (typeof playScenarioStory === 'function') {
+                    playScenarioStory('midStory', () => startBossBattle());
+                } else {
+                    startBossBattle();
+                }
             }
         }
 
