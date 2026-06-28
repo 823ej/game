@@ -1170,6 +1170,18 @@ const ENEMY_DATA = {
         img: "https://placehold.co/100x100/5d4037/ffffff?text=Rat",
         tags: ["beast"]
     },
+    // [1화 전용] 약한 보스. 0일차(조수 없음)에 혼자서도 잡을 수 있게 낮은 스탯.
+    "boss_sewer_rat": {
+        name: "🐀 거대 시궁쥐",
+        baseHp: 40,
+        stats: { atk: 1, def: 0, spd: 2 },
+        weakness: "fire",
+        growth: { hp: 0, atk: 0, def: 0, spd: 0 },
+        deckType: "custom",
+        deck: ["발톱 갈기", "타격", "수비", "발톱 갈기"],
+        img: "https://placehold.co/120x120/3a2a2a/dddddd?text=Big+Rat",
+        tags: ["beast"]
+    },
     "좀비": {
         name: "좀비",
         baseHp: 32,

@@ -32,7 +32,7 @@ const NEW_SCENARIOS = {
         title: "잃어버린 고양이",
         desc: "고양이를 찾아달라는 의뢰… 인데, 수상한 지하로 이어진다.",
         locations: ["골목 끝", "낡은 맨홀", "지하 통로"],
-        boss: "boss_gang_leader",          // 임시 보스. 나중에 다른 적으로 바꿔도 됩니다.
+        boss: "boss_sewer_rat",            // 0일차 혼자 클리어용 약한 보스(거대 시궁쥐)
         enemyPool: ["괴물 쥐"],
 
         // ── 인트로 없음 ──
@@ -200,6 +200,12 @@ const MAIN_STORY = {
             { type: "talk", id: "none", name: "", text: "(그런데 어째서, 잠겨 있던 내 사무소 안에서 숨을 거둔 거지?)" },
             { type: "talk", id: "none", name: "", text: "(…큭. 머리가 깨질 듯 아프다. 어제의 기억이 통째로 비어 있다.)" },
             { type: "cg",   src: "" },
+            { type: "end" }
+        ],
+
+        // [외출 독백] 회상(1화) 중 처음 [문]을 눌러 사무소를 나설 때 1회 재생.
+        goOutStory: [
+            { type: "talk", id: "none", name: "", text: "(그래, 고양이를 찾으러 일단 사무소를 나섰었다.)" },
             { type: "end" }
         ]
     }

@@ -4124,7 +4124,7 @@ function finishCreation() {
 
     // 캐릭터 생성 완료 상태로 전환
     game.started = true;
-    game.day = 1;
+    game.day = 1;   // 잠에서 깨어나 소년을 발견하는 '현재'가 1일차
     game.timeIndex = 0;
 
     // [Infinite Mode Check]
@@ -4230,6 +4230,34 @@ function isDetectiveJob() {
 
 function isWizardJob() {
     return player && player.job === "wizard";
+}
+
+/* [NEW] 조수가 전투에 관여할 수 있는 상태인가?
+   - 탐정이 아니면 X
+   - 프롤로그(악몽)면 X
+   - 스토리 모드에서 조수 합류(1화 클리어) 전이면 X  → 0일차(회상/1화)엔 조수 없음 */
+function isAssistantActive() {
+    if (!isDetectiveJob()) return false;
+    if (game.prologueFight) return false;
+    if (game.storyMode && !game.assistantJoined) return false;
+    return true;
+}
+
+/* [NEW] 조수 관련 카드인가? (requireAssistant 또는 assistant* 속성을 가진 카드) */
+function isAssistantCard(cardName) {
+    const d = (typeof CARD_DATA !== 'undefined') ? CARD_DATA[cardName] : null;
+    if (!d) return false;
+    if (d.requireAssistant) return true;
+    for (const k in d) { if (k.indexOf('assistant') === 0) return true; }
+    if (d.reaction && d.reaction.assistantBlock != null) return true;
+    return false;
+}
+
+/* [NEW] 조수 합류 전(프롤로그/0일차)에는 이번 전투 덱(드로우 더미)에서 조수 카드를 제외한다. */
+function filterAssistantCardsFromDraw() {
+    if (isAssistantActive()) return;
+    player.drawPile = (player.drawPile || []).filter(name => !isAssistantCard(name));
+    if (player.drawPile.length === 0) player.drawPile = ["타격", "타격", "수비", "수비"];
 }
 
 
@@ -4411,6 +4439,8 @@ function investigatePrologueBoy() {
 function onPhoneRead(value) {
     if (!value) return;
     if (typeof CASE_BOARD_DATA !== 'undefined' && CASE_BOARD_DATA.clues && CASE_BOARD_DATA.clues[value]) {
+        // 단서 획득 직전 독백 (문자 보고 → 독백 → 단서)
+        if (value === 'cat_returned') notifyNarration("(고양이……?)");
         if (typeof addLooseClueById === 'function') addLooseClueById(value);
         if (typeof renderCaseBoard === 'function') renderCaseBoard();
         const t = CASE_BOARD_DATA.clues[value].title;
@@ -4431,6 +4461,9 @@ function onCaseClueFormed(id) {
         else renderHub();
     };
     if (typeof closeCaseBoard === 'function') closeCaseBoard();
+    // 회상에 들어가면 '어제(0일차)'를 따라간다. (잃어버린 고양이 사건이 0일차)
+    game.day = 0;
+    game.timeIndex = 0;
     if (game.storyMode && Array.isArray(flashback) && flashback.length > 0 && typeof StoryEngine !== 'undefined') {
         StoryEngine.start(flashback, proceed);
     } else {
@@ -4451,9 +4484,25 @@ function goOutside() {
         notifyNarrationPanel("(지금 외출을 할 때가 아니다.)");
         return;
     }
-    // 그 외에는 구시가지로 나간다.
-    // 1화 수락 중이면 주택가에 던전 입구('낡은 맨홀')가 나타나며, 직접 찾아 들어가야 한다.
-    enterCityAreaMode('east_oldtown');
+    // 구시가지로 나간다. (허브에서 부를 때는 도시 화면 전환이 필요)
+    const enterCity = () => {
+        game.state = 'city';
+        switchScene('city');
+        enterCityAreaMode('east_oldtown');
+    };
+
+    // 회상(1화) 중 처음 사무소를 나설 때는 스토리 엔진 독백을 재생하고, 끝나면 구시가지로.
+    const inEp1 = game.storyMode && ep1 && game.activeScenarioId === ep1 && SCENARIOS[ep1] && !SCENARIOS[ep1].cleared;
+    if (inEp1 && typeof hasGameFlag === 'function' && !hasGameFlag('story:ep1:wentOut')) {
+        if (typeof setGameFlag === 'function') setGameFlag('story:ep1:wentOut');
+        const story = (typeof MAIN_STORY !== 'undefined' && player.job) ? MAIN_STORY[player.job] : null;
+        const script = (story && Array.isArray(story.goOutStory)) ? story.goOutStory : null;
+        if (script && script.length > 0 && typeof StoryEngine !== 'undefined') {
+            StoryEngine.start(script, enterCity);
+            return;
+        }
+    }
+    enterCity();
 }
 
 /* [NEW] 메인 스토리 프롤로그 시작: 악몽 컷신 → (끝나면) 튜토리얼 전투 */
@@ -7807,6 +7856,7 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     const validBattle = player.deck.filter(name => CARD_DATA[name]);
     player.deck = (validBattle.length > 0) ? validBattle : ["타격", "타격", "수비", "수비"];
     player.drawPile = [...player.deck];
+    filterAssistantCardsFromDraw();   // 조수 합류 전엔 조수 카드 제외
     shuffle(player.drawPile);
     player.discardPile = [];
     player.exhaustPile = [];
@@ -7831,10 +7881,10 @@ function startBattle(isBoss = false, enemyKeys = null, preserveEnemies = false) 
     game.innateDrawn = false;
     game.assistantDamageReductionPct = 0;
     game.assistantTauntTurns = 0;
-    if (isDetectiveJob() && !game.prologueFight) {
+    if (isAssistantActive()) {
         initAssistantForDetective();
     } else if (player.assistantManager) {
-        player.assistantManager.reset(0); // 프롤로그(악몽)에는 조수가 없음
+        player.assistantManager.reset(0); // 프롤로그/0일차(합류 전)에는 조수가 없음
     }
 
     // 4. UI 모드 전환 (이동 버튼 숨김, 전투 UI 표시)
@@ -9110,8 +9160,8 @@ function takeDamage(target, dmg, isCrit = false, attackAttrs = null, source = nu
         dmg = triggerPendingReactionsOnEnemyAttack(source, target, dmg);
     }
 
-    if (game.state === "battle" && target === player && isDetectiveJob() && !game.prologueFight) {
-        // 프롤로그(과거 악몽)에는 조수가 없으므로 조수 메커니즘(피해 분산/조수 다운 시 2배)을 전부 끈다.
+    if (game.state === "battle" && target === player && isAssistantActive()) {
+        // 조수가 없을 때(프롤로그·0일차)는 조수 메커니즘(피해 분산/조수 다운 시 2배)을 전부 끈다.
         const mgr = ensureAssistantManager();
         const isEnemyAttack = !!(meta && meta.isAttack && source && source !== player);
         if (mgr && mgr.isAlive() && isEnemyAttack) {
@@ -9473,6 +9523,7 @@ function forcePhysicalBattle() {
 
     // 2. 플레이어 덱 복구 (전투 덱으로)
     player.drawPile = [...player.deck];
+    filterAssistantCardsFromDraw();   // 조수 합류 전엔 조수 카드 제외
     shuffle(player.drawPile);
     player.discardPile = [];
     player.exhaustPile = [];
@@ -10628,7 +10679,7 @@ function updateUI() {
         const assistantHud = document.getElementById('assistant-hud');
         const assistantImgEl = document.getElementById('assistant-player');
         if (assistantWrapper && assistantHud && assistantImgEl) {
-            if (isDetectiveJob() && game.state === 'battle' && !game.prologueFight) {
+            if (isAssistantActive() && game.state === 'battle') {
                 const assistantKey = getUIText("assistant.npcName");
                 const assistantMeta = (typeof NPC_DATA !== 'undefined' && NPC_DATA && NPC_DATA[assistantKey])
                     ? NPC_DATA[assistantKey]
